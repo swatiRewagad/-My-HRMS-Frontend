@@ -1,0 +1,485 @@
+<div class="rbio-detail">
+  <!-- Header -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
+    </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button title="Refresh"><i class="pi pi-refresh"></i></button>
+        <button title="Font size">A<sup>-</sup></button>
+        <button>A</button>
+        <button>A<sup>+</sup></button>
+        <button title="Language"><i class="pi pi-globe"></i> English</button>
+        <button title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Rahul Jain' }}</span>
+        <span class="user-role">RBIO Dealing Officer</span>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">Loading complaint details...</div>
+  }
+
+  @if (complaint(); as c) {
+    <!-- Tab Bar (complaint number) -->
+    <div class="tab-bar">
+      <div class="tab-item active">
+        <span>Complaint {{ c.complaintId }}</span>
+      </div>
+      <button class="tab-add"><i class="pi pi-plus"></i></button>
+    </div>
+
+    <!-- Complaint Summary Strip -->
+    <div class="complaint-strip">
+      <button class="btn-back" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+      <div class="strip-item">
+        <span class="strip-label">Complaint Number</span>
+        <span class="strip-value">{{ c.complaintNumber }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Complainant Name</span>
+        <span class="strip-value">{{ c.complainantName }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Entity Name</span>
+        <span class="strip-value">{{ c.entityName }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Status</span>
+        <app-status-badge [status]="c.status" />
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">Complaint Category</span>
+        <span class="strip-value">{{ c.category }}</span>
+      </div>
+      <div class="strip-item">
+        <span class="strip-label">SLA Breach In</span>
+        <span class="sla-badge" [class.breach]="c.slaBreachHours < 48">{{ c.slaBreachHours }} hrs</span>
+      </div>
+      <div class="strip-actions">
+        <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
+        <div class="approval-wrapper">
+          <button
+            class="btn-approval"
+            [disabled]="isClosureBlocked()"
+            [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
+            (click)="!isClosureBlocked() && showApprovalDropdown.set(!showApprovalDropdown())"
+          >
+            Send for Approval <i class="pi pi-chevron-down"></i>
+          </button>
+          @if (showApprovalDropdown()) {
+            <div class="approval-dropdown">
+              @for (opt of approvalOptions; track opt.key) {
+                <button (click)="openApprovalOption(opt)">{{ opt.label }}</button>
+              }
+            </div>
+          }
+        </div>
+        <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
+      </div>
+    </div>
+
+    <!-- Upload Link Status Banner -->
+    <app-upload-link-status
+      [complaintNumber]="c.complaintNumber"
+      (linkStatusChange)="onLinkStatusChange($event)"
+    ></app-upload-link-status>
+
+    <!-- Section Tabs -->
+    <div class="section-tabs">
+      @for (tab of tabs; track tab.key) {
+        <button
+          class="section-tab"
+          [class.active]="activeTab() === tab.key"
+          [class.tab-restricted]="tab.key === 'forward' && isForwardingRestricted()"
+          [title]="tab.key === 'forward' && isForwardingRestricted() ? 'Forwarding restricted: upload link active' : ''"
+          (click)="activeTab.set(tab.key)"
+        >
+          {{ tab.label }}
+          @if (tab.key === 'forward' && isForwardingRestricted()) {
+            <i class="pi pi-lock" style="font-size: 11px; margin-left: 4px; color: var(--state-warning-fg);"></i>
+          }
+        </button>
+      }
+    </div>
+
+    <!-- Main Content: Two Panels -->
+    <div class="detail-content">
+      <!-- Left Panel: Complaint Info -->
+      <div class="left-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-edit"></i> Complaint</h3>
+            <button class="btn-expand"><i class="pi pi-expand"></i></button>
+          </div>
+
+          <div class="section-block">
+            <h4>Basic Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Complainant Name</label>
+                <span>{{ c.complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email ID</label>
+                <span>{{ c.complainantEmail }}</span>
+              </div>
+            </div>
+            <div class="field full-width">
+              <label>Subject</label>
+              <span>{{ c.subject }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Complaint Details</label>
+              <span>{{ c.description }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Comments</label>
+              <span>-</span>
+            </div>
+            <div class="field-group">
+              <div class="field">
+                <label>Mode of Receipt</label>
+                <span>{{ c.modeOfReceipt }}</span>
+              </div>
+              <div class="field">
+                <label>Receipt Date</label>
+                <span>{{ c.receiptDate }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Eligibility</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Proposed Complaint Type</label>
+                <span>-</span>
+              </div>
+              <div class="field">
+                <label>Reason for not a complaint</label>
+                <span>-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Entity Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Entity Name</label>
+                <span>{{ c.entityName || '-' }}</span>
+              </div>
+              <div class="field">
+                <label>Module Name</label>
+                <span>-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Complainant Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Complainant Name</label>
+                <span>{{ c.complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <span>{{ c.complainantEmail }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Assessment -->
+      <div class="right-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><i class="pi pi-chart-line"></i> Assessment</h3>
+            <div class="panel-icons">
+              <button><i class="pi pi-user"></i></button>
+              <button><i class="pi pi-copy"></i></button>
+              <button><i class="pi pi-history"></i></button>
+              <button><i class="pi pi-download"></i></button>
+            </div>
+          </div>
+
+          <div class="assessment-fields">
+            <div class="field-group">
+              <div class="field" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
+                <label>Proposed Action</label>
+                <select [(ngModel)]="proposedAction" [disabled]="isFieldReadOnlyDueToDecision()" (ngModelChange)="onProposedActionChange($event)">
+                  <option value="">Select a Value</option>
+                  <option value="ACCEPT">Accept</option>
+                  <option value="REJECT">Reject</option>
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="CONCILIATE">Conciliate</option>
+                </select>
+                @if (isFieldReadOnlyDueToDecision()) {
+                  <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+                }
+              </div>
+              <div class="field" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
+                <label>Proposed Clause</label>
+                <input type="text" placeholder="Search" [(ngModel)]="proposedClause" [readonly]="isFieldReadOnlyDueToDecision()" (ngModelChange)="onProposedClauseChange($event)" />
+                @if (isFieldReadOnlyDueToDecision()) {
+                  <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ Final Decision Section (UST576, UST581-584) ═══ -->
+          @if (activeTab() === 'final') {
+            <div class="final-decision-section" style="margin:12px 0; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid var(--border-subtle);">
+              <h4 style="margin:0 0 10px; font-size:13px; color:var(--text-body);"><i class="pi pi-file-check"></i> Final Decision</h4>
+
+              <!-- Closure Clause Picker (UST581-584) -->
+              <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Closure Clause</label>
+                <select [ngModel]="closureClause()" (ngModelChange)="onClosureClauseChange($event)" (focus)="loadClosureClauses()" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                  <option value="">Select Closure Clause</option>
+                  @for (clause of allowedClosureClauses(); track clause.code) {
+                    <option [value]="clause.code">{{ clause.code }} - {{ clause.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Custom Closure Text (UST576) -->
+              <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Custom Closure Text (optional)</label>
+                <textarea [ngModel]="customClosureText()" (ngModelChange)="customClosureText.set($event)" rows="3" maxlength="2000" placeholder="Enter custom text to include in the closure letter..." style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; resize:vertical;"></textarea>
+                <span style="font-size:11px; color:var(--text-muted); float:right;">{{ customClosureTextLength }} / 2000</span>
+              </div>
+
+              <!-- Email validation error (UST656) -->
+              @if (emailValidationError()) {
+                <div style="margin-top:8px; padding:8px 12px; background:#fff3f3; border:1px solid #ffcdd2; border-radius:4px; color:#c62828; font-size:12px;">
+                  <i class="pi pi-exclamation-triangle"></i> {{ emailValidationError() }}
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Comments Section -->
+          <div class="comments-section">
+            <h4>All Comments</h4>
+            @for (comment of comments(); track comment.id) {
+              <div class="comment-item">
+                <div class="comment-avatar">{{ comment.author.charAt(0) }}</div>
+                <div class="comment-body">
+                  <div class="comment-meta">
+                    <span class="comment-time">{{ comment.timestamp }}</span>
+                    <span class="comment-author">{{ comment.author }}</span>
+                  </div>
+                  <p class="comment-text">{{ comment.text }} <a class="read-more">...read more</a></p>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Add Comment -->
+          <div class="add-comment">
+            <label>Comments</label>
+            <textarea placeholder="Enter text here" [(ngModel)]="newComment" rows="3"></textarea>
+            <button class="btn-template"><i class="pi pi-th-large"></i></button>
+          </div>
+
+          <!-- Speaking Order -->
+          <div class="speaking-order" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
+            <label>Contents of the Speaking Order</label>
+            <textarea placeholder="Enter text here" [(ngModel)]="speakingOrder" rows="3" [readonly]="isFieldReadOnlyDueToDecision()"></textarea>
+            @if (isFieldReadOnlyDueToDecision()) {
+              <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+            }
+          </div>
+
+          <!-- ═══ Deputy Ombudsman Decision (UST758) ═══ -->
+          @if (showDeputyDecision()) {
+            <app-rbio-deputy-decision [complaint]="complaint()" (decisionSubmitted)="onDeputyDecisionSubmitted()"></app-rbio-deputy-decision>
+          }
+
+          <!-- ═══ Add Entity (UST487-495) ═══ -->
+          @if (showAddEntity()) {
+            <app-rbio-add-entity [complaint]="complaint()"></app-rbio-add-entity>
+          }
+
+          <!-- ═══ Forward to Regulatory Body (UST766) ═══ -->
+          @if (showForwardRegulatory()) {
+            <app-rbio-forward-regulatory [complaint]="complaint()"></app-rbio-forward-regulatory>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Legal Case Tab Content (UST553-555) ═══ -->
+    @if (activeTab() === 'legal') {
+      <div class="tab-content-section">
+        <app-rbio-legal-case [complaint]="complaint()"></app-rbio-legal-case>
+      </div>
+    }
+
+    <!-- <<< [S6] START >>> -->
+
+    <!-- ═══ Email Communication Tab (UST590-593, UST656-657) ═══
+         The tab existed in the tab strip with NO body block, so clicking it showed nothing. -->
+    @if (activeTab() === 'email') {
+      <div class="tab-content-section">
+        <app-rbio-email-communication [complaintNumber]="c.complaintNumber">
+        </app-rbio-email-communication>
+      </div>
+    }
+
+    <!-- ═══ Attachments Tab (UST585-589) — new tab; none existed ═══ -->
+    @if (activeTab() === 'attachments') {
+      <div class="tab-content-section">
+        <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.complaintId">
+        </app-rbio-attachments>
+      </div>
+    }
+
+    <!-- <<< [S6] END >>> -->
+
+    <!-- ═══ Complaint History Tab (includes Action Override History UST639-642) ═══ -->
+    @if (activeTab() === 'history') {
+      <div class="tab-content-section">
+        <!-- <<< [S6] START >>> UST594-596: the REAL status/milestone history, from COMPLAINT_TIMELINE.
+             The action-override component below it calls an endpoint that does not exist in
+             cms-backend and swallows the 404, so it rendered "no records" for every complaint. It is
+             left in place because session S3 owns building that endpoint. -->
+        <app-rbio-complaint-history [complaintNumber]="c.complaintNumber">
+        </app-rbio-complaint-history>
+        <!-- <<< [S6] END >>> -->
+        <app-rbio-action-override-history [complaint]="complaint()"></app-rbio-action-override-history>
+      </div>
+    }
+  }
+</div>
+
+<!-- Assignment Modal -->
+@if (showAssignmentModal() && selectedApprovalOption(); as opt) {
+  <div class="modal-overlay" (click)="cancelAssignment()">
+    <div class="modal-dialog assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-icon"><i class="pi pi-info-circle"></i></div>
+        <div>
+          <h3>Confirmation</h3>
+          <p>Are you sure you want to send the request to {{ opt.label.replace('Send to ', '') }} ?</p>
+        </div>
+        <button class="modal-close" (click)="cancelAssignment()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field-group">
+          <div class="field">
+            <label>Assignment</label>
+            <select [(ngModel)]="assignmentType">
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ opt.nameLabel }}</label>
+            <div class="search-input">
+              <input type="text" [(ngModel)]="assigneeName" />
+              <i class="pi pi-search"></i>
+            </div>
+          </div>
+        </div>
+
+        @if (opt.key === 'ombudsman') {
+          <div class="field-group">
+            <div class="field">
+              <label>CRPC Proposed Action</label>
+              <select [(ngModel)]="crpcProposedAction">
+                <option value="">Select a Value</option>
+                <option value="ACCEPT">Accept</option>
+                <option value="REJECT">Reject</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>CRPC Proposed Clause</label>
+              <div class="search-input">
+                <input type="text" placeholder="Search" [(ngModel)]="crpcProposedClause" />
+                <i class="pi pi-search"></i>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (opt.key === 'deputy' || opt.key === 'ombudsman') {
+          <div class="systemic-issue">
+            <label>Systemic Issue?</label>
+            <div class="radio-group">
+              <label><input type="radio" name="systemic" [value]="true" [(ngModel)]="systemicIssue" /> Yes</label>
+              <label><input type="radio" name="systemic" [value]="false" [(ngModel)]="systemicIssue" /> No</label>
+            </div>
+          </div>
+        }
+
+        <div class="expected-status">
+          <label>Expected Status Change</label>
+          <div class="status-flow">
+            <span class="status-from">
+              <i class="pi pi-circle-fill green"></i> {{ complaint()?.status === 'NEW' ? 'New Complaint' : complaint()?.status }}
+            </span>
+            <i class="pi pi-arrow-right"></i>
+            <span class="status-to">
+              <i class="pi pi-pencil blue"></i> Sent to {{ opt.label.replace('Send to ', '') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="cancelAssignment()">Cancel</button>
+        <button class="btn-confirm" (click)="confirmAssignment()">Confirm</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ SAMPLE CLOSURE LETTER MODAL (UST521) ═══ -->
+@if (showSampleLetterModal()) {
+  <div class="modal-overlay">
+    <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:600px;">
+      <div class="modal-header">
+        <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:var(--brand-primary);"></i></div>
+        <div>
+          <h3>Sample Closure Letter</h3>
+          <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
+        </div>
+        <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px; max-height:400px; overflow-y:auto;">
+        <div style="background:#fafafa; padding:16px; border:1px solid var(--border-subtle); border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
+          <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
+          <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
+          <p>Dear [Complainant Name],</p>
+          <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021, we wish to inform you that after careful examination, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
+          <p><em>[Clause-specific reasoning would be inserted here]</em></p>
+          <p>Yours faithfully,<br/>[Authority Name]<br/>[Designation]</p>
+          <p style="font-size:11px;color:#888;">System-generated letter. Not a digitally signed document.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-confirm" (click)="acknowledgeSampleLetter()"><i class="pi pi-check"></i> I have reviewed</button>
+      </div>
+    </div>
+  </div>
+}

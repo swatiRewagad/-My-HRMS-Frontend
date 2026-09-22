@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 Architecture: Planned vs Current (Dev-Local)</title>
+    <style>
+        :root {
+            --navy: #1a365d;
+            --navy-light: #2c5282;
+            --navy-dark: #0f2440;
+            --gold: #d4a843;
+            --gold-light: #e8c868;
+            --gold-dark: #b8922e;
+            --bg: #f7f8fc;
+            --bg-section: #ffffff;
+            --text: #1a202c;
+            --text-muted: #4a5568;
+            --border: #e2e8f0;
+            --success: #38a169;
+            --warning: #d69e2e;
+            --danger: #e53e3e;
+            --info: #3182ce;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 50%, var(--navy-light) 100%);
+            color: white;
+            padding: 2rem 2rem 1.5rem;
+            text-align: center;
+            border-bottom: 4px solid var(--gold);
+            position: relative;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gold);
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            letter-spacing: 0.5px;
+        }
+
+        .header .subtitle {
+            font-size: 1rem;
+            opacity: 0.85;
+            font-weight: 300;
+        }
+
+        .header .badge {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--navy-dark);
+            padding: 0.2rem 0.8rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Sticky Navigation */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: var(--navy-dark);
+            padding: 0.6rem 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            justify-content: center;
+            border-bottom: 2px solid var(--gold);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .nav a {
+            color: #cbd5e0;
+            text-decoration: none;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 3px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .nav a:hover {
+            background: var(--navy-light);
+            color: var(--gold-light);
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Collapsible Sections */
+        .section {
+            background: var(--bg-section);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .section-header:hover {
+            background: linear-gradient(135deg, var(--navy-light) 0%, #3a6faa 100%);
+        }
+
+        .section-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-header .section-number {
+            background: var(--gold);
+            color: var(--navy-dark);
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .section-header .toggle-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s;
+            color: var(--gold-light);
+        }
+
+        .section-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .section-content {
+            padding: 1.5rem;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+            overflow: hidden;
+        }
+
+        .section-content.hidden {
+            max-height: 0 !important;
+            padding: 0 1.5rem;
+        }
+
+        /* Architecture Diagrams */
+        .diagram-container {
+            background: #f8faff;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .diagram-title {
+            font-weight: 600;
+            color: var(--navy);
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            border-bottom: 2px solid var(--gold);
+            padding-bottom: 0.4rem;
+            display: inline-block;
+        }
+
+        .arch-diagram {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.82rem;
+            line-height: 1.4;
+            white-space: pre;
+            color: var(--navy-dark);
+            overflow-x: auto;
+            padding: 0.5rem 0;
+        }
+
+        /* Visual Diagram with Boxes */
+        .visual-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+            padding: 1rem 0;
+        }
+
+        .diagram-row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .service-box {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: white;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 2px 6px rgba(26,54,93,0.3);
+            position: relative;
+        }
+
+        .service-box.frontend {
+            background: linear-gradient(135deg, #2b6cb0, #4299e1);
+        }
+
+        .service-box.gateway {
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold));
+            color: var(--navy-dark);
+        }
+
+        .service-box.kafka {
+            background: linear-gradient(135deg, #276749, #38a169);
+        }
+
+        .service-box.database {
+            background: linear-gradient(135deg, #744210, #d69e2e);
+            color: white;
+        }
+
+        .service-box.disabled {
+            background: linear-gradient(135deg, #718096, #a0aec0);
+            opacity: 0.7;
+        }
+
+        .service-box .port {
+            display: block;
+            font-size: 0.65rem;
+            opacity: 0.8;
+            margin-top: 2px;
+        }
+
+        .arrow-down {
+            color: var(--navy);
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .arrow-right {
+            color: var(--gold-dark);
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* Component List */
+        .component-list {
+            list-style: none;
+            padding: 0;
+            margin: 1rem 0;
+        }
+
+        .component-list li {
+            padding: 0.6rem 0.8rem;
+            margin-bottom: 0.4rem;
+            border-left: 3px solid var(--gold);
+            background: #fafbff;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.88rem;
+        }
+
+        .component-list li strong {
+            color: var(--navy);
+        }
+
+        /* Tables */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            margin: 1rem 0;
+        }
+
+        .comparison-table thead th {
+            background: var(--navy);
+            color: white;
+            padding: 0.7rem 0.8rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .comparison-table thead th:first-child {
+            border-radius: 4px 0 0 0;
+        }
+
+        .comparison-table thead th:last-child {
+            border-radius: 0 4px 0 0;
+        }
+
+        .comparison-table tbody td {
+            padding: 0.7rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .comparison-table tbody tr:nth-child(even) {
+            background: #f8faff;
+        }
+
+        .comparison-table tbody tr:hover {
+            background: #edf2f7;
+        }
+
+        .comparison-table .col-component {
+            font-weight: 600;
+            color: var(--navy);
+            white-space: nowrap;
+            min-width: 100px;
+        }
+
+        .comparison-table .col-why {
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 0.78rem;
+        }
+
+        /* ADR Cards */
+        .adr-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .adr-header {
+            background: #f8faff;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--navy);
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .adr-header:hover {
+            background: #edf2f7;
+        }
+
+        .adr-body {
+            padding: 1rem;
+            font-size: 0.85rem;
+        }
+
+        .adr-body .adr-field {
+            margin-bottom: 0.6rem;
+        }
+
+        .adr-body .adr-label {
+            font-weight: 600;
+            color: var(--navy);
+            display: inline-block;
+            min-width: 110px;
+        }
+
+        .adr-body .adr-value {
+            color: var(--text-muted);
+        }
+
+        /* Progress Bars */
+        .readiness-item {
+            margin-bottom: 1rem;
+        }
+
+        .readiness-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .readiness-label .name {
+            font-weight: 500;
+            font-size: 0.88rem;
+            color: var(--navy);
+        }
+
+        .readiness-label .priority {
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .priority-high {
+            background: #fed7d7;
+            color: #c53030;
+        }
+
+        .priority-medium {
+            background: #fefcbf;
+            color: #975a16;
+        }
+
+        .priority-low {
+            background: #c6f6d5;
+            color: #276749;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 24px;
+            background: #edf2f7;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .progress-fill.done {
+            background: linear-gradient(90deg, #38a169, #48bb78);
+        }
+
+        .progress-fill.partial {
+            background: linear-gradient(90deg, var(--gold-dark), var(--gold));
+            color: var(--navy-dark);
+        }
+
+        .progress-fill.todo {
+            background: linear-gradient(90deg, #e53e3e, #fc8181);
+        }
+
+        .progress-description {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+        }
+
+        /* Communication Map */
+        .comm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            margin: 1rem 0;
+        }
+
+        .comm-table th {
+            background: var(--navy);
+            color: white;
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            font-size: 0.78rem;
+        }
+
+        .comm-table td {
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comm-table tr:nth-child(even) {
+            background: #f8faff;
+        }
+
+        .comm-type {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .comm-type.rest {
+            background: #bee3f8;
+            color: #2a4365;
+        }
+
+        .comm-type.kafka-type {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .comm-type.http {
+            background: #fefcbf;
+            color: #744210;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            border-top: 2px solid var(--gold);
+            margin-top: 2rem;
+        }
+
+        .footer strong {
+            color: var(--navy);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.8rem;
+            }
+            .comparison-table {
+                display: block;
+                overflow-x: auto;
+            }
+            .nav {
+                padding: 0.4rem;
+            }
+            .nav a {
+                font-size: 0.7rem;
+                padding: 0.25rem 0.5rem;
+            }
+            .header h1 {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* Print */
+        @media print {
+            .nav {
+                display: none;
+            }
+            .section-content.hidden {
+                max-height: none !important;
+                padding: 1.5rem !important;
+            }
+            .section {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+            body {
+                background: white;
+            }
+            .header {
+                background: var(--navy) !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CMS 2.0 Architecture Comparison</h1>
+        <div class="subtitle">Original Planned Architecture vs Current Dev-Local Implementation</div>
+        <div class="badge">Reserve Bank of India -- Complaint Management System</div>
+    </div>
+
+    <nav class="nav">
+        <a href="#section-1">Planned Architecture</a>
+        <a href="#section-2">Current Implementation</a>
+        <a href="#section-3">What Changed &amp; Why</a>
+        <a href="#section-4">Architecture Decisions</a>
+        <a href="#section-5">Production Readiness</a>
+        <a href="#section-6">Communication Map</a>
+    </nav>
+
+    <div class="container">
+
+        <!-- Section 1: Original Architecture -->
+        <div class="section" id="section-1">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="section-number">1</span> Original Architecture (As Planned)</h2>
+                <span class="toggle-icon">&#9660;</span>
+            </div>
+            <div class="section-content">
+                <div class="diagram-container">
+                    <div class="diagram-title">Planned Production Architecture</div>
+                    <div class="arch-diagram">
+Angular Portal ──── API Gateway ──── Microservices ──── Oracle DB
+                         │                                   │
+                     Keycloak                        Transactional Outbox
+                  (OAuth2/JWT)                               │
+                                              Outbox Publisher (ShedLock poll)
+                                                             │
+                                                       Apache Kafka
+                                                             │
+                              ┌───────────────┬──────────────┼──────────────┐
+                              │               │              │              │
+                        Assignment       Workflow         Search       Notification
+                         Service          Service        Service        Service
+                              │               │              │              │
+                          Drools          jBPM/BPMN     OpenSearch     Email/SMS
+                       (rules-based      (process        (full-text     (SMTP +
+                        routing)          engine)         indexing)      gateway)</div>
+                </div>
+
+                <h3 style="color: var(--navy); margin: 1.5rem 0 0.8rem; font-size: 1rem;">Key Planned Components</h3>
+                <ul class="component-list">
+                    <li><strong>Oracle Database</strong> -- Primary RDBMS for all transactional data with enterprise-grade reliability</li>
+                    <li><strong>Transactional Outbox Pattern</strong> -- ShedLock-based polling ensures guaranteed event delivery even on application crash</li>
+                    <li><strong>jBPM Workflow Engine</strong> -- Full BPMN2 process model execution with persistent process instances and timer events</li>
+                    <li><strong>Drools Rules Engine</strong> -- Business rules for eligibility determination, complaint assignment, and escalation logic</li>
+                    <li><strong>Keycloak Authentication</strong> -- OAuth2/JWT with RBAC (citizen, officer, admin roles) and SSO integration</li>
+                    <li><strong>Outbox Publisher Service</strong> -- Dedicated service polling Oracle outbox table and publishing events to Kafka topics</li>
+                    <li><strong>Assignment Service</strong> -- Standalone microservice with Drools KieContainer for complex rule-based complaint routing</li>
+                    <li><strong>Apache Kafka</strong> -- Event backbone connecting all microservices with topic-based pub/sub</li>
+                    <li><strong>OpenSearch</strong> -- Full-text search with auto-indexing via Kafka consumer</li>
+                    <li><strong>Notification Service</strong> -- Email (SMTP) and SMS (gateway) delivery with template engine</li>
+                </ul>
+
+                <div class="diagram-container">
+                    <div class="diagram-title">Planned Service Ports</div>
+                    <table class="comm-table">
+                        <thead>
+                            <tr><th>Service</th><th>Port</th><th>Role</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>API Gateway</td><td>8080</td><td>Central routing, auth enforcement</td></tr>
+                            <tr><td>Eligibility Service</td><td>8081</td><td>Citizen eligibility checks</td></tr>
+                            <tr><td>Ingestion Service</td><td>8082</td><td>Complaint CRUD, outbox writes</td></tr>
+                            <tr><td>Workflow Service</td><td>8083</td><td>jBPM process orchestration</td></tr>
+                            <tr><td>Rules Service</td><td>8084</td><td>Drools rule management</td></tr>
+                            <tr><td>Assignment Service</td><td>8085</td><td>Drools-based routing</td></tr>
+                            <tr><td>SLA Monitor</td><td>8086</td><td>Breach detection + escalation</td></tr>
+                            <tr><td>Notification Service</td><td>8087</td><td>Email/SMS delivery</td></tr>
+                            <tr><td>Storage Service</td><td>8089</td><td>Document attachments</td></tr>
+                            <tr><td>Search Service</td><td>8090</td><td>OpenSearch query interface</td></tr>
+                            <tr><td>Outbox Publisher</td><td>8091</td><td>Outbox polling + Kafka publish</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 2: Current Implementation -->
+        <div class="section" id="section-2">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="section-number">2</span> Current Implementation (Dev-Local)</h2>
+                <span class="toggle-icon">&#9660;</span>
+            </div>
+            <div class="section-content">
+                <div class="diagram-container">
+                    <div class="diagram-title">Current Dev-Local Architecture</div>
+                    <div class="arch-diagram">
+Angular Portal (4200) ──── API Gateway (8080) ──── Microservices
+                                │
+                     (Security DISABLED in dev-local)
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Ingestion Service (8082)                                                    │
+│  ├── H2 in-memory DB (NOT Oracle)                                            │
+│  ├── Direct Kafka publish (NO outbox pattern)                                │
+│  ├── Complaint CRUD + status updates + history                               │
+│  ├── Admin dashboard stats API                                               │
+│  └── SLA breach detection API                                                │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                │ Kafka event
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Workflow Service (8083)                                                      │
+│  ├── In-memory ConcurrentHashMap (NO jBPM)                                   │
+│  ├── DevLocalWorkflowService replaces jBPM                                   │
+│  ├── Kafka consumer ── assigns team ── REST callback to ingestion            │
+│  ├── Task query for officer dashboard                                        │
+│  └── Uses POST instead of PATCH (Windows HttpURLConnection limitation)       │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                │ Kafka event
+                                ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│  Search Service (8091)                                                       │
+│  ├── OpenSearch 2.18.0 (running locally)                                     │
+│  ├── Kafka consumer for auto-indexing                                        │
+│  ├── Full-text search with filters                                           │
+│  └── Reindex API (compensates for H2 data loss on restart)                   │
+└──────────────────────────────────────────────────────────────────────────────┘</div>
+                </div>
+
+                <h3 style="color: var(--navy); margin: 1.5rem 0 0.8rem; font-size: 1rem;">Other Running Services</h3>
+                <ul class="component-list">
+                    <li><strong>Rules Service (8084)</strong> -- Drools working, provides rule management API</li>
+                    <li><strong>Eligibility Service (8081)</strong> -- Fully working, validates citizen eligibility</li>
+                    <li><strong>Notification Service (8087)</strong> -- Code ready, dev-local logs only (no SMTP/SMS)</li>
+                    <li><strong>SLA Monitor (8086)</strong> -- Scheduler calls ingestion REST API for breach detection</li>
+                    <li><strong>Assignment Service (8085)</strong> -- Has Drools code but not independently running (workflow handles assignment in dev-local)</li>
+                </ul>
+
+                <h3 style="color: var(--navy); margin: 1.5rem 0 0.8rem; font-size: 1rem;">Frontend (Angular 20)</h3>
+                <ul class="component-list">
+                    <li><strong>Landing Page</strong> -- 5 action cards (File, Track, Officer, Admin, Search)</li>
+                    <li><strong>Complaint Filing Form</strong> -- Multi-step form with validation and category selection</li>
+                    <li><strong>Complaint Tracker</strong> -- Timeline view with status history</li>
+                    <li><strong>Officer Dashboard</strong> -- Task queue with complaint actions (assign, resolve, escalate)</li>
+                    <li><strong>Admin Dashboard</strong> -- Statistics and charts for management overview</li>
+                    <li><strong>Search Page</strong> -- Full-text search with category/status/date filters</li>
+                    <li><strong>Rules Management</strong> -- Admin interface for Drools rule configuration</li>
+                </ul>
+
+                <div class="diagram-container">
+                    <div class="diagram-title">Dev-Local Service Ports (Actual)</div>
+                    <table class="comm-table">
+                        <thead>
+                            <tr><th>Service</th><th>Port</th><th>Status</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Angular Frontend</td><td>4200</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>API Gateway</td><td>8080</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Eligibility Service</td><td>8081</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Ingestion Service</td><td>8082</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Workflow Service</td><td>8083</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Rules Service</td><td>8084</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Assignment Service</td><td>8085</td><td style="color: var(--text-muted);">Not running (embedded in workflow)</td></tr>
+                            <tr><td>SLA Monitor</td><td>8086</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Notification Service</td><td>8087</td><td style="color: var(--success); font-weight: 600;">Running (log only)</td></tr>
+                            <tr><td>Storage Service</td><td>8090</td><td style="color: var(--text-muted);">Port shifted from 8089</td></tr>
+                            <tr><td>Search Service</td><td>8091</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>Apache Kafka</td><td>9092</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                            <tr><td>OpenSearch</td><td>9200</td><td style="color: var(--success); font-weight: 600;">Running</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: What Changed and Why -->
+        <div class="section" id="section-3">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="section-number">3</span> What Changed and Why</h2>
+                <span class="toggle-icon">&#9660;</span>
+            </div>
+            <div class="section-content">
+                <div style="overflow-x: auto;">
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Planned</th>
+                                <th>Current (Dev-Local)</th>
+                                <th>Why Changed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="col-component">Database</td>
+                                <td>Oracle XE 21</td>
+                                <td>H2 in-memory</td>
+                                <td class="col-why">No Oracle installation needed for dev. H2 auto-creates schema. Data resets on restart.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Event Publishing</td>
+                                <td>Transactional Outbox + ShedLock &rarr; Outbox Publisher &rarr; Kafka</td>
+                                <td>DirectKafkaEventPublisher (inline send)</td>
+                                <td class="col-why">Simpler for dev. Outbox pattern only needed for production crash-recovery guarantees.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Workflow Engine</td>
+                                <td>jBPM with BPMN2 process model</td>
+                                <td>DevLocalWorkflowService (ConcurrentHashMap + REST calls)</td>
+                                <td class="col-why">jBPM requires Oracle persistence. In-memory mock mirrors state transitions without process engine overhead.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Authentication</td>
+                                <td>Keycloak OAuth2 + JWT + RBAC</td>
+                                <td>Disabled (spring security exclude)</td>
+                                <td class="col-why">No Keycloak server running locally. All endpoints open in dev.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Assignment</td>
+                                <td>Separate Assignment Service (8085) with Drools</td>
+                                <td>Embedded in DevLocalWorkflowService (switch/case on category)</td>
+                                <td class="col-why">Assignment logic simplified for dev. Production will use full Drools rules.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">SLA Monitor</td>
+                                <td>Direct Oracle query + Kafka publish</td>
+                                <td>REST API call to Ingestion Service</td>
+                                <td class="col-why">SLA monitor doesn't have its own DB in dev. Calls ingestion which has the complaint data.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Notification</td>
+                                <td>Email (SMTP) + SMS (gateway)</td>
+                                <td>DevLocalNotificationService (console log only)</td>
+                                <td class="col-why">No SMTP/SMS gateway in dev. Logs simulate notification delivery.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">HTTP Method</td>
+                                <td>PATCH for status/assignment updates</td>
+                                <td>POST (duplicate endpoints)</td>
+                                <td class="col-why">Java's default HttpURLConnection doesn't support PATCH on Windows. Added POST alternatives.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Search</td>
+                                <td>OpenSearch with Kafka consumer auto-indexing</td>
+                                <td>Same (working) + manual reindex API</td>
+                                <td class="col-why">Added reindex endpoint since H2 data is lost on restart but OpenSearch persists.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Storage Port</td>
+                                <td>Storage: 8089, Search: 8090, Outbox: 8091</td>
+                                <td>Storage: 8090, Search: 8091 (ports shifted)</td>
+                                <td class="col-why">Minor port reassignment during implementation.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Outbox Publisher</td>
+                                <td>Dedicated service with ShedLock</td>
+                                <td>Not used in dev-local</td>
+                                <td class="col-why">Direct Kafka publish eliminates need for outbox polling.</td>
+                            </tr>
+                            <tr>
+                                <td class="col-component">Frontend Framework</td>
+                                <td>Angular 21</td>
+                                <td>Angular 20</td>
+                                <td class="col-why">Version available at time of implementation.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Architecture Decision Records -->
+        <div class="section" id="section-4">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="section-number">4</span> Architecture Decision Records (ADRs)</h2>
+                <span class="toggle-icon">&#9660;</span>
+            </div>
+            <div class="section-content">
+                <div class="adr-card">
+                    <div class="adr-header" onclick="toggleAdr(this)">
+                        ADR-1: H2 Instead of Oracle for Dev-Local
+                        <span class="toggle-icon">&#9660;</span>
+                    </div>
+                    <div class="adr-body">
+                        <div class="adr-field"><span class="adr-label">Context:</span> <span class="adr-value">Oracle XE requires installation, licensing, and 2GB+ RAM. Not practical for rapid local development.</span></div>
+                        <div class="adr-field"><span class="adr-label">Decision:</span> <span class="adr-value">Use H2 with Oracle compatibility mode for dev-local profile.</span></div>
+                        <div class="adr-field"><span class="adr-label">Consequence:</span> <span class="adr-value">Data lost on restart. Some Oracle-specific SQL may not work. Schema auto-created from JPA entities.</span></div>
+                        <div class="adr-field"><span class="adr-label">Production:</span> <span class="adr-value">Will use Oracle XE 21 with Flyway migrations.</span></div>
+                    </div>
+                </div>
+
+                <div class="adr-card">
+                    <div class="adr-header" onclick="toggleAdr(this)">
+                        ADR-2: Direct Kafka Instead of Outbox Pattern
+                        <span class="toggle-icon">&#9660;</span>
+                    </div>
+                    <div class="adr-body">
+                        <div class="adr-field"><span class="adr-label">Context:</span> <span class="adr-value">Outbox pattern prevents message loss if app crashes between DB commit and Kafka send. Critical for production reliability.</span></div>
+                        <div class="adr-field"><span class="adr-label">Decision:</span> <span class="adr-value">Skip outbox in dev-local, publish directly to Kafka after DB save via DirectKafkaEventPublisher.</span></div>
+                        <div class="adr-field"><span class="adr-label">Consequence:</span> <span class="adr-value">Theoretical message loss on crash (acceptable in dev). Simpler code path for debugging.</span></div>
+                        <div class="adr-field"><span class="adr-label">Production:</span> <span class="adr-value">Will use OutboxEventPublisher + cms-outbox-publisher service with ShedLock polling.</span></div>
+                    </div>
+                </div>
+
+                <div class="adr-card">
+                    <div class="adr-header" onclick="toggleAdr(this)">
+                        ADR-3: In-Memory Workflow Instead of jBPM
+                        <span class="toggle-icon">&#9660;</span>
+                    </div>
+                    <div class="adr-body">
+                        <div class="adr-field"><span class="adr-label">Context:</span> <span class="adr-value">jBPM needs Oracle tables (PROCESSINSTANCEINFO, SESSIONINFO, etc.) and full persistence unit configuration.</span></div>
+                        <div class="adr-field"><span class="adr-label">Decision:</span> <span class="adr-value">DevLocalWorkflowService with ConcurrentHashMap simulates state transitions and assignment.</span></div>
+                        <div class="adr-field"><span class="adr-label">Consequence:</span> <span class="adr-value">No persistent process instances, no timer events, no visual BPMN execution. State lost on restart.</span></div>
+                        <div class="adr-field"><span class="adr-label">Production:</span> <span class="adr-value">Will use jBPM RuntimeManager with Oracle persistence and full BPMN2 process definitions.</span></div>
+                    </div>
+                </div>
+
+                <div class="adr-card">
+                    <div class="adr-header" onclick="toggleAdr(this)">
+                        ADR-4: POST Instead of PATCH for Inter-Service Calls
+                        <span class="toggle-icon">&#9660;</span>
+                    </div>
+                    <div class="adr-body">
+                        <div class="adr-field"><span class="adr-label">Context:</span> <span class="adr-value">Java's HttpURLConnection (used by RestTemplate) doesn't support PATCH on Windows. Calls fail with ProtocolException.</span></div>
+                        <div class="adr-field"><span class="adr-label">Decision:</span> <span class="adr-value">Added duplicate POST endpoints alongside PATCH for internal service-to-service communication.</span></div>
+                        <div class="adr-field"><span class="adr-label">Alternative:</span> <span class="adr-value">HttpComponentsClientHttpRequestFactory (adds Apache HttpClient dependency). Not adopted to minimize dependencies.</span></div>
+                        <div class="adr-field"><span class="adr-label">Consequence:</span> <span class="adr-value">Both POST and PATCH work. POST used by internal services, PATCH available for standard REST clients.</span></div>
+                    </div>
+                </div>
+
+                <div class="adr-card">
+                    <div class="adr-header" onclick="toggleAdr(this)">
+                        ADR-5: Embedded Assignment Logic
+                        <span class="toggle-icon">&#9660;</span>
+                    </div>
+                    <div class="adr-body">
+                        <div class="adr-field"><span class="adr-label">Context:</span> <span class="adr-value">Assignment Service requires Drools KieContainer + Kafka consumer setup. Additional microservice to maintain in dev.</span></div>
+                        <div class="adr-field"><span class="adr-label">Decision:</span> <span class="adr-value">DevLocalWorkflowService handles assignment via simple switch/case on complaint category.</span></div>
+                        <div class="adr-field"><span class="adr-label">Consequence:</span> <span class="adr-value">No complex rule-based assignment in dev, but end-to-end flow works. One less service to start.</span></div>
+                        <div class="adr-field"><span class="adr-label">Production:</span> <span class="adr-value">Enable standalone Assignment Service (8085) with full Drools rules for multi-criteria routing.</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 5: Production Readiness Gap Analysis -->
+        <div class="section" id="section-5">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="section-number">5</span> Production Readiness Gap Analysis</h2>
+                <span class="toggle-icon">&#9660;</span>
+            </div>
+            <div class="section-content">
+                <p style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.88rem;">Progress toward production-ready state. Green = implemented in dev, gold = partially done, red = not yet started.</p>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Database: Switch H2 &rarr; Oracle</span>
+                        <span class="priority priority-high">HIGH</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 20%;">20%</div>
+                    </div>
+                    <div class="progress-description">Schema designed in JPA entities. Need Oracle installation, Flyway migrations, connection pool config.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Authentication: Enable Keycloak</span>
+                        <span class="priority priority-high">HIGH</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 15%;">15%</div>
+                    </div>
+                    <div class="progress-description">Spring Security dependency present. Need Keycloak realm setup, role mapping, JWT filter configuration.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Outbox Pattern: Re-enable Transactional Outbox</span>
+                        <span class="priority priority-medium">MEDIUM</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 40%;">40%</div>
+                    </div>
+                    <div class="progress-description">OutboxEventPublisher code exists. Need Oracle outbox table, ShedLock config, outbox-publisher service activation.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">jBPM Workflow: Replace DevLocalWorkflowService</span>
+                        <span class="priority priority-medium">MEDIUM</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 30%;">30%</div>
+                    </div>
+                    <div class="progress-description">BPMN2 process designed. Need jBPM persistence unit, RuntimeManager config, Oracle tables for process state.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Notification: Configure SMTP/SMS Gateway</span>
+                        <span class="priority priority-low">LOW</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 60%;">60%</div>
+                    </div>
+                    <div class="progress-description">Service code ready with template engine. Need SMTP server config and SMS gateway API keys.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Assignment Service: Enable Standalone with Drools</span>
+                        <span class="priority priority-low">LOW</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 50%;">50%</div>
+                    </div>
+                    <div class="progress-description">Drools code exists in assignment-service. Need Kafka consumer config and independent deployment.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">SLA Monitor: Switch to Direct DB Query</span>
+                        <span class="priority priority-low">LOW</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill partial" style="width: 35%;">35%</div>
+                    </div>
+                    <div class="progress-description">SLA logic implemented. Need direct Oracle datasource instead of REST calls to ingestion.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Monitoring: Add Prometheus + Grafana</span>
+                        <span class="priority priority-medium">MEDIUM</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill todo" style="width: 10%;">10%</div>
+                    </div>
+                    <div class="progress-description">Spring Boot Actuator present. Need Prometheus scrape config, Grafana dashboards, alerting rules.</div>
+                </div>
+
+                <div class="readiness-item">
+                    <div class="readiness-label">
+                        <span class="name">Containerization: Dockerfiles for All Services</span>
+                        <span class="priority priority-medium">MEDIUM</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill todo" style="width: 10%;">10%</div>
+                    </div>
+                    <div class="progress-description">Need Dockerfiles, docker-compose.yml, environment variable externalization, health checks.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 6: Service Communication Map -->
+        <div class="section" id="section-6">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="section-number">6</span> Service Communication Map</h2>
+                <span class="toggle-icon">&#9660;</span>
+            </div>
+            <div class="section-content">
+                <div class="diagram-container">
+                    <div class="diagram-title">Inter-Service Communication (Dev-Local)</div>
+                    <div class="arch-diagram">
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│   ┌──────────┐         ┌──────────┐         ┌──────────────────┐                       │
+│   │ Angular  │──HTTP──▶│ Gateway  │──HTTP──▶│ All Microservices │                       │
+│   │  :4200   │         │  :8080   │         │                  │                       │
+│   └──────────┘         └──────────┘         └──────────────────┘                       │
+│                                                                                         │
+│   ┌──────────────────┐        ┌─────────────┐                                          │
+│   │ Ingestion :8082  │──POST─▶│ Kafka :9092 │                                          │
+│   │ (Complaint CRUD) │        │  (Events)   │                                          │
+│   └──────────────────┘        └──────┬──────┘                                          │
+│          ▲                           │                                                  │
+│          │ REST POST                 ├────────────▶ Workflow :8083 (consumer)            │
+│          │ (status update)           │                                                  │
+│   ┌──────┴───────────┐              ├────────────▶ Notification :8087 (consumer)        │
+│   │ Workflow :8083   │              │                                                  │
+│   │ (assigns team)   │              └────────────▶ Search :8091 (consumer)              │
+│   └──────────────────┘                                     │                            │
+│                                                            ▼                            │
+│   ┌──────────────────┐                          ┌──────────────────┐                    │
+│   │ SLA Monitor :8086│──REST──▶ Ingestion       │ OpenSearch :9200 │                    │
+│   │ (scheduler)      │         (breach check)   │  (full-text idx) │                    │
+│   └──────────────────┘                          └──────────────────┘                    │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘</div>
+                </div>
+
+                <h3 style="color: var(--navy); margin: 1.5rem 0 0.8rem; font-size: 1rem;">Communication Details</h3>
+                <table class="comm-table">
+                    <thead>
+                        <tr>
+                            <th>Source</th>
+                            <th>Destination</th>
+                            <th>Protocol</th>
+                            <th>Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Frontend (:4200)</td>
+                            <td>Gateway (:8080)</td>
+                            <td><span class="comm-type http">HTTP</span></td>
+                            <td>All user-facing API calls routed through gateway</td>
+                        </tr>
+                        <tr>
+                            <td>Gateway (:8080)</td>
+                            <td>All services</td>
+                            <td><span class="comm-type rest">REST</span></td>
+                            <td>Routes requests to appropriate microservice by path prefix</td>
+                        </tr>
+                        <tr>
+                            <td>Ingestion (:8082)</td>
+                            <td>Kafka (:9092)</td>
+                            <td><span class="comm-type kafka-type">KAFKA</span></td>
+                            <td>Publishes complaint-created, status-changed events</td>
+                        </tr>
+                        <tr>
+                            <td>Kafka (:9092)</td>
+                            <td>Workflow (:8083)</td>
+                            <td><span class="comm-type kafka-type">KAFKA</span></td>
+                            <td>Consumes events to trigger workflow processing</td>
+                        </tr>
+                        <tr>
+                            <td>Kafka (:9092)</td>
+                            <td>Notification (:8087)</td>
+                            <td><span class="comm-type kafka-type">KAFKA</span></td>
+                            <td>Consumes events to trigger notification dispatch</td>
+                        </tr>
+                        <tr>
+                            <td>Kafka (:9092)</td>
+                            <td>Search (:8091)</td>
+                            <td><span class="comm-type kafka-type">KAFKA</span></td>
+                            <td>Consumes events for OpenSearch auto-indexing</td>
+                        </tr>
+                        <tr>
+                            <td>Workflow (:8083)</td>
+                            <td>Ingestion (:8082)</td>
+                            <td><span class="comm-type rest">REST POST</span></td>
+                            <td>Callback to update complaint assignment and status</td>
+                        </tr>
+                        <tr>
+                            <td>SLA Monitor (:8086)</td>
+                            <td>Ingestion (:8082)</td>
+                            <td><span class="comm-type rest">REST</span></td>
+                            <td>Queries complaints for SLA breach detection</td>
+                        </tr>
+                        <tr>
+                            <td>Search (:8091)</td>
+                            <td>OpenSearch (:9200)</td>
+                            <td><span class="comm-type rest">REST</span></td>
+                            <td>Indexes documents and executes search queries</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="diagram-container" style="margin-top: 1.5rem;">
+                    <div class="diagram-title">Kafka Topics</div>
+                    <table class="comm-table">
+                        <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Producer</th>
+                                <th>Consumers</th>
+                                <th>Payload</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>cms.complaint.created</code></td>
+                                <td>Ingestion Service</td>
+                                <td>Workflow, Notification, Search</td>
+                                <td>Full complaint DTO (id, category, description, citizen info)</td>
+                            </tr>
+                            <tr>
+                                <td><code>cms.complaint.updated</code></td>
+                                <td>Ingestion Service</td>
+                                <td>Notification, Search</td>
+                                <td>Updated complaint with status, assignment changes</td>
+                            </tr>
+                            <tr>
+                                <td><code>cms.complaint.assigned</code></td>
+                                <td>Workflow Service</td>
+                                <td>Notification, Search</td>
+                                <td>Assignment details (officer, team, timestamp)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <strong>CMS 2.0</strong> -- Complaint Management System | Reserve Bank of India<br>
+        Architecture Comparison Document | Generated: May 2026 | Classification: Internal Development Reference
+    </div>
+
+    <script>
+        function toggleSection(header) {
+            var content = header.nextElementSibling;
+            var icon = header.querySelector('.toggle-icon');
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                header.classList.remove('collapsed');
+            } else {
+                content.classList.add('hidden');
+                content.style.maxHeight = '0';
+                header.classList.add('collapsed');
+            }
+        }
+
+        function toggleAdr(adrHeader) {
+            var body = adrHeader.nextElementSibling;
+            var icon = adrHeader.querySelector('.toggle-icon');
+            if (body.style.display === 'none') {
+                body.style.display = 'block';
+                icon.innerHTML = '&#9660;';
+            } else {
+                body.style.display = 'none';
+                icon.innerHTML = '&#9654;';
+            }
+        }
+
+        // Initialize all sections as expanded
+        document.addEventListener('DOMContentLoaded', function() {
+            var contents = document.querySelectorAll('.section-content');
+            contents.forEach(function(content) {
+                content.style.maxHeight = content.scrollHeight + 'px';
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('.nav a').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                var target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    var navHeight = document.querySelector('.nav').offsetHeight;
+                    var targetPos = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 10;
+                    window.scrollTo({ top: targetPos, behavior: 'smooth' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

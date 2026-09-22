@@ -1,0 +1,141 @@
+.eligibility-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  h2 { color: #1a237e; margin-bottom: 0.5rem; }
+  .subtitle { color: #666; margin-bottom: 2rem; }
+}
+
+.question-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  transition: border-color 0.2s, background-color 0.2s;
+
+  &.invalid {
+    border-color: #d32f2f;
+    background: #fff8f8;
+  }
+}
+
+.validation-msg {
+  display: block;
+  margin-top: 0.5rem;
+  color: #d32f2f;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.question-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #333;
+
+  .required { color: #d32f2f; }
+}
+
+.options-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.option-btn {
+  padding: 0.6rem 1.5rem;
+  border: 2px solid #1565c0;
+  border-radius: 6px;
+  background: #fff;
+  color: #1565c0;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+
+  &:hover { background: #e3f2fd; }
+  &.selected { background: #1565c0; color: #fff; }
+}
+
+.choice-btn { font-size: 0.85rem; padding: 0.5rem 1rem; }
+
+.submit-btn {
+  display: block;
+  width: 100%;
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #1565c0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:disabled { background: #bdbdbd; cursor: not-allowed; }
+  &:hover:not(:disabled) { background: #0d47a1; }
+}
+
+.result-card {
+  padding: 2rem;
+  border-radius: 12px;
+  margin-top: 2rem;
+
+  &.eligible { background: #e8f5e9; border: 2px solid #4caf50; }
+  &.not-eligible { background: #fce4ec; border: 2px solid #e53935; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+
+    i { font-size: 2rem; }
+    h3 { margin: 0; }
+  }
+
+  .reason { color: #333; line-height: 1.6; }
+  .reference { color: #666; font-size: 0.9rem; margin-top: 1rem; }
+}
+
+.proceed-btn {
+  margin-top: 1.5rem;
+  padding: 0.8rem 2rem;
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+
+  &:hover { background: #1b5e20; }
+}
+
+.retry-btn {
+  margin-top: 1.5rem;
+  padding: 0.8rem 2rem;
+  background: #fff;
+  color: #e53935;
+  border: 2px solid #e53935;
+  border-radius: 6px;
+  cursor: pointer;
+
+  &:hover { background: #fce4ec; }
+}
+
+.loading-spinner {
+  text-align: center;
+  padding: 2rem;
+  color: #1565c0;
+  font-size: 1.2rem;
+}
+
+.error-message {
+  background: #fff3e0;
+  border: 1px solid #ff9800;
+  padding: 1rem;
+  border-radius: 6px;
+  color: #e65100;
+  margin-bottom: 1rem;
+}

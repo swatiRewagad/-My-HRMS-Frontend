@@ -1,0 +1,211 @@
+<div class="master-data-page">
+  <div class="page-header">
+    <button class="btn-back" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
+    <h2>Master Data Management</h2>
+  </div>
+
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab() === 'categories'" (click)="activeTab.set('categories')">
+      <i class="pi pi-tag"></i> Category Master
+    </button>
+    <button class="tab" [class.active]="activeTab() === 'routing'" (click)="activeTab.set('routing')">
+      <i class="pi pi-directions"></i> Department Routing
+    </button>
+  </div>
+
+  <!-- Category Master -->
+  @if (activeTab() === 'categories') {
+    <div class="section-card">
+      <div class="section-toolbar">
+        <div class="filters">
+          <select [(ngModel)]="schemeFilter" (ngModelChange)="loadCategories()">
+            <option value="">All Schemes</option>
+            <option value="RBIOS_2021">RBIOS 2021</option>
+            <option value="RBIOS_2026">RBIOS 2026</option>
+          </select>
+          <select [(ngModel)]="entityTypeFilter" (ngModelChange)="loadCategories()">
+            <option value="">All Entity Types</option>
+            <option value="RBIO">RBIO</option>
+            <option value="CEPC">CEPC</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openNewCategory()"><i class="pi pi-plus"></i> Add Category</button>
+      </div>
+
+      @if (loadingCategories()) {
+        <div class="loading"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Sub-Category</th>
+              <th>Scheme</th>
+              <th>Entity Type</th>
+              <th>Sort Order</th>
+              <th>Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (cat of categories(); track cat.id) {
+              <tr>
+                <td>{{ cat.categoryName }}</td>
+                <td>{{ cat.subCategory }}</td>
+                <td><span class="badge scheme">{{ cat.schemeVersion }}</span></td>
+                <td><span class="badge entity">{{ cat.entityType }}</span></td>
+                <td>{{ cat.sortOrder }}</td>
+                <td><span class="status-dot" [class.active]="cat.active" [class.inactive]="!cat.active"></span></td>
+                <td class="actions-cell">
+                  <button class="icon-btn" (click)="editCategory(cat)" title="Edit"><i class="pi pi-pencil"></i></button>
+                  <button class="icon-btn danger" (click)="deleteCategory(cat.id)" title="Delete"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="empty-row">No categories found</td></tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+
+  <!-- Department Routing -->
+  @if (activeTab() === 'routing') {
+    <div class="section-card">
+      <div class="section-toolbar">
+        <div class="filters">
+          <select [(ngModel)]="departmentFilter" (ngModelChange)="loadRoutingRules()">
+            <option value="">All Departments</option>
+            <option value="CEPC">CEPC</option>
+            <option value="RBIO">RBIO</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" (click)="openNewRule()"><i class="pi pi-plus"></i> Add Rule</button>
+      </div>
+
+      @if (loadingRouting()) {
+        <div class="loading"><i class="pi pi-spin pi-spinner"></i> Loading...</div>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Entity Name</th>
+              <th>Department</th>
+              <th>Target Office</th>
+              <th>Registration Status</th>
+              <th>Active</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (rule of routingRules(); track rule.id) {
+              <tr [class.cancelled-row]="rule.registrationStatus === 'CANCELLED'">
+                <td>{{ rule.entityName }}</td>
+                <td><span class="badge dept">{{ rule.department }}</span></td>
+                <td>{{ rule.targetOffice }}</td>
+                <td>
+                  <span class="badge" [class.status-active]="rule.registrationStatus === 'ACTIVE'" [class.status-cancelled]="rule.registrationStatus === 'CANCELLED'">
+                    {{ rule.registrationStatus }}
+                  </span>
+                </td>
+                <td><span class="status-dot" [class.active]="rule.active" [class.inactive]="!rule.active"></span></td>
+                <td class="actions-cell">
+                  <button class="icon-btn" (click)="editRule(rule)" title="Edit"><i class="pi pi-pencil"></i></button>
+                  <button class="icon-btn danger" (click)="deleteRule(rule.id)" title="Delete"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="empty-row">No routing rules found</td></tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+  }
+
+  <!-- Category Form Modal -->
+  @if (showCategoryForm()) {
+    <div class="modal-overlay" (click)="cancelCategoryForm()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <h3>{{ editingCategory() ? 'Edit' : 'Add' }} Category</h3>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Category Name</label>
+            <input type="text" [(ngModel)]="categoryForm.categoryName" placeholder="e.g. Loan" />
+          </div>
+          <div class="form-field">
+            <label>Sub-Category</label>
+            <input type="text" [(ngModel)]="categoryForm.subCategory" placeholder="e.g. Home Loan" />
+          </div>
+          <div class="form-field">
+            <label>Scheme Version</label>
+            <select [(ngModel)]="categoryForm.schemeVersion">
+              <option value="RBIOS_2021">RBIOS 2021</option>
+              <option value="RBIOS_2026">RBIOS 2026</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Entity Type</label>
+            <select [(ngModel)]="categoryForm.entityType">
+              <option value="RBIO">RBIO</option>
+              <option value="CEPC">CEPC</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Sort Order</label>
+            <input type="number" [(ngModel)]="categoryForm.sortOrder" />
+          </div>
+          <div class="form-field">
+            <label class="checkbox-label"><input type="checkbox" [(ngModel)]="categoryForm.active" /> Active</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" (click)="cancelCategoryForm()">Cancel</button>
+          <button class="btn btn-primary" (click)="saveCategory()" [disabled]="!categoryForm.categoryName">Save</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Routing Form Modal -->
+  @if (showRoutingForm()) {
+    <div class="modal-overlay" (click)="cancelRoutingForm()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <h3>{{ editingRule() ? 'Edit' : 'Add' }} Routing Rule</h3>
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Entity Name</label>
+            <input type="text" [(ngModel)]="routingForm.entityName" placeholder="e.g. HDFC Bank" />
+          </div>
+          <div class="form-field">
+            <label>Department</label>
+            <select [(ngModel)]="routingForm.department">
+              <option value="CEPC">CEPC</option>
+              <option value="RBIO">RBIO</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Target Office</label>
+            <input type="text" [(ngModel)]="routingForm.targetOffice" placeholder="e.g. CRPC Chandigarh" />
+          </div>
+          <div class="form-field">
+            <label>Registration Status</label>
+            <select [(ngModel)]="routingForm.registrationStatus">
+              <option value="ACTIVE">Active</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="SUSPENDED">Suspended</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="checkbox-label"><input type="checkbox" [(ngModel)]="routingForm.active" /> Active</label>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline" (click)="cancelRoutingForm()">Cancel</button>
+          <button class="btn btn-primary" (click)="saveRule()" [disabled]="!routingForm.entityName">Save</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

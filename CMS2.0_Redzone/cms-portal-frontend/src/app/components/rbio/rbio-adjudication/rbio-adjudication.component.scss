@@ -1,0 +1,129 @@
+.rbio-adjudication {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid var(--border-subtle);
+
+  h4 { margin: 0 0 16px; font-size: 14px; color: var(--text-heading); border-bottom: 1px solid var(--surface-subtle); padding-bottom: 8px; }
+  h5 { margin: 0 0 12px; font-size: 13px; color: var(--text-body); }
+}
+
+.case-summary {
+  margin-bottom: 16px;
+  .summary-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0; padding: 8px 12px; background: var(--surface-page); border-radius: 6px; border-left: 3px solid var(--brand-primary); }
+}
+
+.parties-section, .impleaded-section {
+  margin-bottom: 16px;
+  .parties-list { display: flex; flex-direction: column; gap: 6px; }
+  .party-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 10px; background: var(--surface-page); border-radius: 4px;
+    &.impleaded { background: var(--state-warning-bg); border-left: 2px solid var(--state-warning-solid); }
+    .party-role { font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+    .party-name { font-size: 13px; color: var(--text-heading); }
+  }
+}
+
+.hearing-dates-section {
+  margin-bottom: 16px;
+  .dates-list { display: flex; gap: 8px; flex-wrap: wrap; }
+  .date-chip {
+    padding: 4px 10px; background: var(--brand-primary-bg); color: var(--brand-primary-strong);
+    border-radius: 4px; font-size: 12px; font-weight: 500;
+    border: 1px solid #bfdbfe;
+  }
+}
+
+.adjudication-actions {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; padding-top: 12px; border-top: 1px solid var(--surface-subtle);
+}
+
+.action-btn {
+  padding: 8px 14px; border: 1px solid var(--border-input); border-radius: 6px;
+  background: white; font-size: 12px; cursor: pointer; font-weight: 500;
+  transition: all 0.2s;
+  &:hover { background: var(--surface-subtle); border-color: var(--text-subtle); }
+  &.notice { border-left: 3px solid #7c3aed; }
+  &.implead { border-left: 3px solid #0891b2; }
+  &.award { border-left: 3px solid #059669; }
+  &.reject { border-left: 3px solid var(--state-danger-solid-hover); }
+}
+
+.form-section {
+  border-top: 1px solid var(--border-subtle); padding-top: 16px; margin-top: 12px;
+}
+
+.form-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+
+.form-field {
+  display: flex; flex-direction: column; gap: 4px;
+  &.full { grid-column: 1 / -1; }
+  label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+  input, select, textarea {
+    padding: 8px 12px; border: 1px solid var(--border-input); border-radius: 6px; font-size: 13px; font-family: inherit;
+    &:focus { outline: none; border-color: var(--brand-primary-strong); box-shadow: 0 0 0 3px rgba(13, 71, 161, 0.1); }
+  }
+  textarea { resize: vertical; }
+}
+
+.cap-feedback {
+  margin-top: 6px; padding: 6px 10px; border-radius: 4px; font-size: 12px; font-weight: 500;
+  display: flex; align-items: center; gap: 6px;
+  .cap-icon { font-size: 14px; }
+  &.ok { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &.warning { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &.error { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+}
+
+.form-actions {
+  display: flex; gap: 10px; margin-top: 14px;
+}
+
+.submit-btn {
+  padding: 8px 18px; background: var(--brand-primary-strong); color: white; border: none;
+  border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;
+  &:hover:not(:disabled) { background: #0a3a85; }
+  &:disabled { opacity: 0.5; cursor: default; }
+  &.reject-btn { background: var(--state-danger-solid-hover); &:hover:not(:disabled) { background: var(--state-danger-fg); } }
+}
+
+.cancel-btn {
+  padding: 8px 18px; background: var(--surface-subtle); border: 1px solid var(--border-input);
+  border-radius: 6px; font-size: 13px; cursor: pointer;
+  &:hover { background: var(--border-subtle); }
+}
+
+.result-msg {
+  margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 13px;
+  &.success { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &.error { background: #fbe9e7; color: #d32f2f; }
+}
+
+// UST544-546, UST767: Impleading enhancements
+.form-note {
+  font-size: 11px;
+  color: var(--text-subtle);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+.creating-record-note {
+  font-size: 12px;
+  color: var(--brand-primary);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.validation-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--state-warning-bg);
+  border: 1px solid #ffb74d;
+  border-radius: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--state-warning-fg);
+  i { font-size: 14px; margin-top: 1px; }
+}

@@ -1,0 +1,96 @@
+<div class="order-panel">
+  <h5>{{ 'aa.order.title' | translate }}</h5>
+
+  @if (successKey()) {
+    <div class="success-msg" role="status" aria-live="polite" data-testid="order-success">
+      {{ successKey() | translate }}
+    </div>
+  } @else if (showPreview()) {
+    <!-- Preview before an irreversible act: an issued order cannot be edited, only superseded by a
+         linked correction, so the officer confirms the exact text first. -->
+    <div class="order-preview" data-testid="order-preview">
+      <div class="preview-header">
+        <strong>{{ 'aa.order.preview' | translate }}</strong>
+      </div>
+      <div class="preview-body">
+        <p><strong>{{ 'aa.order.appeal_no' | translate }}:</strong> {{ appeal?.appealNumber }}</p>
+        <p><strong>{{ 'aa.order.classification' | translate }}:</strong> {{ appeal?.classification }}</p>
+        <p><strong>{{ 'aa.order.outcome' | translate }}:</strong>
+          <span class="outcome-badge" [attr.data-outcome]="outcome" data-testid="preview-outcome">
+            {{ outcome }}
+          </span>
+        </p>
+        @if (awardBearing && awardAmount !== null) {
+          <p><strong>{{ 'aa.order.award_amount' | translate }}:</strong>
+            <span data-testid="preview-award">&#8377;{{ awardAmount }}</span>
+          </p>
+        }
+        <p><strong>{{ 'aa.order.summary' | translate }}:</strong></p>
+        <div class="preview-summary" data-testid="preview-summary">{{ orderSummary }}</div>
+      </div>
+      <div class="preview-actions">
+        <button type="button" class="submit-btn" data-testid="confirm-order"
+                [disabled]="submitting()" [attr.aria-busy]="submitting()"
+                (click)="submitOrder()">
+          @if (submitting()) {
+            {{ 'aa.order.submitting' | translate }}
+          } @else {
+            {{ 'aa.order.confirm' | translate }}
+          }
+        </button>
+        <button type="button" class="cancel-btn" data-testid="edit-order"
+                (click)="showPreview.set(false)">{{ 'aa.order.edit' | translate }}</button>
+      </div>
+    </div>
+  } @else {
+    <fieldset class="form-field">
+      <legend>{{ 'aa.order.outcome' | translate }}</legend>
+      <div class="outcome-options" role="radiogroup"
+           [attr.aria-label]="'aa.order.outcome' | translate">
+        @for (o of outcomes; track o.value) {
+          <label class="outcome-option" [class.selected]="outcome === o.value"
+                 [attr.for]="'outcome-' + o.value">
+            <input type="radio" name="outcome" [id]="'outcome-' + o.value"
+                   [attr.data-testid]="'outcome-' + o.value"
+                   [value]="o.value" [(ngModel)]="outcome">
+            <div class="outcome-info">
+              <span class="outcome-label">{{ o.labelKey | translate }}</span>
+              <span class="outcome-desc">{{ o.descriptionKey | translate }}</span>
+            </div>
+          </label>
+        }
+      </div>
+    </fieldset>
+
+    <!-- Shown for UPHELD as well as MODIFIED: the server accepts an award on both, and hiding it for
+         UPHELD would make a legitimate award impossible to enter. -->
+    @if (awardBearing) {
+      <div class="form-field">
+        <label for="award-amount">{{ 'aa.order.award_amount' | translate }}</label>
+        <input id="award-amount" type="number" min="0" data-testid="award-amount"
+               [(ngModel)]="awardAmount"
+               [attr.placeholder]="'aa.order.award_amount_placeholder' | translate" />
+      </div>
+    }
+
+    <div class="form-field">
+      <label for="order-summary">{{ 'aa.order.summary' | translate }}</label>
+      <textarea id="order-summary" rows="5" data-testid="order-summary"
+                [(ngModel)]="orderSummary"
+                [attr.placeholder]="'aa.order.summary_placeholder' | translate"></textarea>
+    </div>
+
+    @if (errorKey()) {
+      <div class="error-msg" role="alert" aria-live="assertive" data-testid="order-error">
+        {{ errorKey() | translate }}
+      </div>
+    }
+
+    <div class="form-actions">
+      <button type="button" class="preview-btn" data-testid="preview-order"
+              (click)="previewOrder()">{{ 'aa.order.preview_action' | translate }}</button>
+      <button type="button" class="cancel-btn" data-testid="cancel-order"
+              (click)="cancel()">{{ 'aa.order.cancel' | translate }}</button>
+    </div>
+  }
+</div>

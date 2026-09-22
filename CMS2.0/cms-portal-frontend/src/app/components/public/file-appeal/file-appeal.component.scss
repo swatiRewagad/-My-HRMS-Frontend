@@ -203,3 +203,80 @@ label.file-upload-browse-link {
   position: relative;
   app-speech-button { position: absolute; right: 10px; bottom: 10px; }
 }
+
+// ── Stepper ──
+.stepper {
+  display: flex; align-items: flex-start; gap: 0; margin-bottom: 28px; padding: 16px 0;
+  border-bottom: 1px solid #eee; position: relative;
+}
+.stepper-step {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  position: relative;
+  &:not(:last-child)::after {
+    content: ''; position: absolute; top: 16px; left: calc(50% + 18px); right: calc(-50% + 18px);
+    height: 2px; background: #ddd; z-index: 0;
+  }
+  &.completed:not(:last-child)::after { background: #4caf50; }
+}
+.stepper-circle {
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; border: 2px solid #ddd; background: #fff; color: #888;
+  cursor: pointer; z-index: 1; transition: all 0.2s;
+  &:disabled { cursor: not-allowed; opacity: 0.5; }
+  .active > & { border-color: #472293; background: #472293; color: #fff; }
+  .completed > & { border-color: #4caf50; background: #4caf50; color: #fff; }
+}
+.stepper-label {
+  font-size: 11px; color: #888; text-align: center; white-space: nowrap;
+  .active > & { color: #472293; font-weight: 600; }
+  .completed > & { color: #4caf50; }
+}
+
+// ── Step Content ──
+.step-content { min-height: 200px; }
+
+// ── Auto-save indicator ──
+.auto-save-indicator {
+  display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8;
+  margin-bottom: 16px; min-height: 18px;
+  i { font-size: 12px; }
+  &[data-status="saving"] { color: #f59e0b; }
+  &[data-status="saved"] { color: #22c55e; }
+  &[data-status="error"] { color: #ef4444; }
+}
+
+// ── Uploaded file card ──
+.uploaded-file-card {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 8px;
+  .pi-file { color: #64748b; font-size: 16px; }
+  .file-name {
+    flex: 1; font-size: 13px; color: #2460b9; text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+  .file-size { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+  .remove-file {
+    background: none; border: none; cursor: pointer; color: #94a3b8; padding: 4px;
+    &:hover { color: #ef4444; }
+  }
+}
+
+// ── Field-level error ──
+.field-error {
+  font-size: 12px; color: #d32f2f; margin-top: 4px;
+}
+
+// ── Review section ──
+.review-section {
+  background: #f8f9fa; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 16px;
+  h4 { margin: 0 0 12px; font-size: 14px; color: #1e293b; }
+}
+.review-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.review-field {
+  label { display: block; font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 2px; }
+  span, a { font-size: 14px; color: #333; word-break: break-word; }
+  a { color: #2460b9; text-decoration: none; &:hover { text-decoration: underline; } }
+  &.full-width { grid-column: 1 / -1; }
+}

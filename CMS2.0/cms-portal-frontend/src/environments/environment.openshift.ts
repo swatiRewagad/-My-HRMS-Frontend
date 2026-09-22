@@ -1,6 +1,7 @@
 export const environment = {
   production: true,
   apiBaseUrl: '',
+  storageBaseUrl: '/api/v1/storage',
   ocrServiceUrl: '/ocr-api',
   keycloakUrl: '/auth',
   realm: 'cms',

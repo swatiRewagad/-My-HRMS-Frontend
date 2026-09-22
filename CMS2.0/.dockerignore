@@ -1,0 +1,14 @@
+# Kept minimal and deliberately safe rather than exhaustively tight — this repo has 15+
+# microservices and two frontends; the goal here is only to strip what's actually large
+# (build output, dependency caches, git history), not to hand-pick which module directories
+# a given Docker build context needs. Any service building with `context: ..` (see
+# deployment/docker/docker-compose.local.yml) still gets the whole repo tree, just without this.
+**/target/
+**/node_modules/
+**/dist/
+**/.angular/
+.git/
+**/*.log
+**/.env
+**/mail-intake-uploads/
+**/cms-attachments/

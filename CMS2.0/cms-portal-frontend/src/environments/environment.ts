@@ -1,6 +1,7 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:8082',
+  storageBaseUrl: '/api/v1/storage',
   ocrServiceUrl: 'http://localhost:8000',
   keycloakUrl: 'http://localhost:9090',
   realm: 'rbi-cms',
@@ -14,10 +15,10 @@ export const environment = {
 
   // NFR-006: File upload constraints (EAAP guidelines)
   maxFileSizeMB: 2,
-  maxApplicationSizeMB: 18,
+  maxApplicationSizeMB: 25,
   stepQuotaMB: { eligibility: 6, complaintDetails: 10, repAuth: 2 },
   maxFileCount: 10,
-  allowedFileExtensions: ['.pdf', '.doc', '.jpg'],
+  allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],
 
   // NFR-007: Concurrency - connection pool settings
   maxConcurrentRequests: 6,

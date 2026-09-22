@@ -1,0 +1,114 @@
+
+Running 110 tests using 1 worker
+
+[1/110] [chromium] › e2e\public\consent-dpdp.spec.ts:46:7 › UST5 — Consent is enforced server-side, not just in the UI › an ONLINE filing with no declaration is rejected
+[2/110] [chromium] › e2e\public\consent-dpdp.spec.ts:58:7 › UST5 — Consent is enforced server-side, not just in the UI › an ONLINE filing that explicitly declines the declaration is rejected
+[3/110] [chromium] › e2e\public\consent-dpdp.spec.ts:68:7 › UST5 — Consent is enforced server-side, not just in the UI › an ONLINE filing with the declaration accepted succeeds
+[4/110] [chromium] › e2e\public\consent-dpdp.spec.ts:87:9 › UST5 — Consent is enforced server-side, not just in the UI › EMAIL intake is accepted without a declaration
+[5/110] [chromium] › e2e\public\consent-dpdp.spec.ts:87:9 › UST5 — Consent is enforced server-side, not just in the UI › PHYSICAL_LETTER intake is accepted without a declaration
+[6/110] [chromium] › e2e\public\consent-dpdp.spec.ts:87:9 › UST5 — Consent is enforced server-side, not just in the UI › WALK_IN intake is accepted without a declaration
+[7/110] [chromium] › e2e\public\consent-dpdp.spec.ts:105:7 › UST5 — The notice is localised and recorded › the login consent notice comes from TRANSLATIONS, not hardcoded English
+[8/110] [chromium] › e2e\public\consent-dpdp.spec.ts:117:7 › UST5 — The notice is localised and recorded › the notice is served for every supported locale
+[9/110] [chromium] › e2e\public\consent-dpdp.spec.ts:133:7 › UST5 — The notice is localised and recorded › send-otp transmits consentGiven and locale so the server can record what was shown
+[10/110] [chromium] › e2e\public\consent-dpdp.spec.ts:154:7 › UST5 — The notice is localised and recorded › send-otp is blocked client-side until the declaration is accepted
+[11/110] [chromium] › e2e\public\consent-dpdp.spec.ts:175:7 › UST5 — The notice is localised and recorded › the tracker sends consentGiven=false — it collects no consent
+[12/110] [chromium] › e2e\public\consent-dpdp.spec.ts:197:7 › UST5 — The wizard cannot submit without the declaration › the public wizard route requires a citizen session
+[13/110] [chromium] › e2e\public\consent-dpdp.spec.ts:209:7 › UST5 — The wizard cannot submit without the declaration › the legacy form blocks submit until the declaration is accepted, then sends it
+[14/110] [chromium] › e2e\public\draft-save.spec.ts:68:7 › UST82 — Draft save reports the server outcome (D15) › a rejected draft save is surfaced, not silently swallowed
+[15/110] [chromium] › e2e\public\draft-save.spec.ts:79:7 › UST82 — Draft save reports the server outcome (D15) › a rejected draft save never claims the draft was saved
+[16/110] [chromium] › e2e\public\draft-save.spec.ts:96:7 › UST82 — Draft save reports the server outcome (D15) › a successful draft save confirms and clears any earlier failure
+[17/110] [chromium] › e2e\public\draft-save.spec.ts:125:7 › UST82 — Draft save reports the server outcome (D15) › a failed save still keeps the typed answers recoverable in the current tab
+[18/110] [chromium] › e2e\public\duplicate-check.spec.ts:33:7 › UST76 — Duplicate pre-check endpoint (D4) › the endpoint exists and reports no duplicate for an unknown complainant
+[19/110] [chromium] › e2e\public\duplicate-check.spec.ts:44:7 › UST76 — Duplicate pre-check endpoint (D4) › a request without a phone or an email is rejected
+[20/110] [chromium] › e2e\public\duplicate-check.spec.ts:53:7 › UST76 — Duplicate pre-check endpoint (D4) › a live complaint on the same mobile is reported as a duplicate
+[21/110] [chromium] › e2e\public\duplicate-check.spec.ts:71:7 › UST76 — Duplicate pre-check endpoint (D4) › an email-only match is reported as matchedOn=email
+[22/110] [chromium] › e2e\public\duplicate-check.spec.ts:87:7 › UST76 — Duplicate pre-check endpoint (D4) › a closed complaint no longer blocks a fresh filing
+[23/110] [chromium] › e2e\public\duplicate-check.spec.ts:106:7 › UST76 — Duplicate pre-check endpoint (D4) › a different entity is not treated as a duplicate
+[24/110] [chromium] › e2e\public\duplicate-check.spec.ts:170:7 › UST76 — Duplicate check fails closed in the UI (D4) › a failing duplicate check blocks submission instead of filing anyway
+[25/110] [chromium] › e2e\public\duplicate-check.spec.ts:196:7 › UST76 — Duplicate check fails closed in the UI (D4) › retrying after the outage clears succeeds
+[26/110] [chromium] › e2e\public\duplicate-check.spec.ts:217:7 › UST76 — Duplicate check fails closed in the UI (D4) › a detected duplicate warns the citizen and does not file until they confirm
+[27/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:87:7 › Scheme clause is interpolated from the master, not baked into prose › the clause held by the master is what the citizen is shown
+[28/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:97:7 › Scheme clause is interpolated from the master, not baked into prose › correcting the clause in the master changes the citizen-facing text with no code change
+[29/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:104:7 › Scheme clause is interpolated from the master, not baked into prose › a missing clause omits the citation instead of showing a raw placeholder
+[30/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:115:7 › Scheme clause is interpolated from the master, not baked into prose › the placeholder is replaced everywhere it occurs, not only the first time
+[31/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:130:7 › Scheme clause is interpolated from the master, not baked into prose › the served prose carries the placeholder rather than baked-in digits
+[32/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:142:7 › Scheme clause is interpolated from the master, not baked into prose › no locale bakes a clause into the block-message prose
+[33/110] [chromium] › e2e\public\eligibility-clause-interpolation.spec.ts:164:7 › Scheme clause is interpolated from the master, not baked into prose › the clause placeholder survives translation in every locale that cites one
+[34/110] [chromium] › e2e\public\eligibility-master.spec.ts:56:7 › FR-G-007 — Eligibility questions are master data (D14) › the endpoint serves the questions with their clause references
+[35/110] [chromium] › e2e\public\eligibility-master.spec.ts:81:7 › FR-G-007 — Eligibility questions are master data (D14) › the clause-pending exceptions are still genuinely uncited, not quietly guessed
+[36/110] [chromium] › e2e\public\eligibility-master.spec.ts:97:7 › FR-G-007 — Eligibility questions are master data (D14) › the Scheme name is served so the closure letter does not hardcode a year
+[37/110] [chromium] › e2e\public\eligibility-master.spec.ts:105:7 › FR-G-007 — Eligibility questions are master data (D14) › applicability is expressed as data, not as hardcoded key lists
+[38/110] [chromium] › e2e\public\eligibility-master.spec.ts:120:7 › FR-G-007 — Eligibility questions are master data (D14) › a question ordering is stable and starts with the entity selection
+[39/110] [chromium] › e2e\public\eligibility-master.spec.ts:128:7 › FR-G-007 — Eligibility questions are master data (D14) › an unknown scheme version returns no questions rather than a wrong Scheme
+[40/110] [chromium] › e2e\public\eligibility-master.spec.ts:140:7 › FR-G-007 — Citizen-facing Scheme year (D14) › no locale cites the wrong Scheme year
+[41/110] [chromium] › e2e\public\eligibility-master.spec.ts:157:7 › FR-G-007 — Citizen-facing Scheme year (D14) › the master block messages cite the 2021 Scheme
+[42/110] [chromium] › e2e\public\eligibility-master.spec.ts:171:7 › FR-G-007 — The wizard renders the master, and fails closed without it (D14) › the first step renders the entity question served by the master
+[43/110] [chromium] › e2e\public\eligibility-master.spec.ts:193:7 › FR-G-007 — The wizard renders the master, and fails closed without it (D14) › a failing question master blocks the wizard instead of guessing the rules
+[44/110] [chromium] › e2e\public\eligibility-master.spec.ts:208:7 › FR-G-007 — The wizard renders the master, and fails closed without it (D14) › an empty question master is treated as a failure, not as "no questions to ask"
+[45/110] [chromium] › e2e\public\eligibility-master.spec.ts:223:7 › FR-G-007 — The wizard renders the master, and fails closed without it (D14) › Retry re-fetches the master and recovers the wizard
+[46/110] [chromium] › e2e\public\eligibility-master.spec.ts:248:7 › FR-G-007 — The wizard renders the master, and fails closed without it (D14) › an operator-authored question is rendered verbatim, with no frontend release
+[47/110] [chromium] › e2e\public\eligibility-simplify.spec.ts:10:7 › Eligibility Wizard — Question Simplification (UST421) › simplify icon (?) is visible for questions with simplified text
+[48/110] [chromium] › e2e\public\eligibility-simplify.spec.ts:22:7 › Eligibility Wizard — Question Simplification (UST421) › clicking simplify icon shows simplified text alongside original
+[49/110] [chromium] › e2e\public\eligibility-simplify.spec.ts:49:7 › Eligibility Wizard — Question Simplification (UST421) › clicking simplify icon again hides simplified text
+[50/110] [chromium] › e2e\public\eligibility-simplify.spec.ts:63:7 › Eligibility Wizard — Question Simplification (UST421) › keyboard toggle (Enter/Space) works on simplify icon
+[51/110] [chromium] › e2e\public\eligibility-simplify.spec.ts:77:7 › Eligibility Wizard — Question Simplification (UST421) › answer is recorded against original question (not simplified)
+[52/110] [chromium] › e2e\public\eligibility-simplify.spec.ts:102:7 › Eligibility Wizard — Question Simplification (UST421) › question without simplifiedText does not show the ? icon
+[53/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:134:7 › Eligibility sub-answers are cleared when their parent gate flips back › employerRelationship is dropped when employeeOfRE flips to no
+[54/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:163:7 › Eligibility sub-answers are cleared when their parent gate flips back › isComplainantSelf is dropped from both answers and formData when the advocate gate flips
+[55/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:189:7 › Eligibility sub-answers are cleared when their parent gate flips back › the server draft does not carry a withdrawn sub-answer
+[56/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:220:7 › Eligibility sub-answers are cleared when their parent gate flips back › re-answering the gate yes leaves the sub-question genuinely unanswered
+[57/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:245:7 › Inline sub-questions are master data, not hardcoded English › the employer-relationship sub-question renders operator-authored master text
+[58/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:259:7 › Inline sub-questions are master data, not hardcoded English › the advocate sub-question renders operator-authored master text and its master block
+[59/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:274:7 › Inline sub-questions are master data, not hardcoded English › a seeded translation key takes precedence over the master English text
+[60/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:289:7 › Inline sub-questions are master data, not hardcoded English › a sub-question with no master row is not rendered as English filler
+[61/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:301:7 › Inline sub-questions are master data, not hardcoded English › both sub-questions have a master row and a translation key
+[62/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:314:7 › Inline sub-questions are master data, not hardcoded English › every sub-question translation key resolves in all ten locales
+[63/110] [chromium] › e2e\public\eligibility-sub-questions.spec.ts:335:7 › Inline sub-questions are master data, not hardcoded English › the nine Indian locales are not silently serving the English text
+[64/110] [chromium] › e2e\public\faq.spec.ts:10:7 › FAQ — Public Home Section › FAQ section on home page shows questions from API
+[65/110] [chromium] › e2e\public\faq.spec.ts:20:7 › FAQ — Public Home Section › first FAQ item is open by default
+[66/110] [chromium] › e2e\public\faq.spec.ts:28:7 › FAQ — Public Home Section › clicking a FAQ toggles its answer
+[67/110] [chromium] › e2e\public\faq.spec.ts:51:7 › FAQ — Public Home Section › "View All" navigates to /public/faq
+[68/110] [chromium] › e2e\public\faq.spec.ts:71:7 › FAQ — Dedicated Page › FAQ page displays all FAQs
+[69/110] [chromium] › e2e\public\faq.spec.ts:82:7 › FAQ — Dedicated Page › category filter works
+[70/110] [chromium] › e2e\public\faq.spec.ts:110:7 › FAQ — Dedicated Page › search filter works
+[71/110] [chromium] › e2e\public\faq.spec.ts:135:7 › FAQ — Dedicated Page › empty state shows when no results match search
+[72/110] [chromium] › e2e\public\faq.spec.ts:145:7 › FAQ — Dedicated Page › back to home link navigates to /public
+[73/110] [chromium] › e2e\public\faq.spec.ts:155:7 › FAQ — Dedicated Page › no FAQ renders a raw translation key
+[74/110] [chromium] › e2e\public\faq.spec.ts:174:7 › FAQ — Dedicated Page › search matches the translated text, not the key
+[75/110] [chromium] › e2e\public\faq.spec.ts:188:7 › FAQ — Help navigation › the header Help link reaches the FAQ page, not the home wildcard
+[76/110] [chromium] › e2e\public\feedback.spec.ts:35:7 › Feedback Flow (Public) › submit feedback for closed complaint shows success
+[77/110] [chromium] › e2e\public\feedback.spec.ts:89:7 › Feedback Flow (Public) › submit duplicate feedback shows already submitted error
+[78/110] [chromium] › e2e\public\feedback.spec.ts:134:7 › Feedback Flow (Public) › submit without mandatory fields shows validation errors
+[79/110] [chromium] › e2e\public\feedback.spec.ts:182:7 › Feedback Flow (Public) › feedback text exceeding 500 characters shows validation error
+[80/110] [chromium] › e2e\public\pdf-signature.spec.ts:33:7 › UST97 — Downloaded PDFs do not claim a digital signature (D5) › the complaint status report is labelled unsigned, not digitally signed
+[81/110] [chromium] › e2e\public\pdf-signature.spec.ts:66:7 › UST97 — Downloaded PDFs do not claim a digital signature (D5) › the PDF never asserts a signing time it cannot prove
+[82/110] [chromium] › e2e\public\representative-validation.spec.ts:66:7 › UST81 — Authorised representative details are validated (D7) › an empty representative block blocks the step instead of advancing
+[83/110] [chromium] › e2e\public\representative-validation.spec.ts:77:7 › UST81 — Authorised representative details are validated (D7) › every starred representative field is reported, not just the name
+[84/110] [chromium] › e2e\public\representative-validation.spec.ts:91:7 › UST81 — Authorised representative details are validated (D7) › a malformed representative mobile number is rejected
+[85/110] [chromium] › e2e\public\representative-validation.spec.ts:106:7 › UST81 — Authorised representative details are validated (D7) › answering No skips the representative fields and advances
+[86/110] [chromium] › e2e\public\representative-validation.spec.ts:118:7 › UST81 — Authorised representative details are validated (D7) › leaving the representative question unanswered blocks the step
+[87/110] [chromium] › e2e\public\tracking-authz.spec.ts:29:7 › UST98 — Tracking authorization (D1) › listing complaints without a citizen session returns 401
+[88/110] [chromium] › e2e\public\tracking-authz.spec.ts:38:7 › UST98 — Tracking authorization (D1) › listing complaints with an invalid/forged token returns 401
+[89/110] [chromium] › e2e\public\tracking-authz.spec.ts:47:7 › UST98 — Tracking authorization (D1) › a citizen cannot list another mobile number's complaints
+[90/110] [chromium] › e2e\public\tracking-authz.spec.ts:61:7 › UST98 — Tracking authorization (D1) › a citizen sees only its own complaints, even with no phone param
+[91/110] [chromium] › e2e\public\tracking-authz.spec.ts:76:7 › UST98 — Tracking authorization (D1) › page size is capped at 50 regardless of the requested size
+[92/110] [chromium] › e2e\public\tracking-authz.spec.ts:92:7 › UST99 — Detail endpoint PII masking (D1) › anonymous tracking by reference number works but masks complainant PII
+[93/110] [chromium] › e2e\public\tracking-authz.spec.ts:119:7 › UST99 — Detail endpoint PII masking (D1) › the owning citizen sees unmasked PII on their own complaint
+[94/110] [chromium] › e2e\public\tracking-authz.spec.ts:144:7 › UST99 — Detail endpoint PII masking (D1) › an unknown reference number returns the AC error message
+[95/110] [chromium] › e2e\public\tracking-authz.spec.ts:156:7 › UST105 — Withdraw requires ownership › withdrawing without a citizen session returns 401
+[96/110] [chromium] › e2e\public\tracking-authz.spec.ts:176:7 › UST105 — Withdraw requires ownership › a citizen cannot withdraw another complainant's complaint
+[97/110] [chromium] › e2e\public\tracking-authz.spec.ts:202:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › the mobile tracking tab renders a CAPTCHA challenge
+[98/110] [chromium] › e2e\public\tracking-authz.spec.ts:214:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › the CAPTCHA is fetched from /api/v1/citizen/auth/captcha, not citizen-auth
+[99/110] [chromium] › e2e\public\tracking-authz.spec.ts:232:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › send-otp posts a real CAPTCHA answer — never the track-bypass token
+[100/110] [chromium] › e2e\public\tracking-authz.spec.ts:261:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › send-otp is blocked client-side without a CAPTCHA answer
+[101/110] [chromium] › e2e\public\tracking-authz.spec.ts:275:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › an invalid mobile number is rejected before any network call
+[102/110] [chromium] › e2e\public\tracking-authz.spec.ts:297:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › a VISUAL CAPTCHA never returns its own answer (D16)
+[103/110] [chromium] › e2e\public\tracking-authz.spec.ts:328:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › a MATH CAPTCHA returns a speakable question but not the answer (D16)
+[104/110] [chromium] › e2e\public\tracking-authz.spec.ts:339:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › the audio button falls back to a MATH challenge instead of reading the image answer (D16)
+[105/110] [chromium] › e2e\public\tracking-authz.spec.ts:364:7 › UST98 — Tracker OTP flow uses a real CAPTCHA (D2/D3) › the complaint list request carries the X-Citizen-Token header
+[106/110] [chromium] › e2e\public\withdrawal.spec.ts:23:7 › Withdrawal Flow — Public Portal › search for complaint shows withdrawal form
+[107/110] [chromium] › e2e\public\withdrawal.spec.ts:58:7 › Withdrawal Flow — Public Portal › submit without reason shows error message
+[108/110] [chromium] › e2e\public\withdrawal.spec.ts:98:7 › Withdrawal Flow — Public Portal › attempt to withdraw a closed complaint shows error
+[109/110] [chromium] › e2e\public\withdrawal.spec.ts:129:7 › Withdrawal Flow — Public Portal › successful withdrawal sets status to withdrawn
+[110/110] [chromium] › e2e\public\withdrawal.spec.ts:163:7 › Withdrawal Flow — Public Portal › API error displays error message, not success (regression)
+  110 passed (2.2m)

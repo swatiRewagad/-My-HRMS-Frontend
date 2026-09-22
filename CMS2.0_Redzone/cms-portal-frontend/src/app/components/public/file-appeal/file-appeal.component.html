@@ -1,0 +1,277 @@
+<!-- FR-G-032: Search complaint to appeal -->
+@if (phase() === 'search') {
+  <div class="page-container">
+    <div class="card">
+      <h2>{{ 'appeal.title' | translate }}</h2>
+      <p class="subtitle">{{ 'appeal.subtitle' | translate }}</p>
+
+      <div class="info-box" role="note">
+        <i class="pi pi-info-circle" aria-hidden="true"></i>
+        <div>
+          <strong>{{ 'appeal.eligibility_title' | translate }}</strong>
+          <ul>
+            <li>{{ 'appeal.eligibility_1' | translate }}</li>
+            <li>{{ 'appeal.eligibility_2' | translate }}</li>
+            <li>{{ 'appeal.eligibility_3' | translate }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ 'appeal.ref_label' | translate }} <span class="required">*</span></label>
+        <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
+               placeholder="e.g., CMP-20260525-000001" (keydown.enter)="searchComplaint()">
+      </div>
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="goHome()">{{ 'appeal.cancel' | translate }}</button>
+        <button class="btn-primary" (click)="searchComplaint()" [disabled]="checking()">
+          @if (checking()) {
+            <i class="pi pi-spinner pi-spin"></i> {{ 'appeal.checking' | translate }}
+          } @else {
+            <i class="pi pi-search"></i> {{ 'appeal.check_eligibility' | translate }}
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Eligibility Result -->
+@if (phase() === 'eligibility') {
+  <div class="page-container">
+    <div class="card">
+      <h2>{{ 'appeal.result_title' | translate }}</h2>
+      <p class="subtitle">Complaint: <strong>{{ complaintId }}</strong></p>
+
+      @if (eligibilityResult(); as result) {
+        <div class="eligibility-result" [class.eligible]="result.eligible" [class.ineligible]="!result.eligible">
+          <div class="eligibility-icon">
+            @if (result.eligible) {
+              <i class="pi pi-check-circle"></i>
+            } @else {
+              <i class="pi pi-times-circle"></i>
+            }
+          </div>
+          <div class="eligibility-info">
+            <h3>{{ result.eligible ? ('appeal.eligible' | translate) : ('appeal.not_eligible' | translate) }}</h3>
+            @if (result.reason) {
+              <p>{{ result.reason }}</p>
+            }
+          </div>
+        </div>
+
+        @if (classification()) {
+          <div class="classification-info">
+            <label>{{ 'appeal.classification' | translate }}</label>
+            <app-status-badge [status]="classification()" keyPrefix="classification" />
+            <span class="immutable-note">This classification is determined by the system and cannot be changed.</span>
+          </div>
+        }
+
+        @if (result.complaintSummary) {
+          <div class="complaint-summary">
+            <h4>{{ 'appeal.summary_title' | translate }}</h4>
+            <div class="summary-grid">
+              <div class="summary-field">
+                <label>{{ 'appeal.status' | translate }}</label>
+                <span>{{ result.complaintSummary.status }}</span>
+              </div>
+              <div class="summary-field">
+                <label>{{ 'appeal.decision_date' | translate }}</label>
+                <span>{{ result.complaintSummary.decisionDate | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div class="summary-field">
+                <label>{{ 'appeal.award_amount' | translate }}</label>
+                <span>{{ result.complaintSummary.awardAmount ? '\u20B9' + result.complaintSummary.awardAmount : 'N/A' }}</span>
+              </div>
+              <div class="summary-field">
+                <label>{{ 'appeal.days_since' | translate }}</label>
+                <span>{{ result.complaintSummary.daysSinceDecision }} days</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- FR-G-041 / UST112: Speaking Order (read-only) -->
+          @if (result.complaintSummary.speakingOrder || result.complaintSummary.closureReason) {
+            <div class="speaking-order-section">
+              <h4><i class="pi pi-file-pdf"></i> {{ 'appeal.speaking_order' | translate }}</h4>
+              <div class="speaking-order-content readonly-box">
+                <p>{{ result.complaintSummary.speakingOrder || result.complaintSummary.closureReason }}</p>
+              </div>
+            </div>
+          }
+
+          <!-- UST112: Complaint Details (read-only) -->
+          @if (result.complaintSummary.description) {
+            <div class="complaint-details-readonly">
+              <h4>Complaint Details</h4>
+              <div class="readonly-box">
+                <div class="detail-field">
+                  <label>Category</label>
+                  <span>{{ result.complaintSummary.category || 'N/A' }}</span>
+                </div>
+                <div class="detail-field">
+                  <label>Entity</label>
+                  <span>{{ result.complaintSummary.entityName || 'N/A' }}</span>
+                </div>
+                <div class="detail-field full-width">
+                  <label>Description</label>
+                  <span>{{ result.complaintSummary.description }}</span>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      }
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="phase.set('search')">{{ 'appeal.back' | translate }}</button>
+        @if (eligibilityResult()?.eligible) {
+          <button class="btn-primary" (click)="proceedToForm()">
+            <i class="pi pi-arrow-right"></i> {{ 'appeal.proceed' | translate }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- FR-G-033: Appeal details form -->
+@if (phase() === 'form') {
+  <div class="page-container">
+    <div class="card">
+      <h2>{{ 'appeal.details_title' | translate }}</h2>
+      <p class="subtitle">Filing appeal against complaint <strong>{{ complaintId }}</strong></p>
+
+      @if (classification()) {
+        <div class="classification-banner">
+          <app-status-badge [status]="classification()" keyPrefix="classification" />
+          <span class="classification-note">Classification: {{ classification() === 'APPEAL' ? 'Appeal against Ombudsman decision' : 'Representation on non-disposal' }}</span>
+        </div>
+      }
+
+      <!-- FR-G-042 / UST114: Reason for delay (31-60 day window) -->
+      @if (isDelayedFiling()) {
+        <div class="delay-notice">
+          <i class="pi pi-exclamation-triangle"></i>
+          <p>Your appeal is being filed between 31 and 60 days after the decision. A reason for the delay is required.</p>
+        </div>
+        <div class="form-group">
+          <label>Reason for Delay <span class="required">*</span></label>
+          <textarea class="form-textarea" [(ngModel)]="reasonForDelay" name="reasonForDelay" rows="3"
+                    placeholder="Please explain the reason for the delay in filing this appeal..."
+                    maxlength="500"></textarea>
+          <span class="char-count">{{ reasonForDelay.length }}/500</span>
+        </div>
+      }
+
+      <div class="form-group">
+        <label>{{ 'appeal.ground' | translate }} <span class="required">*</span></label>
+        <div class="radio-group">
+          @for (g of appealGrounds; track g) {
+            <label class="radio-label" [class.selected]="appealGround === g">
+              <input type="radio" name="appealGround" [value]="g" [(ngModel)]="appealGround">
+              {{ g }}
+            </label>
+          }
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ 'appeal.details_label' | translate }} <span class="required">*</span></label>
+        <div class="textarea-with-speech">
+          <textarea class="form-textarea" [(ngModel)]="appealDetails" name="appealDetails" rows="5"
+                    placeholder="Explain in detail why you believe the decision should be reviewed..."></textarea>
+          <app-speech-button (transcription)="appealDetails = appealDetails + ' ' + $event"></app-speech-button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ 'appeal.relief' | translate }}</label>
+        <div class="textarea-with-speech">
+          <textarea class="form-textarea" [(ngModel)]="reliefSought" name="reliefSought" rows="3"
+                    placeholder="What outcome are you seeking from this appeal?"></textarea>
+          <app-speech-button (transcription)="reliefSought = reliefSought + ' ' + $event"></app-speech-button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ 'appeal.docs' | translate }}</label>
+        <div class="file-upload-area" [class.dragover]="isDragOver"
+             (dragover)="$event.preventDefault(); isDragOver = true"
+             (dragenter)="$event.preventDefault(); isDragOver = true"
+             (dragleave)="isDragOver = false"
+             (drop)="isDragOver = false; onFileDrop($event)">
+          <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                 class="file-input-hidden">
+          <span class="file-upload-text">Drag and Drop or <label for="appealFiles" class="file-upload-browse-link">Browse</label> File</span>
+        </div>
+        <div class="file-upload-meta">
+          <span>Support formats: PDF, DOC, JPG, PNG</span>
+          <span>Maximum Size of All Files: 2MB</span>
+        </div>
+        @if (appealAttachments.length > 0) {
+          <div class="file-list">
+            @for (f of appealAttachments; track $index; let i = $index) {
+              <div class="file-chip">
+                <i class="pi pi-file"></i> {{ f.name }}
+                <button class="remove-file" (click)="removeFile(i)" type="button" [attr.aria-label]="'Remove ' + f.name"><i class="pi pi-times" aria-hidden="true"></i></button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="declaration-box">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="declarationChecked" name="declaration">
+          <span>{{ 'appeal.declaration' | translate }}</span>
+        </label>
+      </div>
+
+      @if (error) {
+        <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ error }}</div>
+      }
+
+      <!-- FR-G-034: Submit -->
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="phase.set('eligibility')">{{ 'appeal.back' | translate }}</button>
+        <button class="btn-primary" (click)="submitAppeal()" [disabled]="submitting()">
+          @if (submitting()) { <i class="pi pi-spinner pi-spin"></i> {{ 'appeal.submitting' | translate }} }
+          @else { <i class="pi pi-send"></i> {{ 'appeal.submit' | translate }} }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Success -->
+@if (phase() === 'success') {
+  <div class="page-container">
+    <div class="card success-card" role="alert" aria-live="polite">
+      <div class="success-icon"><i class="pi pi-check-circle" aria-hidden="true"></i></div>
+      <h2>{{ 'appeal.success_title' | translate }}</h2>
+      <p class="ref-label">{{ 'appeal.success_ref' | translate }}</p>
+      <div class="ref-number">{{ appealRefNumber }}</div>
+      @if (classification()) {
+        <p class="classification-result">
+          Classified as: <app-status-badge [status]="classification()" keyPrefix="classification" />
+        </p>
+      }
+      <p>Your appeal against complaint <strong>{{ complaintId }}</strong> has been registered. You will receive updates via SMS and email.</p>
+      <div class="form-actions center">
+        <button class="btn-primary" (click)="trackAppeal()"><i class="pi pi-search"></i> {{ 'appeal.track' | translate }}</button>
+        <button class="btn-secondary" (click)="goHome()"><i class="pi pi-home"></i> {{ 'appeal.go_home' | translate }}</button>
+      </div>
+    </div>
+  </div>
+}

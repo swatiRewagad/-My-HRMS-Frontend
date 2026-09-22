@@ -1,0 +1,352 @@
+<div class="query-thread-panel">
+  <div class="panel-header">
+    <h3 class="section-title">{{ 'query.section_title' | translate }}</h3>
+
+    <div class="header-actions">
+      <label class="awaiting-filter">
+        <input
+          type="checkbox"
+          id="awaitingOnly"
+          [ngModel]="awaitingOnly()"
+          (ngModelChange)="awaitingOnly.set($event)" />
+        <span>{{ 'query.awaiting_my_response' | translate }}</span>
+        @if (awaitingCount() > 0) {
+          <span class="awaiting-count">{{ awaitingCount() }}</span>
+        }
+      </label>
+
+      <button type="button" class="raise-btn" (click)="showComposer.set(!showComposer())">
+        <i class="pi pi-plus"></i> {{ 'query.raise_button' | translate }}
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="error-banner" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ error() | translate }}</span>
+    </div>
+  }
+
+  <!-- ═══ Composer ═══ -->
+  @if (showComposer()) {
+    <div class="query-composer">
+      <div class="form-group">
+        <label for="newQueryType">{{ 'query.type_label' | translate }}</label>
+        <select id="newQueryType" [ngModel]="newType()" (ngModelChange)="newType.set($event)">
+          <option value="CLARIFICATION">{{ 'query.type.clarification' | translate }}</option>
+          <option value="EXTENSION_REQUEST">{{ 'query.type.extension_request' | translate }}</option>
+          <option value="DOCUMENT_REQUEST">{{ 'query.type.document_request' | translate }}</option>
+          <option value="MEETING_REQUEST">{{ 'query.type.meeting_request' | translate }}</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="newSubject">{{ 'query.subject_label' | translate }}</label>
+        <input id="newSubject" type="text" [ngModel]="newSubject()"
+               (ngModelChange)="newSubject.set($event)" />
+      </div>
+
+      <div class="form-group">
+        <label for="newBody">{{ 'query.message_label' | translate }}</label>
+        <textarea id="newBody" rows="3" [ngModel]="newBody()"
+                  (ngModelChange)="newBody.set($event)"></textarea>
+      </div>
+
+      <!-- Extension request (UST853) -->
+      @if (newType() === 'EXTENSION_REQUEST') {
+        <div class="type-panel extension-panel">
+          <div class="notice">
+            <i class="pi pi-info-circle"></i>
+            {{ 'query.extension.clock_running_notice' | translate }}
+          </div>
+          <div class="form-group">
+            <label for="proposedDeadline">
+              {{ 'query.extension.proposed_deadline_label' | translate }}
+            </label>
+            <input id="proposedDeadline" type="date" [ngModel]="proposedDeadline()"
+                   (ngModelChange)="proposedDeadline.set($event)" />
+          </div>
+          <div class="form-group">
+            <label for="extensionReason">{{ 'query.extension.reason_label' | translate }}</label>
+            <textarea id="extensionReason" rows="2" [ngModel]="extensionReason()"
+                      (ngModelChange)="extensionReason.set($event)"></textarea>
+          </div>
+        </div>
+      }
+
+      <!-- Document request (UST854) -->
+      @if (newType() === 'DOCUMENT_REQUEST') {
+        <div class="type-panel document-panel">
+          <label class="panel-label">{{ 'query.documents.checklist_title' | translate }}</label>
+          @for (item of checklistInputs(); track $index) {
+            <input
+              class="checklist-input"
+              type="text"
+              [attr.data-index]="$index"
+              [ngModel]="item"
+              (ngModelChange)="updateChecklistInput($index, $event)"
+              [attr.placeholder]="'query.documents.item_name_label' | translate" />
+          }
+          <button type="button" class="link-btn" (click)="addChecklistInput()">
+            <i class="pi pi-plus"></i> {{ 'query.documents.add_item' | translate }}
+          </button>
+        </div>
+      }
+
+      <!-- Meeting request (UST855) -->
+      @if (newType() === 'MEETING_REQUEST') {
+        <div class="type-panel meeting-panel">
+          <div class="form-group">
+            <label for="meetingPurpose">{{ 'query.meeting.purpose_label' | translate }}</label>
+            <textarea id="meetingPurpose" rows="2" [ngModel]="meetingPurpose()"
+                      (ngModelChange)="meetingPurpose.set($event)"></textarea>
+          </div>
+          <label class="panel-label">{{ 'query.meeting.proposed_times_title' | translate }}</label>
+          @for (slot of slotInputs(); track $index) {
+            <input
+              class="slot-input"
+              type="datetime-local"
+              [attr.data-index]="$index"
+              [ngModel]="slot"
+              (ngModelChange)="updateSlotInput($index, $event)" />
+          }
+          <button type="button" class="link-btn" (click)="addSlotInput()">
+            <i class="pi pi-plus"></i> {{ 'query.meeting.add_slot' | translate }}
+          </button>
+          <div class="notice subtle">
+            <i class="pi pi-info-circle"></i>
+            {{ 'query.meeting.no_calendar_notice' | translate }}
+          </div>
+        </div>
+      }
+
+      <div class="composer-actions">
+        <button type="button" class="submit-btn" (click)="submitNewThread()" [disabled]="posting()">
+          {{ 'query.send_button' | translate }}
+        </button>
+        <button type="button" class="cancel-btn" (click)="showComposer.set(false)">
+          {{ 'query.cancel_button' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ═══ Thread list ═══ -->
+  @if (loading()) {
+    <div class="loading-state"><span class="spinner-sm"></span></div>
+  } @else if (visibleThreads().length === 0) {
+    <p class="empty-state">{{ 'query.none_yet' | translate }}</p>
+  } @else {
+    <ul class="thread-list">
+      @for (thread of visibleThreads(); track thread.id) {
+        <li class="thread-item"
+            [class.awaiting-me]="thread.awaitingMe"
+            [class.unread]="thread.unread"
+            [attr.data-query-id]="thread.id"
+            [attr.data-query-type]="thread.queryType">
+
+          <button type="button" class="thread-header" (click)="toggleThread(thread)">
+            <span class="thread-type">{{ typeLabelKey(thread.queryType) | translate }}</span>
+            <span class="thread-subject">{{ thread.subject }}</span>
+
+            @if (thread.unread) {
+              <span class="unread-badge">{{ 'query.unread_badge' | translate }}</span>
+            }
+            @if (thread.awaitingMe) {
+              <span class="awaiting-badge">
+                {{ (side() === 'RE' ? 'query.pending_with_re' : 'query.pending_with_rbi') | translate }}
+              </span>
+            }
+            @if (thread.status === 'RESOLVED') {
+              <span class="resolved-badge">{{ 'query.status_resolved' | translate }}</span>
+            }
+
+            <span class="thread-meta">
+              {{ 'query.posted_by' | translate }} {{ thread.raisedByName }} · {{ thread.raisedAt }}
+            </span>
+          </button>
+
+          @if (expandedId() === thread.id) {
+            <div class="thread-body">
+              @if (threadLoading()) {
+                <div class="loading-state"><span class="spinner-sm"></span></div>
+              } @else {
+
+                <!-- Messages (UST857) -->
+                <ol class="message-list">
+                  @for (message of messages(); track message.id) {
+                    <li class="message"
+                        [class.system]="message.messageKind === 'SYSTEM'"
+                        [class.own-side]="message.authorSide === side()">
+                      <div class="message-meta">
+                        <span class="author">{{ message.authorName }}</span>
+                        <span class="author-side">{{ message.authorSide }}</span>
+                        <time class="posted-at">{{ message.postedAt }}</time>
+                      </div>
+                      <div class="message-body">{{ message.body }}</div>
+                    </li>
+                  }
+                </ol>
+
+                <p class="immutable-notice">
+                  <i class="pi pi-lock"></i> {{ 'query.immutable_notice' | translate }}
+                </p>
+
+                <!-- Extension decision (UST853) -->
+                @if (thread.queryType === 'EXTENSION_REQUEST') {
+                  <div class="extension-block">
+                    <p class="extension-proposed">
+                      {{ 'query.extension.proposed_deadline_label' | translate }}:
+                      <strong>{{ thread.proposedDeadline }}</strong>
+                    </p>
+
+                    @if (thread.decision === 'PENDING') {
+                      <p class="decision-state pending">
+                        {{ 'query.extension.decision_pending' | translate }}
+                      </p>
+                      @if (side() === 'RBI') {
+                        <div class="decision-form">
+                          <div class="form-group">
+                            <label for="grantedDeadline">
+                              {{ 'query.extension.granted_deadline_label' | translate }}
+                            </label>
+                            <input id="grantedDeadline" type="date" [ngModel]="grantedDeadline()"
+                                   (ngModelChange)="grantedDeadline.set($event)" />
+                          </div>
+                          <div class="form-group">
+                            <label for="decisionReason">
+                              {{ 'query.extension.decision_reason_label' | translate }}
+                            </label>
+                            <textarea id="decisionReason" rows="2" [ngModel]="decisionReason()"
+                                      (ngModelChange)="decisionReason.set($event)"></textarea>
+                          </div>
+                          <button type="button" class="approve-btn"
+                                  (click)="decideExtension(thread.id, true)" [disabled]="posting()">
+                            {{ 'query.extension.approve_button' | translate }}
+                          </button>
+                          <button type="button" class="reject-btn"
+                                  (click)="decideExtension(thread.id, false)" [disabled]="posting()">
+                            {{ 'query.extension.reject_button' | translate }}
+                          </button>
+                        </div>
+                      }
+                    } @else if (thread.decision === 'APPROVED') {
+                      <p class="decision-state approved">
+                        {{ 'query.extension.decision_approved' | translate }} —
+                        {{ 'query.extension.granted_deadline_label' | translate }}:
+                        <strong>{{ thread.grantedDeadline }}</strong>
+                      </p>
+                      <p class="notice subtle">{{ 'query.extension.clock_paused_notice' | translate }}</p>
+                    } @else if (thread.decision === 'REJECTED') {
+                      <p class="decision-state rejected">
+                        {{ 'query.extension.decision_rejected' | translate }}:
+                        {{ thread.decisionReason }}
+                      </p>
+                    }
+                  </div>
+                }
+
+                <!-- Document checklist (UST854) -->
+                @if (thread.queryType === 'DOCUMENT_REQUEST' && checklist().length > 0) {
+                  <div class="checklist-block">
+                    <h4>{{ 'query.documents.checklist_title' | translate }}</h4>
+                    <ul class="checklist">
+                      @for (item of checklist(); track item.id) {
+                        <li class="checklist-item" [class.resolved]="item.resolved"
+                            [attr.data-item-id]="item.id">
+                          <i class="pi" [class.pi-check-circle]="item.resolved"
+                             [class.pi-circle]="!item.resolved"></i>
+                          <span class="item-label">{{ item.label }}</span>
+                          <span class="item-state">
+                            {{ (item.resolved ? 'query.documents.provided'
+                                              : 'query.documents.outstanding') | translate }}
+                          </span>
+                        </li>
+                      }
+                    </ul>
+                    @if (outstandingCount() === 0) {
+                      <p class="all-provided">{{ 'query.documents.all_provided' | translate }}</p>
+                    } @else {
+                      <p class="notice subtle">{{ 'query.documents.attach_first' | translate }}</p>
+                    }
+                  </div>
+                }
+
+                <!-- Meeting slots (UST855) -->
+                @if (thread.queryType === 'MEETING_REQUEST') {
+                  <div class="meeting-block">
+                    <p class="meeting-purpose">
+                      {{ 'query.meeting.purpose_label' | translate }}: {{ thread.meetingPurpose }}
+                    </p>
+                    <ul class="slot-list">
+                      @for (slot of slots(); track slot.id) {
+                        <li class="slot" [attr.data-slot-status]="slot.slotStatus"
+                            [attr.data-slot-id]="slot.id">
+                          <span class="slot-time">{{ slot.proposedStart }}</span>
+                          @if (slot.slotStatus === 'SUPERSEDED') {
+                            <span class="slot-superseded">
+                              {{ 'query.meeting.slot_superseded' | translate }}
+                            </span>
+                          }
+                          @if (slot.slotStatus === 'PROPOSED' && thread.status === 'OPEN'
+                               && slot.proposedBySide !== side()) {
+                            <button type="button" class="accept-slot-btn"
+                                    (click)="acceptSlot(thread.id, slot.id)" [disabled]="posting()">
+                              {{ 'query.meeting.accept_button' | translate }}
+                            </button>
+                          }
+                        </li>
+                      }
+                    </ul>
+
+                    @if (thread.meetingOutcome === 'ACCEPTED') {
+                      <p class="decision-state approved">
+                        {{ 'query.meeting.outcome_accepted' | translate }}
+                      </p>
+                    } @else if (thread.meetingOutcome === 'DECLINED') {
+                      <p class="decision-state rejected">
+                        {{ 'query.meeting.outcome_declined' | translate }}:
+                        {{ thread.meetingDeclineReason }}
+                      </p>
+                    } @else if (thread.status === 'OPEN' && thread.raisedBySide !== side()) {
+                      <div class="decline-form">
+                        <label for="declineReason">
+                          {{ 'query.meeting.decline_reason_label' | translate }}
+                        </label>
+                        <textarea id="declineReason" rows="2" [ngModel]="declineReason()"
+                                  (ngModelChange)="declineReason.set($event)"></textarea>
+                        <button type="button" class="decline-btn"
+                                (click)="declineMeeting(thread.id)" [disabled]="posting()">
+                          {{ 'query.meeting.decline_button' | translate }}
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+
+                <!-- Reply (UST857: correction is a new message, never an edit) -->
+                @if (thread.status === 'RESOLVED') {
+                  <p class="resolved-notice">{{ 'query.thread_resolved' | translate }}</p>
+                } @else {
+                  <div class="reply-form">
+                    <textarea
+                      class="reply-input"
+                      rows="2"
+                      [ngModel]="replyText()"
+                      (ngModelChange)="replyText.set($event)"
+                      [attr.placeholder]="'query.reply_placeholder' | translate"></textarea>
+                    <button type="button" class="reply-btn"
+                            (click)="postReply(thread.id)" [disabled]="posting()">
+                      {{ 'query.reply_button' | translate }}
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </li>
+      }
+    </ul>
+  }
+</div>

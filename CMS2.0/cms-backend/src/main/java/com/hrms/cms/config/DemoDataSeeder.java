@@ -131,6 +131,7 @@ public class DemoDataSeeder implements CommandLineRunner {
 
         List<Complaint> cepcBatch = new ArrayList<>();
         for (String[] row : cepcData) {
+            if (complaintRepo.findByComplaintNumber(row[0]).isPresent()) continue;
             Complaint c = new Complaint();
             c.setComplaintNumber(row[0]);
             c.setSubject(row[1]);

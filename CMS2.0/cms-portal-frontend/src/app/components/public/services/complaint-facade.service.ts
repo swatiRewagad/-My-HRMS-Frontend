@@ -1,10 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { FormBuilder, NonNullableFormBuilder, FormControl, Validators } from '@angular/forms';
-import { Observable, of, Subject, ReplaySubject, forkJoin } from 'rxjs';
-import { catchError, tap, take } from 'rxjs/operators';
+import { FormBuilder, NonNullableFormBuilder, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { Observable, of, Subject, ReplaySubject, interval, merge, forkJoin } from 'rxjs';
+import { catchError, tap, switchMap, takeUntil, distinctUntilChanged, map, startWith, filter, take } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { ComplaintService } from '../../../services/complaint.service';
+import { FileUploadService } from '../../../services/file-upload.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { CustomValidators } from '../../../utils/custom-validators';
 import { lookupPincode } from '../../../utils/pincode-data';
@@ -18,7 +19,18 @@ import {
 } from '../configs';
 import { validateFile, validateStepQuota } from '../../../utils/file-validator';
 
-const DRAFT_VERSION = 6;
+export interface FileMeta {
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  viewUrl: string;
+}
+
+function fileMetaRequired(control: AbstractControl): ValidationErrors | null {
+  const val = control.value;
+  return Array.isArray(val) && val.length > 0 ? null : { required: true };
+}
+
 const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 @Injectable()
@@ -27,6 +39,7 @@ export class ComplaintFacadeService {
   private fb = inject(FormBuilder);
   private nnfb = inject(NonNullableFormBuilder);
   private complaintService = inject(ComplaintService);
+  private fileUploadService = inject(FileUploadService);
   private publicAuth = inject(PublicAuthService);
 
   // ── Submit result observable ──
@@ -46,6 +59,9 @@ export class ComplaintFacadeService {
   submitting = signal(false);
   draftSaved = signal(false);
   lastSavedAt = signal('');
+  uploading = signal<Record<string, boolean>>({});
+  private uploadErrorSubject = new Subject<string>();
+  uploadError$ = this.uploadErrorSubject.asObservable();
   showDuplicatePopup = signal(false);
   isRecording = signal(false);
   showReplyDateAutoClosure = signal(false);
@@ -79,10 +95,13 @@ export class ComplaintFacadeService {
   // Eligibility file state
   complaintFileWithRE: File | null = null;
   complaintFileWithREName = '';
+  complaintFileMeta: FileMeta | null = null;
   reminderFile: File | null = null;
   reminderFileName = '';
+  reminderFileMeta: FileMeta | null = null;
   replyFile: File | null = null;
   replyFileName = '';
+  replyFileMeta: FileMeta | null = null;
   repFiles: File[] = [];
 
   get eligibilityBytesUsed(): number {
@@ -115,6 +134,9 @@ export class ComplaintFacadeService {
   declarationChecked = false;
   declaration2Checked = false;
   referenceNumber = '';
+  submittedStatus = '';
+  submittedAt = '';
+  slaDueDate = '';
   dateDisplay: Record<string, string> = { bankComplaintDate: '', reminderDate: '', replyDate: '' };
 
   entitySearchText = '';
@@ -123,9 +145,10 @@ export class ComplaintFacadeService {
   entitySelectOptions: SelectOption[] = [];
   nonCoveredEntityOptions: SelectOption[] = [];
 
-  filesNeedReupload = false;
+  private destroy$ = new Subject<void>();
   private entitiesLoaded$ = new ReplaySubject<void>(1);
-  private autoSaveTimer: any = null;
+  private manualSave$ = new Subject<void>();
+  draftId = signal('');
   private recognition: any = null;
 
   // ── Forms ──
@@ -166,7 +189,7 @@ export class ComplaintFacadeService {
       disputeAmount: ['', [CustomValidators.numericOnly()]],
       compensationSought: ['', [CustomValidators.numericOnly(), CustomValidators.maxCeiling(3000000, 'Compensation for consequential loss can be awarded only up to ₹30 lakh.')]],
       reliefSought: ['', [CustomValidators.numericOnly(), CustomValidators.maxCeiling(300000, 'Compensation for expenses, harassment, and mental anguish can be awarded only up to ₹3 lakh.')]],
-      fileUpload: ['', [Validators.required]],
+      fileUpload: new FormControl<FileMeta[]>([], { nonNullable: true, validators: [fileMetaRequired] }),
     }),
     repAuthorization: this.nnfb.group({
       hasAuthRep: ['', [Validators.required]],
@@ -178,7 +201,7 @@ export class ComplaintFacadeService {
       repDistrict: [{value: '', disabled: true}],
       repCity: [{value: '', disabled: true}],
       repAddress: [''],
-      repFileUpload: [''],
+      repFileUpload: new FormControl<FileMeta[]>([], { nonNullable: true }),
     }),
     declaration: this.nnfb.group({
       declaration1: [false, [Validators.requiredTrue]],
@@ -191,13 +214,13 @@ export class ComplaintFacadeService {
     filedWithRE: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
     bankComplaintDate: new FormControl<string>('', { nonNullable: true }),
     bankComplaintRef: new FormControl<string>('', { nonNullable: true }),
-    complaintFileWithRE: new FormControl<File | null>(null),
+    complaintFileWithRE: new FormControl<FileMeta | null>(null),
     receivedReply: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
     replyDate: new FormControl<string>('', { nonNullable: true }),
-    replyFileUploaded: new FormControl<boolean>(false, { nonNullable: true }),
+    replyFileMeta: new FormControl<FileMeta | null>(null),
     sentReminder: new FormControl<string>('', { nonNullable: true, validators: [Validators.required] }),
     reminderDate: new FormControl<string>('', { nonNullable: true }),
-    reminderFileUploaded: new FormControl<boolean>(false, { nonNullable: true }),
+    reminderFileMeta: new FormControl<FileMeta | null>(null),
     isSubJudice: new FormControl<string>('', { nonNullable: true }),
     alreadySettled: new FormControl<string>('', { nonNullable: true }),
     throughAdvocateEligibility: new FormControl<string>('', { nonNullable: true }),
@@ -234,9 +257,10 @@ export class ComplaintFacadeService {
 
   destroy(): void {
     if (this.phase() === 'form' || this.phase() === 'eligibility') {
-      this.saveDraft();
+      this.saveDraftToServer();
     }
-    this.stopAutoSave();
+    this.destroy$.next();
+    this.destroy$.complete();
     this.stopRecording();
   }
 
@@ -250,11 +274,11 @@ export class ComplaintFacadeService {
 
     this.watchConditionalValidators(form, 'receivedReply', 'yes',
       [{ ctrl: 'replyDate', validators: [Validators.required] },
-       { ctrl: 'replyFileUploaded', validators: [Validators.requiredTrue] }]);
+       { ctrl: 'replyFileMeta', validators: [Validators.required] }]);
 
     this.watchConditionalValidators(form, 'sentReminder', 'yes',
       [{ ctrl: 'reminderDate', validators: [Validators.required] },
-       { ctrl: 'reminderFileUploaded', validators: [Validators.requiredTrue] }]);
+       { ctrl: 'reminderFileMeta', validators: [Validators.required] }]);
 
     form.get('throughAdvocateEligibility')!.valueChanges.subscribe(val => {
       const selfCtrl = form.get('isComplainantSelf')!;
@@ -402,12 +426,13 @@ export class ComplaintFacadeService {
         ra.controls.repDistrict.setValidators([Validators.required]);
         ra.controls.repCity.setValidators([Validators.required]);
         ra.controls.repAddress.setValidators([Validators.required, Validators.maxLength(100)]);
-        ra.controls.repFileUpload.setValidators([Validators.required]);
+        ra.controls.repFileUpload.setValidators([fileMetaRequired]);
       } else {
         this.clearRepFields();
       }
-      const fields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress', 'repFileUpload'] as const;
-      for (const f of fields) { ra.controls[f].updateValueAndValidity(); }
+      const textFields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress'] as const;
+      for (const f of textFields) { ra.controls[f].updateValueAndValidity(); }
+      ra.controls.repFileUpload.updateValueAndValidity();
     });
 
     const repSyncFields = ['repName', 'repEmail', 'repPhone', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress'] as const;
@@ -418,12 +443,15 @@ export class ComplaintFacadeService {
 
   private clearRepFields(): void {
     const ra = this.repAuthorizationForm;
-    const fields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress', 'repFileUpload'] as const;
-    for (const f of fields) {
+    const textFields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress'] as const;
+    for (const f of textFields) {
       ra.controls[f].clearValidators();
       ra.controls[f].setValue('');
       ra.controls[f].updateValueAndValidity();
     }
+    ra.controls.repFileUpload.clearValidators();
+    ra.controls.repFileUpload.setValue([]);
+    ra.controls.repFileUpload.updateValueAndValidity();
     this.repStates = [];
     this.repDistricts = [];
     this.repCities = [];
@@ -431,9 +459,16 @@ export class ComplaintFacadeService {
   }
 
   syncRepFileUploadControl(): void {
-    this.repAuthorizationForm.controls.repFileUpload.setValue(this.repFiles.length > 0 ? 'has_file' : '');
-    this.repAuthorizationForm.controls.repFileUpload.markAsTouched();
-    this.repAuthorizationForm.controls.repFileUpload.markAsDirty();
+    const ctrl = this.repAuthorizationForm.controls.repFileUpload;
+    const meta: FileMeta[] = this.repFiles.map(f => ({
+      fileId: '',
+      fileName: f.name,
+      fileSize: f.size,
+      viewUrl: '',
+    }));
+    ctrl.setValue(meta);
+    ctrl.markAsTouched();
+    ctrl.markAsDirty();
   }
 
   // ── Declaration form watchers ──
@@ -638,17 +673,22 @@ export class ComplaintFacadeService {
     this.reminderFileError = '';
     this.reminderDateError = '';
 
+    const up = this.uploading();
+    if (up['eligibility_complaint'] || up['eligibility_reminder'] || up['eligibility_reply']) {
+      return false;
+    }
+
     if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
       if (!this.formData['bankComplaintDate']) { this.eligibilityFieldError = 'Complaint date with RE is required'; return false; }
-      if (!this.complaintFileWithRE) { this.eligibilityFileError = 'Please upload a copy of the complaint sent to the Regulated Entity'; return false; }
+      if (!this.complaintFileMeta) { this.eligibilityFileError = 'Please upload a copy of the complaint sent to the Regulated Entity'; return false; }
     }
     if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'yes') {
       if (!this.formData['replyDate']) { this.replyDateError = 'Date on which reply was received is required'; return false; }
-      if (!this.replyFile) { this.replyFileError = 'Please upload a copy of the reply received from the Regulated Entity'; return false; }
+      if (!this.replyFileMeta) { this.replyFileError = 'Please upload a copy of the reply received from the Regulated Entity'; return false; }
     }
     if (q.key === 'sentReminder' && this.eligibilityAnswers['sentReminder'] === 'yes') {
       if (!this.formData['reminderDate']) { this.reminderDateError = 'Date on which reminder was sent is required'; return false; }
-      if (!this.reminderFile) { this.reminderFileError = 'Please upload a copy of the reminder sent to the Regulated Entity'; return false; }
+      if (!this.reminderFileMeta) { this.reminderFileError = 'Please upload a copy of the reminder sent to the Regulated Entity'; return false; }
     }
     if (q.key === 'employeeOfRE' && this.eligibilityAnswers['employeeOfRE'] === 'yes') {
       if (!this.eligibilityAnswers['employerRelationship']) return false;
@@ -694,6 +734,20 @@ export class ComplaintFacadeService {
   }
 
   private syncFormToAnswers(): void {
+    const form = this.eligibilityStageForm;
+    const keys = Object.keys(form.controls) as (keyof typeof form.controls)[];
+    for (const key of keys) {
+      const val = form.get(key)?.value;
+      if (typeof val === 'string' && val) {
+        this.eligibilityAnswers[key] = val;
+      }
+    }
+    if (form.get('bankComplaintDate')!.value) this.formData['bankComplaintDate'] = form.get('bankComplaintDate')!.value;
+    if (form.get('bankComplaintRef')!.value) this.formData['bankComplaintRef'] = form.get('bankComplaintRef')!.value;
+  }
+
+  private rebuildEligibilityAnswers(): void {
+    this.eligibilityAnswers = {};
     const form = this.eligibilityStageForm;
     const keys = Object.keys(form.controls) as (keyof typeof form.controls)[];
     for (const key of keys) {
@@ -762,15 +816,19 @@ export class ComplaintFacadeService {
     }
   }
 
+  private readonly MOCK_BRANCHES = ['Main Branch', 'City Branch', 'Regional Office', 'Zonal Office', 'Service Branch', 'Extension Counter'];
+
   onEntityDistrictChange(): void {
     this.regulatedEntityForm.controls.entityBranch.setValue('');
     this.branches = [];
     const district = this.regulatedEntityForm.controls.entityDistrict.value;
     if (district) {
-      this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
-        next: (res) => { this.branches = res?.data ?? res ?? []; },
-        error: () => {}
-      });
+      // TODO: Replace mock data with API call once branch endpoint is ready
+      // this.http.get<any>(`${environment.apiBaseUrl}/api/v1/location/branches`, { params: { district } }).subscribe({
+      //   next: (res) => { this.branches = res?.data ?? res ?? []; },
+      //   error: () => {}
+      // });
+      this.branches = [...this.MOCK_BRANCHES];
     }
   }
 
@@ -855,18 +913,13 @@ export class ComplaintFacadeService {
   }
 
   // ── File handling ──
-  handleEligibilityFile(type: 'complaint' | 'reminder' | 'reply', event: Event): boolean {
-    const input = event.target as HTMLInputElement;
-    if (!input.files?.[0]) return false;
-    const file = input.files[0];
-
+  uploadEligibilityFile(type: 'complaint' | 'reminder' | 'reply', file: File): void {
     const fileResult = validateFile(file);
     if (!fileResult.valid) {
       if (type === 'complaint') this.eligibilityFileError = fileResult.error!;
       else if (type === 'reminder') this.reminderFileError = fileResult.error!;
       else this.replyFileError = fileResult.error!;
-      input.value = '';
-      return false;
+      return;
     }
 
     const currentFileSize = type === 'complaint' ? (this.complaintFileWithRE?.size ?? 0)
@@ -877,57 +930,168 @@ export class ComplaintFacadeService {
       if (type === 'complaint') this.eligibilityFileError = quotaResult.error!;
       else if (type === 'reminder') this.reminderFileError = quotaResult.error!;
       else this.replyFileError = quotaResult.error!;
-      input.value = '';
-      return false;
+      return;
     }
 
-    switch (type) {
-      case 'complaint':
-        this.complaintFileWithRE = file;
-        this.complaintFileWithREName = file.name;
-        this.eligibilityFileError = '';
-        this.eligibilityStageForm.get('complaintFileWithRE')!.setValue(file);
-        break;
-      case 'reminder':
-        this.reminderFile = file;
-        this.reminderFileName = file.name;
-        this.reminderFileError = '';
-        this.eligibilityStageForm.get('reminderFileUploaded')!.setValue(true);
-        break;
-      case 'reply':
-        this.replyFile = file;
-        this.replyFileName = file.name;
-        this.replyFileError = '';
-        this.eligibilityStageForm.get('replyFileUploaded')!.setValue(true);
-        break;
-    }
-    return true;
+    const key = `eligibility_${type}`;
+    this.uploading.update(s => ({ ...s, [key]: true }));
+
+    this.fileUploadService.uploadSingleFile(file, 'complaints').subscribe({
+      next: (res) => {
+        const meta: FileMeta = {
+          fileId: res.data.storagePath,
+          fileName: file.name,
+          fileSize: file.size,
+          viewUrl: this.fileUploadService.getDownloadUrl(res.data.storagePath),
+        };
+        switch (type) {
+          case 'complaint':
+            this.complaintFileWithRE = file;
+            this.complaintFileWithREName = file.name;
+            this.complaintFileMeta = meta;
+            this.eligibilityFileError = '';
+            this.eligibilityStageForm.get('complaintFileWithRE')!.setValue(meta);
+            break;
+          case 'reminder':
+            this.reminderFile = file;
+            this.reminderFileName = file.name;
+            this.reminderFileMeta = meta;
+            this.reminderFileError = '';
+            this.eligibilityStageForm.get('reminderFileMeta')!.setValue(meta);
+            break;
+          case 'reply':
+            this.replyFile = file;
+            this.replyFileName = file.name;
+            this.replyFileMeta = meta;
+            this.replyFileError = '';
+            this.eligibilityStageForm.get('replyFileMeta')!.setValue(meta);
+            break;
+        }
+        this.uploading.update(s => ({ ...s, [key]: false }));
+      },
+      error: (err) => {
+        const msg = err?.error?.message || err?.message || 'File upload failed. Please try again.';
+        if (type === 'complaint') {
+          this.complaintFileWithRE = null;
+          this.complaintFileWithREName = '';
+          this.eligibilityFileError = msg;
+        } else if (type === 'reminder') {
+          this.reminderFile = null;
+          this.reminderFileName = '';
+          this.reminderFileError = msg;
+        } else {
+          this.replyFile = null;
+          this.replyFileName = '';
+          this.replyFileError = msg;
+        }
+        this.uploadErrorSubject.next(msg);
+        this.uploading.update(s => ({ ...s, [key]: false }));
+      },
+    });
   }
 
   removeEligibilityFile(type: 'complaint' | 'reminder' | 'reply'): void {
+    let storagePath: string | undefined;
     switch (type) {
       case 'complaint':
+        storagePath = this.complaintFileMeta?.fileId;
         this.complaintFileWithRE = null;
         this.complaintFileWithREName = '';
+        this.complaintFileMeta = null;
         this.eligibilityStageForm.get('complaintFileWithRE')!.setValue(null);
         break;
       case 'reminder':
+        storagePath = this.reminderFileMeta?.fileId;
         this.reminderFile = null;
         this.reminderFileName = '';
-        this.eligibilityStageForm.get('reminderFileUploaded')!.setValue(false);
+        this.reminderFileMeta = null;
+        this.eligibilityStageForm.get('reminderFileMeta')!.setValue(null);
         break;
       case 'reply':
+        storagePath = this.replyFileMeta?.fileId;
         this.replyFile = null;
         this.replyFileName = '';
-        this.eligibilityStageForm.get('replyFileUploaded')!.setValue(false);
+        this.replyFileMeta = null;
+        this.eligibilityStageForm.get('replyFileMeta')!.setValue(null);
         break;
     }
+    if (storagePath) this.fileUploadService.deleteFile(storagePath).subscribe();
+    this.saveDraftToServer();
   }
 
   syncFileUploadControl(): void {
     const ctrl = this.complaintDetailsForm.controls.fileUpload;
-    ctrl.setValue(this.attachments.length > 0 ? 'has_files' : '');
+    const meta: FileMeta[] = this.attachments.map((f, i) => ({
+      fileId: this.attachmentPreviews[i]?.fileId || '',
+      fileName: f.name,
+      fileSize: f.size,
+      viewUrl: this.attachmentPreviews[i]?.viewUrl || '',
+    }));
+    ctrl.setValue(meta);
     ctrl.markAsTouched();
+  }
+
+  uploadAndSyncFiles(files: File[], controlPath: 'complaintDetails' | 'repAuth'): void {
+    if (!files.length) return;
+    const key = controlPath === 'complaintDetails' ? 'fileUpload' : 'repFileUpload';
+    this.uploading.update(s => ({ ...s, [key]: true }));
+
+    forkJoin(files.map(f => this.fileUploadService.uploadSingleFile(f, 'complaints'))).subscribe({
+      next: (results) => {
+        const newMetas: FileMeta[] = files.map((f, i) => ({
+          fileId: results[i].data.storagePath,
+          fileName: f.name,
+          fileSize: f.size,
+          viewUrl: this.fileUploadService.getDownloadUrl(results[i].data.storagePath),
+        }));
+
+        if (controlPath === 'complaintDetails') {
+          this.attachments.push(...files);
+          for (const m of newMetas) {
+            this.attachmentPreviews.push({ name: m.fileName, url: m.viewUrl, type: '', size: m.fileSize, fileId: m.fileId, viewUrl: m.viewUrl });
+          }
+          const ctrl = this.complaintDetailsForm.controls.fileUpload;
+          ctrl.setValue([...(ctrl.value || []), ...newMetas]);
+          ctrl.markAsTouched();
+          ctrl.markAsDirty();
+        } else {
+          this.repFiles.push(...files);
+          const ctrl = this.repAuthorizationForm.controls.repFileUpload;
+          ctrl.setValue([...(ctrl.value || []), ...newMetas]);
+          ctrl.markAsTouched();
+          ctrl.markAsDirty();
+        }
+        this.uploading.update(s => ({ ...s, [key]: false }));
+      },
+      error: (err) => {
+        const msg = err?.error?.message || err?.message || 'File upload failed. Please try again.';
+        this.uploadErrorSubject.next(msg);
+        this.uploading.update(s => ({ ...s, [key]: false }));
+      },
+    });
+  }
+
+  removeUploadedFile(controlPath: 'complaintDetails' | 'repAuth', index: number): void {
+    if (controlPath === 'complaintDetails') {
+      const ctrl = this.complaintDetailsForm.controls.fileUpload;
+      const meta = [...(ctrl.value || [])];
+      const removed = meta.splice(index, 1)[0];
+      ctrl.setValue(meta);
+      ctrl.markAsDirty();
+      this.attachments.splice(index, 1);
+      if (this.attachmentPreviews[index]?.url) URL.revokeObjectURL(this.attachmentPreviews[index].url);
+      this.attachmentPreviews.splice(index, 1);
+      if (removed?.fileId) this.fileUploadService.deleteFile(removed.fileId).subscribe();
+    } else {
+      const ctrl = this.repAuthorizationForm.controls.repFileUpload;
+      const meta = [...(ctrl.value || [])];
+      const removed = meta.splice(index, 1)[0];
+      ctrl.setValue(meta);
+      ctrl.markAsDirty();
+      this.repFiles.splice(index, 1);
+      if (removed?.fileId) this.fileUploadService.deleteFile(removed.fileId).subscribe();
+    }
+    this.saveDraftToServer();
   }
 
   // ── Date handling ──
@@ -1063,17 +1227,35 @@ export class ComplaintFacadeService {
       if (this.currentStep() > this.highestStepReached()) {
         this.highestStepReached.set(this.currentStep());
       }
-      this.saveDraft();
+      this.manualSave$.next();
     }
     return true;
   }
 
   prevStep(): void {
-    if (this.currentStep() > 1) this.currentStep.update(s => s - 1);
+    if (this.currentStep() > 1) {
+      this.currentStep.update(s => s - 1);
+      this.touchCurrentStepForm();
+    }
   }
 
   goToStep(step: number): void {
-    if (step <= this.highestStepReached()) this.currentStep.set(step);
+    if (step <= this.highestStepReached()) {
+      this.currentStep.set(step);
+      this.touchCurrentStepForm();
+    }
+  }
+
+  private touchCurrentStepForm(): void {
+    const formMap: Record<number, any> = {
+      1: this.complainantDetailsForm,
+      2: this.regulatedEntityForm,
+      3: this.complaintDetailsForm,
+      4: this.repAuthorizationForm,
+      5: this.declarationForm,
+    };
+    const form = formMap[this.currentStep()];
+    if (form) form.markAllAsTouched();
   }
 
   goToEligibility(): void {
@@ -1118,13 +1300,13 @@ export class ComplaintFacadeService {
     if (!this.eligibilityAnswers[q.key]) return false;
 
     if (q.key === 'filedWithRE' && this.eligibilityAnswers['filedWithRE'] === 'yes') {
-      if (!this.formData['bankComplaintDate'] || !this.complaintFileWithRE) return false;
+      if (!this.formData['bankComplaintDate'] || !this.complaintFileMeta) return false;
     }
     if (q.key === 'receivedReply' && this.eligibilityAnswers['receivedReply'] === 'yes') {
-      if (!this.formData['replyDate'] || !this.replyFile) return false;
+      if (!this.formData['replyDate'] || !this.replyFileMeta) return false;
     }
     if (q.key === 'sentReminder' && this.eligibilityAnswers['sentReminder'] === 'yes') {
-      if (!this.formData['reminderDate'] || !this.reminderFile) return false;
+      if (!this.formData['reminderDate'] || !this.reminderFileMeta) return false;
     }
     if (q.key === 'throughAdvocateEligibility' && this.eligibilityAnswers['throughAdvocateEligibility'] === 'yes') {
       if (!this.eligibilityStageForm.get('isComplainantSelf')!.value) return false;
@@ -1212,6 +1394,9 @@ export class ComplaintFacadeService {
     this.complaintService.registerComplaint(payload).subscribe({
       next: (ack) => {
         this.referenceNumber = ack.complaintId;
+        this.submittedStatus = ack.status || 'REGISTERED';
+        this.submittedAt = ack.registeredAt || '';
+        this.slaDueDate = ack.slaDueDate || '';
         this.submitting.set(false);
         this.phase.set('success');
         this.clearDraft();
@@ -1226,153 +1411,364 @@ export class ComplaintFacadeService {
   }
 
   // ── Draft management ──
-  saveDraft(): void {
-    const attachmentMeta = this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size }));
-    const checkedAccountTypes = this.accountTypes.filter(a => a.checked).map(a => a.value);
-    const draft = {
-      version: DRAFT_VERSION,
-      formData: this.formData,
-      eligibilityAnswers: this.eligibilityAnswers,
-      eligibilityStep: this.eligibilityStep(),
-      currentStep: this.currentStep(),
-      highestStepReached: this.highestStepReached(),
-      phase: this.phase(),
-      entityName: this.getSelectedBankName(),
-      declarationChecked: this.declarationChecked,
-      declaration2Checked: this.declaration2Checked,
-      attachmentMeta,
-      checkedAccountTypes,
-      dateDisplay: { ...this.dateDisplay },
-    };
-    sessionStorage.setItem('cms_complaint_draft', JSON.stringify(draft));
-    sessionStorage.setItem('cms_draft_saved_at', new Date().toISOString());
-    this.draftSaved.set(true);
-    this.lastSavedAt.set(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
-    setTimeout(() => this.draftSaved.set(false), 2000);
-    this.saveDraftToServer();
-  }
-
-  private saveDraftToServer(): void {
-    const phone = this.publicAuth.userIdentifier();
-    if (!phone) return;
-    this.complaintService.saveDraft({
+  private buildDraftPayload(): any {
+    this.syncFormToAnswers();
+    const phone = this.publicAuth.userIdentifier() || '';
+    return {
       phone,
       entityName: this.getSelectedBankName(),
-      formData: this.formData,
-      eligibilityAnswers: this.eligibilityAnswers,
+      formData: this.complaintStepperForm.getRawValue(),
+      eligibilityFormData: this.eligibilityStageForm.getRawValue(),
+      eligibilityAnswers: { ...this.eligibilityAnswers },
       currentStep: this.currentStep(),
       highestStepReached: this.highestStepReached(),
       eligibilityStep: this.eligibilityStep(),
       phase: this.phase(),
       checkedAccountTypes: this.accountTypes.filter(a => a.checked).map(a => a.value),
       dateDisplay: { ...this.dateDisplay },
-      declarationChecked: this.declarationChecked,
-      declaration2Checked: this.declaration2Checked,
-      attachmentMeta: this.attachmentPreviews.map(f => ({ name: f.name, type: f.type, size: f.size })),
-      draftVersion: DRAFT_VERSION,
-    }).subscribe({
-      next: (res) => { if (res?.draftId) sessionStorage.setItem('cms_draft_id', res.draftId); },
+    };
+  }
+
+  private draftPayloadSnapshot(): string {
+    return JSON.stringify(this.buildDraftPayload());
+  }
+
+  saveDraft(): void {
+    this.manualSave$.next();
+  }
+
+  saveDraftToServer(): void {
+    const phone = this.publicAuth.userIdentifier();
+    if (!phone) return;
+    const payload = this.buildDraftPayload();
+    this.complaintService.saveDraft(payload).subscribe({
+      next: (res) => {
+        if (res?.draftId) this.draftId.set(res.draftId);
+        this.draftSaved.set(true);
+        this.lastSavedAt.set(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+        setTimeout(() => this.draftSaved.set(false), 2000);
+      },
       error: () => {}
     });
   }
 
   private startAutoSave(): void {
-    this.autoSaveTimer = setInterval(() => {
-      if (this.phase() === 'form' || this.phase() === 'eligibility') this.saveDraft();
-    }, 30000);
-  }
+    const autoTick$ = interval(120_000).pipe(
+      filter(() => this.phase() === 'form' || this.phase() === 'eligibility'),
+      map(() => this.draftPayloadSnapshot()),
+      distinctUntilChanged(),
+    );
 
-  private stopAutoSave(): void {
-    if (this.autoSaveTimer) { clearInterval(this.autoSaveTimer); this.autoSaveTimer = null; }
-  }
-
-  loadDraft(): void {
-    const saved = sessionStorage.getItem('cms_complaint_draft');
-    if (!saved) return;
-    try {
-      const draft = JSON.parse(saved);
-      if (draft.version !== DRAFT_VERSION) { sessionStorage.removeItem('cms_complaint_draft'); return; }
-      if (draft.phase === 'form' || draft.phase === 'eligibility') {
-        if (draft.formData) {
-          const validKeys = Object.keys(this.formData);
-          for (const key of validKeys) {
-            if (draft.formData[key] !== undefined) this.formData[key] = draft.formData[key];
-          }
-        }
-        if (draft.eligibilityAnswers) this.eligibilityAnswers = { ...draft.eligibilityAnswers };
-        if (draft.declarationChecked !== undefined) this.declarationChecked = draft.declarationChecked;
-        if (draft.declaration2Checked !== undefined) this.declaration2Checked = draft.declaration2Checked;
-        if (draft.attachmentMeta?.length) {
-          this.attachmentPreviews = draft.attachmentMeta.map((m: any) => ({ name: m.name, type: m.type, size: m.size, url: '' }));
-        }
-        if (draft.dateDisplay) this.dateDisplay = { ...this.dateDisplay, ...draft.dateDisplay };
-
-        this.phase.set(draft.phase);
-        if (draft.eligibilityStep) this.eligibilityStep.set(draft.eligibilityStep);
-        if (draft.currentStep) this.currentStep.set(draft.currentStep);
-        const highest = draft.highestStepReached ?? draft.currentStep ?? 1;
-        this.highestStepReached.set(highest);
-
-        this.restoreAllForms(draft);
-      }
-    } catch (e) {}
-  }
-
-  private restoreAllForms(draft: any): void {
-    this.initDateDisplays();
-    this.patchComplainantDetailsFromFormData();
-    this.patchRegulatedEntityFromFormData();
-    this.patchComplaintDetailsFromFormData();
-    this.restoreAccountTypes(draft.checkedAccountTypes);
-    this.patchRepAuthorizationFromFormData();
-    this.patchEligibilityFromFormData();
-    this.reapplyEligibilityConditionalValidators();
-    this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
-    this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
+    merge(
+      autoTick$,
+      this.manualSave$.pipe(map(() => this.draftPayloadSnapshot())),
+    ).pipe(
+      switchMap(() => {
+        const phone = this.publicAuth.userIdentifier();
+        if (!phone) return of(null);
+        return this.complaintService.saveDraft(this.buildDraftPayload()).pipe(catchError(() => of(null)));
+      }),
+      takeUntil(this.destroy$),
+    ).subscribe(res => {
+      if (res?.draftId) this.draftId.set(res.draftId);
+      this.draftSaved.set(true);
+      this.lastSavedAt.set(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+      setTimeout(() => this.draftSaved.set(false), 2000);
+    });
   }
 
   loadDraftFromServer(draftId: string): void {
     forkJoin([
       this.complaintService.getDraft(draftId),
-      this.entitiesLoaded$.pipe(take(1), catchError(() => of(undefined))),
+      this.entitiesLoaded$.pipe(take(1)),
     ]).subscribe({
-      next: ([draft]) => {
-        if (draft.draftVersion && draft.draftVersion !== DRAFT_VERSION) {
-          this.loadDraft();
-          return;
-        }
-
-        if (draft.formData) {
-          const validKeys = Object.keys(this.formData);
-          for (const key of validKeys) {
-            if (draft.formData[key] !== undefined) this.formData[key] = draft.formData[key];
-          }
-        }
-        if (draft.eligibilityAnswers) this.eligibilityAnswers = { ...draft.eligibilityAnswers };
-        if (draft.currentStep) this.currentStep.set(draft.currentStep);
-        const highest = draft.highestStepReached ?? draft.currentStep ?? 1;
-        this.highestStepReached.set(highest);
-        if (draft.phase === 'form' || draft.phase === 'eligibility') this.phase.set(draft.phase);
-        if (draft.eligibilityStep) {
-          this.eligibilityStep.set(draft.eligibilityStep);
-        } else if (draft.eligibilityAnswers?.['regulatedEntity']) {
-          this.eligibilityStep.set(Object.keys(draft.eligibilityAnswers).length + 1);
-        }
-        if (draft.dateDisplay) this.dateDisplay = { ...this.dateDisplay, ...draft.dateDisplay };
-        if (draft.declarationChecked !== undefined) this.declarationChecked = draft.declarationChecked;
-        if (draft.declaration2Checked !== undefined) this.declaration2Checked = draft.declaration2Checked;
-        if (draft.attachmentMeta?.length) {
-          this.attachmentPreviews = draft.attachmentMeta.map((m: any) => ({
-            name: m.name, type: m.type, size: m.size, url: ''
-          }));
-          this.filesNeedReupload = true;
-        }
-
-        sessionStorage.setItem('cms_draft_id', draftId);
-        this.restoreAllForms(draft);
-      },
-      error: () => { this.loadDraft(); }
+      next: ([draft]) => { this.hydrateFromDraft(draft); },
+      error: () => {}
     });
+  }
+
+  private hydrateFromDraft(draft: any): void {
+    // 1. Restore signals / navigation state
+    if (draft.phase === 'form' || draft.phase === 'eligibility') this.phase.set(draft.phase);
+    if (draft.currentStep) this.currentStep.set(draft.currentStep);
+    this.highestStepReached.set(draft.highestStepReached ?? draft.currentStep ?? 1);
+    if (draft.draftId) this.draftId.set(draft.draftId);
+
+    // 2. Patch the stepper form from the getRawValue() snapshot
+    if (draft.formData) {
+      this.complaintStepperForm.patchValue(draft.formData, { emitEvent: false });
+    }
+
+    // 3. Patch eligibility form from eligibilityFormData (single source of truth)
+    if (draft.eligibilityFormData) {
+      this.eligibilityStageForm.patchValue(draft.eligibilityFormData, { emitEvent: false });
+    } else if (draft.eligibilityAnswers) {
+      this.eligibilityAnswers = { ...draft.eligibilityAnswers };
+      this.patchEligibilityFromFormData();
+    }
+
+    // 4. Rebuild eligibilityAnswers from the patched form (derive, not store)
+    this.rebuildEligibilityAnswers();
+
+    // 5. Restore eligibility step from saved state or derive from answers
+    if (draft.eligibilityStep) {
+      this.eligibilityStep.set(draft.eligibilityStep);
+    } else if (this.eligibilityAnswers['regulatedEntity']) {
+      this.eligibilityStep.set(Object.keys(this.eligibilityAnswers).length + 1);
+    }
+
+    // 6. Sync the flat formData dictionary from the patched reactive forms
+    this.syncFormDataFromControls();
+
+    // 7. Restore declaration from formData (single source of truth)
+    const decl = draft.formData?.declaration;
+    if (decl) {
+      this.declarationChecked = !!decl.declaration1;
+      this.declaration2Checked = !!decl.declaration2;
+      this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
+      this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
+    }
+    // Backwards-compat: support old drafts that still have top-level declarations
+    if (draft.declarationChecked !== undefined && !decl?.declaration1) {
+      this.declarationChecked = draft.declarationChecked;
+      this.declarationForm.controls.declaration1.setValue(this.declarationChecked, { emitEvent: false });
+    }
+    if (draft.declaration2Checked !== undefined && !decl?.declaration2) {
+      this.declaration2Checked = draft.declaration2Checked;
+      this.declarationForm.controls.declaration2.setValue(this.declaration2Checked, { emitEvent: false });
+    }
+
+    // 8. Restore file metadata from formData controls
+    this.hydrateFileControls(draft);
+
+    if (draft.dateDisplay) this.dateDisplay = { ...this.dateDisplay, ...draft.dateDisplay };
+    this.initDateDisplays();
+
+    // 9. Restore account types and location dropdown options
+    this.restoreAccountTypes(draft.checkedAccountTypes);
+    this.restoreLocationOptions();
+
+    // 10. Re-fire conditional validators that were suppressed by emitEvent:false
+    this.reapplyConditionalValidators();
+  }
+
+  private syncFormDataFromControls(): void {
+    const raw = this.complaintStepperForm.getRawValue();
+    const cd = raw.complainantDetails;
+    const re = raw.regulatedEntity;
+    const comp = raw.complaintDetails;
+    const rep = raw.repAuthorization;
+
+    Object.assign(this.formData, {
+      complainantCategory: cd.complaintCategory, firstName: cd.firstName, middleName: cd.middleName,
+      lastName: cd.lastName, age: cd.age, gender: cd.gender, email: cd.email, phone: cd.phone,
+      pincode: cd.pincode, state: cd.state, city: cd.city, addressDetails: cd.addressDetails,
+      isCreditCardComplaint: re.isCreditCardComplaint, entityState: re.entityState,
+      entityDistrict: re.entityDistrict, entityBranch: re.entityBranch,
+      complaintCategory: comp.complaintCategory, complaintText: comp.complaintText,
+      hasAccountWithRE: comp.hasAccountWithRE, isWalletComplaint: comp.isWalletComplaint,
+      walletName: comp.walletName, transactionRefNumber: comp.transactionRefNumber,
+      isBusinessCorrespondent: comp.isBusinessCorrespondent,
+      disputeAmount: comp.disputeAmount, compensationSought: comp.compensationSought,
+      reliefSought: comp.reliefSought,
+      savingsAccountNumber: comp.savingsAccountNumber, loanAccountNumber: comp.loanAccountNumber,
+      atmDebitCardNumber: comp.atmDebitCardNumber, creditCardNumber: comp.creditCardNumber,
+      hasAuthRep: rep.hasAuthRep, repName: rep.repName, repEmail: rep.repEmail,
+      repPhone: rep.repPhone, repPincode: rep.repPincode, repState: rep.repState,
+      repDistrict: rep.repDistrict, repCity: rep.repCity, repAddress: rep.repAddress,
+    });
+
+    const ef = this.eligibilityStageForm;
+    const dateFields = ['bankComplaintDate', 'bankComplaintRef', 'reminderDate', 'replyDate'] as const;
+    for (const f of dateFields) {
+      const val = ef.get(f)?.value || this.eligibilityAnswers[f];
+      if (val) this.formData[f] = val;
+    }
+  }
+
+  private hydrateFileControls(draft: any): void {
+    const fd = draft.formData;
+
+    // Restore complaintDetails.fileUpload (FileMeta[])
+    const fileUploadData = fd?.complaintDetails?.fileUpload;
+    if (Array.isArray(fileUploadData) && fileUploadData.length) {
+      const normalized = fileUploadData.map((m: FileMeta) => ({ ...m, viewUrl: this.normalizeViewUrl(m) }));
+      this.complaintDetailsForm.controls.fileUpload.setValue(normalized);
+      this.attachmentPreviews = normalized.map((m: FileMeta) => ({
+        name: m.fileName, url: m.viewUrl, type: '', size: m.fileSize,
+        fileId: m.fileId, viewUrl: m.viewUrl,
+      }));
+    } else if (draft.attachmentMeta?.length) {
+      const migrated: FileMeta[] = draft.attachmentMeta.map((m: any) => ({
+        fileId: '', fileName: m.name, fileSize: m.size, viewUrl: '',
+      }));
+      this.complaintDetailsForm.controls.fileUpload.setValue(migrated);
+      this.attachmentPreviews = migrated.map(m => ({
+        name: m.fileName, url: '', type: '', size: m.fileSize, fileId: '', viewUrl: '',
+      }));
+    }
+
+    // Restore repAuthorization.repFileUpload (FileMeta[])
+    const repFileData = fd?.repAuthorization?.repFileUpload;
+    if (Array.isArray(repFileData) && repFileData.length) {
+      const normalized = repFileData.map((m: FileMeta) => ({ ...m, viewUrl: this.normalizeViewUrl(m) }));
+      this.repAuthorizationForm.controls.repFileUpload.setValue(normalized);
+    }
+
+    // Restore eligibility file metadata
+    const ef = this.eligibilityStageForm;
+    const complaintMeta = ef.get('complaintFileWithRE')?.value as FileMeta | null;
+    if (complaintMeta?.fileId) {
+      complaintMeta.viewUrl = this.normalizeViewUrl(complaintMeta);
+      this.complaintFileMeta = complaintMeta;
+      this.complaintFileWithREName = complaintMeta.fileName;
+    }
+    const replyMeta = ef.get('replyFileMeta')?.value as FileMeta | null;
+    if (replyMeta?.fileId) {
+      replyMeta.viewUrl = this.normalizeViewUrl(replyMeta);
+      this.replyFileMeta = replyMeta;
+      this.replyFileName = replyMeta.fileName;
+    }
+    const reminderMeta = ef.get('reminderFileMeta')?.value as FileMeta | null;
+    if (reminderMeta?.fileId) {
+      reminderMeta.viewUrl = this.normalizeViewUrl(reminderMeta);
+      this.reminderFileMeta = reminderMeta;
+      this.reminderFileName = reminderMeta.fileName;
+    }
+  }
+
+  private normalizeViewUrl(meta: FileMeta): string {
+    if (!meta.fileId) return '';
+    if (meta.viewUrl?.includes('/view?path=')) return meta.viewUrl;
+    return this.fileUploadService.getDownloadUrl(meta.fileId);
+  }
+
+  private restoreLocationOptions(): void {
+    const raw = this.complaintStepperForm.getRawValue();
+    const cd = raw.complainantDetails;
+    const re = raw.regulatedEntity;
+    const rep = raw.repAuthorization;
+
+    if (cd.state) this.complainantStates = [cd.state];
+    if (cd.city) this.complainantDistricts = [cd.city];
+    if (re.entityState) this.states = [{ label: re.entityState, value: re.entityState }];
+    if (re.entityDistrict) this.districts = [re.entityDistrict];
+    if (re.entityBranch) this.branches = [re.entityBranch];
+    if (rep.repState) this.repStates = [rep.repState];
+    if (rep.repDistrict) this.repDistricts = [rep.repDistrict];
+    if (rep.repCity) this.repCities = [rep.repCity];
+  }
+
+  private reapplyConditionalValidators(): void {
+    const cd = this.complaintDetailsForm;
+    const ra = this.repAuthorizationForm;
+    const re = this.regulatedEntityForm;
+
+    // hasAccountWithRE → accountTypeSelection + account number validators
+    if (cd.controls.hasAccountWithRE.value === 'yes') {
+      cd.controls.accountTypeSelection.setValidators([Validators.required]);
+      this.syncAccountTypeSelectionControl();
+    } else {
+      cd.controls.accountTypeSelection.clearValidators();
+    }
+    cd.controls.accountTypeSelection.updateValueAndValidity();
+
+    // isWalletComplaint → walletName + transactionRefNumber validators
+    if (cd.controls.isWalletComplaint.value === 'yes') {
+      cd.controls.walletName.setValidators([Validators.required, Validators.maxLength(100)]);
+      cd.controls.transactionRefNumber.setValidators([Validators.required, Validators.maxLength(150), CustomValidators.numericOnly()]);
+    } else {
+      cd.controls.walletName.clearValidators();
+      cd.controls.transactionRefNumber.clearValidators();
+    }
+    cd.controls.walletName.updateValueAndValidity();
+    cd.controls.transactionRefNumber.updateValueAndValidity();
+
+    // isCreditCardComplaint → entity state/district/branch validators
+    if (re.controls.isCreditCardComplaint.value === 'no') {
+      re.controls.entityState.setValidators([Validators.required]);
+      re.controls.entityDistrict.setValidators([Validators.required]);
+      re.controls.entityBranch.setValidators([Validators.required]);
+    } else {
+      re.controls.entityState.clearValidators();
+      re.controls.entityDistrict.clearValidators();
+      re.controls.entityBranch.clearValidators();
+    }
+    re.controls.entityState.updateValueAndValidity();
+    re.controls.entityDistrict.updateValueAndValidity();
+    re.controls.entityBranch.updateValueAndValidity();
+
+    // hasAuthRep → rep field validators
+    if (ra.controls.hasAuthRep.value === 'yes') {
+      ra.controls.repName.setValidators([Validators.required, Validators.maxLength(150), CustomValidators.alphaNumeric()]);
+      ra.controls.repPhone.setValidators([Validators.required, CustomValidators.numericOnly(), Validators.minLength(10), Validators.maxLength(10)]);
+      ra.controls.repEmail.setValidators([Validators.email, Validators.maxLength(100)]);
+      ra.controls.repPincode.setValidators([Validators.required, Validators.minLength(6), Validators.maxLength(6), CustomValidators.numericOnly()]);
+      ra.controls.repState.setValidators([Validators.required]);
+      ra.controls.repDistrict.setValidators([Validators.required]);
+      ra.controls.repCity.setValidators([Validators.required]);
+      ra.controls.repAddress.setValidators([Validators.required, Validators.maxLength(100)]);
+      ra.controls.repFileUpload.setValidators([fileMetaRequired]);
+      const repTextFields = ['repName', 'repPhone', 'repEmail', 'repPincode', 'repState', 'repDistrict', 'repCity', 'repAddress'] as const;
+      for (const f of repTextFields) { ra.controls[f].updateValueAndValidity(); }
+      ra.controls.repFileUpload.updateValueAndValidity();
+    }
+
+    // complainant category → personal field validators
+    const complainantCategory = this.complainantDetailsForm.controls.complaintCategory.value;
+    if (complainantCategory) {
+      this.applyComplainantCategoryValidators(complainantCategory);
+    }
+
+    // Eligibility: filedWithRE → bankComplaintDate + complaintFileWithRE
+    const ef = this.eligibilityStageForm;
+    if (ef.get('filedWithRE')!.value === 'yes') {
+      ef.get('bankComplaintDate')!.setValidators([Validators.required]);
+      ef.get('complaintFileWithRE')!.setValidators([Validators.required]);
+    } else {
+      ef.get('bankComplaintDate')!.clearValidators();
+      ef.get('complaintFileWithRE')!.clearValidators();
+    }
+    ef.get('bankComplaintDate')!.updateValueAndValidity();
+    ef.get('complaintFileWithRE')!.updateValueAndValidity();
+
+    // Eligibility: receivedReply → replyDate + replyFileMeta
+    if (ef.get('receivedReply')!.value === 'yes') {
+      ef.get('replyDate')!.setValidators([Validators.required]);
+      ef.get('replyFileMeta')!.setValidators([Validators.required]);
+    } else {
+      ef.get('replyDate')!.clearValidators();
+      ef.get('replyFileMeta')!.clearValidators();
+    }
+    ef.get('replyDate')!.updateValueAndValidity();
+    ef.get('replyFileMeta')!.updateValueAndValidity();
+
+    // Eligibility: sentReminder → reminderDate + reminderFileMeta
+    if (ef.get('sentReminder')!.value === 'yes') {
+      ef.get('reminderDate')!.setValidators([Validators.required]);
+      ef.get('reminderFileMeta')!.setValidators([Validators.required]);
+    } else {
+      ef.get('reminderDate')!.clearValidators();
+      ef.get('reminderFileMeta')!.clearValidators();
+    }
+    ef.get('reminderDate')!.updateValueAndValidity();
+    ef.get('reminderFileMeta')!.updateValueAndValidity();
+
+    // Eligibility: throughAdvocateEligibility → isComplainantSelf
+    if (ef.get('throughAdvocateEligibility')!.value === 'yes') {
+      ef.get('isComplainantSelf')!.setValidators([Validators.required]);
+    } else {
+      ef.get('isComplainantSelf')!.clearValidators();
+    }
+    ef.get('isComplainantSelf')!.updateValueAndValidity();
+
+    // Eligibility: employeeOfRE → employerRelationship
+    if (ef.get('employeeOfRE')!.value === 'yes') {
+      ef.get('employerRelationship')!.setValidators([Validators.required]);
+    } else {
+      ef.get('employerRelationship')!.clearValidators();
+    }
+    ef.get('employerRelationship')!.updateValueAndValidity();
   }
 
   patchComplaintDetailsFromFormData(): void {
@@ -1472,10 +1868,6 @@ export class ComplaintFacadeService {
         ctrl.markAsTouched();
       }
     }
-    if (this.formData['bankComplaintDate']) ef.get('bankComplaintDate')!.setValue(this.formData['bankComplaintDate'], { emitEvent: false });
-    if (this.formData['bankComplaintRef']) ef.get('bankComplaintRef')!.setValue(this.formData['bankComplaintRef'], { emitEvent: false });
-    if (this.formData['reminderDate']) ef.get('reminderDate')!.setValue(this.formData['reminderDate'], { emitEvent: false });
-    if (this.formData['replyDate']) ef.get('replyDate')!.setValue(this.formData['replyDate'], { emitEvent: false });
   }
 
   private reapplyEligibilityConditionalValidators(): void {
@@ -1537,11 +1929,10 @@ export class ComplaintFacadeService {
   }
 
   clearDraft(): void {
-    sessionStorage.removeItem('cms_complaint_draft');
-    const draftId = sessionStorage.getItem('cms_draft_id');
-    if (draftId) {
-      this.complaintService.deleteDraft(draftId).subscribe({ error: () => {} });
-      sessionStorage.removeItem('cms_draft_id');
+    const id = this.draftId();
+    if (id) {
+      this.complaintService.deleteDraft(id).subscribe({ error: () => {} });
+      this.draftId.set('');
     }
   }
 
@@ -1626,12 +2017,10 @@ export class ComplaintFacadeService {
         this.entitySelectOptions = covered.map(b => ({ label: b.name, value: String(b.id) }));
         this.nonCoveredEntityOptions = notCovered.map(b => ({ label: b.name, value: String(b.id) }));
         this.entitiesLoaded$.next();
-        this.entitiesLoaded$.complete();
       },
       error: () => {
         this.eligibilityQuestions[0].options = [];
         this.entitiesLoaded$.next();
-        this.entitiesLoaded$.complete();
       }
     });
   }

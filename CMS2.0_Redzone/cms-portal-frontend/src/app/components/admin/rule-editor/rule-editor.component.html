@@ -1,0 +1,98 @@
+<div class="rule-editor">
+  <div class="header">
+    <h1>{{ isEdit() ? 'Edit Rule' : 'Create New Rule' }}</h1>
+    <button class="btn btn-back" (click)="cancel()">← Back to Rules</button>
+  </div>
+
+  @if (successMessage()) {
+    <div class="alert alert-success">{{ successMessage() }}</div>
+  }
+  @if (errorMessage()) {
+    <div class="alert alert-error">{{ errorMessage() }}</div>
+  }
+
+  <div class="form-container">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Rule Code *</label>
+        <input type="text" [(ngModel)]="form.ruleCode" placeholder="e.g. ASSIGN_FOREX_TEAM"
+               [readonly]="isEdit()" />
+        <small>Unique identifier (uppercase, underscores)</small>
+      </div>
+      <div class="form-group">
+        <label>Rule Name *</label>
+        <input type="text" [(ngModel)]="form.ruleName" placeholder="e.g. Forex Complaints - Assign to Treasury Team" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category *</label>
+        <select [(ngModel)]="form.categoryCode" (ngModelChange)="onCategoryChange()">
+          @for (cat of categories(); track cat.id) {
+            <option [value]="cat.code">{{ cat.name }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Salience (Priority)</label>
+        <input type="number" [(ngModel)]="form.salience" min="1" max="1000" />
+        <small>Higher = runs first (100 = normal, 50 = lower, 10 = fallback)</small>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Current User (Maker)</label>
+      <input type="text" [(ngModel)]="currentUser" style="max-width: 200px;" />
+    </div>
+
+    <div class="form-group full-width">
+      <div class="drl-header">
+        <label>DRL Rule Content *</label>
+        <button class="btn btn-validate" (click)="validateDrl()" [disabled]="validating()">
+          {{ validating() ? 'Validating...' : 'Validate Syntax' }}
+        </button>
+      </div>
+      <textarea [(ngModel)]="form.drlContent" rows="18" class="drl-editor" spellcheck="false"></textarea>
+
+      @if (validation(); as v) {
+        <div class="validation-result" [class.valid]="v.valid" [class.invalid]="!v.valid">
+          @if (v.valid) {
+            <span>✓ DRL syntax is valid</span>
+          } @else {
+            <span>✗ Compilation errors:</span>
+            <ul>
+              @for (err of v.errors; track err) {
+                <li>{{ err }}</li>
+              }
+            </ul>
+          }
+          @if (v.warnings.length) {
+            <div class="warnings">
+              <span>Warnings:</span>
+              <ul>
+                @for (w of v.warnings; track w) {
+                  <li>{{ w }}</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (isEdit()) {
+      <div class="form-group">
+        <label>Change Reason</label>
+        <input type="text" [(ngModel)]="form.changeReason" placeholder="Why is this rule being modified?" />
+      </div>
+    }
+
+    <div class="form-actions">
+      <button class="btn btn-primary" (click)="save()" [disabled]="loading()">
+        {{ loading() ? 'Saving...' : (isEdit() ? 'Update Rule' : 'Create Rule') }}
+      </button>
+      <button class="btn btn-secondary" (click)="cancel()">Cancel</button>
+    </div>
+  </div>
+</div>

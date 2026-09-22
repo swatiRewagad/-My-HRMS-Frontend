@@ -1,0 +1,91 @@
+.rbio-sla-progress {
+  background: white; border-radius: 8px; padding: 14px 16px; border: 1px solid var(--border-subtle);
+}
+
+// Multi-stage progress
+.stage-progress {
+  margin-bottom: 12px;
+}
+
+.stages-bar {
+  display: flex; gap: 4px; align-items: center; position: relative;
+}
+
+.stage-segment {
+  flex: 1; height: 6px; background: var(--border-subtle); border-radius: 3px;
+  position: relative; overflow: hidden;
+
+  .stage-fill {
+    height: 100%; border-radius: 3px; transition: width 0.3s ease;
+    background: var(--state-success-solid);
+  }
+
+  &.completed .stage-fill { background: var(--state-success-solid); }
+  &.active .stage-fill { background: var(--brand-primary); }
+  &.pending .stage-fill { background: transparent; }
+
+  .stage-marker {
+    position: absolute; top: 50%; right: -6px; transform: translateY(-50%);
+    width: 12px; height: 12px; border-radius: 50%; z-index: 1;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--border-subtle); border: 2px solid white;
+
+    &.completed { background: var(--state-success-solid); }
+    &.active { background: var(--brand-primary); }
+    &.pending { background: var(--border-input); }
+
+    .marker-icon { color: white; font-size: 8px; font-weight: 700; }
+    .marker-dot { width: 4px; height: 4px; border-radius: 50%; background: white; }
+  }
+}
+
+.stages-labels {
+  display: flex; gap: 4px; margin-top: 8px;
+}
+
+.stage-label {
+  flex: 1; text-align: center;
+  .label-text { font-size: 11px; font-weight: 500; color: var(--text-muted); display: block; }
+  .label-days { font-size: 10px; color: var(--text-subtle); }
+  &.completed .label-text { color: var(--state-success-solid); font-weight: 600; }
+  &.active .label-text { color: var(--brand-primary); font-weight: 600; }
+}
+
+// Stage timer
+.stage-timer {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-radius: 4px; margin-bottom: 10px; font-size: 12px;
+
+  .timer-label { color: var(--text-muted); font-weight: 500; }
+  .timer-value { font-weight: 700; }
+  .timer-meta { color: var(--text-subtle); }
+
+  &.green { background: var(--state-success-bg); .timer-value { color: var(--state-success-solid); } }
+  &.yellow { background: #fefce8; .timer-value { color: #ca8a04; } }
+  &.red { background: var(--state-danger-bg); .timer-value { color: var(--state-danger-solid-hover); } }
+}
+
+// Total lifecycle progress
+.total-progress {
+  .total-label {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+    span { font-size: 11px; color: var(--text-muted); }
+    .total-remaining {
+      font-weight: 600;
+      &.green { color: var(--state-success-solid); }
+      &.yellow { color: #ca8a04; }
+      &.red { color: var(--state-danger-solid-hover); }
+    }
+  }
+
+  .total-bar {
+    height: 4px; background: var(--border-subtle); border-radius: 2px; overflow: hidden;
+  }
+
+  .total-fill {
+    height: 100%; border-radius: 2px; transition: width 0.3s ease;
+    &.green { background: var(--state-success-solid); }
+    &.yellow { background: #ca8a04; }
+    &.red { background: var(--state-danger-solid-hover); }
+  }
+}

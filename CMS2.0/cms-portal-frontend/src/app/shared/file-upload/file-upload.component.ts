@@ -56,7 +56,12 @@ export class FileUploadComponent implements OnInit, OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['existingFiles'] && !changes['existingFiles'].firstChange) {
-      this.hydrateFromExisting();
+      if (!this.existingFiles?.length && this.files.length > 0) {
+        this.files.forEach(f => URL.revokeObjectURL(f.url));
+        this.files = [];
+      } else {
+        this.hydrateFromExisting();
+      }
     }
   }
 

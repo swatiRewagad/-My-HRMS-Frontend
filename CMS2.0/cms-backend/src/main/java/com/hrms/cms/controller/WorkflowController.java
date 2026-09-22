@@ -903,7 +903,10 @@ public class WorkflowController {
     private List<Map<String, Object>> buildTaskList(List<Complaint> complaints, String requestingOfficer) {
         return complaints.stream().map(c -> {
             Map<String, Object> task = new LinkedHashMap<>();
-            task.put("complaintId", c.getId());
+            // The 6-digit CRPC draft id if this complaint was converted from one, otherwise
+            // fall back to this row's own internal id (complaints seeded directly into RBIO/CEPC
+            // without ever going through a CRPC draft have no origin draft id to show).
+            task.put("complaintId", c.getOriginDraftId() != null ? c.getOriginDraftId() : c.getId());
             task.put("complaintNumber", c.getComplaintNumber());
             task.put("subject", c.getSubject());
             task.put("complainantName", c.getComplainantName());

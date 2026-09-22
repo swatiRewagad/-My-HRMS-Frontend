@@ -56,7 +56,17 @@
               <input type="text" placeholder="Search" (input)="dt.filter($any($event.target).value, 'complaintId', 'contains')" class="col-filter" />
             </th>
             <th class="col-date">
-              <input type="date" class="col-filter" [value]="dateFrom" (change)="onDateFromChange($event)" title="From date" />
+              <p-datepicker
+                [(ngModel)]="dateFilter"
+                dateFormat="dd/mm/yy"
+                placeholder="dd/mm/yyyy"
+                [showIcon]="true"
+                [showClear]="true"
+                appendTo="body"
+                (onSelect)="onDateFilterChange($event)"
+                (onClear)="onDateFilterChange(null)"
+                styleClass="date-filter-picker">
+              </p-datepicker>
             </th>
             <th class="col-status">
               <p-select
@@ -210,7 +220,7 @@
           </div>
           <div class="ct-regulated-text">
             <strong>{{ 'home.ct_regulated' | translate }}</strong>
-            <a href="javascript:void(0)" class="ct-download-link"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
+            <a href="assets/documents/Ombudsman_Scheme-2026.pdf" download class="ct-download-link"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
           </div>
         </div>
       </div>
@@ -235,7 +245,7 @@
             <div class="scheme-text">
               <h4>{{ scheme.title }}</h4>
               @if (scheme.hasDownload) {
-                <a href="javascript:void(0)" class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
+                <a [href]="scheme.downloadUrl" download class="scheme-download"><i class="pi pi-download"></i> {{ 'home.ct_download' | translate }}</a>
               }
             </div>
           </div>
@@ -278,13 +288,13 @@
         <div class="ways-icon"><i class="pi pi-envelope"></i></div>
         <h4>{{ 'home.ways_email_title' | translate }}</h4>
         <p>{{ 'home.ways_email_desc' | translate }}</p>
-        <a href="javascript:void(0)" class="ways-link">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
+        <a href="javascript:void(0)" class="ways-link" (click)="openFilingPopup('email')">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
       <div class="ways-card">
         <div class="ways-icon"><i class="pi pi-file-edit"></i></div>
         <h4>{{ 'home.ways_letter_title' | translate }}</h4>
         <p>{{ 'home.ways_letter_desc' | translate }}</p>
-        <a href="javascript:void(0)" class="ways-link">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
+        <a href="javascript:void(0)" class="ways-link" (click)="openFilingPopup('physical')">{{ 'home.ways_view_details' | translate }} <i class="pi pi-chevron-right"></i></a>
       </div>
     </div>
   </div>
@@ -329,6 +339,13 @@
 </section>
 
 
+<!-- Filing Method Popup (Email / Physical Letter) -->
+<app-filing-method-popup
+  [(visible)]="showFilingPopup"
+  [methodType]="filingMethodType"
+  (fileOnPortal)="onFileOnPortal()">
+</app-filing-method-popup>
+
 <!-- FAQ Section -->
 <section class="faq-section">
   <div class="container">
@@ -337,7 +354,7 @@
         <span class="section-tag">{{ 'home.faq_tag' | translate }}</span>
         <h2>{{ 'home.faq_title' | translate }}</h2>
       </div>
-      <a href="javascript:void(0)" class="view-all">{{ 'home.view_all' | translate }}</a>
+      <a routerLink="/public/faq" class="view-all">{{ 'home.view_all' | translate }}</a>
     </div>
     <div class="faq-list">
       @for (faq of faqs; track faq.question; let i = $index) {

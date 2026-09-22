@@ -4,16 +4,12 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 ARG SERVICE_NAME
 WORKDIR /app
 
-# Copy parent POM and shared modules first (cacheable layer)
-COPY pom.xml .
-COPY cms-common/pom.xml cms-common/pom.xml
-COPY cms-common/src cms-common/src
-COPY cms-infrastructure/pom.xml cms-infrastructure/pom.xml
-COPY cms-infrastructure/src cms-infrastructure/src
-
-# Copy target service
-COPY ${SERVICE_NAME}/pom.xml ${SERVICE_NAME}/pom.xml
-COPY ${SERVICE_NAME}/src ${SERVICE_NAME}/src
+# The root pom.xml declares 15+ reactor modules, so `mvn -pl ... -am` needs every declared
+# module's pom.xml on disk to resolve the reactor even though only cms-common,
+# cms-infrastructure, and SERVICE_NAME actually get compiled. Copy the whole (dockerignore-
+# filtered) tree rather than hand-picking directories, since that list drifts as services
+# are added — see the .dockerignore note this Dockerfile relies on.
+COPY . .
 
 # Build only the shared modules + target service
 RUN apk add --no-cache maven \
@@ -22,13 +18,20 @@ RUN apk add --no-cache maven \
 
 FROM eclipse-temurin:21-jre-alpine
 ARG SERVICE_NAME
+# Each service sets its own server.servlet.context-path (e.g. /cms-rules) in application.yml,
+# so a bare /actuator/health 404s for all of them except the ones mounted at "/". Pass the
+# matching path per service from docker-compose's build args.
+ARG CONTEXT_PATH=""
+ENV CONTEXT_PATH=${CONTEXT_PATH}
 WORKDIR /app
 RUN addgroup -S cms && adduser -S cms -G cms
 COPY --from=build /app/${SERVICE_NAME}/target/*.jar app.jar
 USER cms
 
+# 127.0.0.1, not localhost: busybox wget resolves localhost to ::1 first, and the JVM only
+# binds the IPv4 socket, so "localhost" fails with connection refused even when the app is up.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:${SERVER_PORT:-8080}/actuator/health || exit 1
+  CMD wget -qO- http://127.0.0.1:${SERVER_PORT:-8080}${CONTEXT_PATH}/actuator/health || exit 1
 
 ENTRYPOINT ["java", \
   "-XX:+UseG1GC", \

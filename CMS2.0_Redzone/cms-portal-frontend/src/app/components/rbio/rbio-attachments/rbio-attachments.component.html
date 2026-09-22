@@ -1,0 +1,92 @@
+<div class="attachments-panel">
+
+  <div class="attachments-header">
+    <h3 class="section-title">{{ 'attachment.section_title' | translate }}</h3>
+
+    <div class="header-actions">
+      <!-- UST589: filter by where the document came from. -->
+      <select class="source-filter"
+              [ngModel]="sourceFilter()" (ngModelChange)="sourceFilter.set($event)">
+        <option value="ALL">{{ 'attachment.filter_all' | translate }}</option>
+        <option value="OFFICER">{{ 'attachment.source.officer' | translate }}</option>
+        <option value="COMPLAINANT">{{ 'attachment.source.complainant' | translate }}</option>
+        <option value="REGULATED_ENTITY">{{ 'attachment.source.regulated_entity' | translate }}</option>
+        <option value="SYSTEM">{{ 'attachment.source.system' | translate }}</option>
+      </select>
+
+      <!-- UST588: download every attachment as one archive. -->
+      @if (attachments().length) {
+        <a class="bundle-btn" [href]="bundleUrl()" download>
+          {{ 'attachment.download_all' | translate }}
+        </a>
+      }
+
+      <!-- UST585: Attach New Document. -->
+      <label class="upload-btn">
+        <input type="file" (change)="onFileSelected($event)" hidden [disabled]="uploading()" />
+        {{ (uploading() ? 'attachment.uploading' : 'attachment.attach_new') | translate }}
+      </label>
+    </div>
+  </div>
+
+  <!-- UST587: the limit shown comes from configuration, not a literal. -->
+  <div class="limit-note">
+    {{ 'attachment.limit_note' | translate:limitParams }}
+  </div>
+
+  @if (uploadError()) {
+    <div class="error-state" role="alert">{{ uploadError()! | translate }}</div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">{{ 'attachment.loading' | translate }}</div>
+  }
+
+  @if (error()) {
+    <div class="error-state" role="alert">
+      <span>{{ error()! | translate }}</span>
+      <button type="button" class="retry-btn" (click)="load()">
+        {{ 'attachment.retry' | translate }}
+      </button>
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+    <table class="attachments-table">
+      <thead>
+        <tr>
+          <th>{{ 'attachment.col_name' | translate }}</th>
+          <th>{{ 'attachment.col_source' | translate }}</th>
+          <th>{{ 'attachment.col_uploaded_by' | translate }}</th>
+          <th>{{ 'attachment.col_size' | translate }}</th>
+          <th>{{ 'attachment.col_uploaded_at' | translate }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (a of visibleAttachments(); track a.id) {
+          <tr>
+            <td class="name-cell">{{ a.originalName }}</td>
+            <td>
+              <span class="source-badge" [class]="'src-' + (a.source || 'unknown').toLowerCase()">
+                {{ sourceKey(a.source) | translate }}
+              </span>
+            </td>
+            <td>{{ a.uploadedBy || '—' }}</td>
+            <td>{{ formatSize(a.fileSize) }}</td>
+            <td>{{ a.uploadedAt | date:'dd-MMM-yyyy HH:mm' }}</td>
+            <td>
+              <a [href]="downloadUrl(a.id)" download class="download-link">
+                {{ 'attachment.download' | translate }}
+              </a>
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6" class="empty-state">{{ 'attachment.empty' | translate }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

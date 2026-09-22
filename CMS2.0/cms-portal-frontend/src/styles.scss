@@ -74,25 +74,355 @@ body.high-contrast {
   background: #000 !important;
   color: #fff !important;
 
-  * {
-    color: #fff !important;
-    border-color: #fff !important;
-  }
-
+  // ── Base resets ──
   a { color: #ffff00 !important; }
 
-  .main-header, .scheme-card, .history-card, .press-card, .faq-item {
-    background: #1a1a1a !important;
+  // ── Layout & page backgrounds ──
+  app-public-layout,
+  .home-section,
+  .my-complaints-page,
+  .main-content {
+    background: #000 !important;
   }
 
-  .hero-outlined-btn, .action-btn, .filter-input {
-    background: #1a1a1a !important;
+  .navbar-bg {
+    background: #000 !important;
+  }
+
+  .main-header {
+    background: #111 !important;
+
+    .brand-logo {
+      filter: brightness(0) invert(1) !important;
+      opacity: 0.9 !important;
+    }
+  }
+
+  .main-nav a {
+    color: #fff !important;
+    &:hover { color: #ffff00 !important; }
+  }
+
+  .nav-call-box {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #555 !important;
+    i { color: #ffff00 !important; }
+  }
+
+  .nav-user-box,
+  .nav-user-box .nav-user-icon,
+  .nav-user-box .nav-user-phone,
+  .nav-user-box .nav-user-chevron {
     color: #fff !important;
   }
 
-  .hero-btn, .file-new-btn, .login-btn, .wwd-btn-primary {
+  .user-dropdown-menu {
+    background: #1a1a1a !important;
+    border-color: #444 !important;
+  }
+
+  .user-dropdown-item {
+    color: #fff !important;
+    &:hover { background: #333 !important; }
+    &.logout { color: #ff6b6b !important; i { color: #ff6b6b !important; } }
+  }
+
+  .user-dropdown-divider { background: #444 !important; }
+  .user-dropdown-info .user-dropdown-last-login,
+  .user-dropdown-info .user-dropdown-email { color: #aaa !important; }
+
+  // ── Page titles ──
+  .page-title,
+  .home-title {
+    color: #fff !important;
+  }
+
+  // ── Primary action buttons ──
+  .hero-btn, .file-new-btn, .btn-file-new, .login-btn {
     background: #ff6b35 !important;
     color: #000 !important;
+  }
+
+  // ── Table card ──
+  .table-card {
+    background: #111 !important;
+    border-color: #444 !important;
+    box-shadow: none !important;
+  }
+
+  // ── PrimeNG Table ──
+  .p-datatable,
+  .p-datatable-table,
+  .p-datatable-wrapper {
+    background: #111 !important;
+  }
+
+  .p-datatable-thead > tr > th {
+    background: #111 !important;
+    color: #fff !important;
+    border-color: #333 !important;
+  }
+
+  .p-datatable-tbody > tr {
+    background: #111 !important;
+    color: #fff !important;
+
+    > td {
+      color: #fff !important;
+      border-color: #333 !important;
+    }
+
+    &:hover { background: #1a1a1a !important; }
+    &.draft-row { background: #1a1020 !important; }
+  }
+
+  .p-datatable-emptymessage td {
+    background: #111 !important;
+    color: #aaa !important;
+  }
+
+  .empty-state {
+    i { color: #555 !important; }
+    p { color: #aaa !important; }
+  }
+
+  // ── Column filters ──
+  .col-filter,
+  input[type="text"],
+  input[type="date"],
+  input[type="search"] {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #555 !important;
+    &::placeholder { color: #888 !important; }
+  }
+
+  // ── PrimeNG DatePicker ──
+  .p-datepicker,
+  .p-datepicker-panel {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #555 !important;
+  }
+
+  .p-datepicker .p-inputtext {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #555 !important;
+    &::placeholder { color: #888 !important; }
+  }
+
+  .p-datepicker-header {
+    background: #222 !important;
+    color: #fff !important;
+  }
+
+  .p-datepicker-calendar td > span {
+    color: #fff !important;
+    &:hover { background: #333 !important; }
+    &.p-highlight { background: #ff6b35 !important; color: #000 !important; }
+  }
+
+  .p-datepicker-calendar th { color: #aaa !important; }
+
+  // ── PrimeNG Select / Dropdown ──
+  .p-select {
+    background: #1a1a1a !important;
+    border-color: #555 !important;
+  }
+
+  .p-select-label { color: #fff !important; }
+
+  .p-select-panel,
+  .p-select-overlay {
+    background: #1a1a1a !important;
+    border-color: #555 !important;
+  }
+
+  .p-select-option {
+    color: #fff !important;
+    &:hover, &.p-highlight { background: #333 !important; }
+  }
+
+  // ── PrimeNG Sort icons ──
+  .p-sortable-column-icon { color: #888 !important; }
+
+  // ── PrimeNG Paginator ──
+  .p-paginator {
+    background: #111 !important;
+    border-color: #333 !important;
+    color: #fff !important;
+  }
+
+  .p-paginator-element {
+    color: #fff !important;
+    &.p-highlight,
+    &.p-paginator-page.p-highlight {
+      background: #ff6b35 !important;
+      color: #000 !important;
+      border-color: #ff6b35 !important;
+    }
+    &:hover:not(.p-highlight) { background: #333 !important; }
+  }
+
+  .p-paginator-current { color: #aaa !important; }
+
+  .p-paginator-rpp-options {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #555 !important;
+  }
+
+  // ── Status pills ──
+  .status-pill {
+    border: 1px solid currentColor !important;
+  }
+
+  .status-inprogress { background: #1a1a3a !important; color: #7b8fff !important; .status-dot { background: #7b8fff !important; } }
+  .status-closed { background: #0a2a14 !important; color: #4ade80 !important; .status-dot { background: #4ade80 !important; } }
+  .status-info-required { background: #2a0a0a !important; color: #ff6b6b !important; .status-dot { background: #ff6b6b !important; } }
+  .status-pending { background: #2a1e00 !important; color: #fbbf24 !important; .status-dot { background: #fbbf24 !important; } }
+  .status-draft { background: #1a0a2a !important; color: #c084fc !important; .status-dot { background: #c084fc !important; } }
+
+  // ── Complaint link ──
+  .complaint-link { color: #ffff00 !important; }
+
+  // ── Action buttons ──
+  .btn-view {
+    background: #1a1a2e !important;
+    color: #7bb8ff !important;
+    border-color: #555 !important;
+  }
+
+  .btn-resume {
+    background: #472192 !important;
+    color: #fff !important;
+  }
+
+  .btn-delete-draft {
+    background: #2a0a0a !important;
+    border-color: #555 !important;
+    color: #ff6b6b !important;
+  }
+
+  .btn-appeal {
+    background: #2a1500 !important;
+    color: #ffb366 !important;
+    border-color: #555 !important;
+  }
+
+  .btn-feedback {
+    background: #0a2a14 !important;
+    color: #4ade80 !important;
+    border-color: #555 !important;
+  }
+
+  .btn-download {
+    color: #ffff00 !important;
+  }
+
+  .no-document { color: #555 !important; }
+
+  // ── Home landing (unauthenticated) sections ──
+  .public-bg-wrapper { background: #000 !important; }
+
+  .hero {
+    background: transparent !important;
+    .hero-content h1 { color: #fff !important; .highlight { color: #ff6b35 !important; } }
+    .hero-subtitle { color: #ccc !important; }
+  }
+
+  .hero-outlined-btn {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #555 !important;
+    &:hover { border-color: #ffff00 !important; color: #ffff00 !important; }
+  }
+
+  .already-filed { color: #aaa !important; }
+
+  .complaint-types { background: #0a0a1a !important; }
+
+  .scheme-section { background: #000 !important; }
+  .scheme-card {
+    background: #1a1a1a !important;
+    border-color: #444 !important;
+    h4 { color: #fff !important; }
+  }
+  .scheme-title { color: #fff !important; }
+  .scheme-download { color: #ff6b35 !important; }
+
+  // ── What We Do, Ways, Education, FAQ sections ──
+  .whatwedo { background: #000 !important; }
+  .wwd-content h2 { color: #fff !important; }
+  .wwd-content p { color: #ccc !important; }
+  .wwd-tag, .section-tag { color: #ff6b35 !important; }
+
+  .ways-section { background: #000 !important; }
+  .ways-title { color: #fff !important; }
+  .ways-card {
+    background: #1a1a1a !important;
+    border-color: #444 !important;
+    h4 { color: #fff !important; }
+    p { color: #ccc !important; }
+  }
+  .ways-card-active {
+    background: linear-gradient(135deg, #2a1f6e 0%, #3a0a6e 100%) !important;
+  }
+  .ways-icon { background: #222 !important; }
+
+  .education-section { background: #0a0a0a !important; }
+  .education-card {
+    background: #1a1a1a !important;
+    border-color: #444 !important;
+    h4 { color: #fff !important; }
+    p { color: #ccc !important; }
+  }
+
+  .carousel-arrow {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #555 !important;
+  }
+
+  .section-header h2 { color: #fff !important; }
+  .view-all { color: #ffff00 !important; }
+
+  .faq-section { background: #0a0a0a !important; }
+  .faq-item {
+    background: #1a1a1a !important;
+    border-color: #444 !important;
+    &.open { border-color: #ff6b35 !important; }
+  }
+  .faq-question {
+    span { color: #fff !important; }
+    i { color: #aaa !important; }
+  }
+  .faq-item.open .faq-question span { color: #ff6b35 !important; }
+  .faq-answer p { color: #ccc !important; }
+
+  // ── Assistance banner ──
+  .assistance-banner {
+    background: #1a0a2e !important;
+    h3, p { color: #fff !important; }
+  }
+
+  // ── Footer adjustments ──
+  .footer-wave-curve { background: #111 !important; }
+  .footer-bottom { background: #111 !important; }
+  .footer-top-bar { background: linear-gradient(279.26deg, #1a3060 0%, #2a1260 100%) !important; }
+
+  // ── Hero / landing images ──
+  .hero-image-right img,
+  .hero-circle-image img {
+    opacity: 0.85 !important;
+  }
+
+  .ct-image-frame img,
+  .edu-card-image img,
+  .video-thumb img {
+    opacity: 0.8 !important;
   }
 }
 

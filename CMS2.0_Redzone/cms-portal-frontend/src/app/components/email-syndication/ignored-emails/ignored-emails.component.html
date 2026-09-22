@@ -1,0 +1,111 @@
+<div class="ignored-emails-container">
+  <button class="back-btn" (click)="goBack()">&larr; {{ 'intake.back_to_queue' | translate }}</button>
+
+  <div class="page-header">
+    <h2>{{ 'intake.ignored_emails_report_title' | translate }}</h2>
+    <p class="subtitle">{{ 'intake.ignored_emails_report_subtitle' | translate }}</p>
+    <button class="link-btn" (click)="goToMaster()">{{ 'intake.exceptional_email_master_title' | translate }}</button>
+    <button class="export-btn" (click)="exportCsv()" [disabled]="exporting()">
+      {{ 'intake.ignored_emails_export_csv' | translate }}
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="error-msg">{{ error() | translate }}</div>
+  }
+
+  <div class="filters">
+    <div class="form-group">
+      <label for="filter-sender">{{ 'intake.ignored_filter_sender' | translate }}</label>
+      <input id="filter-sender" type="text" name="senderEmail"
+             [ngModel]="senderEmail()" (ngModelChange)="senderEmail.set($event)"
+             [placeholder]="'intake.ignored_filter_sender_placeholder' | translate">
+    </div>
+    <div class="form-group">
+      <label for="filter-from">{{ 'intake.ignored_filter_from_date' | translate }}</label>
+      <input id="filter-from" type="date" name="fromDate"
+             [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)">
+    </div>
+    <div class="form-group">
+      <label for="filter-to">{{ 'intake.ignored_filter_to_date' | translate }}</label>
+      <input id="filter-to" type="date" name="toDate"
+             [ngModel]="toDate()" (ngModelChange)="toDate.set($event)">
+    </div>
+    <div class="form-group">
+      <label for="filter-rule">{{ 'intake.ignored_filter_rule' | translate }}</label>
+      <select id="filter-rule" name="ruleId"
+              [ngModel]="ruleId()" (ngModelChange)="ruleId.set($event)">
+        <option value="">{{ 'intake.ignored_filter_all_rules' | translate }}</option>
+        @for (rule of rules(); track rule.id) {
+          <option [value]="rule.id">{{ ruleLabel(rule) }}</option>
+        }
+      </select>
+    </div>
+    <div class="filter-actions">
+      <button class="search-btn" (click)="search()" [disabled]="loading()">{{ 'intake.search' | translate }}</button>
+      <button class="cancel-btn" (click)="clearFilters()" [disabled]="!hasFilters()">{{ 'intake.clear_filters' | translate }}</button>
+    </div>
+  </div>
+
+  <div class="total-bar">
+    <span class="total-count">{{ 'intake.ignored_emails_total' | translate }}: <strong>{{ total() }}</strong></span>
+    @if (loading()) {
+      <span class="loading-msg">{{ 'intake.loading' | translate }}</span>
+    }
+  </div>
+
+  <div class="entries-table">
+    <table>
+      <thead>
+        <tr>
+          <th>{{ 'intake.ignored_col_sender' | translate }}</th>
+          <th>{{ 'intake.ignored_col_subject' | translate }}</th>
+          <th>{{ 'intake.ignored_col_received_at' | translate }}</th>
+          <th>{{ 'intake.ignored_col_matched_rule' | translate }}</th>
+          <th>{{ 'intake.ignored_col_matched_field' | translate }}</th>
+          <th>{{ 'intake.ignored_col_matched_reason' | translate }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of entries(); track entry.id) {
+          <tr>
+            <td class="sender">{{ entry.senderEmail }}</td>
+            <td class="subject">{{ entry.subject || '—' }}</td>
+            <td class="timestamp">{{ entry.receivedAt | date: 'dd MMM yyyy HH:mm' }}</td>
+            <td class="rule-cell">
+              @if (entry.matchedRuleId !== null) {
+                <span class="rule-id">#{{ entry.matchedRuleId }}</span>
+                <span class="rule-pattern">{{ entry.matchedRulePattern }}</span>
+                @if (entry.matchedRuleType) {
+                  <span class="type-badge">{{ 'intake.pattern_type_' + entry.matchedRuleType.toLowerCase() | translate }}</span>
+                }
+              } @else {
+                <span class="muted">&mdash;</span>
+              }
+            </td>
+            <td>
+              @if (entry.matchedRuleField) {
+                <span class="field-badge">{{ 'intake.match_field_' + entry.matchedRuleField.toLowerCase() | translate }}</span>
+              } @else {
+                <span class="muted">&mdash;</span>
+              }
+            </td>
+            <td>{{ entry.matchedRuleReason || '—' }}</td>
+          </tr>
+        } @empty {
+          @if (!loading()) {
+            <tr>
+              <td colspan="6" class="empty">
+                @if (hasFilters()) {
+                  {{ 'intake.ignored_emails_empty_filtered' | translate }}
+                } @else {
+                  {{ 'intake.ignored_emails_empty' | translate }}
+                }
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

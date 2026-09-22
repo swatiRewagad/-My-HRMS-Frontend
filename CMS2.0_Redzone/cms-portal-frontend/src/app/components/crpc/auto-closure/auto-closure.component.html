@@ -1,0 +1,93 @@
+<div class="auto-closure">
+  <div class="ac-header">
+    <h3><i class="pi pi-list-check"></i> Auto-Closure Screening</h3>
+    <div class="ac-meta">
+      <span class="scheme-badge">{{ schemeVersion }}</span>
+      <span class="entity-badge">{{ entityType }}</span>
+      <span class="progress-text">Q{{ currentQuestionIndex() + 1 }} of {{ questions().length }}</span>
+    </div>
+  </div>
+
+  <div class="progress-bar">
+    <div class="progress-fill" [style.width.%]="progress()"></div>
+  </div>
+
+  @if (loading()) {
+    <div class="ac-loading"><div class="spinner"></div><p>Loading questions...</p></div>
+  } @else if (finalOutcome()) {
+    <div class="ac-result">
+      <div class="result-icon" [class.success]="finalOutcome() === 'NEW_COMPLAINT'" [class.rejection]="finalOutcome() === 'CRPC_REJECTION'" [class.sub-judice]="finalOutcome() === 'SUB_JUDICE'">
+        @if (finalOutcome() === 'NEW_COMPLAINT') { <i class="pi pi-check-circle"></i> }
+        @else if (finalOutcome() === 'SUB_JUDICE') { <i class="pi pi-exclamation-triangle"></i> }
+        @else { <i class="pi pi-times-circle"></i> }
+      </div>
+      <h4>
+        @if (finalOutcome() === 'NEW_COMPLAINT') { Proceed as New Complaint }
+        @else if (finalOutcome() === 'SUB_JUDICE') { Sub-Judice — Proceed to Ombudsman }
+        @else if (finalOutcome() === 'SENT_TO_OTHER_REG') { Sent to Other Regulatory Body }
+        @else { CRPC Rejection }
+      </h4>
+      <p class="result-clause">{{ responses()[responses().length - 1]?.clauseReference }}</p>
+
+      <div class="response-summary">
+        <h5>Responses</h5>
+        @for (r of responses(); track r.questionNumber) {
+          <div class="response-row">
+            <span class="q-num">Q{{ r.questionNumber }}</span>
+            <span class="q-answer" [class.yes]="r.answer === 'YES'" [class.no]="r.answer === 'NO'">{{ r.answer }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  } @else {
+    @if (!readOnly) {
+      <div class="ac-actions-top">
+        <button class="btn btn-sm btn-outline" (click)="selectAllDefaults()">
+          <i class="pi pi-check-square"></i> Select All Default
+        </button>
+      </div>
+    }
+
+    <div class="question-card">
+      <div class="question-number">Question {{ currentQuestion()?.questionNumber }}</div>
+      <p class="question-text">{{ currentQuestion()?.questionText }}</p>
+      @if (currentQuestion()?.helpText) {
+        <p class="help-text"><i class="pi pi-info-circle"></i> {{ currentQuestion()?.helpText }}</p>
+      }
+      <div class="clause-ref">
+        <span class="clause-badge">{{ currentQuestion()?.clauseReference }}</span>
+        <span class="default-badge">Default: {{ currentQuestion()?.defaultAnswer }}</span>
+      </div>
+
+      @if (!readOnly) {
+        <div class="answer-options">
+          <button class="answer-btn yes" (click)="selectAnswer('YES')">
+            <i class="pi pi-check"></i> Yes
+          </button>
+          <button class="answer-btn no" (click)="selectAnswer('NO')">
+            <i class="pi pi-times"></i> No
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- OK/Cancel Popup for non-default answers -->
+  @if (showConfirmPopup()) {
+    <div class="confirm-overlay" (click)="cancelPopup()">
+      <div class="confirm-popup" (click)="$event.stopPropagation()">
+        <h4>Confirm Response</h4>
+        <p>You selected <strong>{{ pendingAnswer }}</strong> which is not the default response. This may lead to rejection or special handling.</p>
+        <p>Do you want to proceed?</p>
+        <div class="popup-actions">
+          <button class="btn btn-outline" (click)="cancelPopup()">Cancel</button>
+          <button class="btn btn-primary" (click)="confirmAnswer()">OK — Proceed</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <div class="ac-footer">
+    <button class="btn btn-outline" (click)="cancelled.emit()">Cancel Screening</button>
+  </div>
+</div>

@@ -1,0 +1,156 @@
+<div class="re-profile">
+  <h2 class="page-heading">Entity Profile</h2>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading profile...</p>
+    </div>
+  } @else {
+    <!-- Entity Details -->
+    <div class="profile-card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="pi pi-building"></i> Entity Information
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Entity Name</span>
+            <span class="detail-value">{{ entity().name || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Entity Type</span>
+            <span class="detail-value">{{ entity().type || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">City</span>
+            <span class="detail-value">{{ entity().city || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">State</span>
+            <span class="detail-value">{{ entity().state || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Registration Date</span>
+            <span class="detail-value">{{ entity().registrationDate | date:'dd MMM yyyy' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nodal Officer -->
+    <div class="profile-card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="pi pi-user"></i> Nodal Officer
+        </h3>
+        @if (!isEditing()) {
+          <button class="edit-btn" (click)="startEditing()">
+            <i class="pi pi-pencil"></i> Edit
+          </button>
+        }
+      </div>
+
+      @if (saveSuccess()) {
+        <div class="success-banner">
+          <i class="pi pi-check-circle"></i>
+          <span>{{ saveSuccess() }}</span>
+        </div>
+      }
+
+      @if (saveError()) {
+        <div class="error-banner">
+          <i class="pi pi-exclamation-triangle"></i>
+          <span>{{ saveError() }}</span>
+        </div>
+      }
+
+      <div class="card-body">
+        @if (isEditing()) {
+          <div class="edit-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="nodalName">Name</label>
+                <input id="nodalName" type="text" [(ngModel)]="editName" placeholder="Full name" />
+              </div>
+              <div class="form-group">
+                <label for="nodalEmail">Email</label>
+                <input id="nodalEmail" type="email" [(ngModel)]="editEmail" placeholder="Email address" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="nodalPhone">Phone</label>
+                <input id="nodalPhone" type="tel" [(ngModel)]="editPhone" placeholder="Phone number" />
+              </div>
+              <div class="form-group">
+                <label for="nodalDesignation">Designation</label>
+                <input id="nodalDesignation" type="text" [(ngModel)]="editDesignation" placeholder="Designation" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" (click)="saveNodalOfficer()" [disabled]="saving()">
+                @if (saving()) {
+                  <span class="spinner-sm"></span> Saving...
+                } @else {
+                  <i class="pi pi-check"></i> Save Changes
+                }
+              </button>
+              <button class="cancel-btn" (click)="cancelEditing()">Cancel</button>
+            </div>
+          </div>
+        } @else {
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Name</span>
+              <span class="detail-value">{{ nodalOfficer().name || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Email</span>
+              <span class="detail-value">{{ nodalOfficer().email || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Phone</span>
+              <span class="detail-value">{{ nodalOfficer().phone || '-' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Designation</span>
+              <span class="detail-value">{{ nodalOfficer().designation || '-' }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Principal Nodal Officer (read-only) -->
+    <div class="profile-card">
+      <div class="card-header">
+        <h3 class="card-title">
+          <i class="pi pi-star"></i> Principal Nodal Officer (PNO)
+        </h3>
+      </div>
+      <div class="card-body">
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Name</span>
+            <span class="detail-value">{{ pno().name || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Email</span>
+            <span class="detail-value">{{ pno().email || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Phone</span>
+            <span class="detail-value">{{ pno().phone || '-' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Designation</span>
+            <span class="detail-value">{{ pno().designation || '-' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

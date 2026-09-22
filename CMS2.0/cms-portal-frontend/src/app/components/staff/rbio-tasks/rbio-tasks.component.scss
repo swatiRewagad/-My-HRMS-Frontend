@@ -99,9 +99,19 @@
       &:hover { text-decoration: underline; }
     }
 
-    .queue-select {
+    .queue-scope-toggle {
+      display: flex; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden;
+      button {
+        padding: 6px 12px; border: none; background: white; color: #475569;
+        font-size: 12px; font-weight: 600; cursor: pointer;
+        &:not(:last-child) { border-right: 1px solid #e2e8f0; }
+        &.active { background: #3b82f6; color: white; }
+      }
+    }
+
+    .queue-select, .queue-scope-select {
       padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 6px;
-      font-size: 12px; color: #475569; background: white; cursor: pointer;
+      font-size: 12px; font-weight: 600; color: #475569; background: white; cursor: pointer;
     }
 
     .create-btn {
@@ -116,7 +126,7 @@
 // ═══ STATS BAR ═══
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr) 1.8fr;
   gap: 12px;
   margin-bottom: 20px;
 
@@ -127,12 +137,39 @@
     padding: 14px 16px;
     cursor: pointer;
     transition: border-color 0.2s;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 
     &:hover { border-color: #3b82f6; }
+    &.active { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
 
-    .stat-value { display: block; font-size: 22px; font-weight: 700; color: #1e293b; }
-    .stat-label { font-size: 11px; color: #64748b; margin-top: 4px; }
+    .stat-icon {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+      &.blue { background: #dbeafe; color: #2563eb; }
+      &.yellow { background: #fef08a; color: #d97706; }
+      &.orange { background: #fed7aa; color: #c2410c; }
+      &.red { background: #fecaca; color: #dc2626; }
+      &.green { background: #bbf7d0; color: #059669; }
+    }
+
+    .stat-content { display: flex; flex-direction: column; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .stat-label { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+    &.sla-card {
+      gap: 10px;
+      .sla-overdue {
+        display: flex; flex-direction: column; align-items: center;
+        margin-left: 8px;
+        padding-left: 10px;
+        border-left: 1px solid #e2e8f0;
+        .overdue-label { font-size: 9px; color: #94a3b8; white-space: nowrap; }
+        .overdue-value { font-size: 14px; font-weight: 700; color: #ef4444; }
+      }
+    }
   }
 }
 
@@ -154,14 +191,13 @@
     margin-bottom: -2px;
     transition: all 0.2s;
 
-    &.active { color: #3b82f6; border-bottom-color: #3b82f6; font-weight: 600; }
-    &:hover { color: #3b82f6; }
+    &.active { color: #1e293b; border-bottom-color: #f97316; font-weight: 600; }
+    &:hover { color: #1e293b; }
 
     .tab-count {
-      background: #e2e8f0; padding: 1px 6px; border-radius: 10px;
-      font-size: 11px; margin-left: 4px;
+      background: #6366f1; color: #fff; padding: 2px 8px; border-radius: 10px;
+      font-size: 11px; margin-left: 6px; font-weight: 600;
     }
-    &.active .tab-count { background: #dbeafe; color: #3b82f6; }
   }
 }
 
@@ -284,8 +320,15 @@
 
     &:hover { background: #f8fafc; }
     &.selected { background: #eff6ff; }
-    td { font-weight: 600; color: #1e293b; }
-    &.visited td { font-weight: 400; color: #64748b; }
+    td { font-weight: 400; color: #1e293b; }
+    &.visited td { color: #64748b; }
+
+    // Left-border accent by SLA urgency, same tiers/thresholds as the RBIO dashboard table.
+    &.row-sla-red { border-left: 4px solid #dc2626; background: linear-gradient(to right, rgba(220,38,38,0.12), rgba(220,38,38,0) 20%); }
+    &.row-sla-orange { border-left: 4px solid #f59e0b; background: linear-gradient(to right, rgba(245,158,11,0.12), rgba(245,158,11,0) 20%); }
+    &.row-sla-yellow { border-left: 4px solid #eab308; background: linear-gradient(to right, rgba(234,179,8,0.15), rgba(234,179,8,0) 20%); }
+    &.row-sla-green { border-left: 4px solid #16a34a; background: linear-gradient(to right, rgba(22,163,74,0.12), rgba(22,163,74,0) 20%); }
+    &.row-sla-pink { border-left: 4px solid #ec4899; background: linear-gradient(to right, rgba(236,72,153,0.12), rgba(236,72,153,0) 20%); }
 
     td {
       padding: 10px 12px;
@@ -299,13 +342,30 @@
   .checkbox-col { width: 40px; text-align: center; }
 
   .status-badge {
-    padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
-    &[data-status="assigned"] { background: #dbeafe; color: #1e40af; }
-    &[data-status="in_progress"] { background: #fef3c7; color: #92400e; }
-    &[data-status="escalated"] { background: #fee2e2; color: #991b1b; }
+    padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    .pi { font-size: 10px; }
+    &[data-status="draft"] { background: #f1f5f9; color: #334155; }
+    &[data-status="new"], &[data-status="assigned"] { background: #dcfce7; color: #15803d; }
+    &[data-status="in_progress"] { background: #dbeafe; color: #1e40af; }
+    &[data-status="sent_back"], &[data-status="sent_to_do"] { background: #fef3c7; color: #b45309; }
+    &[data-status="meeting_scheduled"] { background: #fef3c7; color: #b45309; }
+    &[data-status="awaiting_response"] { background: #fef3c7; color: #b45309; }
+    &[data-status="pending_office_head_approval"], &[data-status="sent_to_reviewer"] { background: #e0e7ff; color: #3730a3; }
+    &[data-status="escalated"] { background: #fde2e2; color: #b91c1c; }
     &[data-status="resolved"] { background: #d1fae5; color: #065f46; }
     &[data-status="rejected"] { background: #fce7f3; color: #9d174d; }
     &[data-status="closed"] { background: #e2e8f0; color: #475569; }
+    &[data-status="withdrawn"] { background: #fce7f3; color: #9d174d; }
+  }
+
+  .sla-badge {
+    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
+    display: inline-block;
+    &.sla-green { background: #d1fae5; color: #065f46; }
+    &.sla-yellow { background: #fef9c3; color: #854d0e; }
+    &.sla-orange { background: #fef3c7; color: #92400e; }
+    &.sla-red { background: #fee2e2; color: #991b1b; }
   }
 
   .view-only-badge {

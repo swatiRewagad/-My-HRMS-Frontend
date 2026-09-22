@@ -1,0 +1,154 @@
+<a class="skip-link" href="#main-content">{{ 'common.skip_to_content' | translate }}</a>
+<div class="navbar-bg" [attr.dir]="translationService.isRtl() ? 'rtl' : null">
+<div class="top-strip">
+  <div class="container top-strip-inner">
+    <div class="top-left">
+      <button class="contrast-btn" aria-label="Toggle high contrast" (click)="toggleContrast()">
+        <i class="pi" [class.pi-moon]="!highContrast" [class.pi-sun]="highContrast"></i>
+      </button>
+      <button class="contrast-btn" aria-label="Accessibility" (click)="toggleAccessibilityPanel()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <circle cx="8" cy="2.5" r="1.5"/>
+          <path d="M4 5.5C4 5.22 4.22 5 4.5 5h7a.5.5 0 0 1 0 1H9.5v2.5l1.8 4.5a.5.5 0 0 1-.9.4L8.5 9h-1l-1.9 4.4a.5.5 0 0 1-.9-.4L6.5 8.5V6H4.5a.5.5 0 0 1-.5-.5z"/>
+        </svg>
+      </button>
+      <div class="divider"></div>
+      <div class="accessibility">
+        <button class="access-btn" (click)="decreaseFontSize()" aria-label="Decrease font size">A-</button>
+        <button class="access-btn" (click)="resetFontSize()" aria-label="Reset font size">A</button>
+        <button class="access-btn" (click)="increaseFontSize()" aria-label="Increase font size">A+</button>
+      </div>
+      <div class="divider"></div>
+      <div class="lang-wrapper">
+        <i class="pi pi-globe"></i>
+        <select class="lang-select" (change)="changeLanguage($event)" [value]="translationService.currentLocale()" aria-label="Select language">
+          @for (locale of translationService.locales(); track locale.code) {
+            <option [value]="locale.code" [selected]="locale.code === translationService.currentLocale()">
+              {{ locale.nativeName }}
+            </option>
+          }
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<header class="main-header">
+  <div class="container header-inner">
+    <a class="brand" routerLink="/public">
+      <img src="assets/navb2.png" alt="Complaint Management System" class="brand-logo" />
+    </a>
+
+    <button class="hamburger-btn" (click)="mobileMenuOpen = !mobileMenuOpen"
+            [attr.aria-expanded]="mobileMenuOpen" aria-controls="main-nav" aria-label="Toggle navigation menu">
+      <i class="pi" [class.pi-bars]="!mobileMenuOpen" [class.pi-times]="mobileMenuOpen" aria-hidden="true"></i>
+    </button>
+
+    <nav id="main-nav" class="main-nav" [class.mobile-open]="mobileMenuOpen" (click)="mobileMenuOpen = false" aria-label="Main navigation">
+      @if (authService.isAuthenticated()) {
+        <a routerLink="/public/history">{{ 'nav.my_complaints' | translate }}</a>
+      }
+      <a routerLink="/public/faq">{{ 'nav.help' | translate }}</a>
+      <div class="nav-call-box">
+        <i class="pi pi-phone"></i>
+        <span>14448</span>
+      </div>
+      @if (authService.isAuthenticated()) {
+        <div class="nav-user-box" (click)="userMenuOpen = !userMenuOpen">
+          <i class="pi pi-user nav-user-icon"></i>
+          <span class="nav-user-phone">{{ getMaskedPhone() }}</span>
+          <i class="pi pi-chevron-down nav-user-chevron"></i>
+        </div>
+        @if (userMenuOpen) {
+          <div class="user-dropdown-menu">
+            <div class="user-dropdown-info">
+              <div>
+                <span class="user-dropdown-last-login">Last Signed In on {{ getLastSignedIn() }}</span>
+                <span class="user-dropdown-email">{{ getUserEmail() }}</span>
+              </div>
+            </div>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item" (click)="userMenuOpen = false">
+              <i class="pi pi-cog"></i> Settings
+            </button>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item logout" (click)="logout()">
+              <i class="pi pi-sign-out"></i> Logout
+            </button>
+          </div>
+        }
+      }
+    </nav>
+  </div>
+</header>
+</div>
+
+
+<!-- UST10: Session expiry warning (1 minute before timeout) -->
+@if (authService.sessionWarning()) {
+  <div class="session-warning-banner" role="alert" aria-live="assertive">
+    <div class="container session-warning-inner">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>Inactive session - Your session will expire in {{ authService.remainingSeconds() }} seconds. Please interact with the page to keep your session active.</span>
+    </div>
+  </div>
+}
+
+<main class="main-content" id="main-content" role="main" aria-label="Main content">
+  <router-outlet />
+</main>
+
+
+<!-- Footer -->
+<footer class="main-footer">
+  <!-- Top Bar - Need Assistance -->
+  <div class="footer-top-bar">
+    <div class="footer-top-bar-content">
+      <h2>{{ 'layout.need_assistance' | translate }}</h2>
+      <p>{{ 'layout.assistance_desc' | translate }}</p>
+    </div>
+    <div class="footer-ellipse footer-ellipse-1"></div>
+    <div class="footer-ellipse footer-ellipse-2"></div>
+  </div>
+
+  <!-- Wave Curve -->
+  <div class="footer-wave-curve"></div>
+
+  <!-- Bottom Footer -->
+  <div class="footer-bottom">
+    <div class="footer-bottom-inner">
+      <!-- Left: Brand -->
+      <div class="footer-brand">
+        <div class="footer-brand-logos">
+          <img src="assets/logo6.png" alt="RBI" class="footer-logo" />
+          <div class="footer-logo-divider"></div>
+          <img src="assets/llogo.png" alt="CMS" class="footer-logo" />
+          <span class="footer-brand-text">शिकायत प्रबंध प्रणाली<br/>Complaint Management System</span>
+        </div>
+        <p class="footer-tagline">Your trusted platform for complaint resolution - effortlessly file and track grievances against Regulated Entities.</p>
+      </div>
+
+      <!-- Middle: Product Links -->
+      <div class="footer-links-group">
+        <h3>Product</h3>
+        <a href="javascript:void(0)">Contact</a>
+        <a href="javascript:void(0)">Download Complaint Form <i class="pi pi-download"></i></a>
+        <a href="javascript:void(0)">Sitemap</a>
+      </div>
+
+      <!-- Right: Legal Links -->
+      <div class="footer-links-group">
+        <h3>Legal</h3>
+        <a href="javascript:void(0)">Terms and Conditions</a>
+        <a href="javascript:void(0)">Privacy Policy</a>
+        <a href="javascript:void(0)">Data Protection Information</a>
+      </div>
+    </div>
+
+    <!-- Copyright Bar -->
+    <div class="footer-copyright">
+      <span>© Reserve Bank of India. All Rights Reserved.</span>
+      <span>Developed and Maintained by Reserve Bank Information Technology Pvt. Ltd</span>
+    </div>
+  </div>
+</footer>

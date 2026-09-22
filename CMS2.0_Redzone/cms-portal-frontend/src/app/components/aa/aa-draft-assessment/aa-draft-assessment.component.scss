@@ -1,0 +1,133 @@
+.aa-draft-assessment {
+  min-height: 100vh;
+  background: var(--surface-sunken);
+  padding: 24px 20px;
+
+  h2 { margin: 0; font-size: 18px; color: var(--brand-primary-strong); }
+  h3 { margin: 0 0 12px; font-size: 15px; color: var(--brand-primary-strong); }
+  h4 { margin: 16px 0 6px; font-size: 13px; color: #37474f; }
+}
+
+.topbar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+
+  .back-btn {
+    border: 1px solid #c5cae9; background: var(--surface-card); color: var(--brand-primary);
+    border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 15px;
+    &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 1px; }
+  }
+}
+
+.notice-banner, .error-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 4px; font-size: 13px; margin-bottom: 12px;
+
+  button {
+    margin-left: auto; border: none; background: transparent;
+    font-size: 18px; line-height: 1; cursor: pointer; color: inherit;
+  }
+}
+.notice-banner { background: var(--state-success-bg); color: #1b5e20; border: 1px solid #a5d6a7; }
+.error-banner  { background: var(--state-danger-bg); color: #b71c1c; border: 1px solid #ef9a9a; }
+
+.loading, .empty { margin: 8px 0; font-size: 13px; color: var(--text-muted); }
+
+.assessment-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+
+  @media (max-width: 1100px) { grid-template-columns: 1fr; }
+}
+
+.source-panel, .assess-panel {
+  background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 16px;
+}
+
+.meta-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;
+
+  .field { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+}
+
+.status-pill {
+  display: inline-block; padding: 2px 10px; border-radius: 10px;
+  font-size: 11px; background: var(--brand-primary-bg); color: #283593; width: fit-content;
+}
+
+.vernacular-tag {
+  display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 10px;
+  font-size: 10px; background: var(--state-warning-bg); color: var(--state-warning-fg);
+}
+
+.subject { margin: 0; font-size: 13px; font-weight: 500; color: #212121; }
+
+.body-text {
+  margin: 0; padding: 10px; background: #fafafa; border: 1px solid #eceff1; border-radius: 4px;
+  font-family: inherit; font-size: 12px; color: #424242;
+  white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto;
+}
+
+// OCR confidence. A weak result must look weak: an officer prefilling from a bad scan without noticing
+// is how wrong data reaches a statutory record.
+.ocr-status {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 12px; border-radius: 4px; font-size: 12px;
+  background: var(--state-success-bg); color: #1b5e20; border: 1px solid #a5d6a7;
+
+  &.low    { background: var(--state-warning-bg); color: var(--state-warning-fg); border-color: #ffcc80; }
+  &.manual { background: var(--state-danger-bg); color: #b71c1c; border-color: #ef9a9a; font-weight: 600; }
+
+  .ocr-score { font-weight: 700; }
+  .ocr-skip  { font-size: 11px; opacity: 0.85; }
+}
+
+.ocr-caveat, .related-caveat {
+  margin: 8px 0 0; padding: 8px 10px; border-radius: 4px; font-size: 11px;
+  background: var(--brand-primary-bg); color: #283593; border-left: 3px solid var(--brand-primary);
+}
+
+.extracted-table, .related-table {
+  width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px;
+
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--surface-subtle); text-align: left; }
+  th { font-weight: 600; color: var(--text-muted); }
+  thead th { background: var(--surface-sunken); font-size: 11px; text-transform: uppercase; }
+}
+
+.attachment-list {
+  margin: 0; padding-left: 18px; font-size: 12px;
+
+  a { color: var(--brand-primary); }
+  .att-score { margin-left: 6px; color: var(--text-muted); font-size: 11px; }
+}
+
+.form-field {
+  margin-bottom: 12px;
+
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+  input, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid #cfd8dc; border-radius: 4px;
+    font-size: 13px; font-family: inherit;
+    // A visible focus ring: a colour-only cue fails WCAG 2.4.7 / 1.4.11.
+    &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 1px; }
+    &:disabled { background: #f5f5f5; color: #9e9e9e; cursor: not-allowed; }
+  }
+  textarea { resize: vertical; }
+}
+
+.form-actions {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px;
+}
+
+.btn {
+  padding: 8px 14px; border-radius: 4px; border: 1px solid transparent;
+  font-size: 13px; cursor: pointer;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 2px; }
+}
+.btn-primary   { background: var(--brand-primary-strong); color: var(--surface-card); }
+.btn-danger    { background: #c62828; color: var(--surface-card); }
+.btn-secondary { background: var(--surface-card); color: var(--brand-primary); border-color: #c5cae9; }

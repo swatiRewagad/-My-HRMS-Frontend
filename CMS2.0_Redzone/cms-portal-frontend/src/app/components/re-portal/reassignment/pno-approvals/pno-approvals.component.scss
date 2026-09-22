@@ -1,0 +1,327 @@
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+$danger: var(--state-danger-solid-hover);
+
+.pno-approvals {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: $text-dark;
+  margin: 0;
+}
+
+.total-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: $primary;
+  background: $primary-light;
+  border-radius: 10px;
+  padding: 2px 10px;
+}
+
+// Banners — the partial-result summary lives in the error banner
+.banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-bottom: 16px;
+
+  i { margin-top: 1px; }
+}
+
+.banner-body {
+  flex: 1;
+}
+
+.banner-error {
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
+  color: var(--state-danger-fg);
+}
+
+.banner-success {
+  background: var(--state-success-bg);
+  border: 1px solid var(--state-success-bg);
+  color: var(--state-success-fg);
+}
+
+.partial-tally {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 6px 0 0;
+}
+
+.failure-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.failure-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+  padding: 5px 8px;
+  background: var(--surface-card);
+  border-radius: 6px;
+  border-left: 3px solid $danger;
+}
+
+.failure-subject {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.failure-reason {
+  color: #7f1d1d;
+}
+
+// Bulk bar
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: $text-dark;
+  cursor: pointer;
+
+  input { cursor: pointer; }
+}
+
+.selection-tally {
+  font-size: 12px;
+  font-weight: 600;
+  color: $primary;
+  background: $primary-light;
+  border-radius: 10px;
+  padding: 3px 10px;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+// Comment
+.comment-field {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: $text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 5px;
+  }
+}
+
+.comment-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: $text-dark;
+  resize: vertical;
+  outline: none;
+
+  &:focus {
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.1);
+  }
+}
+
+// Buttons
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+
+.btn-sm { padding: 5px 10px; font-size: 11px; }
+
+.btn-primary {
+  background: $primary;
+  color: var(--surface-card);
+
+  &:hover:not(:disabled) { background: var(--brand-primary-strong); }
+}
+
+.btn-danger {
+  background: $danger;
+  color: var(--surface-card);
+
+  &:hover:not(:disabled) { background: var(--state-danger-fg); }
+}
+
+.btn-outline-danger {
+  background: var(--surface-card);
+  border-color: var(--state-danger-bg);
+  color: $danger;
+
+  &:hover:not(:disabled) { background: var(--state-danger-bg); }
+}
+
+.btn-plain {
+  background: var(--surface-card);
+  border-color: $border-color;
+  color: $text-muted;
+
+  &:hover:not(:disabled) { background: var(--surface-subtle); color: $text-dark; }
+}
+
+// Table
+.table-wrapper {
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.approvals-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th {
+    text-align: left;
+    padding: 12px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: $text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--surface-subtle);
+    border-bottom: 1px solid $border-color;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 12px 14px;
+    font-size: 13px;
+    color: $text-dark;
+    border-bottom: 1px solid var(--surface-subtle);
+    vertical-align: top;
+  }
+
+  tr.row-selected td { background: #f5f9ff; }
+}
+
+.col-check {
+  width: 36px;
+
+  input { cursor: pointer; }
+}
+
+.col-subject { width: 190px; }
+.col-workload { text-align: center; }
+.col-actions { text-align: right; white-space: nowrap; }
+
+.complaint-number {
+  display: block;
+  font-weight: 600;
+  color: $primary;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.col-reason {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Pager
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pager-status {
+  font-size: 12px;
+  color: $text-muted;
+}
+
+// Loading / Empty
+.loading-state, .empty-state {
+  padding: 44px;
+  text-align: center;
+  color: $text-muted;
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 12px;
+
+  i { font-size: 30px; margin-bottom: 10px; opacity: 0.4; }
+  p { font-size: 14px; margin: 8px 0 0; }
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid $border-color;
+  border-top-color: $primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 900px) {
+  .bulk-actions { margin-left: 0; width: 100%; }
+
+  .approvals-table th:nth-child(5),
+  .approvals-table td:nth-child(5),
+  .approvals-table th:nth-child(6),
+  .approvals-table td:nth-child(6) { display: none; }
+}

@@ -1,0 +1,799 @@
+@if (loading) {
+  <div class="page-container loading-state">
+    <p>Loading form...</p>
+  </div>
+}
+
+<!-- Before Filing Modal -->
+@if (!loading && showPreFilingModal && schema) {
+  <div class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="pi pi-info-circle"></i>
+          <h3>{{ schema.preFilingModal.title }}</h3>
+        </div>
+        <button class="modal-close" (click)="closeModal()"><i class="pi pi-times"></i></button>
+      </div>
+
+      <p class="modal-subtitle">{{ schema.preFilingModal.subtitle }}</p>
+
+      <div class="filing-options">
+        @for (opt of schema.preFilingModal.options; track opt.id) {
+          <div class="filing-option" [class.selected]="filingType === opt.id" (click)="selectFilingType(opt.id)">
+            <div class="option-num" [class.active]="filingType === opt.id">{{ opt.number }}</div>
+            <div class="option-text">
+              <h4>{{ opt.title }}</h4>
+              <p>{{ opt.description }}</p>
+            </div>
+            <i class="pi pi-volume-up option-speaker"></i>
+          </div>
+        }
+      </div>
+
+      @if (getSelectedPreFilingOption()?.conditionalFields) {
+        <div class="conditional-fields">
+          @for (field of getSelectedPreFilingOption()!.conditionalFields!; track field.key) {
+            <div class="field-group">
+              <app-dynamic-field
+                [field]="field"
+                [control]="getPreFilingControl(field.key)"
+                [resolvedOptions]="[]">
+              </app-dynamic-field>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="modal-footer">
+        <button class="btn-link" (click)="closeModal()">Close</button>
+        <button class="btn-primary" [disabled]="!filingType" (click)="proceedFromModal()">Proceed</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Assistance Screen -->
+@if (!loading && showAssistanceScreen && !submitted) {
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a routerLink="/">Home</a> <span class="separator"><i class="pi pi-angle-right"></i></span> <span class="current">Assisted Filing</span>
+    </div>
+
+    <div class="assistance-card">
+      <div class="assistance-header">
+        <i class="pi pi-comments"></i>
+        <h3>Describe Your Complaint</h3>
+      </div>
+
+      @if (!speechLangConfirmed) {
+        <div class="lang-selection-card">
+          <p class="lang-selection-title"><i class="pi pi-globe"></i> अपनी भाषा चुनें / Select Your Language</p>
+          <p class="lang-selection-desc">कृपया वह भाषा चुनें जिसमें आप शिकायत बोलना या लिखना चाहते हैं।<br>Please select the language in which you want to speak or write your complaint.</p>
+          <div class="lang-grid">
+            @for (lang of speechLanguages; track lang.value) {
+              <button class="lang-option" [class.selected]="speechLang === lang.value" (click)="speechLang = lang.value">
+                {{ lang.label }}
+              </button>
+            }
+          </div>
+          @if (speechLang && speechLang !== 'en-IN') {
+            <p class="lang-translate-note"><i class="pi pi-info-circle"></i> अंग्रेज़ी में अनुवाद होगा / Will be translated to English automatically</p>
+          }
+          <div class="lang-confirm-actions">
+            <button class="btn-primary" [disabled]="!speechLang" (click)="confirmLanguage()">
+              आगे बढ़ें / Proceed <i class="pi pi-arrow-right"></i>
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (speechLangConfirmed) {
+        <div class="lang-confirmed-bar">
+          <span><i class="pi pi-globe"></i> {{ selectedLangLabel }}</span>
+          <button class="change-lang-btn" (click)="changeLanguage()">भाषा बदलें / Change</button>
+        </div>
+
+        <div class="textarea-wrapper">
+          <textarea
+            class="assistance-textarea"
+            [(ngModel)]="assistanceText"
+            [placeholder]="speechLang === 'en-IN' ? 'Example: My name is Rajesh Kumar. My phone number is 9876543210. I have an account in SBI Pune branch. Rs. 5000 was debited from my ATM but cash not received...' : 'उदाहरण: मेरा नाम राजेश कुमार है। मेरा फोन नंबर 9876543210 है। SBI पुणे शाखा में मेरा खाता है। ATM से ₹5000 कटे लेकिन पैसे नहीं मिले...'"
+            rows="8">
+          </textarea>
+          <button class="voice-btn" [class.recording]="isRecording" (click)="toggleVoiceInput()" [title]="isRecording ? 'Stop recording' : 'Speak your complaint'">
+            <i class="pi" [class.pi-microphone]="!isRecording" [class.pi-stop-circle]="isRecording"></i>
+          </button>
+        </div>
+        @if (isRecording || speechDebugStatus) {
+          <p class="recording-status">
+            @if (isRecording) { <span class="recording-dot"></span> }
+            {{ speechDebugStatus }}
+          </p>
+        }
+        @if (speechNetworkError) {
+          <div class="speech-error-banner">
+            <i class="pi pi-exclamation-triangle"></i>
+            <div>
+              <strong>Voice input unavailable on this network</strong>
+              <p>Speech recognition requires internet access. Your network may be blocking the connection. Please type your complaint in the text box above instead.</p>
+            </div>
+            <button class="retry-speech-btn" (click)="speechNetworkError = false; toggleVoiceInput()">Retry</button>
+          </div>
+        }
+      }
+
+      @if (speechLangConfirmed && !assistanceParsed) {
+        <div class="assistance-actions">
+          <button class="btn-link" (click)="showAssistanceScreen = false; showPreFilingModal = true">Go Back</button>
+          <div class="actions-right">
+            <button class="btn-clear" [disabled]="!assistanceText.trim()" (click)="clearAssistance()">Clear</button>
+            <button class="btn-primary" [disabled]="!assistanceText.trim() || assistanceParsing" (click)="submitAssistanceText()">
+              @if (assistanceParsing) { Analyzing... } @else { Analyze & Fill Form }
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (assistanceParsed) {
+        <div class="parsed-results">
+          <h4><i class="pi pi-check-circle"></i> We identified the following from your text:</h4>
+          <div class="parsed-grid">
+            @if (parsedFields['name']) {
+              <div class="parsed-item"><label>Name</label><span>{{ parsedFields['name'] }}</span></div>
+            }
+            @if (parsedFields['mobileNumber']) {
+              <div class="parsed-item"><label>Mobile</label><span>{{ parsedFields['mobileNumber'] }}</span></div>
+            }
+            @if (parsedFields['email']) {
+              <div class="parsed-item"><label>Email</label><span>{{ parsedFields['email'] }}</span></div>
+            }
+            @if (parsedFields['bankName']) {
+              <div class="parsed-item"><label>Bank</label><span>{{ parsedFields['bankName'] | uppercase }}</span></div>
+            }
+            @if (parsedFields['accountNumber']) {
+              <div class="parsed-item"><label>Account No.</label><span>{{ parsedFields['accountNumber'] }}</span></div>
+            }
+            @if (parsedFields['subCategory1']) {
+              <div class="parsed-item"><label>Category</label><span>{{ parsedFields['subCategory1'] | titlecase }}</span></div>
+            }
+            @if (parsedFields['state']) {
+              <div class="parsed-item"><label>State</label><span>{{ parsedFields['state'] }}</span></div>
+            }
+            @if (parsedFields['district']) {
+              <div class="parsed-item"><label>District</label><span>{{ parsedFields['district'] | titlecase }}</span></div>
+            }
+            @if (parsedFields['pincode']) {
+              <div class="parsed-item"><label>Pincode</label><span>{{ parsedFields['pincode'] }}</span></div>
+            }
+            @if (parsedFields['amount']) {
+              <div class="parsed-item"><label>Amount</label><span>₹ {{ parsedFields['amount'] }}</span></div>
+            }
+          </div>
+
+          <div class="assistance-actions">
+            <button class="btn-link" (click)="proceedFromAssistance()">Review & Edit Form Manually</button>
+            <button class="btn-primary" [disabled]="submitting" (click)="submitAssistanceDirectly()">
+              @if (submitting) { Submitting... } @else { Submit Complaint }
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+}
+
+<!-- Submission Success -->
+@if (submitted) {
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a routerLink="/">Home</a>
+      <span class="separator"><i class="pi pi-angle-right"></i></span>
+      <span class="current">Raise a Complaint</span>
+    </div>
+
+    <div class="success-layout">
+      <div class="success-section">
+        <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+        <h2>Submission Successful!</h2>
+        <p>Thank you for submitting your complaint. Your reference number is <strong>{{ referenceNumber }}</strong>. We have received your details and will review your complaint thoroughly. You can also track the status of your complaint using the reference number provided.</p>
+        <div class="success-actions">
+          <button class="download-pdf-btn" (click)="downloadPDF()">
+            <i class="pi pi-download"></i> Download PDF
+          </button>
+        </div>
+        <div class="success-links">
+          <a routerLink="/">Go to Homepage</a>
+          <span class="dot">&bull;</span>
+          <a href="javascript:void(0)">Withdraw Complaint</a>
+          <span class="dot">&bull;</span>
+          <a routerLink="/track-complaint">Track Your Complaint</a>
+        </div>
+      </div>
+
+      <div class="need-help-float">
+        <button class="need-help-btn">
+          <span>Need help ?</span>
+          <i class="pi pi-chevron-down"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Need Assistance Banner -->
+    <div class="assistance-banner">
+      <h3>Need Assistance? Call 14448</h3>
+      <p>The contact center (14448) with Interactive Voice Response System (IVRS) is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+      <a href="javascript:void(0)" class="banner-contact-btn">Contact <i class="pi pi-chevron-right"></i></a>
+    </div>
+
+    <!-- Footer -->
+    <footer class="cms-footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <i class="pi pi-shield"></i>
+            <div>
+              <strong>Sharan say amrit</strong>
+              <span>Complaint Management System</span>
+            </div>
+          </div>
+          <p class="footer-tagline">Your trusted platform for complaint resolution — efficient, transparent, and easy to access across India.</p>
+        </div>
+        <div class="footer-links-col">
+          <h5>Quick Links</h5>
+          <a href="javascript:void(0)">Contact</a>
+          <a href="javascript:void(0)">Download Complaint Form <i class="pi pi-download"></i></a>
+          <a href="javascript:void(0)">Sitemap</a>
+        </div>
+        <div class="footer-links-col">
+          <h5>Legal</h5>
+          <a href="javascript:void(0)">Terms and Conditions</a>
+          <a href="javascript:void(0)">Privacy Policy</a>
+          <a href="javascript:void(0)">Data Protection & Activation</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; Reserve Bank of India. All Rights Reserved.</span>
+        <span>Developed and Maintained by Reserve Bank Information Technology Pvt. Ltd.</span>
+      </div>
+    </footer>
+  </div>
+}
+
+<!-- Eligibility Check Flow -->
+@if (!loading && showEligibilityCheck && !submitted && schema) {
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a routerLink="/">Home</a>
+      <span class="separator"><i class="pi pi-angle-right"></i></span>
+      <span class="current">Raise a Complaint</span>
+    </div>
+
+    <h1 class="page-title">Check your eligibility to proceed</h1>
+
+    <div class="form-layout">
+      <div class="form-main">
+        <div class="step-card">
+          <!-- Circle Stepper -->
+          <div class="circle-stepper">
+            @for (eq of eligibilityQuestions; track eq.key; let i = $index) {
+              <div class="circle-step" [class.completed]="eligibilityStep > i + 1" [class.active]="eligibilityStep === i + 1">
+                <div class="circle-number">
+                  @if (eligibilityStep > i + 1) {
+                    <i class="pi pi-check"></i>
+                  } @else {
+                    {{ i + 1 }}
+                  }
+                </div>
+              </div>
+              @if (i < eligibilityQuestions.length - 1) {
+                <div class="circle-line" [class.completed]="eligibilityStep > i + 1"></div>
+              }
+            }
+          </div>
+
+          <!-- Question -->
+          @if (currentEligibilityQuestion) {
+            <div class="eligibility-question-block">
+              <div class="eligibility-question-header">
+                <p class="eligibility-question-text">{{ currentEligibilityQuestion.question }}</p>
+                <a href="javascript:void(0)" class="why-badge">
+                  <span class="why-icon"><i class="pi pi-exclamation"></i></span>
+                  <span>Why are we asking this?</span>
+                </a>
+              </div>
+
+              @if (currentEligibilityQuestion.type === 'select') {
+                <div class="eligibility-select-wrapper">
+                  <select class="eligibility-select"
+                    [value]="eligibilityAnswers[currentEligibilityQuestion.key] || ''"
+                    (change)="selectEligibilityAnswer($any($event.target).value)">
+                    <option value="" disabled>Select</option>
+                    @for (bank of banks; track bank.id) {
+                      <option [value]="bank.id">{{ bank.name }}</option>
+                    }
+                  </select>
+                </div>
+              }
+
+              @if (currentEligibilityQuestion.type === 'radio') {
+                <div class="eligibility-radio-group">
+                  @for (opt of currentEligibilityQuestion.options; track opt.value) {
+                    <button type="button" class="eligibility-radio"
+                      [class.selected]="eligibilityAnswers[currentEligibilityQuestion.key] === opt.value"
+                      (click)="selectEligibilityAnswer(opt.value)">
+                      <span class="radio-circle" [class.active]="eligibilityAnswers[currentEligibilityQuestion.key] === opt.value"></span>
+                      <span class="radio-label">{{ opt.label }}</span>
+                    </button>
+                  }
+                </div>
+              }
+
+              <!-- Warning Banner -->
+              @if (eligibilityBlocked) {
+                <div class="eligibility-warning">
+                  <div class="warning-header">
+                    <span class="warning-title">Note</span>
+                    <i class="pi pi-chevron-down"></i>
+                  </div>
+                  <p class="warning-text">{{ eligibilityBlockMessage }}</p>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Footer -->
+          <div class="step-footer">
+            <button class="btn-link" (click)="prevEligibilityStep()">Cancel</button>
+            <button class="btn-primary"
+              [disabled]="isEligibilityNextDisabled"
+              (click)="nextEligibilityStep()">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <aside class="help-sidebar">
+        <div class="help-card">
+          <h4>help</h4>
+          <div class="video-placeholder"><i class="pi pi-play-circle"></i></div>
+          <p class="help-link"><i class="pi pi-play-circle"></i> How to file a Complaint?</p>
+        </div>
+        <div class="help-card">
+          <h4>Frequently Asked Questions</h4>
+          <div class="faq-links">
+            <a href="javascript:void(0)">File a complaint <i class="pi pi-chevron-down"></i></a>
+            <a href="javascript:void(0)">Tracking complaint <i class="pi pi-chevron-down"></i></a>
+            <a href="javascript:void(0)">File an Appeal <i class="pi pi-chevron-down"></i></a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+}
+
+<!-- Verification Flow -->
+@if (!loading && showVerification && !submitted) {
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a routerLink="/">Home</a>
+      <span class="separator"><i class="pi pi-angle-right"></i></span>
+      <span class="current">Raise a Complaint</span>
+    </div>
+
+    <h1 class="page-title">Verification</h1>
+
+    <div class="form-layout">
+      <div class="form-main">
+        <div class="step-card verification-card">
+          <h3>Verify Phone Number</h3>
+
+          @if (!otpSent) {
+            <!-- Step 1: Mobile + CAPTCHA -->
+            <div class="verification-form">
+              <div class="verification-field">
+                <label>Mobile Number</label>
+                <div class="phone-input">
+                  <span class="prefix">+91</span>
+                  <input type="tel" placeholder="Enter Mobile Number" maxlength="10"
+                    [(ngModel)]="verificationMobile"
+                    (keypress)="onMobileKeypress($event)"
+                    (input)="onMobileInput($event)"
+                    inputmode="numeric"
+                    autocomplete="off" />
+                </div>
+                @if (mobileError) {
+                  <p class="verification-error">{{ mobileError }}</p>
+                }
+              </div>
+
+              <div class="verification-field">
+                <label>Captcha</label>
+                <div class="captcha-row">
+                  <div class="captcha-display">
+                    @for (ch of captchaText.split(''); track $index) {
+                      <span class="captcha-char">{{ ch }}</span>
+                    }
+                  </div>
+                  <button class="captcha-refresh" (click)="refreshCaptcha()" title="Refresh">
+                    <i class="pi pi-refresh"></i>
+                  </button>
+                </div>
+                <input type="text" placeholder="Enter captcha" [(ngModel)]="verificationCaptcha" class="captcha-input" />
+              </div>
+
+              @if (otpError) {
+                <p class="verification-error">{{ otpError }}</p>
+              }
+
+              <button class="btn-primary btn-send-otp" [disabled]="!isMobileValid || !verificationCaptcha" (click)="sendOtp()">
+                Send OTP
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <aside class="help-sidebar">
+        <div class="help-card">
+          <h4>help</h4>
+          <div class="video-placeholder"><i class="pi pi-play-circle"></i></div>
+          <p class="help-link"><i class="pi pi-play-circle"></i> How to file a Complaint?</p>
+        </div>
+        <div class="help-card">
+          <h4>Frequently Asked Questions</h4>
+          <div class="faq-links">
+            <a href="javascript:void(0)">File a complaint <i class="pi pi-chevron-down"></i></a>
+            <a href="javascript:void(0)">Tracking complaint <i class="pi pi-chevron-down"></i></a>
+            <a href="javascript:void(0)">File an Appeal <i class="pi pi-chevron-down"></i></a>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- OTP Modal -->
+  @if (otpSent) {
+    <div class="modal-overlay">
+      <div class="modal-card otp-modal">
+        <div class="modal-header">
+          <h3>Verify Phone Number</h3>
+          <button class="modal-close" (click)="cancelVerification()"><i class="pi pi-times"></i></button>
+        </div>
+
+        <p class="otp-subtitle">We have sent you 6 digit code</p>
+        <p class="otp-hint">Please enter here to verify your number.</p>
+
+        <div class="otp-inputs">
+          @for (digit of otpDigits; track $index; let i = $index) {
+            <input type="text" maxlength="1" class="otp-box"
+              [value]="otpDigits[i]"
+              [class.filled]="otpDigits[i]"
+              (input)="onOtpInput(i, $event)"
+              (keydown)="onOtpKeydown(i, $event)" />
+          }
+        </div>
+
+        @if (otpError) {
+          <p class="verification-error">{{ otpError }}</p>
+        }
+
+        @if (otpVerified) {
+          <p class="otp-success"><i class="pi pi-check-circle"></i> Verified successfully!</p>
+        }
+
+        <div class="otp-resend">
+          <span>Didn't Receive Code?</span>
+          @if (resendTimer > 0) {
+            <span class="resend-timer">Resend in {{ resendTimer }}s</span>
+          } @else {
+            <a href="javascript:void(0)" class="resend-link" (click)="resendOtp()">Resend Code</a>
+          }
+        </div>
+
+        <div class="otp-actions">
+          <button class="btn-link" (click)="cancelVerification()">Cancel Verification</button>
+          <button class="btn-primary" [disabled]="otpCode.length < 6 || otpVerifying || otpVerified" (click)="verifyOtp()">
+            @if (otpVerifying) { Verifying... } @else { Verify }
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+}
+
+<!-- Multi-step Form -->
+@if (!loading && !showPreFilingModal && !showAssistanceScreen && !showEligibilityCheck && !showVerification && !submitted && schema) {
+  <div class="page-container">
+    <div class="breadcrumb">
+      <a routerLink="/">Home</a>
+      <span class="separator"><i class="pi pi-angle-right"></i></span>
+      <span class="current">Raise a Complaint</span>
+    </div>
+
+    <h1 class="page-title">{{ currentStepSchema?.title || 'Complaint Details' }}</h1>
+
+    <div class="form-layout">
+      <div class="form-main">
+        <!-- Dynamic Step (non-review steps) -->
+        @if (currentStepSchema && currentStepForm && !isSummaryStep) {
+          <div class="step-card">
+            <!-- Circle Stepper -->
+            <div class="circle-stepper">
+              @for (step of schema.steps; track step.stepNumber; let i = $index) {
+                <div class="circle-step" [class.completed]="currentStep > step.stepNumber" [class.active]="currentStep === step.stepNumber">
+                  <div class="circle-number">
+                    @if (currentStep > step.stepNumber) {
+                      <i class="pi pi-check"></i>
+                    } @else {
+                      {{ step.stepNumber }}
+                    }
+                  </div>
+                </div>
+                @if (i < schema.steps.length - 1) {
+                  <div class="circle-line" [class.completed]="currentStep > step.stepNumber"></div>
+                }
+              }
+            </div>
+
+            <!-- Regulated Entity Banner (show on Complaint Details step) -->
+            @if (currentStep === 2 && eligibilityAnswers['bankSelected']) {
+              <div class="regulated-entity-banner">
+                <i class="pi pi-info-circle"></i>
+                <span>Regulated Entity - {{ getSelectedBankName() }}</span>
+              </div>
+            }
+
+            <!-- RE Info Banner (show on Regulated Entity Details step) -->
+            @if (currentStep === 3) {
+              <div class="re-section-title">Bank/ Financial Institution Details</div>
+              <div class="re-info-banner">
+                <i class="pi pi-check-circle"></i>
+                <span>Complaint has been filed with the Regulated Entity on {{ preFilingForm.get('bankComplaintDate')?.value || '21-03-2026' }}</span>
+              </div>
+            }
+
+            <!-- Progress Segments -->
+            <div class="form-progress-bar">
+              @for (step of schema.steps; track step.stepNumber) {
+                <div class="progress-segment" [class.active]="currentStep >= step.stepNumber"></div>
+              }
+            </div>
+
+            <!-- Form Fields -->
+            <div class="form-fields">
+              @for (field of currentStepSchema.fields; track field.key) {
+                @if (field.type !== 'file') {
+                  <div class="field-group" [class.full]="field.fullWidth" [class.radio-field]="field.type === 'radio'">
+                    <app-dynamic-field
+                      [field]="field"
+                      [control]="getControlForField(field)"
+                      [resolvedOptions]="resolveOptions(field)"
+                      (verifyClicked)="null">
+                    </app-dynamic-field>
+                  </div>
+                } @else {
+                  <div class="field-group full">
+                    <app-dynamic-field
+                      [field]="field"
+                      [control]="getControlForField(field)"
+                      [resolvedOptions]="[]"
+                      (fileSelected)="onFieldFileSelected($event)">
+                    </app-dynamic-field>
+                    @if (filesByField[field.key]?.length) {
+                      <div class="attachment-list">
+                        @for (file of filesByField[field.key]; track file.name; let i = $index) {
+                          <div class="attachment-item">
+                            <i class="pi pi-file-pdf"></i>
+                            <span class="attachment-name" (click)="openAttachment(file)">{{ file.name }}</span>
+                            <button (click)="removeAttachment(field.key, i)"><i class="pi pi-times"></i></button>
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              }
+            </div>
+
+            <!-- Declaration (Step 4 only) -->
+            @if (currentStep === 4) {
+              <div class="declaration-section">
+                <h4 class="declaration-title">Declaration</h4>
+                <label class="declaration-checkbox">
+                  <input type="checkbox" [(ngModel)]="declarationChecked" />
+                  <div class="declaration-text">
+                    <p>(i) I/ We, the complainant/s hereby declare that</p>
+                    <p>(a) the information furnished above is true and correct, and</p>
+                    <p>(b) I/We have not concealed or misrepresented any fact stated above and in the document/s submitted herewith.</p>
+                    <p>(ii) The complaint is filed before the expiry of a period of one year reckoned in accordance with the provisions of clause 10 (1) of the Scheme.</p>
+                  </div>
+                </label>
+              </div>
+            }
+
+            <!-- Step Validation Error -->
+            @if (stepValidationError) {
+              <div class="validation-error-banner">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ stepValidationError }}</span>
+              </div>
+            }
+
+            <!-- Step Footer -->
+            <div class="step-footer">
+              <button class="btn-link" (click)="prevStep()">
+                @if (currentStep === 1) { Cancel } @else { Back }
+              </button>
+              <button class="btn-primary" [class.btn-green]="currentStep === 2"
+                (click)="nextStep()">Next</button>
+            </div>
+          </div>
+        }
+
+        <!-- Review & Submit Step -->
+        @if (isSummaryStep) {
+          <div class="step-card review-card">
+            <!-- Circle Stepper -->
+            <div class="circle-stepper">
+              @for (step of schema.steps; track step.stepNumber; let i = $index) {
+                <div class="circle-step completed">
+                  <div class="circle-number">
+                    <i class="pi pi-check"></i>
+                  </div>
+                </div>
+                @if (i < schema.steps.length - 1) {
+                  <div class="circle-line completed"></div>
+                }
+              }
+            </div>
+
+            <h3 class="review-title">Review and Submit</h3>
+
+            @for (step of schema.steps; track step.stepNumber; let si = $index) {
+              @if (step.fields.length > 0) {
+                <div class="summary-step-block">
+                  <div class="summary-grid">
+                    @for (field of step.fields; track field.key) {
+                      @if (field.type !== 'file') {
+                        <div class="summary-item"
+                          [class.full]="field.fullWidth && field.type !== 'radio'"
+                          [class.full-question]="field.type === 'radio'">
+                          <label>{{ field.label }}</label>
+                          <span class="summary-value" [class.is-long]="field.type === 'textarea'">{{ getLabelForValue(field, getFieldValue(si, field.key), si) }}</span>
+                        </div>
+                      } @else {
+                        @if (filesByField[field.key]?.length) {
+                          <div class="summary-item full">
+                            <label>{{ field.label }}</label>
+                            <div class="attachment-chips">
+                              @for (file of filesByField[field.key]; track file.name) {
+                                <button type="button" class="attachment-chip" (click)="openAttachment(file)" title="Click to preview {{ file.name }}">
+                                  <i class="pi pi-file-pdf"></i>
+                                  <div class="chip-info">
+                                    <span class="chip-name">{{ file.name }}</span>
+                                    <span class="chip-size">{{ (file.size / 1024).toFixed(0) }} kb</span>
+                                  </div>
+                                  <i class="pi pi-external-link chip-open-icon"></i>
+                                </button>
+                              }
+                            </div>
+                          </div>
+                        }
+                      }
+                    }
+                  </div>
+                </div>
+              }
+            }
+
+            @if (allAttachments.length) {
+              <div class="summary-attachments">
+                <label>Attachments</label>
+                <div class="attachment-chips">
+                  @for (file of allAttachments; track file.name) {
+                    <button type="button" class="attachment-chip" (click)="openAttachment(file)" title="Click to preview {{ file.name }}">
+                      <i class="pi pi-file-pdf"></i>
+                      <div class="chip-info">
+                        <span class="chip-name">{{ file.name }}</span>
+                        <span class="chip-size">{{ (file.size / 1024).toFixed(0) }} kb</span>
+                      </div>
+                      <i class="pi pi-external-link chip-open-icon"></i>
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Upload progress during submission -->
+            @if (uploadingFiles) {
+              <div class="upload-progress-panel" role="status" aria-live="polite">
+                <h4><i class="pi pi-upload" aria-hidden="true"></i> Uploading attachments...</h4>
+                @for (up of fileUpload.activeUploads(); track up.uploadId) {
+                  <div class="upload-progress-item">
+                    <div class="upload-file-info">
+                      <i class="pi pi-file" aria-hidden="true"></i>
+                      <span class="upload-file-name">{{ up.fileName }}</span>
+                      <span class="upload-status-badge" [class]="'status-' + up.status">{{ up.status }}</span>
+                    </div>
+                    <div class="upload-progress-bar-track" role="progressbar" [attr.aria-valuenow]="up.progress" aria-valuemin="0" aria-valuemax="100">
+                      <div class="upload-progress-bar-fill" [style.width.%]="up.progress"></div>
+                    </div>
+                    <span class="upload-percent">{{ up.progress }}%</span>
+                  </div>
+                }
+              </div>
+            }
+
+            @if (submitError) {
+              <div class="validation-error-banner">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ submitError }}</span>
+              </div>
+            }
+
+            <div class="step-footer review-footer">
+              <button class="btn-link" (click)="prevStep()" [disabled]="submitting">Back</button>
+              <div class="footer-right">
+                <button class="btn-secondary" (click)="currentStep = 1" [disabled]="submitting">Edit</button>
+                <button class="btn-primary btn-submit" (click)="submit()" [disabled]="submitting || uploadingFiles">
+                  @if (uploadingFiles) { Uploading files... } @else if (submitting) { Submitting... } @else { Submit }
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Floating Need Help button -->
+      <div class="need-help-float">
+        <button class="need-help-btn">
+          <span>Need help ?</span>
+        </button>
+        <button class="accessibility-float"><i class="pi pi-user"></i></button>
+      </div>
+    </div>
+
+    <!-- Need Assistance Banner -->
+    <div class="assistance-banner">
+      <h3>Need Assistance? Call 14448</h3>
+      <p>The contact center (#14448) with Interactive Voice Response System (IVRS) is available 24x7, while the facility to connect to Contact Centre personnel is available from Monday to Saturday except for National Holidays, between 8:00 AM to 10:00 PM for English, Hindi, and ten regional languages.</p>
+      <a href="javascript:void(0)" class="banner-contact-btn">Contact <i class="pi pi-chevron-right"></i></a>
+    </div>
+
+    <!-- Footer -->
+    <footer class="complaint-footer">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <i class="pi pi-shield"></i>
+            <div>
+              <strong>Sharan say amrit</strong>
+              <span>Complaint Management System</span>
+            </div>
+          </div>
+          <p class="footer-tagline">Your trusted platform for complaint resolution — effortlessly file and track grievances against Regulated Entities.</p>
+        </div>
+        <div class="footer-links-col">
+          <h5>Quick Links</h5>
+          <a href="javascript:void(0)">Contact</a>
+          <a href="javascript:void(0)">Download Complaint Form <i class="pi pi-download"></i></a>
+          <a href="javascript:void(0)">Sitemap</a>
+        </div>
+        <div class="footer-links-col">
+          <h5>Legal</h5>
+          <a href="javascript:void(0)">Terms and Conditions</a>
+          <a href="javascript:void(0)">Privacy Policy</a>
+          <a href="javascript:void(0)">Data Protection Information</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; Reserve Bank of India. All Rights Reserved.</span>
+        <span>Developed and Maintained by Reserve Bank Information Technology Pvt. Ltd.</span>
+      </div>
+    </footer>
+  </div>
+}

@@ -10,10 +10,10 @@ export interface FileValidationResult {
 
 export const ALLOWED_FILE_TYPES: Record<string, string[]> = {
   document: ['application/pdf', 'application/msword'],
-  image: ['image/jpeg'],
+  image: ['image/jpeg', 'image/jpg'],
 };
 
-export const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.doc'];
+export const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.doc'];
 
 export const MAX_FILE_SIZE_MB = 2;
 export const MAX_FILE_COUNT = 10;

@@ -1994,6 +1994,20 @@ label.file-upload-browse-link {
   .success-actions { margin-top: 20px; display: flex; gap: 10px; }
 }
 
+.error-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+
+  .error-icon .pi-exclamation-triangle { font-size: 48px; color: #dc2626; }
+  h2 { margin: 12px 0 8px; font-size: 18px; }
+  p { color: #64748b; font-size: 13px; margin: 4px 0; }
+}
+
 // ═══ SUMMARY VIEW ═══
 .summary-tabs {
   display: flex;

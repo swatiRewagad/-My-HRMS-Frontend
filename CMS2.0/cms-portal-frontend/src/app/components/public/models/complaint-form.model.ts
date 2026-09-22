@@ -33,6 +33,8 @@ export interface AttachmentPreview {
   url: string;
   type: string;
   size: number;
+  fileId?: string;
+  viewUrl?: string;
 }
 
 export interface AccountType {

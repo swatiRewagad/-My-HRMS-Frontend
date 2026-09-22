@@ -10,6 +10,7 @@ export interface DraftPayload {
   phone: string;
   entityName: string;
   formData: Record<string, any>;
+  eligibilityFormData: Record<string, any>;
   eligibilityAnswers: Record<string, any>;
   currentStep: number;
   highestStepReached?: number;
@@ -28,6 +29,7 @@ export interface DraftRecord {
   phone: string;
   entityName: string;
   formData: Record<string, any>;
+  eligibilityFormData?: Record<string, any>;
   eligibilityAnswers: Record<string, any>;
   currentStep: number;
   highestStepReached?: number;

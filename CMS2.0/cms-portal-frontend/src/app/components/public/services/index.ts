@@ -1,1 +1,1 @@
-export { ComplaintFacadeService } from './complaint-facade.service';
+export { ComplaintFacadeService, FileMeta } from './complaint-facade.service';

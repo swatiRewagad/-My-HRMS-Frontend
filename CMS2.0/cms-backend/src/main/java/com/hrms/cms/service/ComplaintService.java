@@ -138,6 +138,10 @@ public class ComplaintService {
 
         complaint.setEntityCode(entityCode);
         complaint.setEntityName(req.getEntityName());
+        complaint.setEntityType(req.getEntityType());
+        if (req.getAmountInvolved() != null) {
+            complaint.setAmountInvolved(req.getAmountInvolved());
+        }
         if (req.getCategoryId() != null) {
             categoryRepository.findById(req.getCategoryId())
                     .ifPresent(cat -> complaint.setCategoryName(cat.getName()));
@@ -265,6 +269,43 @@ public class ComplaintService {
     @Transactional
     public ComplaintAttachment saveAttachment(ComplaintAttachment attachment) {
         return attachmentRepository.save(attachment);
+    }
+
+    @CacheEvict(value = "dashboard", allEntries = true)
+    @Transactional
+    public Complaint withdrawComplaint(String complaintNumber, String reason, String remarks) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new RuntimeException("Complaint not found"));
+
+        String status = complaint.getStatus() != null ? complaint.getStatus().toUpperCase() : "";
+        if (List.of("CLOSED", "RESOLVED", "REJECTED", "WITHDRAWN").contains(status)) {
+            throw new IllegalStateException("Complaint cannot be withdrawn in its current status: " + status);
+        }
+
+        String withdrawRemark = "Withdrawn by complainant. Reason: " + reason;
+        if (remarks != null && !remarks.isEmpty() && !remarks.equals(reason)) {
+            withdrawRemark += " — " + remarks;
+        }
+
+        String oldStatus = complaint.getStatus();
+        complaint.setStatus("withdrawn");
+        complaint.setClosedAt(LocalDateTime.now());
+        complaint.setClosureClause("16(6)");
+        complaint.setClosureClauseDescription("Closed - complaint withdrawn by complainant");
+
+        Complaint saved = complaintRepository.save(complaint);
+
+        ComplaintTimeline entry = ComplaintTimeline.builder()
+                .complaintId(saved.getId())
+                .action("WITHDRAWN")
+                .performedBy("complainant")
+                .remarks(withdrawRemark)
+                .fromStatus(oldStatus)
+                .toStatus("withdrawn")
+                .build();
+        timelineRepository.save(entry);
+
+        return saved;
     }
 
     @CacheEvict(value = "dashboard", allEntries = true)

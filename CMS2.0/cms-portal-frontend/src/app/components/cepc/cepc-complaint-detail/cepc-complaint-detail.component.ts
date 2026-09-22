@@ -9,6 +9,9 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
 import { CepcEmailComposeComponent } from '../cepc-email-compose/cepc-email-compose.component';
+import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
+import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
+import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
 
@@ -59,7 +62,7 @@ interface TemplateDef {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcEmailComposeComponent],
+  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcEmailComposeComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })
@@ -190,6 +193,14 @@ export class CepcComplaintDetailComponent implements OnInit {
     const actions: ActionDef[] = [];
 
     if (this.isTerminalState()) return [];
+
+    // Role + status alone don't establish that THIS complaint belongs to the current user —
+    // any CEPC_DO could otherwise open a complaint assigned to a different DO (via direct URL
+    // or a list not scoped to "assigned to me") and get full action buttons. No assignedTo on
+    // the complaint (not yet claimed) is treated as actionable; an explicit mismatch is not.
+    const currentUsername = this.auth.currentUser()?.username || '';
+    const assignedTo = this.complaint()?.assignedTo;
+    if (assignedTo && assignedTo !== currentUsername) return [];
 
     if (role === 'CEPC_DO') {
       if (['assigned', 'pending', 'new', 'new_complaint', 'sent_back', 'in_progress'].includes(status)) {

@@ -1,0 +1,125 @@
+# ============================================================
+# CMS 2.0 — full local stack, laptop-sized
+#
+# Builds and runs the four services actually needed to exercise OCR (wired to the external-
+# provider contract, via the bundled mock) and embedded SMTP mail intake end-to-end:
+# cms-backend, cms-mail-intake, cms-mock-ocr-api, and the cms-portal-frontend UI — plus a MySQL
+# container, because cms-backend's own dev-local profile (application-dev-local.yml) expects
+# MySQL at localhost:3306, not H2.
+#
+# Deliberately NOT included: Oracle, Kafka, Keycloak, OpenSearch — see
+# deployment/docker/docker-compose.yml for those (the production-shaped infra set). Without
+# Keycloak here, staff-login-gated screens won't authenticate; Kafka-less means
+# complaint.* event publishing will log connection warnings and no-op rather than blocking
+# startup (Spring Kafka connects lazily). Neither affects OCR extraction or SMTP intake.
+#
+# Run from the CMS2.0 repo root:
+#   docker compose -f deployment/docker/docker-compose.local.yml up --build
+# ============================================================
+
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: cms-mysql-local
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: cms_db
+      MYSQL_USER: cms_user
+      MYSQL_PASSWORD: cms_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - cms_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - cms-local
+
+  cms-mock-ocr-api:
+    build:
+      context: ../../cms-mock-ocr-api
+    container_name: cms-mock-ocr-api-local
+    ports:
+      - "8000:8000"
+    networks:
+      - cms-local
+
+  cms-backend:
+    build:
+      context: ../../cms-backend
+    container_name: cms-backend-local
+    depends_on:
+      mysql:
+        condition: service_healthy
+      cms-mock-ocr-api:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: dev-local
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true"
+    # Appended after the Dockerfile's fixed `java ... -jar app.jar` entrypoint, so these land as
+    # Spring Boot command-line arguments — the highest-precedence property source, which is what
+    # it takes to override cms.ocr.chain (a literal "groq" in application-dev-local.yml, not a
+    # placeholder env vars can feed) and set cms.ocr.external-url (present in neither yml file at
+    # all). http://cms-mock-ocr-api:8000 is the Docker-network hostname — this call happens
+    # server-to-server from inside the cms-backend container, not from the browser.
+    command:
+      - "--cms.ocr.chain=external"
+      - "--cms.ocr.external-url=http://cms-mock-ocr-api:8000"
+    ports:
+      - "8082:8082"
+    networks:
+      - cms-local
+
+  cms-mail-intake:
+    build:
+      context: ../..
+      dockerfile: cms-mail-intake/Dockerfile
+    container_name: cms-mail-intake-local
+    environment:
+      SPRING_PROFILES_ACTIVE: dev-local
+      # dev-local's own allowlist is 127.0.0.1/32 + ::1/128 only — correct for connections made
+      # from the same machine cms-mail-intake runs on, but Docker's port-publishing NATs an
+      # SMTP client on your host through the bridge network, so it arrives as a 172.x address,
+      # not loopback. CMS_MAIL_INTAKE_ALLOWLIST_CIDRS binds via @ConfigurationProperties relaxed
+      # binding, which — unlike the plain @Value case above — does outrank a profile-yml literal,
+      # so this override is enough on its own (no command-line args needed here).
+      CMS_MAIL_INTAKE_ALLOWLIST_CIDRS: "172.16.0.0/12,127.0.0.1/32,::1/128"
+    ports:
+      - "8092:8092"
+      - "2525:2525"
+    networks:
+      - cms-local
+
+  cms-portal-frontend:
+    build:
+      context: ../../cms-portal-frontend
+      args:
+        # "development" is the one Angular build configuration with no environment.ts file
+        # replacement (see angular.json) — it ships with apiBaseUrl/ocrServiceUrl already
+        # pointing at http://localhost:8082 and http://localhost:8000, which is exactly right
+        # here: these are browser-side calls hitting your host machine's published ports, not
+        # container-to-container calls, so they need to be host-visible absolute URLs, not
+        # Docker service hostnames.
+        NG_CONFIG: development
+    container_name: cms-portal-frontend-local
+    depends_on:
+      - cms-backend
+    environment:
+      API_BACKEND_HOST: cms-backend
+      API_BACKEND_PORT: "8082"
+    ports:
+      - "4200:80"
+    networks:
+      - cms-local
+
+networks:
+  cms-local:
+    driver: bridge
+
+volumes:
+  cms_mysql_data:
