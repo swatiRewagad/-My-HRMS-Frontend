@@ -217,9 +217,6 @@ public class ComplaintApiV1Controller {
         detail.put("complainantAddress", c.getComplainantAddress());
         detail.put("complainantState", c.getComplainantState());
         detail.put("complainantDistrict", c.getComplainantDistrict());
-        detail.put("complainantAddress", c.getComplainantAddress());
-        detail.put("complainantState", c.getComplainantState());
-        detail.put("complainantDistrict", c.getComplainantDistrict());
         detail.put("complainantPincode", c.getComplainantPincode());
         detail.put("entityName", bankName);
         detail.put("entityType", c.getEntityType() != null ? c.getEntityType() : "BANK");
@@ -693,6 +690,20 @@ public class ComplaintApiV1Controller {
 
         String reason = request.getOrDefault("reason", "").toString();
         String remarks = request.getOrDefault("remarks", "").toString();
+        String callerPhone = request.getOrDefault("phone", "").toString();
+
+        Complaint complaint;
+        try {
+            complaint = complaintService.getByComplaintNumber(complaintNumber);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Complaint not found"));
+        }
+
+        if (callerPhone.isEmpty() || !callerPhone.equals(complaint.getComplainantPhone())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("success", false, "message", "You can only withdraw your own complaint"));
+        }
 
         Complaint saved = complaintService.withdrawComplaint(complaintNumber, reason, remarks);
 
