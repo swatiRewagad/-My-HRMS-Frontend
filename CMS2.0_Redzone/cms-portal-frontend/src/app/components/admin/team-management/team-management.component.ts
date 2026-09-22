@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { ToastService } from '../../../services/toast.service';
 import { environment } from '../../../../environments/environment';
 
 interface Officer {
@@ -29,6 +30,7 @@ interface Officer {
 export class TeamManagementComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
+  private toast = inject(ToastService);
   auth = inject(KeycloakAuthService);
 
   officers = signal<Officer[]>([]);
@@ -322,14 +324,14 @@ export class TeamManagementComponent implements OnInit {
 
         this.syncing.set(false);
         if (added === 0) {
-          alert('All Keycloak users are already in the pool.');
+          this.toast.info('ui.toast.officers_already_synced');
         } else {
-          alert(`${added} new officer(s) synced from Keycloak.`);
+          this.toast.success('ui.toast.officers_synced', { count: String(added) });
         }
       },
       error: () => {
         this.syncing.set(false);
-        alert('Failed to fetch users from Keycloak. Ensure backend is running.');
+        this.toast.error('ui.toast.officer_sync_failed');
       }
     });
   }

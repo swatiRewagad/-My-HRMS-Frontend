@@ -14,7 +14,7 @@
   font-size: 1rem;
   font-weight: 600;
   margin: 0;
-  color: #1f2937;
+  color: var(--text-heading);
 }
 
 .filter-toggle {
@@ -29,7 +29,7 @@
 .loading-state,
 .empty-state {
   padding: 1rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.875rem;
   text-align: center;
 }
@@ -41,15 +41,15 @@
   gap: 1rem;
   padding: 0.75rem 1rem;
   border: 1px solid #fca5a5;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
   border-radius: 4px;
   font-size: 0.875rem;
 
   .retry-btn {
-    border: 1px solid #991b1b;
-    background: #fff;
-    color: #991b1b;
+    border: 1px solid var(--state-danger-fg);
+    background: var(--surface-card);
+    color: var(--state-danger-fg);
     padding: 0.25rem 0.75rem;
     border-radius: 3px;
     cursor: pointer;
@@ -61,7 +61,7 @@
   list-style: none;
   margin: 0;
   padding: 0 0 0 1rem;
-  border-left: 2px solid #e5e7eb;
+  border-left: 2px solid var(--border-subtle);
 }
 
 .timeline-entry {
@@ -77,13 +77,13 @@
     width: 0.6rem;
     height: 0.6rem;
     border-radius: 50%;
-    background: #2563eb;
-    border: 2px solid #fff;
+    background: var(--brand-primary-hover);
+    border: 2px solid var(--surface-card);
   }
 
   // System events are visually de-emphasised so an officer's own actions stand out.
   &.automatic::before {
-    background: #9ca3af;
+    background: var(--text-subtle);
   }
 }
 
@@ -100,7 +100,7 @@
 }
 
 .entry-time {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.75rem;
   white-space: nowrap;
 }
@@ -115,7 +115,7 @@
 }
 
 .entry-badge {
-  background: #f3f4f6;
+  background: var(--surface-subtle);
   color: #4b5563;
   border-radius: 10px;
   padding: 0.05rem 0.5rem;
@@ -124,7 +124,7 @@
 
 .entry-status {
   margin-top: 0.3rem;
-  color: #374151;
+  color: var(--state-neutral-fg);
   font-size: 0.8rem;
 }
 
@@ -133,7 +133,7 @@
 .entry-destination {
   margin-top: 0.3rem;
   font-size: 0.8rem;
-  color: #374151;
+  color: var(--state-neutral-fg);
 }
 
 .entry-change {
@@ -142,18 +142,18 @@
   align-items: center;
   gap: 0.4rem;
 
-  .change-field { color: #6b7280; }
-  .change-old { color: #991b1b; text-decoration: line-through; }
-  .change-arrow { color: #6b7280; }
-  .change-new { color: #065f46; font-weight: 600; }
+  .change-field { color: var(--text-muted); }
+  .change-old { color: var(--state-danger-fg); text-decoration: line-through; }
+  .change-arrow { color: var(--text-muted); }
+  .change-new { color: var(--state-success-fg); font-weight: 600; }
 }
 
 .entry-remarks {
   margin-top: 0.35rem;
   padding: 0.4rem 0.6rem;
-  background: #f9fafb;
+  background: var(--surface-subtle);
   border-radius: 3px;
-  color: #374151;
+  color: var(--state-neutral-fg);
   font-size: 0.8rem;
   white-space: pre-wrap;
 }

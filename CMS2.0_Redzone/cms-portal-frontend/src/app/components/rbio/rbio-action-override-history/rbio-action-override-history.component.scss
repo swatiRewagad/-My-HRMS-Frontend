@@ -1,6 +1,6 @@
 .rbio-action-override-history {
   padding: 1rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: #fafafa;
   margin-top: 1rem;
@@ -8,7 +8,7 @@
   h4 {
     font-size: 1rem;
     font-weight: 600;
-    color: #1a237e;
+    color: var(--brand-primary-strong);
     margin-bottom: 0.75rem;
     display: flex;
     align-items: center;
@@ -17,7 +17,7 @@
 
   .loading-text, .empty-text {
     font-size: 0.85rem;
-    color: #78909c;
+    color: var(--text-subtle);
     font-style: italic;
   }
 
@@ -28,8 +28,8 @@
   }
 
   .override-entry {
-    background: #fff;
-    border: 1px solid #e8eaf6;
+    background: var(--surface-card);
+    border: 1px solid var(--brand-primary-bg);
     border-left: 3px solid #ff8f00;
     border-radius: 4px;
     padding: 0.6rem 0.75rem;
@@ -48,7 +48,7 @@
 
       .override-time {
         font-size: 0.7rem;
-        color: #78909c;
+        color: var(--text-subtle);
       }
     }
 
@@ -66,12 +66,12 @@
         }
 
         .arrow {
-          color: #78909c;
+          color: var(--text-subtle);
           font-weight: bold;
         }
 
         .new-value {
-          color: #2e7d32;
+          color: var(--state-success-fg);
         }
       }
     }

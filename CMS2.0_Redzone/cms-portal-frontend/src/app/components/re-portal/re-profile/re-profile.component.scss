@@ -1,10 +1,10 @@
-$primary: #1565c0;
-$primary-light: #e8f0fe;
-$text-dark: #1f2937;
-$text-muted: #6b7280;
-$border-color: #e5e7eb;
-$success: #16a34a;
-$danger: #dc2626;
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+$success: var(--state-success-solid);
+$danger: var(--state-danger-solid-hover);
 
 .re-profile {
   max-width: 800px;
@@ -20,7 +20,7 @@ $danger: #dc2626;
 
 // Profile Card
 .profile-card {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
   margin-bottom: 24px;
@@ -135,7 +135,7 @@ $danger: #dc2626;
     }
 
     &::placeholder {
-      color: #9ca3af;
+      color: var(--text-subtle);
     }
   }
 }
@@ -152,7 +152,7 @@ $danger: #dc2626;
   gap: 6px;
   padding: 10px 20px;
   background: $primary;
-  color: #fff;
+  color: var(--surface-card);
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -160,13 +160,13 @@ $danger: #dc2626;
   cursor: pointer;
   transition: background 0.2s;
 
-  &:hover:not(:disabled) { background: #0d47a1; }
+  &:hover:not(:disabled) { background: var(--brand-primary-strong); }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 
 .cancel-btn {
   padding: 10px 20px;
-  background: #fff;
+  background: var(--surface-card);
   color: $text-dark;
   border: 1px solid $border-color;
   border-radius: 8px;
@@ -174,7 +174,7 @@ $danger: #dc2626;
   font-weight: 500;
   cursor: pointer;
 
-  &:hover { background: #f9fafb; }
+  &:hover { background: var(--surface-subtle); }
 }
 
 // Banners
@@ -182,8 +182,8 @@ $danger: #dc2626;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f0fdf4;
-  border-bottom: 1px solid #bbf7d0;
+  background: var(--state-success-bg);
+  border-bottom: 1px solid var(--state-success-bg);
   padding: 12px 24px;
   color: $success;
   font-size: 14px;
@@ -193,8 +193,8 @@ $danger: #dc2626;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #fef2f2;
-  border-bottom: 1px solid #fecaca;
+  background: var(--state-danger-bg);
+  border-bottom: 1px solid var(--state-danger-bg);
   padding: 12px 24px;
   color: $danger;
   font-size: 14px;
@@ -212,7 +212,7 @@ $danger: #dc2626;
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e5e7eb;
+  border: 3px solid var(--border-subtle);
   border-top-color: $primary;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -224,7 +224,7 @@ $danger: #dc2626;
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
+  border-top-color: var(--surface-card);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

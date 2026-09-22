@@ -1,10 +1,10 @@
-$primary: #1565c0;
-$primary-light: #e8f0fe;
-$text-dark: #1f2937;
-$text-muted: #6b7280;
-$border-color: #e5e7eb;
-$success: #16a34a;
-$danger: #dc2626;
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+$success: var(--state-success-solid);
+$danger: var(--state-danger-solid-hover);
 
 .re-complaint-detail {
   max-width: 900px;
@@ -61,13 +61,13 @@ $danger: #dc2626;
   gap: 8px;
   padding: 8px 16px;
   border-radius: 8px;
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: var(--state-success-bg);
+  color: var(--state-success-fg);
   font-size: 14px;
   font-weight: 600;
 
   &.expired {
-    background: #fef2f2;
+    background: var(--state-danger-bg);
     color: $danger;
   }
 }
@@ -78,7 +78,7 @@ $danger: #dc2626;
 }
 
 .info-card {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
   padding: 24px;
@@ -129,7 +129,7 @@ $danger: #dc2626;
 
 // Response & Query Sections
 .response-section, .query-section {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
   padding: 24px;
@@ -171,7 +171,7 @@ $danger: #dc2626;
     }
 
     &:disabled {
-      background: #f9fafb;
+      background: var(--surface-subtle);
       cursor: not-allowed;
     }
   }
@@ -213,12 +213,12 @@ $danger: #dc2626;
 
   &:hover {
     border-color: $primary;
-    background: #f8fafc;
+    background: var(--surface-page);
   }
 
   i { font-size: 24px; color: $primary; }
   span { font-size: 14px; color: $text-muted; }
-  .file-hint { font-size: 12px; color: #9ca3af; }
+  .file-hint { font-size: 12px; color: var(--text-subtle); }
 }
 
 .file-list {
@@ -233,7 +233,7 @@ $danger: #dc2626;
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: #f9fafb;
+  background: var(--surface-subtle);
   border-radius: 6px;
   border: 1px solid $border-color;
 
@@ -263,7 +263,7 @@ $danger: #dc2626;
   padding: 4px;
   border-radius: 4px;
 
-  &:hover { color: $danger; background: #fef2f2; }
+  &:hover { color: $danger; background: var(--state-danger-bg); }
 }
 
 // Form Actions
@@ -279,7 +279,7 @@ $danger: #dc2626;
   gap: 8px;
   padding: 12px 24px;
   background: $primary;
-  color: #fff;
+  color: var(--surface-card);
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -287,15 +287,15 @@ $danger: #dc2626;
   cursor: pointer;
   transition: background 0.2s;
 
-  &:hover:not(:disabled) { background: #0d47a1; }
+  &:hover:not(:disabled) { background: var(--brand-primary-strong); }
   &:disabled { opacity: 0.6; cursor: not-allowed; }
 
   &.secondary {
-    background: #f3f4f6;
+    background: var(--surface-subtle);
     color: $text-dark;
     border: 1px solid $border-color;
 
-    &:hover:not(:disabled) { background: #e5e7eb; }
+    &:hover:not(:disabled) { background: var(--border-subtle); }
   }
 }
 
@@ -304,7 +304,7 @@ $danger: #dc2626;
   align-items: center;
   gap: 8px;
   padding: 12px 24px;
-  background: #fff;
+  background: var(--surface-card);
   color: $text-dark;
   border: 1px solid $border-color;
   border-radius: 8px;
@@ -313,7 +313,7 @@ $danger: #dc2626;
   cursor: pointer;
   transition: background 0.2s;
 
-  &:hover { background: #f9fafb; }
+  &:hover { background: var(--surface-subtle); }
 }
 
 .window-expired-notice {
@@ -322,8 +322,8 @@ $danger: #dc2626;
   gap: 8px;
   margin-top: 16px;
   padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
   border-radius: 8px;
   font-size: 13px;
   color: $danger;
@@ -336,8 +336,8 @@ $danger: #dc2626;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
+  background: var(--state-success-bg);
+  border: 1px solid var(--state-success-bg);
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -349,8 +349,8 @@ $danger: #dc2626;
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -360,7 +360,7 @@ $danger: #dc2626;
 
 // Timeline
 .timeline-section {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
   padding: 24px;
@@ -402,7 +402,7 @@ $danger: #dc2626;
   height: 12px;
   border-radius: 50%;
   background: $primary;
-  border: 2px solid #fff;
+  border: 2px solid var(--surface-card);
   box-shadow: 0 0 0 2px $primary-light;
 }
 
@@ -440,7 +440,7 @@ $danger: #dc2626;
   color: $text-dark;
   margin: 4px 0 0;
   line-height: 1.5;
-  background: #f9fafb;
+  background: var(--surface-subtle);
   padding: 8px 12px;
   border-radius: 6px;
 }
@@ -458,7 +458,7 @@ $danger: #dc2626;
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid #e5e7eb;
+  border: 3px solid var(--border-subtle);
   border-top-color: $primary;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -470,7 +470,7 @@ $danger: #dc2626;
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
+  border-top-color: var(--surface-card);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

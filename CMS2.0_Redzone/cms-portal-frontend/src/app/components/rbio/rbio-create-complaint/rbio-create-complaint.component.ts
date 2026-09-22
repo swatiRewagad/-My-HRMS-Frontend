@@ -176,7 +176,7 @@ export class RbioCreateComplaintComponent implements OnInit, OnDestroy {
   approvalCrpcClause = '';
   assessmentComments: { id: number; initials: string; author: string; time: string; text: string; color: string }[] = [
     { id: 1, initials: 'ST', author: 'Full Name BO DO', time: '8 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers. These systems provide a centralized platform', color: '#6366f1' },
-    { id: 2, initials: 'ST', author: 'Full Name', time: '1 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', color: '#f59e0b' },
+    { id: 2, initials: 'ST', author: 'Full Name', time: '1 hrs ago', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', color: 'var(--state-warning-solid)' },
   ];
 
   // Reference data

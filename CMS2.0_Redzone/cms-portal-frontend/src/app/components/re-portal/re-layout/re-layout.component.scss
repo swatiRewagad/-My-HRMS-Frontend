@@ -1,13 +1,13 @@
 $sidebar-width: 260px;
 $sidebar-collapsed-width: 72px;
 $header-height: 64px;
-$primary: #1565c0;
-$primary-dark: #0d47a1;
-$primary-light: #e8f0fe;
-$text-dark: #1f2937;
-$text-muted: #6b7280;
-$border-color: #e5e7eb;
-$bg-light: #f8fafc;
+$primary: var(--brand-primary);
+$primary-dark: var(--brand-primary-strong);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+$bg-light: var(--surface-page);
 
 .re-layout {
   display: flex;
@@ -18,7 +18,7 @@ $bg-light: #f8fafc;
 // Sidebar
 .sidebar {
   width: $sidebar-width;
-  background: #fff;
+  background: var(--surface-card);
   border-right: 1px solid $border-color;
   display: flex;
   flex-direction: column;
@@ -110,8 +110,8 @@ $bg-light: #f8fafc;
 
   .badge {
     margin-left: auto;
-    background: #ef4444;
-    color: #fff;
+    background: var(--state-danger-solid);
+    color: var(--surface-card);
     font-size: 11px;
     font-weight: 700;
     padding: 2px 8px;
@@ -135,7 +135,7 @@ $bg-light: #f8fafc;
   border-radius: 8px;
   background: none;
   border: none;
-  color: #dc2626;
+  color: var(--state-danger-solid-hover);
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -144,7 +144,7 @@ $bg-light: #f8fafc;
   i { font-size: 18px; width: 20px; text-align: center; }
 
   &:hover {
-    background: #fef2f2;
+    background: var(--state-danger-bg);
   }
 }
 
@@ -165,7 +165,7 @@ $bg-light: #f8fafc;
 // Header
 .top-header {
   height: $header-height;
-  background: #fff;
+  background: var(--surface-card);
   border-bottom: 1px solid $border-color;
   display: flex;
   align-items: center;
@@ -213,7 +213,7 @@ $bg-light: #f8fafc;
   color: $text-muted;
   transition: background 0.15s;
 
-  &:hover { background: #f3f4f6; }
+  &:hover { background: var(--surface-subtle); }
 
   i { font-size: 20px; }
 
@@ -221,8 +221,8 @@ $bg-light: #f8fafc;
     position: absolute;
     top: 2px;
     right: 2px;
-    background: #ef4444;
-    color: #fff;
+    background: var(--state-danger-solid);
+    color: var(--surface-card);
     font-size: 10px;
     font-weight: 700;
     width: 18px;

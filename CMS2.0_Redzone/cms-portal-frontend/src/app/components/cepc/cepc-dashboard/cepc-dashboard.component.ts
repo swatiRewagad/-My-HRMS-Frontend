@@ -10,6 +10,8 @@ import { SpeechButtonComponent } from '../../../shared/speech-button/speech-butt
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
 import { environment } from '../../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface CepcComplaint {
   complaintId: string;
@@ -38,7 +40,7 @@ type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AU
 @Component({
   selector: 'app-cepc-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe],
   templateUrl: './cepc-dashboard.component.html',
   styleUrl: './cepc-dashboard.component.scss'
 })

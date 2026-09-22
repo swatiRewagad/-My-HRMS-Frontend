@@ -1,5 +1,120 @@
 @import 'primeicons/primeicons.css';
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — the single source of colour, spacing, radius and type.
+   Values are CRPC's measured palette (the de-facto reference implementation),
+   named semantically so a future RBI brand guide is a change HERE and nowhere
+   else. Never add a raw hex to a component stylesheet; add or reuse a token.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Surfaces ── */
+  --surface-page: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --surface-sunken: #f5f7fa;
+  --surface-inverse: #1e293b;
+  --surface-hover: #f8fafc;
+  --surface-selected: #eff6ff;
+
+  /* ── Borders ── */
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-input: #d1d5db;
+  --border-divider: #f1f5f9;
+
+  /* ── Text ── */
+  --text-heading: #1e293b;
+  --text-body: #334155;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --text-on-brand: #ffffff;
+  --text-on-inverse: #e2e8f0;
+
+  /* ── Brand ── */
+  --brand-primary: #3b82f6;
+  --brand-primary-hover: #2563eb;
+  --brand-primary-strong: #1e40af;
+  --brand-primary-bg: #eff6ff;
+  --brand-primary-bg-strong: #dbeafe;
+
+  /* ── State: success ── */
+  --state-success-bg: #d1fae5;
+  --state-success-fg: #065f46;
+  --state-success-solid: #10b981;
+
+  /* ── State: warning ── */
+  --state-warning-bg: #fef3c7;
+  --state-warning-fg: #92400e;
+  --state-warning-solid: #f59e0b;
+
+  /* ── State: danger ── */
+  --state-danger-bg: #fee2e2;
+  --state-danger-fg: #991b1b;
+  --state-danger-solid: #ef4444;
+  --state-danger-solid-hover: #dc2626;
+
+  /* ── State: info / neutral ── */
+  --state-info-bg: #e0f2fe;
+  --state-info-fg: #075985;
+  --state-neutral-bg: #e5e7eb;
+  --state-neutral-fg: #374151;
+
+  /* ── Accent (secondary categorical fills) ── */
+  --accent-violet-bg: #ede9fe;
+  --accent-violet-fg: #5b21b6;
+  --accent-indigo-bg: #e0e7ff;
+  --accent-indigo-fg: #3730a3;
+  --accent-teal-bg: #ccfbf1;
+  --accent-teal-fg: #115e59;
+  --accent-pink-bg: #fce7f3;
+  --accent-pink-fg: #9d174d;
+
+  /* ── Spacing scale ── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+
+  /* ── Radius ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* ── Shadow ── */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-raised: 0 2px 8px rgba(59, 130, 246, 0.1);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.2);
+
+  /* ── Type scale ── */
+  --font-sans: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+
+  /* ── Layout ── */
+  --shell-header-height: 56px;
+  --shell-sidebar-width: 200px;
+  --shell-sidebar-collapsed: 60px;
+
+  /* ── Focus ── */
+  --focus-ring: 3px solid #2460b9;
+  --focus-ring-offset: 2px;
+}
+
+@import 'primitives';
+
 * {
   box-sizing: border-box;
 }
@@ -18,8 +133,8 @@ button { font-family: inherit; }
 
 /* NFR-003: WCAG 2.1 Level AA - Focus visibility */
 :focus-visible {
-  outline: 3px solid #2460b9;
-  outline-offset: 2px;
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
 }
 
 /* NFR-003: Screen reader only class */

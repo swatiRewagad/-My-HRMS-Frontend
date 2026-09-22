@@ -1,14 +1,35 @@
 import { test, expect } from '../fixtures';
 import { isKeycloakAvailable, logout } from '../utils/auth';
-import { createTestComplaint, advanceToStatus } from '../utils/test-data';
+import { createTestComplaint, advanceToStatus, loginCitizen, seedCitizenSession } from '../utils/test-data';
 
+/**
+ * These eight tests shared ONE cause, and it was not the appeal screen.
+ *
+ * 1. THE URL DID NOT EXIST. Every test navigated to `/appeal`. The real route is `/public/appeal` —
+ *    it is a CHILD of the `public` path. A non-existent Angular route falls through to the public home
+ *    page, so `.form-input` was legitimately absent and the failure looked like a broken form. The
+ *    rendered page in the failure context was the home page, which is what gave it away.
+ *
+ * 2. IT NEEDS A CITIZEN SESSION, NOT A STAFF LOGIN. `/public/appeal` sits behind publicAuthGuard,
+ *    which reads a citizen OTP session from sessionStorage. A Keycloak staff token does not satisfy it,
+ *    so loginAsAaRole would not have helped either. seedCitizenSession must run on a page already
+ *    served from the app origin, hence the bare goto before it.
+ */
 test.describe('AA - File Appeal', () => {
   let keycloakUp: boolean;
+  const CITIZEN_MOBILE = '9876500011';
 
   test.beforeAll(async ({ browser }) => {
     const page = await browser.newPage();
     keycloakUp = await isKeycloakAvailable(page);
     await page.close();
+  });
+
+  test.beforeEach(async ({ page, request }) => {
+    const token = await loginCitizen(request, CITIZEN_MOBILE);
+    test.skip(!token, 'Citizen OTP login unavailable — cannot reach a publicAuthGuard route');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await seedCitizenSession(page, CITIZEN_MOBILE, token!);
   });
 
   // ═══════════════════════════════════════════════════════════
@@ -22,7 +43,7 @@ test.describe('AA - File Appeal', () => {
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     const searchInput = page.locator('.form-input');
@@ -51,7 +72,7 @@ test.describe('AA - File Appeal', () => {
     // Advance to closed and backdate closure to ~45 days ago
     await advanceToStatus(request, complaint.complaintNumber, 'closed', { backdateDays: 45 });
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     const searchInput = page.locator('.form-input');
@@ -91,7 +112,7 @@ test.describe('AA - File Appeal', () => {
     // Advance to closed and backdate closure to ~90 days ago
     await advanceToStatus(request, complaint.complaintNumber, 'closed', { backdateDays: 90 });
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     const searchInput = page.locator('.form-input');
@@ -119,7 +140,7 @@ test.describe('AA - File Appeal', () => {
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     // Search phase
@@ -161,7 +182,7 @@ test.describe('AA - File Appeal', () => {
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     // Navigate to form phase
@@ -209,7 +230,7 @@ test.describe('AA - File Appeal', () => {
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     // Search
@@ -274,7 +295,7 @@ test.describe('AA - File Appeal', () => {
     });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     const searchInput = page.locator('.form-input');
@@ -296,7 +317,7 @@ test.describe('AA - File Appeal', () => {
       subject: 'E2E Ineligible Appeal Test',
     });
 
-    await page.goto('/appeal', { waitUntil: 'domcontentloaded' });
+    await page.goto('/public/appeal', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('networkidle');
 
     const searchInput = page.locator('.form-input');

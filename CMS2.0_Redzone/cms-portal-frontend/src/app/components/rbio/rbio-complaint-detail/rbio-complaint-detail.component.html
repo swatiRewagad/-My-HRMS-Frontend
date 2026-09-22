@@ -110,7 +110,7 @@
         >
           {{ tab.label }}
           @if (tab.key === 'forward' && isForwardingRestricted()) {
-            <i class="pi pi-lock" style="font-size: 11px; margin-left: 4px; color: #e65100;"></i>
+            <i class="pi pi-lock" style="font-size: 11px; margin-left: 4px; color: var(--state-warning-fg);"></i>
           }
         </button>
       }
@@ -246,8 +246,8 @@
 
           <!-- ═══ Final Decision Section (UST576, UST581-584) ═══ -->
           @if (activeTab() === 'final') {
-            <div class="final-decision-section" style="margin:12px 0; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e0e0e0;">
-              <h4 style="margin:0 0 10px; font-size:13px; color:#333;"><i class="pi pi-file-check"></i> Final Decision</h4>
+            <div class="final-decision-section" style="margin:12px 0; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid var(--border-subtle);">
+              <h4 style="margin:0 0 10px; font-size:13px; color:var(--text-body);"><i class="pi pi-file-check"></i> Final Decision</h4>
 
               <!-- Closure Clause Picker (UST581-584) -->
               <div style="margin-bottom:10px;">
@@ -264,7 +264,7 @@
               <div style="margin-bottom:10px;">
                 <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Custom Closure Text (optional)</label>
                 <textarea [ngModel]="customClosureText()" (ngModelChange)="customClosureText.set($event)" rows="3" maxlength="2000" placeholder="Enter custom text to include in the closure letter..." style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; resize:vertical;"></textarea>
-                <span style="font-size:11px; color:#666; float:right;">{{ customClosureTextLength }} / 2000</span>
+                <span style="font-size:11px; color:var(--text-muted); float:right;">{{ customClosureTextLength }} / 2000</span>
               </div>
 
               <!-- Email validation error (UST656) -->
@@ -459,7 +459,7 @@
   <div class="modal-overlay">
     <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:600px;">
       <div class="modal-header">
-        <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:#1565c0;"></i></div>
+        <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:var(--brand-primary);"></i></div>
         <div>
           <h3>Sample Closure Letter</h3>
           <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
@@ -467,7 +467,7 @@
         <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
       </div>
       <div class="modal-body" style="padding:16px 20px; max-height:400px; overflow-y:auto;">
-        <div style="background:#fafafa; padding:16px; border:1px solid #e0e0e0; border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
+        <div style="background:#fafafa; padding:16px; border:1px solid var(--border-subtle); border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
           <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
           <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
           <p>Dear [Complainant Name],</p>

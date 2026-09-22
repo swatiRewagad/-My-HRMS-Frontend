@@ -2,7 +2,6 @@ package com.hrms.cms.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,14 +22,11 @@ public class IntakeAttachmentValidator {
 
     private final FileUploadValidator fileUploadValidator;
 
-    @Value("${cms.attachments.intake.max-file-size-bytes:2097152}")
-    private long maxFileSizeBytes;
-
-    @Value("${cms.attachments.intake.max-total-size-bytes:26214400}")
-    private long maxTotalSizeBytes;
-
-    @Value("${cms.attachments.intake.max-file-count:10}")
-    private int maxFileCount;
+    /**
+     * Limits come from SYSTEM_CONFIG (13.1), not from three @Value copies that could drift apart.
+     * The ruling is 5 MB per file and 25 MB per complaint, both changeable without a release.
+     */
+    private final UploadLimitsService uploadLimits;
 
     /** Carries a translation key so the rejection can be shown in the citizen's locale. */
     public static class IntakeUploadRejected extends RuntimeException {
@@ -61,11 +57,13 @@ public class IntakeAttachmentValidator {
             return;
         }
 
+        int maxFileCount = uploadLimits.maxFileCount();
         if (present.size() > maxFileCount) {
             throw new IntakeUploadRejected("intake.attachment_too_many",
                     "At most " + maxFileCount + " files may be attached");
         }
 
+        long maxFileSizeBytes = uploadLimits.maxFileSizeBytes();
         long total = 0;
         for (MultipartFile file : present) {
             if (file.getSize() > maxFileSizeBytes) {
@@ -75,6 +73,7 @@ public class IntakeAttachmentValidator {
             total += file.getSize();
         }
 
+        long maxTotalSizeBytes = uploadLimits.maxTotalSizeBytes();
         if (total > maxTotalSizeBytes) {
             throw new IntakeUploadRejected("intake.attachment_total_too_large",
                     "Attachments must total " + (maxTotalSizeBytes / (1024 * 1024)) + "MB or less");
@@ -91,14 +90,14 @@ public class IntakeAttachmentValidator {
     }
 
     public long getMaxFileSizeBytes() {
-        return maxFileSizeBytes;
+        return uploadLimits.maxFileSizeBytes();
     }
 
     public long getMaxTotalSizeBytes() {
-        return maxTotalSizeBytes;
+        return uploadLimits.maxTotalSizeBytes();
     }
 
     public int getMaxFileCount() {
-        return maxFileCount;
+        return uploadLimits.maxFileCount();
     }
 }

@@ -121,26 +121,26 @@ import { environment } from '../../../../environments/environment';
     .helpdesk-container { padding: 24px; max-width: 900px; margin: 0 auto; }
     .hd-header { margin-bottom: 24px; }
     .hd-header h1 { font-size: 24px; font-weight: 700; margin: 0; }
-    .subtitle { color: #64748b; margin: 4px 0 0; }
-    .form-card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .subtitle { color: var(--text-muted); margin: 4px 0 0; }
+    .form-card { background: var(--surface-card); border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px; }
     .form-card h2 { font-size: 18px; margin: 0 0 20px; font-weight: 600; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
     .form-group textarea { resize: vertical; }
     .form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
-    .btn-primary { background: #3b82f6; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .btn-primary { background: var(--brand-primary); color: var(--surface-card); border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
     .btn-primary:disabled { opacity: 0.5; }
-    .btn-secondary { background: #e2e8f0; color: #334155; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
-    .success-banner { background: #dcfce7; color: #166534; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-weight: 500; }
+    .btn-secondary { background: var(--border-subtle); color: var(--text-body); border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .success-banner { background: var(--state-success-bg); color: var(--state-success-fg); padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-weight: 500; }
     .recent-section { margin-top: 32px; }
     .recent-section h2 { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
-    .table-wrap { overflow-x: auto; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .table-wrap { overflow-x: auto; background: var(--surface-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     table { width: 100%; border-collapse: collapse; }
-    th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 13px; font-weight: 600; color: #475569; }
+    th { background: var(--surface-page); padding: 10px 14px; text-align: left; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
     td { padding: 10px 14px; font-size: 13px; border-top: 1px solid #f1f5f9; }
-    .empty { text-align: center; color: #94a3b8; padding: 24px; }
+    .empty { text-align: center; color: var(--text-subtle); padding: 24px; }
   `]
 })
 export class HelpDeskComponent implements OnInit {

@@ -498,11 +498,11 @@
 
                 <!-- Eligibility Questions (shown when New Complaint selected) -->
                 @if (deoDecision === 'MAINTAINABLE' && editMode()) {
-                  <div class="eligibility-questions" style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                  <div class="eligibility-questions" style="margin-top: 16px; padding: 12px; background: var(--surface-page); border-radius: 8px;">
                     <h4 class="sub-section-title" style="margin-bottom: 12px;">Eligibility Assessment</h4>
-                    <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Mark all eligible — all fields default to Yes</p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Mark all eligible — all fields default to Yes</p>
                     @for (q of maintainabilityQuestions; track q.id) {
-                      <div class="radio-field-row" style="padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                      <div class="radio-field-row" style="padding: 8px 0; border-bottom: 1px solid var(--border-subtle);">
                         <label style="flex: 1; font-size: 13px;">{{ q.question }}</label>
                         <div class="radio-group">
                           <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'YES'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> Yes</label>
@@ -1624,8 +1624,8 @@
             right: '-5px',
             'min-width': '18px',
             height: '18px',
-            background: '#f59e0b',
-            color: '#fff',
+            background: 'var(--state-warning-solid)',
+            color: 'var(--surface-card)',
             'font-size': '11px',
             'font-weight': '700',
             'border-radius': '4px',

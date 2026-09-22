@@ -11,12 +11,12 @@
   font-size: 1rem;
   font-weight: 600;
   margin: 0;
-  color: #1f2937;
+  color: var(--text-heading);
 }
 
 .compose-btn, .send-btn {
-  background: #2563eb;
-  color: #fff;
+  background: var(--brand-primary-hover);
+  color: var(--surface-card);
   border: none;
   border-radius: 4px;
   padding: 0.4rem 0.9rem;
@@ -27,9 +27,9 @@
 }
 
 .cancel-btn, .retry-btn {
-  background: #fff;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--surface-card);
+  color: var(--state-neutral-fg);
+  border: 1px solid var(--border-input);
   border-radius: 4px;
   padding: 0.4rem 0.9rem;
   font-size: 0.82rem;
@@ -39,7 +39,7 @@
 .loading-state, .empty-state {
   padding: 1rem;
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.875rem;
 }
 
@@ -47,8 +47,8 @@
   padding: 0.7rem 1rem;
   margin-bottom: 0.75rem;
   border: 1px solid #fca5a5;
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
   border-radius: 4px;
   font-size: 0.85rem;
   display: flex;
@@ -66,11 +66,11 @@
 }
 
 .compose-box {
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-input);
   border-radius: 6px;
   padding: 0.9rem;
   margin-bottom: 1rem;
-  background: #f9fafb;
+  background: var(--surface-subtle);
 }
 
 .compose-row {
@@ -82,13 +82,13 @@
     width: 6rem;
     flex-shrink: 0;
     font-size: 0.8rem;
-    color: #374151;
+    color: var(--state-neutral-fg);
     padding-top: 0.35rem;
   }
 
   input, select, textarea {
     flex: 1;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-input);
     border-radius: 4px;
     padding: 0.35rem 0.5rem;
     font-size: 0.82rem;
@@ -125,8 +125,8 @@
 }
 
 .email-item {
-  border: 1px solid #e5e7eb;
-  border-left: 3px solid #2563eb;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--brand-primary-hover);
   border-radius: 4px;
   padding: 0.7rem 0.9rem;
   margin-bottom: 0.6rem;
@@ -135,7 +135,7 @@
   // Inbound mail is visually distinct so a conversation reads as a conversation.
   &.inbound {
     border-left-color: #059669;
-    background: #f0fdf4;
+    background: var(--state-success-bg);
   }
 }
 
@@ -151,13 +151,13 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: #e5e7eb;
-  color: #374151;
+  background: var(--border-subtle);
+  color: var(--state-neutral-fg);
   border-radius: 10px;
   padding: 0.1rem 0.55rem;
 }
 
-.email-date { font-size: 0.75rem; color: #6b7280; }
+.email-date { font-size: 0.75rem; color: var(--text-muted); }
 
 .email-addresses {
   color: #4b5563;
@@ -173,17 +173,17 @@
 
 .email-template {
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-bottom: 0.3rem;
 }
 
 .email-body {
   white-space: pre-wrap;
-  color: #374151;
-  background: #fff;
+  color: var(--state-neutral-fg);
+  background: var(--surface-card);
   border-radius: 3px;
   padding: 0.5rem 0.6rem;
-  border: 1px solid #f3f4f6;
+  border: 1px solid var(--surface-subtle);
 }
 
 .email-actions {
@@ -192,14 +192,14 @@
   margin-top: 0.5rem;
 
   button {
-    background: #fff;
-    border: 1px solid #d1d5db;
+    background: var(--surface-card);
+    border: 1px solid var(--border-input);
     border-radius: 3px;
     padding: 0.22rem 0.6rem;
     font-size: 0.75rem;
-    color: #374151;
+    color: var(--state-neutral-fg);
     cursor: pointer;
 
-    &:hover { background: #f3f4f6; }
+    &:hover { background: var(--surface-subtle); }
   }
 }

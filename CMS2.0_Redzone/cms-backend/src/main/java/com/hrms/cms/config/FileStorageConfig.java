@@ -21,11 +21,14 @@ public class FileStorageConfig {
     private String rootPath = "/data/cms-attachments";
 
     /**
-     * NFR-006: 2MB per file. Was 50MB, which met no stated requirement and let a single upload consume
-     * 25x the intended budget. cms-ingestion-service independently used 10MB, so the three limits in
-     * the product disagreed and the smallest one silently won wherever a file crossed a service.
+     * NFR-006: 5MB per file, per the product ruling. This was 2MB while the citizen-facing upload hint
+     * promised 5MB in all ten locales, so the interface contradicted what the server enforced.
+     *
+     * <p>This is now only a FALLBACK. {@link com.hrms.cms.service.UploadLimitsService} reads the live
+     * value from SYSTEM_CONFIG so an administrator can change the limit without a release; this
+     * constant applies only where no configuration row exists yet.
      */
-    private long maxFileSize = 2097152;  // 2MB
+    private long maxFileSize = 5242880;  // 5MB
 
     /** NFR-006: 25MB across all files on one record. There was previously no aggregate cap at all. */
     private long maxTotalSize = 26214400; // 25MB

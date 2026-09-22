@@ -190,38 +190,38 @@ import { environment } from '../../../../environments/environment';
   styles: [`
     .dashboard-container { padding: 24px; max-width: 1400px; margin: 0 auto; }
     .dashboard-header { margin-bottom: 24px; display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
-    .dashboard-header h1 { font-size: 24px; font-weight: 700; color: #1e293b; margin: 0; }
-    .subtitle { color: #64748b; margin: 4px 0 0; width: 100%; }
+    .dashboard-header h1 { font-size: 24px; font-weight: 700; color: var(--text-heading); margin: 0; }
+    .subtitle { color: var(--text-muted); margin: 4px 0 0; width: 100%; }
     .header-filters { display: flex; gap: 10px; margin-left: auto;
       select { padding: 6px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 12px; }
     }
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; margin-bottom: 32px; }
-    .stat-card { background: #fff; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    .stat-card { background: var(--surface-card); border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
                  display: flex; flex-direction: column; border-left: 4px solid #e2e8f0; }
-    .stat-card.pending { border-left-color: #f59e0b; }
-    .stat-card.success { border-left-color: #10b981; }
-    .stat-card.warning { border-left-color: #ef4444; }
-    .stat-card.muted { border-left-color: #94a3b8; }
-    .stat-card.info { border-left-color: #3b82f6; }
+    .stat-card.pending { border-left-color: var(--state-warning-solid); }
+    .stat-card.success { border-left-color: var(--state-success-solid); }
+    .stat-card.warning { border-left-color: var(--state-danger-solid); }
+    .stat-card.muted { border-left-color: var(--text-subtle); }
+    .stat-card.info { border-left-color: var(--brand-primary); }
     .stat-card.sub-judice { border-left-color: #8b5cf6; }
-    .stat-value { font-size: 26px; font-weight: 700; color: #1e293b; }
-    .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .stat-value { font-size: 26px; font-weight: 700; color: var(--text-heading); }
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
     .section { margin-top: 28px; }
-    .section h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: #1e293b; }
-    .table-wrap { overflow-x: auto; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .section h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; color: var(--text-heading); }
+    .table-wrap { overflow-x: auto; background: var(--surface-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     table { width: 100%; border-collapse: collapse; }
-    th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: #475569; border-bottom: 1px solid #e2e8f0; }
-    td { padding: 10px 14px; font-size: 13px; color: #334155; border-bottom: 1px solid #f1f5f9; }
-    .empty { text-align: center; color: #94a3b8; padding: 24px; }
-    .loading-state { text-align: center; padding: 60px; color: #64748b; }
+    th { background: var(--surface-page); padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; color: var(--text-secondary); border-bottom: 1px solid var(--border-subtle); }
+    td { padding: 10px 14px; font-size: 13px; color: var(--text-body); border-bottom: 1px solid var(--surface-subtle); }
+    .empty { text-align: center; color: var(--text-subtle); padding: 24px; }
+    .loading-state { text-align: center; padding: 60px; color: var(--text-muted); }
     .compliance-badge { padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 600;
-      &.green { background: #d1fae5; color: #065f46; }
-      &.yellow { background: #fef3c7; color: #92400e; }
-      &.red { background: #fee2e2; color: #991b1b; }
+      &.green { background: var(--state-success-bg); color: var(--state-success-fg); }
+      &.yellow { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+      &.red { background: var(--state-danger-bg); color: var(--state-danger-fg); }
     }
     .status-badge { padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 600;
-      &.active { background: #d1fae5; color: #065f46; }
-      &.leave { background: #fef3c7; color: #92400e; }
+      &.active { background: var(--state-success-bg); color: var(--state-success-fg); }
+      &.leave { background: var(--state-warning-bg); color: var(--state-warning-fg); }
     }
   `]
 })

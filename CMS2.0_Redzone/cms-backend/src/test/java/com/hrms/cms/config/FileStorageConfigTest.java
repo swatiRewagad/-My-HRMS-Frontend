@@ -164,9 +164,14 @@ class FileStorageConfigTest {
         void shouldHaveCorrectDefaults() {
             FileStorageConfig defaults = new FileStorageConfig();
 
-            // 2MB, not the former 50MB: NFR-006 caps a single attachment at 2MB. See the field comment
-            // in FileStorageConfig and cms.attachments.max-file-size in application.yml.
-            assertThat(defaults.getMaxFileSize()).isEqualTo(2097152L);
+            // 5MB per the product ruling (item 13.1). This asserted 2MB, which was the value that made
+            // the UI contradict enforcement: the citizen-facing upload hint promised 5MB in all ten
+            // locales while the server rejected at 2MB.
+            //
+            // This is now only the FALLBACK. The live limit is a SYSTEM_CONFIG row read by
+            // UploadLimitsService, so this constant applies only to a database with no row yet, and
+            // asserting it is asserting the safety net rather than the product rule.
+            assertThat(defaults.getMaxFileSize()).isEqualTo(5242880L);
             assertThat(defaults.getChunkSize()).isEqualTo(5242880L);
             assertThat(defaults.getMaxFilesPerComplaint()).isEqualTo(10);
             assertThat(defaults.getRootPath()).isEqualTo("/data/cms-attachments");

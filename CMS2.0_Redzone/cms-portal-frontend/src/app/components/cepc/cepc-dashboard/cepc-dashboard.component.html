@@ -1,79 +1,30 @@
 <app-session-timeout></app-session-timeout>
-<div class="cepc-dashboard">
-  <!-- Header Bar -->
-  <header class="cms-header">
-    <div class="header-left">
-      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
-      <div class="rbi-text">
-        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
-        <span class="rbi-english">RESERVE BANK OF INDIA</span>
-      </div>
-      <div class="header-divider-v"></div>
-      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
-      <span class="cms-title">CMS</span>
-      <span class="cms-subtitle">Complaint Management System</span>
-    </div>
-    <div class="header-right">
-      <div class="header-icons">
-        <button title="Font size"><i class="pi pi-text-size"></i></button>
-        <button title="Language"><i class="pi pi-globe"></i></button>
-        <app-notification-bell></app-notification-bell>
-      </div>
-      <span class="user-avatar">{{ (loggedInUser?.name || 'C').charAt(0) }}</span>
-      <div class="user-details">
-        <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
-        <span class="user-role">CEPC {{ roleLabels[userRole()] }}</span>
-      </div>
-      <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
-    </div>
-  </header>
+<app-shell [titleKey]="'ui.nav.cepc_dashboard'" [roleKey]="'ui.role.cepc_officer'">
+  <div shell-actions>
+    <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'ui.common.advanced_search' | translate }}</button>
+    @if (advSearchActive()) {
+      <button class="btn btn-link danger" (click)="clearAdvancedSearch()">{{ 'ui.common.clear_filters' | translate }}</button>
+    }
+    <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+      <option value="">{{ 'ui.nav.cepc_dashboard' | translate }}</option>
+      <option value="pending">{{ 'status.pending' | translate }}</option>
+      <option value="in_progress">{{ 'status.in_progress' | translate }}</option>
+      <option value="under_review">{{ 'status.under_review' | translate }}</option>
+      <option value="awaiting_closure">{{ 'status.awaiting_closure' | translate }}</option>
+      <option value="escalated">{{ 'status.escalated' | translate }}</option>
+    </select>
+    <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
+      <option value="ASSIGNED_TO_ME">{{ 'cepc.queue.assigned_to_me' | translate }}</option>
+      <option value="ALL">{{ 'cepc.queue.all_complaints' | translate }}</option>
+    </select>
+    @if (userRole() === 'CEPC_DO' || userRole() === 'CEPC_ADMIN') {
+      <button class="btn btn-primary create-btn" (click)="openCreateDialog()">
+        <i class="pi pi-plus"></i> {{ 'cepc.action.create_complaint' | translate }}
+      </button>
+    }
+  </div>
 
-  <!-- Sidebar + Content -->
-  <div class="main-layout">
-    <!-- Left Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-item active">
-        <i class="pi pi-list"></i>
-        <span>CEPC Complaints</span>
-      </div>
-      <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'CEPC'}})">
-        <i class="pi pi-chart-bar"></i>
-        <span>Dashboard</span>
-      </div>
-      <div class="sidebar-collapse">
-        <i class="pi pi-angle-double-left"></i>
-        <span>Collapse</span>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="content">
-      <div class="content-header">
-        <h1>CEPC Complaints</h1>
-        <div class="header-actions">
-          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
-          @if (advSearchActive()) {
-            <button class="btn btn-link danger" (click)="clearAdvancedSearch()">Clear Filters</button>
-          }
-          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
-            <option value="">CEPC Complaints</option>
-            <option value="pending">Pending</option>
-            <option value="in_progress">Under Examination</option>
-            <option value="under_review">Under Review</option>
-            <option value="awaiting_closure">Awaiting Closure</option>
-            <option value="escalated">Escalated</option>
-          </select>
-          <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
-            <option value="ASSIGNED_TO_ME">Assigned To Me</option>
-            <option value="ALL">All Complaints</option>
-          </select>
-          @if (userRole() === 'CEPC_DO' || userRole() === 'CEPC_ADMIN') {
-            <button class="btn btn-primary create-btn" (click)="openCreateDialog()">
-              <i class="pi pi-plus"></i> Create Complaint
-            </button>
-          }
-        </div>
-      </div>
+  <div class="cepc-dashboard">
 
       <!-- Stats Cards -->
       <div class="stats-bar">
@@ -249,9 +200,8 @@
           </div>
         </div>
       </div>
-    </main>
   </div>
-</div>
+</app-shell>
 
 <!-- Column Selection Dialog -->
 @if (showColumnConfig()) {

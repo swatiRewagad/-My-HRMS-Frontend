@@ -1,6 +1,6 @@
 .internal-notes-panel {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 1.25rem;
   margin-bottom: 1.5rem;
@@ -20,7 +20,7 @@
   gap: 0.5rem;
   background: #fffbeb;
   border-left: 3px solid #b45309;
-  color: #92400e;
+  color: var(--state-warning-fg);
   padding: 0.6rem 0.8rem;
   font-size: 0.8125rem;
   border-radius: 3px;
@@ -31,9 +31,9 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
+  color: var(--state-danger-fg);
   border-radius: 4px;
   padding: 0.6rem 0.8rem;
   font-size: 0.875rem;
@@ -47,7 +47,7 @@
 .note-input,
 .note-edit-input {
   width: 100%;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   padding: 0.45rem 0.6rem;
   font-size: 0.875rem;
@@ -58,7 +58,7 @@
 .add-note-btn,
 .save-btn {
   background: #1a3a5c;
-  color: #fff;
+  color: var(--surface-card);
   border: none;
   border-radius: 4px;
   padding: 0.45rem 0.9rem;
@@ -73,7 +73,7 @@
 
 .cancel-btn {
   background: transparent;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   padding: 0.45rem 0.9rem;
   font-size: 0.875rem;
@@ -82,14 +82,14 @@
 
 .edit-window-hint {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 0.4rem 0 0;
 }
 
 .empty-state,
 .loading-state {
   font-size: 0.875rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .note-list {
@@ -99,7 +99,7 @@
 }
 
 .note-item {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
   border-radius: 6px;
   padding: 0.7rem 0.85rem;
   margin-bottom: 0.6rem;
@@ -111,12 +111,12 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
   margin-bottom: 0.3rem;
 
   .note-author {
     font-weight: 600;
-    color: #334155;
+    color: var(--text-body);
   }
 }
 
@@ -126,7 +126,7 @@
 
 .note-body {
   font-size: 0.875rem;
-  color: #1f2937;
+  color: var(--text-heading);
   white-space: pre-wrap;
   margin-bottom: 0.4rem;
 }
@@ -146,7 +146,7 @@
   align-items: center;
   gap: 0.3rem;
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--text-subtle);
 }
 
 .edit-actions {
@@ -158,7 +158,7 @@
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid #cbd5e1;
+  border: 2px solid var(--border-strong);
   border-top-color: #1a3a5c;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;

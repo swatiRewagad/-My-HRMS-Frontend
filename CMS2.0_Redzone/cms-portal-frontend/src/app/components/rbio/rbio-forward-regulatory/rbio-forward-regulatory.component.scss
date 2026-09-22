@@ -1,6 +1,6 @@
 .rbio-forward-regulatory {
   padding: 1rem;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   background: #fafafa;
   margin-top: 1rem;
@@ -8,13 +8,13 @@
   h4 {
     font-size: 1rem;
     font-weight: 600;
-    color: #1a237e;
+    color: var(--brand-primary-strong);
     margin-bottom: 0.75rem;
   }
 
   .action-btn.forward-btn {
     background: #6a1b9a;
-    color: #fff;
+    color: var(--surface-card);
     border: none;
     padding: 0.5rem 1.25rem;
     border-radius: 6px;
@@ -27,8 +27,8 @@
   }
 
   .form-section {
-    background: #fff;
-    border: 1px solid #e8eaf6;
+    background: var(--surface-card);
+    border: 1px solid var(--brand-primary-bg);
     border-radius: 8px;
     padding: 1rem;
 
@@ -42,7 +42,7 @@
 
   .loading-text, .empty-text {
     font-size: 0.85rem;
-    color: #78909c;
+    color: var(--text-subtle);
     font-style: italic;
   }
 
@@ -74,7 +74,7 @@
 
     .field-hint {
       font-size: 0.7rem;
-      color: #78909c;
+      color: var(--text-subtle);
       font-style: italic;
     }
   }
@@ -97,7 +97,7 @@
   .auto-email-notice {
     margin-top: 0.75rem;
     font-size: 0.75rem;
-    color: #1565c0;
+    color: var(--brand-primary);
     display: flex;
     align-items: center;
     gap: 0.3rem;
@@ -113,7 +113,7 @@
 
     .submit-btn {
       background: #6a1b9a;
-      color: #fff;
+      color: var(--surface-card);
       border: none;
       padding: 0.5rem 1.25rem;
       border-radius: 6px;
@@ -124,7 +124,7 @@
     }
 
     .cancel-btn {
-      background: #fff;
+      background: var(--surface-card);
       color: #546e7a;
       border: 1px solid #cfd8dc;
       padding: 0.5rem 1.25rem;
@@ -139,7 +139,7 @@
     padding: 0.5rem 0.75rem;
     border-radius: 4px;
     font-size: 0.85rem;
-    &.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
-    &.error { background: #ffebee; color: #c62828; border: 1px solid #ef9a9a; }
+    &.success { background: var(--state-success-bg); color: var(--state-success-fg); border: 1px solid #a5d6a7; }
+    &.error { background: var(--state-danger-bg); color: #c62828; border: 1px solid #ef9a9a; }
   }
 }

@@ -1,93 +1,37 @@
 <app-session-timeout></app-session-timeout>
-<div class="deo-home">
-  <!-- Header Bar -->
-  <header class="cms-header">
-    <div class="header-left">
-      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
-      <div class="rbi-text">
-        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
-        <span class="rbi-english">RESERVE BANK OF INDIA</span>
-      </div>
-      <div class="header-divider-v"></div>
-      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
-      <span class="cms-title">CMS</span>
-      <span class="cms-subtitle">Complaint Management System</span>
-    </div>
-    <div class="header-right">
-      <div class="header-icons">
-        <button title="Phone"><i class="pi pi-phone"></i></button>
-        <span class="font-size-group">
-          <button title="Decrease font" class="font-btn">A-</button>
-          <button title="Default font" class="font-btn active">A</button>
-          <button title="Increase font" class="font-btn">A+</button>
-        </span>
-        <button class="lang-btn"><i class="pi pi-globe"></i> English <i class="pi pi-angle-down"></i></button>
-        <app-notification-bell></app-notification-bell>
-      </div>
-      <div class="user-info-block">
-        <span class="user-avatar">{{ (loggedInUser?.name || 'U').charAt(0) }}</span>
-        <div class="user-details">
-          <span class="user-name">{{ loggedInUser?.name || 'Staff' }}</span>
-          <span class="user-role">CRPC Data Entry Operator</span>
-        </div>
-        <button class="user-dropdown-btn" (click)="logout()"><i class="pi pi-angle-down"></i></button>
-      </div>
-    </div>
-  </header>
+<app-shell [titleKey]="'ui.page.crpc_complaints'" [roleKey]="'ui.role.crpc_deo'">
+  <div shell-actions>
+    <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'ui.common.advanced_search' | translate }}</button>
+    @if (advSearchActive()) {
+      <button class="btn btn-link btn-link-danger" (click)="clearAdvancedSearch()">{{ 'ui.common.clear_filters' | translate }}</button>
+    }
+    @if (userRoles().length > 1) {
+      <select class="queue-select role-select" [value]="selectedRoleModule()" (change)="onRoleModuleChange($any($event.target).value)">
+        @for (role of userRoles(); track role.value) {
+          <option [value]="role.value">{{ role.label }}</option>
+        }
+      </select>
+    }
+    <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+      <option value="">{{ 'ui.nav.crpc_complaints' | translate }}</option>
+      <option value="DRAFT">{{ 'status.draft' | translate }}</option>
+      <option value="IN_PROGRESS">{{ 'status.in_progress' | translate }}</option>
+      <option value="REJECTED_BY_REVIEWER">{{ 'status.sent_back' | translate }}</option>
+      <option value="APPROVED">{{ 'crpc.status.assessment_complete' | translate }}</option>
+    </select>
+    <select class="queue-select" [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
+      <option value="ASSIGNED_TO_ME">{{ 'crpc.queue.assigned_to_me' | translate }}</option>
+      <option value="ALL">{{ 'cepc.queue.all_complaints' | translate }}</option>
+    </select>
+    <button class="filters-btn" (click)="showAdvancedSearch.set(true)">
+      <i class="pi pi-filter"></i> {{ 'ui.common.filters' | translate }}
+    </button>
+    <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
+      <i class="pi pi-plus"></i> {{ 'cepc.action.create_complaint' | translate }}
+    </button>
+  </div>
 
-  <!-- Sidebar + Content -->
-  <div class="main-layout">
-    <!-- Left Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-item active">
-        <i class="pi pi-list"></i>
-        <span>CRPC Complaints</span>
-      </div>
-      <div class="sidebar-item" (click)="router.navigate(['/admin/dashboard'], {queryParams: {department: 'CRPC'}})">
-        <i class="pi pi-chart-bar"></i>
-        <span>Dashboard</span>
-      </div>
-      <div class="sidebar-collapse">
-        <i class="pi pi-angle-double-left"></i>
-        <span>Collapse</span>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="content">
-      <div class="content-header">
-        <h1>CRPC Complaints</h1>
-        <div class="header-actions">
-          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
-          @if (advSearchActive()) {
-            <button class="btn btn-link" style="color:#d32f2f" (click)="clearAdvancedSearch()">Clear Filters</button>
-          }
-          @if (userRoles().length > 1) {
-            <select class="queue-select role-select" [value]="selectedRoleModule()" (change)="onRoleModuleChange($any($event.target).value)">
-              @for (role of userRoles(); track role.value) {
-                <option [value]="role.value">{{ role.label }}</option>
-              }
-            </select>
-          }
-          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
-            <option value="">CRPC Complaints</option>
-            <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="REJECTED_BY_REVIEWER">Sent Back</option>
-            <option value="APPROVED">Assessment Complete</option>
-          </select>
-          <select class="queue-select" [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
-            <option value="ASSIGNED_TO_ME">Complaints Assigned To Me</option>
-            <option value="ALL">All Complaints</option>
-          </select>
-          <button class="filters-btn" (click)="showAdvancedSearch.set(true)">
-            <i class="pi pi-filter"></i> Filters
-          </button>
-          <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
-            <i class="pi pi-plus"></i> Create Complaint
-          </button>
-        </div>
-      </div>
+  <div class="deo-home">
 
       <!-- Stats Cards -->
       <div class="stats-bar">
@@ -281,9 +225,8 @@
           </div>
         </div>
       </div>
-    </main>
   </div>
-</div>
+</app-shell>
 
 <!-- Column Selection Dialog -->
 @if (showColumnConfig()) {

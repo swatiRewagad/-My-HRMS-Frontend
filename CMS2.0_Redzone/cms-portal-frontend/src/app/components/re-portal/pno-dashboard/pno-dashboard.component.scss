@@ -1,8 +1,8 @@
-$primary: #1565c0;
-$primary-light: #e8f0fe;
-$text-dark: #1f2937;
-$text-muted: #6b7280;
-$border-color: #e5e7eb;
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
 
 .pno-dashboard {
   max-width: 1200px;
@@ -41,7 +41,7 @@ $border-color: #e5e7eb;
   border-left: 3px solid $primary;
   border-radius: 6px;
   font-size: 12px;
-  color: #0d47a1;
+  color: var(--brand-primary-strong);
 
   i { margin-top: 1px; }
 }
@@ -55,7 +55,7 @@ $border-color: #e5e7eb;
 }
 
 .stat-card {
-  background: #fff;
+  background: var(--surface-card);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -81,8 +81,8 @@ $border-color: #e5e7eb;
 }
 
 .stat-card.total .stat-icon { background: $primary-light; color: $primary; }
-.stat-card.pending .stat-icon { background: #fff3e0; color: #e65100; }
-.stat-card.moves .stat-icon { background: #e8f5e9; color: #2e7d32; }
+.stat-card.pending .stat-icon { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+.stat-card.moves .stat-icon { background: var(--state-success-bg); color: var(--state-success-fg); }
 
 .stat-content {
   display: flex;
@@ -130,14 +130,14 @@ $border-color: #e5e7eb;
 }
 
 .banner-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
+  color: var(--state-danger-fg);
 }
 
 // Tables
 .table-wrapper {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
   overflow-x: auto;
@@ -156,7 +156,7 @@ $border-color: #e5e7eb;
     color: $text-muted;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background: #f9fafb;
+    background: var(--surface-subtle);
     border-bottom: 1px solid $border-color;
     white-space: nowrap;
   }
@@ -165,11 +165,11 @@ $border-color: #e5e7eb;
     padding: 12px 16px;
     font-size: 13px;
     color: $text-dark;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--surface-subtle);
   }
 
   tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: #f8fafc; }
+  tbody tr:hover td { background: var(--surface-page); }
 }
 
 .col-officer {
@@ -191,7 +191,7 @@ $border-color: #e5e7eb;
   padding: 44px;
   text-align: center;
   color: $text-muted;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
 

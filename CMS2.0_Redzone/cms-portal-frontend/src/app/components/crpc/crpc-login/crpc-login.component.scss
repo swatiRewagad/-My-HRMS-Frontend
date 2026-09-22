@@ -3,14 +3,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1e293b 100%);
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, var(--text-heading) 100%);
   padding: 1.5rem;
 }
 
 .login-card {
   width: 100%;
   max-width: 440px;
-  background: #fff;
+  background: var(--surface-card);
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   padding: 2.5rem 2rem;
@@ -32,21 +32,21 @@
 
     i {
       font-size: 1.75rem;
-      color: #fff;
+      color: var(--surface-card);
     }
   }
 
   h1 {
     margin: 0 0 0.25rem;
     font-size: 1.2rem;
-    color: #1e293b;
+    color: var(--text-heading);
     font-weight: 700;
   }
 
   p {
     margin: 0;
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--text-muted);
   }
 }
 
@@ -64,7 +64,7 @@
   label {
     font-size: 0.82rem;
     font-weight: 600;
-    color: #475569;
+    color: var(--text-secondary);
   }
 
   .input-wrapper {
@@ -75,26 +75,26 @@
       left: 0.85rem;
       top: 50%;
       transform: translateY(-50%);
-      color: #94a3b8;
+      color: var(--text-subtle);
       font-size: 0.9rem;
     }
 
     input {
       width: 100%;
       padding: 0.7rem 0.85rem 0.7rem 2.5rem;
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--border-input);
       border-radius: 8px;
       font-size: 0.9rem;
       transition: border-color 0.2s, box-shadow 0.2s;
 
       &:focus {
         outline: none;
-        border-color: #3b82f6;
+        border-color: var(--brand-primary);
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
       }
 
       &::placeholder {
-        color: #94a3b8;
+        color: var(--text-subtle);
       }
     }
   }
@@ -105,11 +105,11 @@
   align-items: center;
   gap: 0.4rem;
   padding: 0.6rem 0.85rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
   border-radius: 6px;
   font-size: 0.82rem;
-  color: #dc2626;
+  color: var(--state-danger-solid-hover);
 
   i { font-size: 0.9rem; }
 }
@@ -129,10 +129,10 @@
 
   &-primary {
     background: #1e3a5f;
-    color: #fff;
+    color: var(--surface-card);
 
     &:hover { background: #2d5a87; }
-    &:disabled { background: #94a3b8; cursor: not-allowed; }
+    &:disabled { background: var(--text-subtle); cursor: not-allowed; }
   }
 
   &-block {
@@ -140,7 +140,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid #3b82f6;
+    outline: 2px solid var(--brand-primary);
     outline-offset: 2px;
   }
 }
@@ -150,7 +150,7 @@
   width: 14px;
   height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
+  border-top-color: var(--surface-card);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
@@ -160,12 +160,12 @@
 .demo-credentials {
   margin-top: 1.75rem;
   padding-top: 1.25rem;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--surface-subtle);
 
   h4 {
     margin: 0 0 0.65rem;
     font-size: 0.78rem;
-    color: #94a3b8;
+    color: var(--text-subtle);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     text-align: center;
@@ -179,15 +179,15 @@
     th {
       padding: 0.35rem 0.5rem;
       text-align: left;
-      color: #64748b;
+      color: var(--text-muted);
       font-weight: 600;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid var(--border-subtle);
     }
 
     td {
       padding: 0.35rem 0.5rem;
-      color: #475569;
-      border-bottom: 1px solid #f8fafc;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--surface-page);
       font-family: monospace;
     }
 

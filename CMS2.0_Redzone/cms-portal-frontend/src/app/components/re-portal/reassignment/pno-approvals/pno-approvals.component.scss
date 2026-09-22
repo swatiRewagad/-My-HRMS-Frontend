@@ -1,9 +1,9 @@
-$primary: #1565c0;
-$primary-light: #e8f0fe;
-$text-dark: #1f2937;
-$text-muted: #6b7280;
-$border-color: #e5e7eb;
-$danger: #dc2626;
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+$danger: var(--state-danger-solid-hover);
 
 .pno-approvals {
   max-width: 1200px;
@@ -51,15 +51,15 @@ $danger: #dc2626;
 }
 
 .banner-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
+  color: var(--state-danger-fg);
 }
 
 .banner-success {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  color: #166534;
+  background: var(--state-success-bg);
+  border: 1px solid var(--state-success-bg);
+  color: var(--state-success-fg);
 }
 
 .partial-tally {
@@ -83,7 +83,7 @@ $danger: #dc2626;
   gap: 8px;
   font-size: 12px;
   padding: 5px 8px;
-  background: #fff;
+  background: var(--surface-card);
   border-radius: 6px;
   border-left: 3px solid $danger;
 }
@@ -103,7 +103,7 @@ $danger: #dc2626;
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 10px;
   margin-bottom: 12px;
@@ -189,37 +189,37 @@ $danger: #dc2626;
 
 .btn-primary {
   background: $primary;
-  color: #fff;
+  color: var(--surface-card);
 
-  &:hover:not(:disabled) { background: #0d47a1; }
+  &:hover:not(:disabled) { background: var(--brand-primary-strong); }
 }
 
 .btn-danger {
   background: $danger;
-  color: #fff;
+  color: var(--surface-card);
 
-  &:hover:not(:disabled) { background: #b91c1c; }
+  &:hover:not(:disabled) { background: var(--state-danger-fg); }
 }
 
 .btn-outline-danger {
-  background: #fff;
-  border-color: #fecaca;
+  background: var(--surface-card);
+  border-color: var(--state-danger-bg);
   color: $danger;
 
-  &:hover:not(:disabled) { background: #fef2f2; }
+  &:hover:not(:disabled) { background: var(--state-danger-bg); }
 }
 
 .btn-plain {
-  background: #fff;
+  background: var(--surface-card);
   border-color: $border-color;
   color: $text-muted;
 
-  &:hover:not(:disabled) { background: #f9fafb; color: $text-dark; }
+  &:hover:not(:disabled) { background: var(--surface-subtle); color: $text-dark; }
 }
 
 // Table
 .table-wrapper {
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
   overflow-x: auto;
@@ -237,7 +237,7 @@ $danger: #dc2626;
     color: $text-muted;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    background: #f9fafb;
+    background: var(--surface-subtle);
     border-bottom: 1px solid $border-color;
     white-space: nowrap;
   }
@@ -246,7 +246,7 @@ $danger: #dc2626;
     padding: 12px 14px;
     font-size: 13px;
     color: $text-dark;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--surface-subtle);
     vertical-align: top;
   }
 
@@ -297,7 +297,7 @@ $danger: #dc2626;
   padding: 44px;
   text-align: center;
   color: $text-muted;
-  background: #fff;
+  background: var(--surface-card);
   border: 1px solid $border-color;
   border-radius: 12px;
 

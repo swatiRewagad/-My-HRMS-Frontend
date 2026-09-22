@@ -122,8 +122,11 @@ cms:
     azure-model: ${AZURE_DOC_MODEL:prebuilt-read}
   attachments:
     root-path: ${CMS_ATTACHMENTS_PATH:C:/cms-attachments}
-    # NFR-006: 2MB per file, 25MB total, 10 files. Was 50MB/none/10.
-    max-file-size: ${CMS_MAX_FILE_SIZE:2097152}
+    # NFR-006: 5MB per file, 25MB total, 10 files.
+    # These are FALLBACKS ONLY. The live limits are SYSTEM_CONFIG rows read by UploadLimitsService
+    # (cms.attachments.max_file_size_bytes / max_total_size_bytes), so the limit is changeable at
+    # runtime and the frontend reads it from /api/v1/config/upload-limits rather than compiling a copy.
+    max-file-size: ${CMS_MAX_FILE_SIZE:5242880}
     max-total-size: ${CMS_MAX_TOTAL_SIZE:26214400}
     chunk-size: ${CMS_CHUNK_SIZE:5242880}
     allowed-types: ${CMS_ALLOWED_TYPES:pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip}

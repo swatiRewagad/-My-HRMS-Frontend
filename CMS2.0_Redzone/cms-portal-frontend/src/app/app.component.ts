@@ -1,12 +1,16 @@
 import { Component, inject, computed } from '@angular/core';
 import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { KeycloakAuthService } from './services/keycloak-auth.service';
+import { ToastHostComponent } from './components/shared/toast-host/toast-host.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, ToastHostComponent],
   template: `
+    <!-- Mounted once at the root so a single notification mechanism serves the public and staff
+         routes alike. Components inject ToastService; nothing calls alert() any more. -->
+    <app-toast-host/>
     @if (!isStaffRoute()) {
       <header class="app-header">
         <div class="header-content">

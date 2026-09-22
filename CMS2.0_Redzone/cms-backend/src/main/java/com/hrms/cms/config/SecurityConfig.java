@@ -96,6 +96,12 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/faq/**").permitAll()
                 .requestMatchers("/api/v1/i18n/**", "/api/v1/translations/**").permitAll()
                 .requestMatchers("/api/v1/geo/**", "/api/v1/location/**", "/api/v1/pincodes/**").permitAll()
+                // Attachment limits (13.1): READ only, and only this exact path. The citizen form is
+                // filled in anonymously and must know the limit before the first upload. GET is spelled
+                // out rather than using a bare path prefix so that a future write endpoint under
+                // /api/v1/config cannot silently inherit anonymous access, which is exactly how
+                // /api/v1/masters/** came to accept anonymous writes.
+                .requestMatchers(HttpMethod.GET, "/api/v1/config/upload-limits").permitAll()
                 // Master data: anonymous READ, authenticated ADMIN WRITE (UST456).
                 //
                 // These three write matchers MUST precede the permitAll below — the first matching rule

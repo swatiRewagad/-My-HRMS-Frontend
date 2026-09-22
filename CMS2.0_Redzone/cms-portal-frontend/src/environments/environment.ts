@@ -15,7 +15,10 @@ export const environment = {
   sessionTimeoutMinutes: 15,
 
   // NFR-006: File upload constraints (EAAP guidelines)
-  maxFileSizeMB: 2,
+  // Fallback only. The live limits come from GET /api/v1/config/upload-limits via
+  // UploadLimitsService; a compiled constant cannot track a configuration change, which is how
+  // this said 2 while the server's own upload hint promised 5 in all ten locales.
+  maxFileSizeMB: 5,
   maxTotalUploadSizeMB: 25,
   maxFileCount: 10,
   allowedFileExtensions: ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.xls', '.xlsx'],

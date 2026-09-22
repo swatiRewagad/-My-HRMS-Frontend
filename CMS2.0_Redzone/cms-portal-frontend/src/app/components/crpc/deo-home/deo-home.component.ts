@@ -7,8 +7,9 @@ import { EmailDraft } from '../../../models/email-syndication.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { CrpcWorkflowService } from '../../../services/crpc-workflow.service';
 import { NotificationService } from '../../../services/notification.service';
-import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
 import { SessionTimeoutComponent } from '../../../shared/session-timeout/session-timeout.component';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface DraftComplaint {
   draftId: string;
@@ -38,7 +39,7 @@ interface DraftComplaint {
 @Component({
   selector: 'app-deo-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, NotificationBellComponent, SessionTimeoutComponent],
+  imports: [CommonModule, FormsModule, SessionTimeoutComponent, AppShellComponent, TranslatePipe],
   templateUrl: './deo-home.component.html',
   styleUrl: './deo-home.component.scss'
 })

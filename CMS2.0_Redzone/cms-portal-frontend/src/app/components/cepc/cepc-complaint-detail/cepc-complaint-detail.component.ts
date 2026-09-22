@@ -10,6 +10,8 @@ import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indica
 import { CepcTimelineComponent } from '../cepc-timeline/cepc-timeline.component';
 import { CepcConciliationComponent } from '../cepc-conciliation/cepc-conciliation.component';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { ToastService } from '../../../services/toast.service';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 interface TimelineEntry {
   action: string;
@@ -43,6 +45,8 @@ export class CepcComplaintDetailComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
+  private toast = inject(ToastService);
+  private uploadLimits = inject(UploadLimitsService);
   auth = inject(KeycloakAuthService);
 
   complaint = signal<any>(null);
@@ -220,8 +224,9 @@ export class CepcComplaintDetailComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     const file = input.files[0];
-    if (file.size > 2 * 1024 * 1024) {
-      alert('File size must not exceed 2 MB.');
+    if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+      this.toast.error('ui.upload.error_file_too_large', { size: String(this.uploadLimits.maxFileSizeMb()) });
+      input.value = '';
       return;
     }
 
