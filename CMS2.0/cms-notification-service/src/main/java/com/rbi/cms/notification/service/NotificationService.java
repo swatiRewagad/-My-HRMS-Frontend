@@ -1,35 +1,68 @@
 package com.rbi.cms.notification.service;
 
+import com.rbi.cms.common.enums.NotificationChannel;
+import com.rbi.cms.notification.config.NotificationProperties;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.SimpleMailMessage;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+
+/**
+ * System-generated notifications to complainants, raised by the complaint-lifecycle listeners.
+ *
+ * <p>Gated by the same {@link NotificationProperties} mode as officer-composed mail, so there is one answer
+ * to "does this deployment send email" rather than one per code path. The previous arrangement — a
+ * {@code @Profile("dev-local") @Primary} subclass constructed with a null {@code JavaMailSender} — is gone:
+ * it only suppressed sending on a profile that neither documented startup path actually activates.</p>
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationService {
 
-    private final JavaMailSender mailSender;
+    private final ObjectProvider<JavaMailSender> mailSenderProvider;
+    private final NotificationProperties properties;
 
     public void sendEmail(String to, String subject, String body) {
-        log.info("Sending email to: {}, subject: {}", to, subject);
+        if (!properties.dispatchesFor(NotificationChannel.EMAIL)) {
+            log.info("[SIMULATED] email to={} subject={}", to, subject);
+            return;
+        }
 
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        message.setFrom("noreply@cms.rbi.org.in");
+        JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
+        if (mailSender == null) {
+            log.error("No JavaMailSender configured; dropping email to={} subject={}", to, subject);
+            return;
+        }
 
-        mailSender.send(message);
-        log.info("Email sent successfully to: {}", to);
+        try {
+            MimeMessage mime = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mime, false, StandardCharsets.UTF_8.name());
+            helper.setFrom(properties.getEmail().getDefaultFrom());
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(body, false);
+            mailSender.send(mime);
+            log.info("Email sent to: {}", to);
+        } catch (Exception e) {
+            // These are fire-and-forget lifecycle courtesies; a failure must not break event processing.
+            log.error("Failed to send email to {}: {}", to, e.getMessage());
+        }
     }
 
     public void sendSms(String phoneNumber, String message) {
-        log.info("Sending SMS to: {}, message: {}", phoneNumber, message);
-        // SMS gateway integration placeholder
-        log.info("SMS sent to: {}", phoneNumber);
+        if (!properties.dispatchesFor(NotificationChannel.SMS)) {
+            log.info("[SIMULATED] SMS to={} message={}", phoneNumber, message);
+            return;
+        }
+        // No gateway integration exists. Reaching here means SMS was enabled without one being built, so say
+        // so rather than logging "sent" for a message that went nowhere.
+        log.error("SMS is enabled but no gateway is implemented; dropping message to {}", phoneNumber);
     }
 
     public void sendAcknowledgement(String email, String phone, String complaintId) {

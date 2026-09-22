@@ -129,7 +129,10 @@ This starts: Oracle, Kafka, Keycloak (+Postgres), OpenSearch, Kafka UI, Promethe
 
 ```powershell
 cd d:\CMS-Frontend\cms2.0_dev\CMS2.0
-& "D:\softwares\apache-maven-3.9.9-bin\apache-maven-3.9.9\bin\mvn.cmd" install -pl cms-common -am -DskipTests
+# `clean` matters: cms-backend is a separate Maven project and resolves cms-common as a jar from the local
+# repository, so a plain `install` can republish stale classes. New types then fail at runtime with
+# NoSuchFieldError rather than at compile time.
+& "D:\softwares\apache-maven-3.9.9-bin\apache-maven-3.9.9\bin\mvn.cmd" clean install -pl cms-common -am -DskipTests
 ```
 
 ### Step 4 — Start Services in Order
@@ -142,6 +145,11 @@ Open separate terminals for each. Start in this sequence:
 | 2 | cms-audit-service | `cd cms-audit-service && mvn spring-boot:run` | 8088 |
 | 3 | cms-storage-service | `cd cms-storage-service && mvn spring-boot:run` | 8090 |
 | 4 | cms-notification-service | `cd cms-notification-service && mvn spring-boot:run` | 8087 |
+<!-- cms-notification-service now needs a datasource: it resolves SIMULATED_EMAILS rows to SENT or FAILED
+     after dispatching them, and refuses to start if database/V28 and V29 have not been applied.
+     Started with no profile as above it uses application.yml, where cms.notification.mode defaults to
+     SIMULATE - so it records outcomes without contacting any mail server. Real delivery needs BOTH
+     CMS_NOTIFICATION_MODE=SEND and CMS_NOTIFICATION_EMAIL_ENABLED=true; no profile can enable it. -->
 | 5 | cms-rules-service | `cd cms-rules-service && mvn spring-boot:run` | 8084 |
 | 6 | cms-eligibility-service | `cd cms-eligibility-service && mvn spring-boot:run` | 8081 |
 | 7 | cms-assignment-service | `cd cms-assignment-service && mvn spring-boot:run` | 8085 |
@@ -309,7 +317,10 @@ docker exec cms-kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhos
 **Fix:**
 ```powershell
 cd d:\CMS-Frontend\cms2.0_dev\CMS2.0
-& "D:\softwares\apache-maven-3.9.9-bin\apache-maven-3.9.9\bin\mvn.cmd" install -pl cms-common -am -DskipTests
+# `clean` matters: cms-backend is a separate Maven project and resolves cms-common as a jar from the local
+# repository, so a plain `install` can republish stale classes. New types then fail at runtime with
+# NoSuchFieldError rather than at compile time.
+& "D:\softwares\apache-maven-3.9.9-bin\apache-maven-3.9.9\bin\mvn.cmd" clean install -pl cms-common -am -DskipTests
 ```
 
 ---

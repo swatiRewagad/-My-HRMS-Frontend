@@ -366,10 +366,24 @@ services:
     container_name: cms-notification-service
     restart: unless-stopped
     environment:
+      # No application-docker.yml exists in any module, so this resolves to nothing and application.yml
+      # applies. Left as-is for consistency with the sibling services rather than as a working profile.
       SPRING_PROFILES_ACTIVE: docker
+      # Needed since this service began resolving SIMULATED_EMAILS rows to SENT or FAILED. It refuses to
+      # start if database/V28 and V29 have not been applied to this schema.
+      DB_URL: jdbc:oracle:thin:@cms-oracle:1521/XEPDB1
+      DB_USERNAME: ${MYSQL_USER:-cms_user}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-cms_pass}
       KAFKA_BOOTSTRAP: cms-kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: cms-kafka:9092
       SERVER_PORT: 8087
+      # Simulate unless a deployment explicitly asks for real delivery. Set both to SEND/true, along with
+      # SMTP_HOST and SMTP_PASSWORD, to actually dispatch.
+      CMS_NOTIFICATION_MODE: ${CMS_NOTIFICATION_MODE:-SIMULATE}
+      CMS_NOTIFICATION_EMAIL_ENABLED: ${CMS_NOTIFICATION_EMAIL_ENABLED:-false}
     depends_on:
+      cms-oracle:
+        condition: service_healthy
       cms-kafka:
         condition: service_healthy
     deploy:

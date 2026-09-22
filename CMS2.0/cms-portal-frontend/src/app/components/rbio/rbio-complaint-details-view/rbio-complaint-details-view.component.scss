@@ -3148,13 +3148,14 @@
         background: #1e40af;
         border-left-color: #1e40af;
         .email-activity-title, .email-activity-date { color: #fff; }
+        .email-activity-status { background: rgba(255, 255, 255, 0.22); color: #fff; }
       }
       &.empty {
         color: #94a3b8;
         font-size: 12px;
         cursor: default;
       }
-  
+
       .email-activity-title {
         display: block;
         font-size: 12px;
@@ -3169,6 +3170,20 @@
         font-size: 11px;
         color: #94a3b8;
         margin-top: 2px;
+      }
+      .email-activity-status {
+        display: inline-block;
+        margin-top: 4px;
+        padding: 1px 7px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+        background: #dcfce7;
+        color: #15803d;
+
+        &.draft   { background: #fef3c7; color: #b45309; }
+        &.pending { background: #dbeafe; color: #1d4ed8; }
+        &.failed  { background: #fee2e2; color: #b91c1c; }
       }
     }
   }
@@ -3290,11 +3305,17 @@
         text-transform: capitalize;
       
         &.open { background-color: #EEEDFC; color: #393D5E; text-transform: capitalize; }
-      
+        &.draft { background-color: #FEF3C7; color: #B45309; text-transform: capitalize; }
+        &.pending { background-color: #DBEAFE; color: #1D4ED8; }
+        &.failed { background-color: #FEE2E2; color: #B91C1C; }
+
         .pi-info-circle {
           color: #5366D3;
           font-size: 10px;
         }
+        &.draft .pi-info-circle { color: #B45309; }
+        &.pending .pi-info-circle { color: #1D4ED8; }
+        &.failed .pi-info-circle { color: #B91C1C; }
       }
     }
   
@@ -3358,6 +3379,94 @@
       white-space: pre-wrap;
       p { margin: 0 0 12px; }
     }
+
+    .email-thread-status {
+      padding: 12px 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .email-failure-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 12px 0;
+      padding: 12px 14px;
+      border: 1px solid #fecaca;
+      border-left-width: 3px;
+      border-radius: 6px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 12px;
+
+      .pi { margin-top: 1px; }
+      strong { display: block; margin-bottom: 2px; }
+      .email-failure-reason {
+        display: block;
+        color: #7f1d1d;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11px;
+        word-break: break-word;
+      }
+    }
+
+    .email-thread {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 16px;
+
+      .email-thread-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+        margin: 0 0 12px;
+      }
+
+      .email-thread-message {
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 12px;
+        margin-bottom: 10px;
+        background: #f8fafc;
+
+        &.current { border-color: #1e40af; background: #eff6ff; }
+
+        .email-thread-message-head {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          color: #64748b;
+          margin-bottom: 6px;
+        }
+        .email-thread-from, .email-thread-to { font-weight: 600; color: #334155; }
+        .email-thread-date { margin-left: auto; }
+        .email-thread-status-pill {
+          padding: 1px 7px;
+          border-radius: 10px;
+          font-weight: 600;
+          background: #dcfce7;
+          color: #15803d;
+
+          &.draft   { background: #fef3c7; color: #b45309; }
+          &.pending { background: #dbeafe; color: #1d4ed8; }
+          &.failed  { background: #fee2e2; color: #b91c1c; }
+        }
+        .email-thread-subject {
+          font-size: 12px;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 6px;
+        }
+        .email-thread-body {
+          font-size: 12px;
+          line-height: 1.6;
+          color: #334155;
+          white-space: pre-wrap;
+          p { margin: 0 0 8px; }
+        }
+      }
+    }
   }
   
   .email-empty-state {
@@ -3372,13 +3481,32 @@
   /* // Email Compose */
   .email-compose {
     padding: 20px 24px;
-  
+
+    .email-compose-error {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 12px;
+    }
+
     .email-compose-actions {
       display: flex;
       gap: 12px;
       margin-bottom: 20px;
       align-items: center;
-  
+
+      .email-compose-mode-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #475569;
+      }
+
       .btn-close-compose {
         margin-left: auto;
         border: none;
@@ -3411,6 +3539,8 @@
         color: #64748b;
         font-weight: 500;
         margin-bottom: 4px;
+
+        .req { color: #dc2626; }
       }
       input {
         border: none;

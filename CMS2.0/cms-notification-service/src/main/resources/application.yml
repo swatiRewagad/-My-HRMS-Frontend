@@ -7,6 +7,24 @@ spring:
   application:
     name: cms-notification-service
 
+  # Points at the schema cms-backend owns: this service resolves SIMULATED_EMAILS rows to SENT or FAILED
+  # after dispatching them. There is no Hibernate on the classpath (starter-jdbc, not starter-data-jpa), so
+  # it cannot create or alter anything here regardless of configuration.
+  datasource:
+    url: ${DB_URL:jdbc:oracle:thin:@${DB_HOST:localhost}:${DB_PORT:1521}/${DB_SERVICE_NAME:CMSPDB}}
+    username: ${DB_USERNAME:cms_user}
+    password: ${DB_PASSWORD:}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      # One SELECT and one UPDATE per message, so the pool stays small.
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 5000
+      pool-name: CMS-Notification-HikariPool
+      leak-detection-threshold: 30000
+
   mail:
     host: ${SMTP_HOST:smtp.rbi.org.in}
     port: ${SMTP_PORT:587}
@@ -15,22 +33,76 @@ spring:
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
+      # Without timeouts an unresponsive SMTP server holds a consumer thread until Kafka evicts the whole
+      # consumer from its group.
+      mail.smtp.connectiontimeout: ${SMTP_CONNECT_TIMEOUT_MS:5000}
+      mail.smtp.timeout: ${SMTP_READ_TIMEOUT_MS:10000}
+      mail.smtp.writetimeout: ${SMTP_WRITE_TIMEOUT_MS:10000}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: cms-notification-group
+      group-id: ${KAFKA_CONSUMER_GROUP:cms-notification-group}
       auto-offset-reset: earliest
       enable-auto-commit: false
+    listener:
+      # Documentation only: KafkaConfig builds its own container factory, so it sets this itself. A property
+      # here would not reach a hand-built factory.
+      missing-topics-fatal: false
+
+cms:
+  notification:
+    # SIMULATE by default, and deliberately so. Safety must not depend on a profile: the services guide
+    # starts this module with no profile at all, and compose sets SPRING_PROFILES_ACTIVE=docker for which no
+    # application-docker.yml exists in any module. Real delivery therefore takes two explicit opt-ins,
+    # settable as CMS_NOTIFICATION_MODE and CMS_NOTIFICATION_EMAIL_ENABLED.
+    mode: ${CMS_NOTIFICATION_MODE:SIMULATE}
+    email-enabled: ${CMS_NOTIFICATION_EMAIL_ENABLED:false}
+    # No SMS gateway is implemented; enabling this logs an error rather than sending anything.
+    sms-enabled: ${CMS_NOTIFICATION_SMS_ENABLED:false}
+    email:
+      default-from: ${CMS_NOTIFICATION_FROM:noreply@cms.rbi.org.in}
+
+  kafka:
+    retry:
+      max-attempts: ${KAFKA_RETRY_MAX_ATTEMPTS:3}
+      backoff-ms: ${KAFKA_RETRY_BACKOFF_MS:2000}
+    consumer:
+      concurrency: ${KAFKA_CONSUMER_CONCURRENCY:3}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  info:
+    env:
+      enabled: true
+
+# Surfaced on /actuator/info so an operator can see whether mail is really going out without reading logs.
+info:
+  dispatch:
+    mode: ${cms.notification.mode}
+    email-enabled: ${cms.notification.email-enabled}
+    sms-enabled: ${cms.notification.sms-enabled}
 
 logging:
   level:
     com.rbi.cms: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    # No defaults: a misconfigured production deployment should fail at startup rather than quietly try
+    # cms_user with an empty password.
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+logging:
+  level:
+    com.rbi.cms: WARN

@@ -73,6 +73,16 @@ cms:
   dev-data:
     officer: rbio_mum1
     regional-office: Mumbai-I
+  email:
+    dispatch:
+      # INLINE: pressing Send marks the row SENT here and publishes nothing, so cms-backend alone
+      # completes a send. The dev-local quickstart is documented as needing no Kafka, and under the
+      # default EVENT mode the row would sit at PENDING until cms-notification-service consumed it.
+      #
+      # This is not the production path. To exercise the real pipeline locally, drop this override (or
+      # set EVENT), start Kafka and cms-notification-service, and leave the latter in SIMULATE mode so
+      # it resolves the row without contacting a mail server.
+      mode: INLINE
   ocr:
     chain: groq
     groq-api-key: ${GROQ_API_KEY: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}

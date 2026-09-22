@@ -1,7 +1,25 @@
+# ============================================================
+# CMS Notification Service — Dev Local Profile
+# Activate: mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+# Points at the same MySQL schema cms-backend uses on dev-local.
+# ============================================================
+
 spring:
   autoconfigure:
     exclude:
+      # No SMTP server locally. Sending is already off by default via cms.notification.mode, so this only
+      # removes the unused bean - DispatchStartupCheck refuses to start if someone asks for SEND here.
       - org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/CMS_DB?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8&useUnicode=true
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      pool-name: CMS-Notification-Dev-Pool
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -11,10 +29,12 @@ spring:
     listener:
       type: single
       missing-topics-fatal: false
-      ack-mode: manual
+      # ack-mode is set in KafkaConfig for every profile, so it is deliberately not overridden here: it used
+      # to be dev-local-only, which left production auto-committing offsets for work that had failed.
 
 cms:
   notification:
+    mode: SIMULATE
     email-enabled: false
     sms-enabled: false
 

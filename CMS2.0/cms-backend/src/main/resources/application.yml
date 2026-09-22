@@ -73,6 +73,12 @@ keycloak:
     password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 cms:
+  email:
+    dispatch:
+      # EVENT: a sent complaint email is persisted as PENDING and a dispatch request published to
+      # notification.requested; cms-notification-service resolves it to SENT or FAILED. INLINE marks it
+      # SENT here and publishes nothing, and exists only for the Kafka-free dev-local quickstart.
+      mode: ${CMS_EMAIL_DISPATCH_MODE:EVENT}
   ocr:
     # ── Provider chain (ordered, comma-separated) ──────────────────────────────
     # Providers are tried left-to-right; first non-empty result wins.

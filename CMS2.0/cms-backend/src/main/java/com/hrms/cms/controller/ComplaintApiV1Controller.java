@@ -5,11 +5,12 @@ import com.hrms.cms.dto.NodalAssessmentRequest;
 import com.hrms.cms.dto.complaint.ComplaintCommentResponse;
 import com.hrms.cms.dto.complaint.ComplaintDetailResponse;
 import com.hrms.cms.dto.complaint.ComplaintEmailItem;
+import com.hrms.cms.dto.complaint.ComplaintEmailRequest;
+import com.hrms.cms.dto.complaint.ComplaintEmailThreadResponse;
 import com.hrms.cms.dto.complaint.ComplaintPhoneLookupItem;
 import com.hrms.cms.dto.complaint.ComplaintRegistrationAck;
 import com.hrms.cms.dto.complaint.ComplaintTimelineItem;
 import com.hrms.cms.dto.complaint.EmailAttachmentRef;
-import com.hrms.cms.dto.complaint.EmailSendAck;
 import com.hrms.cms.dto.complaint.ForwardComplaintResponse;
 import com.hrms.cms.dto.complaint.NodalRecordCommentResponse;
 import com.hrms.cms.dto.complaint.NodalRecordRow;
@@ -24,8 +25,10 @@ import com.hrms.cms.entity.SimulatedEmail;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintCommentRepository;
+import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import com.hrms.cms.repository.SimulatedEmailRepository;
+import com.hrms.cms.config.EmailDispatchMode;
 import com.hrms.cms.security.CallerIdentity;
 import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.ComplaintService;
@@ -33,6 +36,7 @@ import com.hrms.cms.service.RbioHierarchyService;
 import com.hrms.cms.service.triage.IntakeTriageService;
 import com.rbi.cms.common.dto.ApiResponse;
 import com.rbi.cms.common.enums.ComplaintStatus;
+import com.rbi.cms.common.enums.DeliveryStatus;
 import com.rbi.cms.common.enums.RoleConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
@@ -59,6 +63,8 @@ public class ComplaintApiV1Controller {
     private final ComplaintCategoryRepository categoryRepository;
     private final RegulatedEntityRepository regulatedEntityRepository;
     private final SimulatedEmailRepository simulatedEmailRepository;
+    private final ComplaintRepository complaintRepository;
+    private final com.hrms.cms.event.NotificationEventPublisher notificationEventPublisher;
     private final ComplaintCommentRepository complaintCommentRepository;
     private final IntakeTriageService triageService;
     private final Validator validator;
@@ -345,55 +351,272 @@ public class ComplaintApiV1Controller {
         return ResponseEntity.ok(ApiResponse.success(items, "Recent complaints retrieved"));
     }
 
+    private static final DateTimeFormatter EMAIL_DATE_FMT = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+    private static final String EMAIL_DIRECTION_OUTBOUND = "OUTBOUND";
+
+    @org.springframework.beans.factory.annotation.Value("${cms.email.dispatch.mode:EVENT}")
+    private EmailDispatchMode emailDispatchMode;
+
+    /**
+     * Stores the lifecycle state a send should land in, and requests dispatch when one is needed.
+     * Both columns are written: delivery_status is authoritative, and status is kept in step so the legacy
+     * read surfaces over SIMULATED_EMAILS do not report a stale value.
+     */
+    private void applySendOutcome(SimulatedEmail email, DeliveryStatus resolved) {
+        if (resolved == DeliveryStatus.PENDING && emailDispatchMode == EmailDispatchMode.INLINE) {
+            email.setDeliveryStatus(DeliveryStatus.SENT);
+            email.setStatus(DeliveryStatus.SENT.name());
+            email.setProcessedAt(LocalDateTime.now());
+            return;
+        }
+        email.setDeliveryStatus(resolved);
+        email.setStatus(resolved.name());
+    }
+
+    /** No-op unless the row is genuinely queued, so INLINE mode and plain draft saves publish nothing. */
+    private void requestDispatchIfQueued(SimulatedEmail saved) {
+        if (saved.getDeliveryStatus() == DeliveryStatus.PENDING) {
+            notificationEventPublisher.publishEmailDispatchRequested(saved);
+        }
+    }
+
+    private static String sendOutcomeMessage(SimulatedEmail saved) {
+        DeliveryStatus delivery = saved.getDeliveryStatus();
+        if (delivery == DeliveryStatus.DRAFT) {
+            return "Draft saved";
+        }
+        return delivery == DeliveryStatus.PENDING ? "Email queued for sending" : "Email sent";
+    }
+
     @GetMapping("/{complaintNumber}/emails")
     public ResponseEntity<ApiResponse<List<ComplaintEmailItem>>> getComplaintEmails(
             @PathVariable String complaintNumber) {
-        List<SimulatedEmail> emails = simulatedEmailRepository.findByComplaintNumberOrderBySentAtDesc(complaintNumber);
 
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+        if (complaintRepository.findByComplaintNumber(complaintNumber).isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Complaint " + complaintNumber + " was not found"));
+        }
 
-        List<ComplaintEmailItem> items = emails.stream().map(e -> ComplaintEmailItem.builder()
-                .id(e.getId())
-                .subject(e.getSubject())
-                .from(e.getFromEmail())
-                .to(e.getToEmail())
-                .body(e.getBody())
-                .date(e.getSentAt() != null ? e.getSentAt().format(fmt) : "")
-                .status(e.getStatus())
-                .direction(e.getDirection())
-                .attachments(e.getAttachmentUrl() != null
-                        ? List.of(EmailAttachmentRef.builder().name(e.getAttachmentUrl()).size("").build())
-                        : List.of())
-                .build()).collect(Collectors.toList());
+        List<ComplaintEmailItem> items = simulatedEmailRepository
+                .findByComplaintNumberOrderBySentAtDesc(complaintNumber).stream()
+                .map(ComplaintApiV1Controller::toEmailItem)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(ApiResponse.success(items));
     }
 
-    @PostMapping("/{complaintNumber}/emails")
-    public ResponseEntity<ApiResponse<EmailSendAck>> sendComplaintEmail(
+    /**
+     * The whole conversation behind one activity row. The list endpoint already carries each mail's own
+     * fields, so this exists for the reading pane, which shows every message sharing the thread.
+     */
+    @GetMapping("/{complaintNumber}/emails/{emailId}")
+    public ResponseEntity<ApiResponse<ComplaintEmailThreadResponse>> getComplaintEmailThread(
             @PathVariable String complaintNumber,
-            @RequestBody Map<String, String> request) {
+            @PathVariable Long emailId) {
+
+        Optional<SimulatedEmail> found = findComplaintEmail(complaintNumber, emailId);
+        if (found.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Email " + emailId + " was not found on complaint " + complaintNumber));
+        }
+        SimulatedEmail email = found.get();
+
+        List<ComplaintEmailItem> messages = simulatedEmailRepository
+                .findByThreadIdOrderBySentAtAsc(email.getThreadId()).stream()
+                .map(ComplaintApiV1Controller::toEmailItem)
+                .collect(Collectors.toList());
+
+        DeliveryStatus threadDelivery = effectiveDeliveryStatus(email);
+        ComplaintEmailThreadResponse thread = ComplaintEmailThreadResponse.builder()
+                .threadId(email.getThreadId())
+                .complaintNumber(email.getComplaintNumber())
+                .subject(email.getSubject())
+                .status(threadDelivery != null ? threadDelivery.name() : email.getStatus())
+                .messageCount(messages.size())
+                .email(toEmailItem(email))
+                .messages(messages)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(thread));
+    }
+
+    @PostMapping("/{complaintNumber}/emails")
+    public ResponseEntity<ApiResponse<ComplaintEmailItem>> createComplaintEmail(
+            @PathVariable String complaintNumber,
+            @Valid @RequestBody ComplaintEmailRequest request) {
+
+        Optional<Complaint> complaint = complaintRepository.findByComplaintNumber(complaintNumber);
+        if (complaint.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Complaint " + complaintNumber + " was not found"));
+        }
+
+        // A reply joins the thread it answers; anything else starts its own, so a draft and the mails
+        // already sent on this complaint stay separate rows in the activity list.
+        String threadId = UUID.randomUUID().toString();
+        if (request.getInReplyToId() != null) {
+            Optional<SimulatedEmail> parent = findComplaintEmail(complaintNumber, request.getInReplyToId());
+            if (parent.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(
+                        "The email being replied to was not found on complaint " + complaintNumber));
+            }
+            // Only a mail that actually went out can be replied to - a draft has no recipient who could
+            // have received it, and one still queued or failed has not reached anyone either.
+            if (effectiveDeliveryStatus(parent.get()) != DeliveryStatus.SENT) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(
+                        "This email has not been sent yet, so it cannot be replied to. Send it first."));
+            }
+            threadId = parent.get().getThreadId();
+        }
 
         SimulatedEmail email = SimulatedEmail.builder()
-                .messageId("MSG-" + UUID.randomUUID().toString().substring(0, 8))
-                .threadId("THR-" + complaintNumber)
-                .fromEmail(request.getOrDefault("from", "cmssupportngp@rbi.org.in"))
-                .toEmail(request.getOrDefault("to", ""))
-                .subject(request.getOrDefault("subject", ""))
-                .body(request.getOrDefault("body", ""))
-                .direction("OUTBOUND")
-                .status(request.getOrDefault("status", "SENT"))
+                .messageId(UUID.randomUUID().toString())
+                .threadId(threadId)
+                .fromEmail(request.getFrom().trim())
+                .toEmail(request.getTo().trim())
+                .ccEmail(blankToNull(request.getCc()))
+                .bccEmail(blankToNull(request.getBcc()))
+                .subject(request.getSubject().trim())
+                .body(request.getBody())
+                .direction(EMAIL_DIRECTION_OUTBOUND)
+                .complaintId(complaint.get().getId())
                 .complaintNumber(complaintNumber)
+                .createdBy(callerIdentity.username())
                 .build();
+        applySendOutcome(email, request.resolvedStatus());
 
-        simulatedEmailRepository.save(email);
+        SimulatedEmail saved = simulatedEmailRepository.save(email);
+        requestDispatchIfQueued(saved);
 
-        EmailSendAck ack = EmailSendAck.builder()
-                .id(email.getId())
-                .messageId(email.getMessageId())
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(toEmailItem(saved), sendOutcomeMessage(saved)));
+    }
+
+    /**
+     * Saves further edits to a draft, and sends it when the request carries status SENT. Only a draft is
+     * editable: a mail that has gone out must not change afterwards.
+     */
+    @PutMapping("/{complaintNumber}/emails/{emailId}")
+    public ResponseEntity<ApiResponse<ComplaintEmailItem>> updateComplaintEmail(
+            @PathVariable String complaintNumber,
+            @PathVariable Long emailId,
+            @Valid @RequestBody ComplaintEmailRequest request) {
+
+        Optional<SimulatedEmail> found = findComplaintEmail(complaintNumber, emailId);
+        if (found.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Email " + emailId + " was not found on complaint " + complaintNumber));
+        }
+
+        SimulatedEmail email = found.get();
+        // Only a draft is editable. A queued mail must not mutate underneath the dispatcher, and a sent
+        // one is a record of what went out.
+        if (effectiveDeliveryStatus(email) != DeliveryStatus.DRAFT) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("This email is no longer a draft and can no longer be edited."));
+        }
+
+        email.setFromEmail(request.getFrom().trim());
+        email.setToEmail(request.getTo().trim());
+        email.setCcEmail(blankToNull(request.getCc()));
+        email.setBccEmail(blankToNull(request.getBcc()));
+        email.setSubject(request.getSubject().trim());
+        email.setBody(request.getBody());
+        // sentAt is deliberately left alone - it is the row's creation time and the activity list's sort key.
+        applySendOutcome(email, request.resolvedStatus());
+
+        SimulatedEmail saved = simulatedEmailRepository.save(email);
+        requestDispatchIfQueued(saved);
+
+        return ResponseEntity.ok(ApiResponse.success(toEmailItem(saved), sendOutcomeMessage(saved)));
+    }
+
+    /**
+     * Queues a failed mail for another dispatch attempt.
+     *
+     * <p>Without this a failed mail is a dead end: it is not a draft so it cannot be edited, and it never
+     * went out so it cannot be replied to. It is also the manual recovery path when the broker was
+     * unreachable at send time and the row was left behind.</p>
+     */
+    @PostMapping("/{complaintNumber}/emails/{emailId}/retry")
+    public ResponseEntity<ApiResponse<ComplaintEmailItem>> retryComplaintEmail(
+            @PathVariable String complaintNumber,
+            @PathVariable Long emailId) {
+
+        Optional<SimulatedEmail> found = findComplaintEmail(complaintNumber, emailId);
+        if (found.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("Email " + emailId + " was not found on complaint " + complaintNumber));
+        }
+
+        SimulatedEmail email = found.get();
+        if (effectiveDeliveryStatus(email) != DeliveryStatus.FAILED) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponse.error("Only an email whose sending failed can be retried."));
+        }
+
+        email.setLastError(null);
+        applySendOutcome(email, DeliveryStatus.PENDING);
+
+        SimulatedEmail saved = simulatedEmailRepository.save(email);
+        requestDispatchIfQueued(saved);
+
+        return ResponseEntity.ok(ApiResponse.success(toEmailItem(saved), sendOutcomeMessage(saved)));
+    }
+
+    /** Scoped by complaint so an email id from another complaint cannot be read or edited through this path. */
+    private Optional<SimulatedEmail> findComplaintEmail(String complaintNumber, Long emailId) {
+        return simulatedEmailRepository.findById(emailId)
+                .filter(e -> complaintNumber.equals(e.getComplaintNumber()));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    /**
+     * The row's delivery lifecycle, falling back to the legacy status column for rows written before
+     * DELIVERY_STATUS existed. Null means the row has no lifecycle at all - an inbound mail, or a status
+     * that was never a lifecycle value. Every read path goes through this so an environment that has not
+     * run the backfill renders exactly as it did before.
+     */
+    private static DeliveryStatus effectiveDeliveryStatus(SimulatedEmail e) {
+        if (e.getDeliveryStatus() != null) {
+            return e.getDeliveryStatus();
+        }
+        return DeliveryStatus.parse(e.getStatus()).orElse(null);
+    }
+
+    private static ComplaintEmailItem toEmailItem(SimulatedEmail e) {
+        DeliveryStatus delivery = effectiveDeliveryStatus(e);
+
+        return ComplaintEmailItem.builder()
+                .id(e.getId())
+                .messageId(e.getMessageId())
+                .threadId(e.getThreadId())
+                .complaintNumber(e.getComplaintNumber())
+                .subject(e.getSubject())
+                .from(e.getFromEmail())
+                .to(e.getToEmail())
+                .cc(e.getCcEmail())
+                .bcc(e.getBccEmail())
+                .body(e.getBody())
+                .date(e.getSentAt() != null ? e.getSentAt().format(EMAIL_DATE_FMT) : "")
+                // The lifecycle is reported through the existing status field rather than a parallel one,
+                // so PENDING and FAILED reach the UI without it having to choose between two sources.
+                .status(delivery != null ? delivery.name() : e.getStatus())
+                .direction(e.getDirection())
+                .assignedTo(e.getCreatedBy())
+                .sentAt(e.getSentAt() != null ? e.getSentAt().toString() : null)
+                .updatedAt(e.getUpdatedAt() != null ? e.getUpdatedAt().toString() : null)
+                .lastError(e.getLastError())
+                .canReply(delivery == DeliveryStatus.SENT)
+                .editable(delivery == DeliveryStatus.DRAFT)
+                .canRetry(delivery == DeliveryStatus.FAILED)
+                .attachments(e.getAttachmentUrl() != null
+                        ? List.of(EmailAttachmentRef.builder().name(e.getAttachmentUrl()).size("").build())
+                        : List.of())
                 .build();
-
-        return ResponseEntity.ok(ApiResponse.success(ack, "Email " + email.getStatus().toLowerCase()));
     }
 
     @GetMapping("/{complaintNumber}/comments")

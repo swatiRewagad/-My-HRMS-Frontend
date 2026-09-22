@@ -14,6 +14,7 @@ import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.entity.ComplaintTimeline;
 import com.hrms.cms.repository.SimulatedEmailRepository;
+import com.rbi.cms.common.enums.DeliveryStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -88,6 +89,7 @@ public class EmailSimulationService {
                 .body(replyBody)
                 .direction("OUTBOUND")
                 .status("SENT")
+                .deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(savedComplaint.getId())
                 .complaintNumber(complaintNumber)
                 .attachmentUrl("/api/email-simulation/form-template/" + complaintNumber)
@@ -162,6 +164,7 @@ public class EmailSimulationService {
                 .body(buildConfirmationBody(request.getComplainantName(), complaintNumber))
                 .direction("OUTBOUND")
                 .status("SENT")
+                .deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(complaint.getId())
                 .complaintNumber(complaintNumber)
                 .build();
@@ -209,8 +212,6 @@ public class EmailSimulationService {
                     .min(Comparator.comparing(SimulatedEmail::getSentAt))
                     .orElse(threadEmails.get(0));
 
-            // first.getStatus() rather than deriveThreadStatus: the complaint details screen buckets
-            // its email activity on the message status SENT. See EmailThreadSummary#status.
             threads.add(toThreadSummary(entry.getKey(), first, threadEmails.size(), first.getStatus()));
         }
         return threads;

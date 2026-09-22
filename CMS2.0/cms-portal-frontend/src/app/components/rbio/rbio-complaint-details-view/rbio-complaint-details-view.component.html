@@ -202,8 +202,8 @@
                 <button class="btn btn-outline" (click)="loadNodalRecords()" [disabled]="loadingNodalRecords()"><i class="pi pi-refresh"></i> Refresh</button>
               } @else if (assessmentTab() === 'email') {
                 @if (emailComposeMode()) {
-                  <button class="btn btn-outline btn-sm" (click)="saveEmailDraft()"><i class="pi pi-save"></i> Save Draft</button>
-                  <button class="btn btn-primary btn-sm" (click)="sendEmail()"><i class="pi pi-send"></i> Send Email</button>
+                  <button class="btn btn-outline btn-sm" (click)="saveEmailDraft()" [disabled]="emailSaving()"><i class="pi pi-save"></i> Save Draft</button>
+                  <button class="btn btn-primary btn-sm" (click)="sendEmail()" [disabled]="emailSaving()"><i class="pi pi-send"></i> {{ emailSaving() ? 'Saving…' : 'Send Email' }}</button>
                 } @else {
                   <button class="btn btn-primary btn-sm" (click)="createNewEmail()"><i class="pi pi-plus"></i> Create New Email</button>
                 }
@@ -633,10 +633,10 @@
                 <div class="email-activity-item" [class.active]="selectedEmailActivity()?.id === activity.id" (click)="selectEmailActivity(activity)">
                   <span class="email-activity-title">{{ activity.subject || 'Untitled' }}</span>
                   <span class="email-activity-date">{{ activity.date }}</span>
+                  <span class="email-activity-status" [ngClass]="emailStatusClass(activity.status)">{{ emailStatusLabel(activity.status) }}</span>
                 </div>
-              }
-              @if (emailActivities().length === 0) {
-                <div class="email-activity-item empty">No open activities</div>
+              } @empty {
+                <div class="email-activity-item empty">{{ loadingEmails() ? 'Loading…' : 'No open activities' }}</div>
               }
             </div>
           }
@@ -653,9 +653,8 @@
                   <span class="email-activity-title">{{ draft.subject || 'Untitled Draft' }}</span>
                   <span class="email-activity-date">{{ draft.date }}</span>
                 </div>
-              }
-              @if (emailDrafts().length === 0) {
-                <div class="email-activity-item empty">No drafts</div>
+              } @empty {
+                <div class="email-activity-item empty">{{ loadingEmails() ? 'Loading…' : 'No drafts' }}</div>
               }
             </div>
           }
@@ -668,10 +667,12 @@
           @if (emailClosedExpanded) {
             <div class="email-activity-list">
               @for (activity of emailClosedActivities(); track activity.id) {
-                <div class="email-activity-item" (click)="selectEmailActivity(activity)">
+                <div class="email-activity-item" [class.active]="selectedEmailActivity()?.id === activity.id" (click)="selectEmailActivity(activity)">
                   <span class="email-activity-title">{{ activity.subject }}</span>
                   <span class="email-activity-date">{{ activity.date }}</span>
                 </div>
+              } @empty {
+                <div class="email-activity-item empty">{{ loadingEmails() ? 'Loading…' : 'No sent emails' }}</div>
               }
             </div>
           }
@@ -684,30 +685,37 @@
           <!-- COMPOSE MODE -->
           <div class="email-compose">
             <div class="email-compose-actions">
-              <button class="btn btn-outline btn-sm" (click)="emailComposeMode.set(false)"><i class="pi pi-list"></i> Select Template</button>
+              <span class="email-compose-mode-label">
+                @if (editingDraftId !== null) { Editing draft }
+                @else if (replyToEmailId !== null) { Replying }
+                @else { New email }
+              </span>
               <button class="btn btn-outline btn-sm"><i class="pi pi-paperclip"></i> Add Attachment</button>
-              <button class="btn btn-outline btn-sm btn-close-compose" (click)="emailComposeMode.set(false)" title="Close"><i class="pi pi-times"></i></button>
+              <button class="btn btn-outline btn-sm btn-close-compose" (click)="cancelEmailCompose()" title="Close"><i class="pi pi-times"></i></button>
             </div>
+            @if (emailFormError()) {
+              <div class="email-compose-error"><i class="pi pi-exclamation-circle"></i> {{ emailFormError() }}</div>
+            }
             <div class="email-compose-form">
               <div class="email-field">
-                <label>From</label>
-                <input type="text" [(ngModel)]="emailFrom" placeholder="cmssupportngp@rbi.org.in" />
+                <label>From <span class="req">*</span></label>
+                <input type="email" [(ngModel)]="emailFrom" maxlength="200" placeholder="cmssupportngp@rbi.org.in" />
               </div>
               <div class="email-field">
-                <label>To</label>
-                <input type="text" [(ngModel)]="emailTo" placeholder="Enter recipient email" />
+                <label>To <span class="req">*</span></label>
+                <input type="text" [(ngModel)]="emailTo" maxlength="200" placeholder="Enter recipient email" />
               </div>
               <div class="email-field">
                 <label>CC</label>
-                <input type="text" [(ngModel)]="emailCc" placeholder="Add CC recipients" />
+                <input type="text" [(ngModel)]="emailCc" maxlength="500" placeholder="Add CC recipients" />
               </div>
               <div class="email-field">
                 <label>BCC</label>
-                <input type="text" [(ngModel)]="emailBcc" placeholder="Add BCC recipients" />
+                <input type="text" [(ngModel)]="emailBcc" maxlength="500" placeholder="Add BCC recipients" />
               </div>
               <div class="email-field">
-                <label>Subject</label>
-                <input type="text" [(ngModel)]="emailSubject" placeholder="Enter subject" />
+                <label>Subject <span class="req">*</span></label>
+                <input type="text" [(ngModel)]="emailSubject" maxlength="500" placeholder="Enter subject" />
               </div>
               <div class="email-toolbar">
                 <button class="toolbar-btn"><b>B</b></button>
@@ -719,7 +727,7 @@
                 <button class="toolbar-btn"><i class="pi pi-paperclip"></i></button>
                 <button class="toolbar-btn"><i class="pi pi-face-smile"></i></button>
               </div>
-              <textarea class="email-body-input" [(ngModel)]="emailBody" rows="10" placeholder="Enter your email here"></textarea>
+              <textarea class="email-body-input" [(ngModel)]="emailBody" rows="10" maxlength="20000" placeholder="Enter your email here"></textarea>
             </div>
           </div>
         } @else {
@@ -733,27 +741,49 @@
                 <div class="email-sender-info">
                   <span class="email-avatar">RB</span>
                   <div class="email-sender-details">
-                    <span class="email-sender-name">{{ selectedEmailActivity()?.fromEmail || 'rbiteamcms@rbi.org.in' }}</span>
-                    <span class="email-sender-to">To: {{ selectedEmailActivity()?.toEmail || 'cmssupportngp@rbi.org.in' }}</span>
+                    <span class="email-sender-name">{{ selectedEmailActivity()?.from }}</span>
+                    <span class="email-sender-to">To: {{ selectedEmailActivity()?.to }}</span>
+                    @if (selectedEmailActivity()?.cc) {
+                      <span class="email-sender-to">CC: {{ selectedEmailActivity()?.cc }}</span>
+                    }
+                    @if (selectedEmailActivity()?.bcc) {
+                      <span class="email-sender-to">BCC: {{ selectedEmailActivity()?.bcc }}</span>
+                    }
                   </div>
                 </div>
                 <div class="email-view-meta">
                   <div class="email-meta-item">
-                    <span class="email-meta-label">Assigned To</span>
+                    <span class="email-meta-label">Created By</span>
                     <span class="email-meta-value">{{ selectedEmailActivity()?.assignedTo || '—' }}</span>
                   </div>
                   <div class="email-meta-item">
-                    <span class="email-meta-label">Created On</span>
-                    <span class="email-meta-value">{{ selectedEmailActivity()?.sentAt }}</span>
+                    <span class="email-meta-label">{{ emailDateLabel(selectedEmailActivity()?.status) }}</span>
+                    <span class="email-meta-value">{{ selectedEmailActivity()?.date || '—' }}</span>
                   </div>
-                  <div class="email-meta-item">
-                    <span class="email-meta-label">Due Date</span>
-                    <span class="email-meta-value">{{ selectedEmailActivity()?.dueDate || '—' }}</span>
-                  </div>
-                  <span class="email-status-badge open"><i class="pi pi-info-circle"></i> {{ selectedEmailActivity()?.status || 'Open' }}</span>
-                  <button class="btn btn-outline btn-sm"><i class="pi pi-reply"></i> Reply</button>
+                  <span class="email-status-badge" [ngClass]="emailStatusClass(selectedEmailActivity()?.status)">
+                    <i class="pi pi-info-circle"></i> {{ emailStatusLabel(selectedEmailActivity()?.status) }}
+                  </span>
+                  @if (selectedEmailActivity()?.editable) {
+                    <button class="btn btn-outline btn-sm" (click)="editEmailDraft(selectedEmailActivity()!)"><i class="pi pi-pencil"></i> Edit Draft</button>
+                  }
+                  @if (selectedEmailActivity()?.canRetry) {
+                    <button class="btn btn-outline btn-sm" (click)="retryEmail(selectedEmailActivity()!)" [disabled]="emailSaving()"><i class="pi pi-refresh"></i> Retry</button>
+                  }
+                  @if (selectedEmailActivity()?.status === 'PENDING') {
+                    <button class="btn btn-outline btn-sm" (click)="refreshEmails()" [disabled]="loadingEmails()"><i class="pi pi-refresh"></i> Refresh</button>
+                  }
+                  <button class="btn btn-outline btn-sm" (click)="replyToEmail()"><i class="pi pi-reply"></i> Reply</button>
                 </div>
               </div>
+              @if (selectedEmailActivity()?.status === 'FAILED' && selectedEmailActivity()?.lastError) {
+                <div class="email-failure-banner">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <div>
+                    <strong>This email could not be sent.</strong>
+                    <span class="email-failure-reason">{{ selectedEmailActivity()?.lastError }}</span>
+                  </div>
+                </div>
+              }
               @if (selectedEmailActivity()?.attachments?.length) {
                 <div class="email-attachments">
                   @for (att of selectedEmailActivity()?.attachments || []; track att.name) {
@@ -778,6 +808,28 @@
                 </div>
                 <div class="email-body-content" [innerHTML]="selectedEmailActivity()?.body || ''"></div>
               </div>
+
+              <!-- The rest of the conversation this mail belongs to, oldest first. -->
+              @if (loadingEmailThread()) {
+                <div class="email-thread-status">Loading conversation…</div>
+              } @else if (emailThreadMessages().length > 1) {
+                <div class="email-thread">
+                  <h4 class="email-thread-title">Conversation ({{ emailThreadMessages().length }} messages)</h4>
+                  @for (message of emailThreadMessages(); track message.id) {
+                    <div class="email-thread-message" [class.current]="message.id === selectedEmailActivity()?.id">
+                      <div class="email-thread-message-head">
+                        <span class="email-thread-from">{{ message.from }}</span>
+                        <span class="email-thread-arrow">→</span>
+                        <span class="email-thread-to">{{ message.to }}</span>
+                        <span class="email-thread-date">{{ message.date }}</span>
+                        <span class="email-thread-status-pill" [ngClass]="emailStatusClass(message.status)">{{ emailStatusLabel(message.status) }}</span>
+                      </div>
+                      <div class="email-thread-subject">{{ message.subject }}</div>
+                      <div class="email-thread-body" [innerHTML]="message.body || ''"></div>
+                    </div>
+                  }
+                </div>
+              }
             </div>
           } @else {
             <div class="email-empty-state">

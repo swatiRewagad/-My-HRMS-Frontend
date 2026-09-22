@@ -244,6 +244,7 @@ public class RbioComplaintSummaryService {
                         .id(fdId)
                         .freeMarkedComplaint(fd != null ? yesNo(fd.getFreeMarkedComplaint()) : null)
                         .currentComplaintNumber(c.getComplaintNumber())
+                        .replyWithin30Days(fd != null ? replyLabel(fd.getReplyWithin30Days()) : null)
                         .build())
                 .build();
     }
@@ -511,6 +512,8 @@ public class RbioComplaintSummaryService {
 
         setIfPresent(linkage, "freeMarkedComplaint",
                 v -> row.setFreeMarkedComplaint(toYesNo(v, "freeMarkedComplaint")));
+        setIfPresent(linkage, "replyWithin30Days",
+                v -> row.setReplyWithin30Days(replyToken(v)));
 
         formDataRepository.save(row);
     }
@@ -553,6 +556,7 @@ public class RbioComplaintSummaryService {
         row.setAtmCreditDebitCard(looseYesNo(draft.getIsAtmCreditDebitCard()));
         row.setSchemeFlag(draft.getSchemeFlag());
         row.setFreeMarkedComplaint(looseYesNo(draft.getIsFreeMarkedComplaint()));
+        row.setReplyWithin30Days(replyToken(draft.getReceivedReplyWithin30Days()));
 
         formDataRepository.save(row);
     }
@@ -612,6 +616,32 @@ public class RbioComplaintSummaryService {
         if ("yes".equalsIgnoreCase(s) || "true".equalsIgnoreCase(s)) return "yes";
         if ("no".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s)) return "no";
         throw new IllegalArgumentException("Field '" + field + "' must be true, false or null");
+    }
+
+    /**
+     * Tri-state reply answer -> stored token. Lenient like {@link #looseYesNo}, because the same helper
+     * normalises both the PUT payload and the free-text {@code EmailDraft} value at backfill, and an
+     * unrecognised draft value must not fail the conversion.
+     */
+    private static String replyToken(Object v) {
+        if (v == null) return null;
+        if (v instanceof Boolean b) return b ? "YES" : "NO";
+        String s = String.valueOf(v).trim().replace(' ', '_');
+        if ("yes".equalsIgnoreCase(s) || "true".equalsIgnoreCase(s)) return "YES";
+        if ("no".equalsIgnoreCase(s) || "false".equalsIgnoreCase(s)) return "NO";
+        if ("not_applicable".equalsIgnoreCase(s) || "na".equalsIgnoreCase(s)) return "NOT_APPLICABLE";
+        return null;
+    }
+
+    /** Stored reply token -> the label the RBIO summary form renders. */
+    private static String replyLabel(String v) {
+        String token = replyToken(v);
+        if (token == null) return null;
+        return switch (token) {
+            case "YES" -> "Yes";
+            case "NO" -> "No";
+            default -> "Not Applicable";
+        };
     }
 
     private static String str(Object v, String field) {

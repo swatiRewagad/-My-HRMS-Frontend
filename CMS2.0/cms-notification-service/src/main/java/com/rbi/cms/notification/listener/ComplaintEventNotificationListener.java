@@ -18,7 +18,7 @@ public class ComplaintEventNotificationListener {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = "cms-notification-group")
+    @KafkaListener(topics = KafkaTopics.COMPLAINT_INGESTED, groupId = "${spring.kafka.consumer.group-id}")
     public void onComplaintIngested(String message, Acknowledgment ack) {
         try {
             ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);
@@ -36,7 +36,7 @@ public class ComplaintEventNotificationListener {
         }
     }
 
-    @KafkaListener(topics = KafkaTopics.COMPLAINT_ASSIGNED, groupId = "cms-notification-group")
+    @KafkaListener(topics = KafkaTopics.COMPLAINT_ASSIGNED, groupId = "${spring.kafka.consumer.group-id}")
     public void onComplaintAssigned(String message, Acknowledgment ack) {
         try {
             ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);
@@ -55,7 +55,7 @@ public class ComplaintEventNotificationListener {
         }
     }
 
-    @KafkaListener(topics = KafkaTopics.COMPLAINT_RESOLVED, groupId = "cms-notification-group")
+    @KafkaListener(topics = KafkaTopics.COMPLAINT_RESOLVED, groupId = "${spring.kafka.consumer.group-id}")
     public void onComplaintResolved(String message, Acknowledgment ack) {
         try {
             ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);
@@ -74,7 +74,7 @@ public class ComplaintEventNotificationListener {
         }
     }
 
-    @KafkaListener(topics = KafkaTopics.COMPLAINT_ESCALATED, groupId = "cms-notification-group")
+    @KafkaListener(topics = KafkaTopics.COMPLAINT_ESCALATED, groupId = "${spring.kafka.consumer.group-id}")
     public void onComplaintEscalated(String message, Acknowledgment ack) {
         try {
             ComplaintEvent event = objectMapper.readValue(message, ComplaintEvent.class);

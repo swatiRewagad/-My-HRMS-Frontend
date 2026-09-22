@@ -3,6 +3,7 @@ package com.hrms.cms.config;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.repository.*;
 import com.hrms.cms.service.NodalOfficerRecordService;
+import com.rbi.cms.common.enums.DeliveryStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -500,6 +501,7 @@ public class RbioDevDataLoader implements CommandLineRunner {
                         + "Regards,\nOffice of the RBI Ombudsman, " + regionalOffice)
                 .direction("OUTBOUND")
                 .status("SENT")
+                .deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(complaint.getId())
                 .complaintNumber(complaint.getComplaintNumber())
                 .sentAt(now.minusDays(7).plusHours(2))
@@ -517,6 +519,7 @@ public class RbioDevDataLoader implements CommandLineRunner {
                         + "Regards,\nOffice of the RBI Ombudsman, " + regionalOffice)
                 .direction("OUTBOUND")
                 .status("SENT")
+                .deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(complaint.getId())
                 .complaintNumber(complaint.getComplaintNumber())
                 .sentAt(now.minusDays(4))

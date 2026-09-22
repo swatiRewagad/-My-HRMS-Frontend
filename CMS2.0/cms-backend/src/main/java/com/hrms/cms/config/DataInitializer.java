@@ -10,6 +10,7 @@ import com.hrms.cms.entity.FormConfig;
 import com.hrms.cms.entity.OfficeCodeMaster;
 import com.hrms.cms.entity.OmbudsmanOfficeMaster;
 import com.hrms.cms.entity.RegulatedEntity;
+import com.rbi.cms.common.enums.DeliveryStatus;
 import com.hrms.cms.repository.AccountTypeMasterRepository;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
@@ -109,7 +110,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("rajesh.kumar@email.com")
                 .subject("Re: ATM did not dispense cash | Complaint #CMS-20260601-A1B2C3")
                 .body("Dear Rajesh Kumar,\n\nYour complaint has been registered (Ref: CMS-20260601-A1B2C3). Please provide your ATM transaction receipt and bank statement for the date.\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
                 .sentAt(now.minusDays(2).plusHours(1)).receivedAt(now.minusDays(2).plusHours(1))
                 .build());
@@ -131,7 +132,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("grievance@sbi.co.in")
                 .subject("CMS Inquiry: ATM Non-Dispensation | CMS-20260601-A1B2C3")
                 .body("Dear SBI Grievance Cell,\n\nWe have received a complaint regarding ATM non-dispensation. Kindly investigate and respond within 7 working days.\n\nComplaint Ref: CMS-20260601-A1B2C3\nTransaction Date: 01-Jun-2026\nAmount: Rs 10,000\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(1L).complaintNumber("CMS-20260601-A1B2C3")
                 .sentAt(now.minusDays(1).plusHours(5)).receivedAt(now.minusDays(1).plusHours(5))
                 .build());
@@ -163,7 +164,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("priya.sharma@email.com")
                 .subject("Re: UPI transaction failed | Complaint #CMS-20260601-D4E5F6")
                 .body("Dear Priya Sharma,\n\nYour complaint is registered (Ref: CMS-20260601-D4E5F6). We have forwarded this to HDFC Bank's nodal officer. You will be updated within 7 working days.\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(2L).complaintNumber("CMS-20260601-D4E5F6")
                 .sentAt(now.minusDays(5).plusHours(2)).receivedAt(now.minusDays(5).plusHours(2))
                 .build());
@@ -173,7 +174,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("nodal.officer@hdfcbank.com")
                 .subject("CMS Notice: UPI Failed Transaction | CMS-20260601-D4E5F6")
                 .body("Dear HDFC Bank Nodal Officer,\n\nPlease investigate the following UPI transaction failure and provide a response within 7 working days.\n\nUPI Ref: 202605279012345\nAmount: Rs 5,000\nDate: 27-May-2026\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(2L).complaintNumber("CMS-20260601-D4E5F6")
                 .sentAt(now.minusDays(4)).receivedAt(now.minusDays(4))
                 .build());
@@ -195,7 +196,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("sunita.d@email.com")
                 .subject("Re: Unauthorized credit card transaction | Complaint #CMS-20260528-J1K2L3")
                 .body("Dear Sunita Devi,\n\nYour complaint has been registered and escalated due to the nature of fraud. Ref: CMS-20260528-J1K2L3.\n\nPlease share a copy of your credit card statement and the FIR if filed.\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(4L).complaintNumber("CMS-20260528-J1K2L3")
                 .sentAt(now.minusDays(12).plusHours(2)).receivedAt(now.minusDays(12).plusHours(2))
                 .build());
@@ -216,7 +217,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("fraud.cell@pnb.co.in")
                 .subject("CMS Escalation: Credit Card Fraud | CMS-20260528-J1K2L3")
                 .body("Dear PNB Fraud Cell,\n\nThis is an escalated complaint regarding unauthorized credit card usage. FIR has been filed. Immediate investigation and temporary credit is requested.\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(4L).complaintNumber("CMS-20260528-J1K2L3")
                 .sentAt(now.minusDays(10)).receivedAt(now.minusDays(10))
                 .build());
@@ -238,7 +239,7 @@ public class DataInitializer implements CommandLineRunner {
                 .fromEmail(cmsEmail).toEmail("anita.m@email.com")
                 .subject("Re: Pension not credited | Complaint #CMS-20260515-V4W5X6")
                 .body("Dear Anita Mishra,\n\nWe understand the urgency. Your complaint has been registered (Ref: CMS-20260515-V4W5X6) and escalated to PNB's pension department with a 7-day deadline.\n\nRegards,\nCMS - RBI")
-                .direction("OUTBOUND").status("SENT")
+                .direction("OUTBOUND").status("SENT").deliveryStatus(DeliveryStatus.SENT)
                 .complaintId(8L).complaintNumber("CMS-20260515-V4W5X6")
                 .sentAt(now.minusDays(35).plusHours(1)).receivedAt(now.minusDays(35).plusHours(1))
                 .build());

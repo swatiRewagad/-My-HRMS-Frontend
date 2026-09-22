@@ -203,6 +203,56 @@ interface EntityDetail extends EntitySearchResult {
   pnoPhone?: string | null;
 }
 
+const DEFAULT_EMAIL_FROM = 'cmssupportngp@rbi.org.in';
+const EMAIL_STATUS_DRAFT = 'DRAFT';
+/** Queued for dispatch: persisted, but cms-notification-service has not resolved it yet. */
+const EMAIL_STATUS_PENDING = 'PENDING';
+const EMAIL_STATUS_SENT = 'SENT';
+const EMAIL_STATUS_FAILED = 'FAILED';
+
+/** Re-poll delays, in ms, while a mail is still queued. Bounded: three attempts, then stop. */
+const EMAIL_POLL_DELAYS_MS = [3000, 6000, 12000];
+
+/** One mail on a complaint, GET /api/v1/complaints/{complaintNumber}/emails. */
+interface ComplaintEmail {
+  id: number;
+  messageId?: string | null;
+  threadId?: string | null;
+  complaintNumber?: string | null;
+  subject: string;
+  from: string;
+  to: string;
+  cc?: string | null;
+  bcc?: string | null;
+  body?: string | null;
+  /** Display-formatted dd-MM-yyyy; sentAt carries the full timestamp. */
+  date: string;
+  status: string;
+  direction?: string | null;
+  assignedTo?: string | null;
+  sentAt?: string | null;
+  updatedAt?: string | null;
+  /** Why the last dispatch attempt failed; only populated while FAILED. */
+  lastError?: string | null;
+  /** The server's word on whether this mail can be replied to, i.e. whether it has actually gone out. */
+  canReply: boolean;
+  editable: boolean;
+  /** True when a failed dispatch can be queued again. */
+  canRetry: boolean;
+  attachments?: { name: string; size: string }[];
+}
+
+/** The full conversation behind one activity row, GET .../emails/{emailId}. */
+interface ComplaintEmailThread {
+  threadId?: string | null;
+  complaintNumber?: string | null;
+  subject?: string | null;
+  status?: string | null;
+  messageCount?: number;
+  email: ComplaintEmail;
+  messages?: ComplaintEmail[];
+}
+
 @Component({
   selector: 'app-rbio-complaint-details-view',
   imports: [CommonModule, FormsModule, ButtonModule, ToastModule, SpeechButtonComponent, RbioHeaderComponent, RbioSidebarComponent],
@@ -370,7 +420,7 @@ export class RbioComplaintDetailsView implements OnInit {
   // Complaint Linkage
   freeMarkedComplaint = false;
   currentComplaintNumber = '';
-  replyWithin30Days: 'Yes' | 'No' | 'Not Applicable' = 'Not Applicable';
+  replyWithin30Days: 'Yes' | 'No' | 'Not Applicable' | '' = '';
 
   // Financial
   amountInvolved: number | null = null;
@@ -958,16 +1008,27 @@ export class RbioComplaintDetailsView implements OnInit {
   emailOpenActivitiesExpanded = true;
   emailDraftExpanded = false;
   emailClosedExpanded = false;
-  emailActivities = signal<{ id: number; subject: string; date: string; from: string; to: string; assignedTo: string; dueDate: string; body: string; attachments: { name: string; size: string }[] }[]>([]);
-  emailDrafts = signal<{ id: number; subject: string; date: string; from: string; to: string; body: string }[]>([]);
-  emailClosedActivities = signal<{ id: number; subject: string; date: string; from: string; to: string; assignedTo: string; dueDate: string; body: string; attachments: { name: string; size: string }[] }[]>([]);
-  selectedEmailActivity = signal<any>(null);
-  emailFrom = 'cmssupportngp@rbi.org.in';
+  // Open Activities is the union of drafts and sent mail; Draft and Closed are the two halves. All three
+  // are projections of the one list the server returns, so a row appears in Open and in exactly one half.
+  emailActivities = signal<ComplaintEmail[]>([]);
+  emailDrafts = signal<ComplaintEmail[]>([]);
+  emailClosedActivities = signal<ComplaintEmail[]>([]);
+  loadingEmails = signal(false);
+  selectedEmailActivity = signal<ComplaintEmail | null>(null);
+  emailThreadMessages = signal<ComplaintEmail[]>([]);
+  loadingEmailThread = signal(false);
+  emailSaving = signal(false);
+  /** Set while composing means the compose form is editing this existing draft rather than a new mail. */
+  editingDraftId: number | null = null;
+  /** Set while composing means the mail being written is a reply to this sent mail. */
+  replyToEmailId: number | null = null;
+  emailFrom = DEFAULT_EMAIL_FROM;
   emailTo = '';
   emailCc = '';
   emailBcc = '';
   emailSubject = '';
   emailBody = '';
+  emailFormError = signal('');
 
   // Reference data
   states = signal<string[]>([]);
@@ -1203,7 +1264,8 @@ private getStatusColor(status: string): string {
         this.loadPastComplaints();
         this.fetchAttachments();
         this.loadComments();
-        this.loadEmailThreads();
+        // thenPoll: a mail queued before this screen was opened may still be in flight.
+        this.loadEmailThreads(true);
       },
       error: (err) => {
         this.saveError.set(err?.status === 403
@@ -1398,25 +1460,109 @@ private getStatusColor(status: string): string {
 
         this.freeMarkedComplaint = data.complainDetailsDto?.complaintLinkage?.freeMarkedComplaint === true;
         this.currentComplaintNumber = data.complainDetailsDto?.complaintLinkage?.currentComplaintNumber || '';
+        this.replyWithin30Days = data.complainDetailsDto?.complaintLinkage?.replyWithin30Days || '';
 
         this.applyEligibilityAnswers(data.eligibility);
   }
 
-  private loadEmailThreads() {
-    if (!this.actualComplaintNumber) return;
-    this.http.get<any>(`${environment.apiBaseUrl}/api/email-simulation/complaints/${this.actualComplaintNumber}/threads`).subscribe({
+  /**
+   * @param thenPoll start the bounded re-poll once the list arrives. False when called *by* the poll, so a
+   *                 chain can never restart itself.
+   */
+  private loadEmailThreads(thenPoll = false) {
+    if (!this.actualComplaintNumber) {
+      this.clearEmailLists();
+      return;
+    }
+    this.loadingEmails.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.actualComplaintNumber}/emails`).subscribe({
       next: (res) => {
-        const emails = res?.data || res || [];
-        this.emailActivities.set(emails.filter((e: any) => (e.status !== 'DRAFT' && e.status !== 'SENT')));
-        this.emailDrafts.set(emails.filter((e: any) => e.status === 'DRAFT'));
-        this.emailClosedActivities.set(emails.filter((e: any) => e.status === 'SENT'));
+        const emails: ComplaintEmail[] = res?.data || [];
+
+        // Open Activities is what still needs attention - a draft to finish, a mail in flight, or one that
+        // failed. Closed Activities is what has actually gone out.
+        this.emailDrafts.set(emails.filter(e => e.status === EMAIL_STATUS_DRAFT));
+        this.emailClosedActivities.set(emails.filter(e => e.status === EMAIL_STATUS_SENT));
+        this.emailActivities.set(emails.filter(e => e.status !== EMAIL_STATUS_SENT));
+        this.loadingEmails.set(false);
+
+        // A draft that was just sent moves between buckets, so re-point the reading pane at the stored row.
+        const selectedId = this.selectedEmailActivity()?.id;
+        if (selectedId != null) {
+          const current = emails.find(e => e.id === selectedId);
+          if (current) this.selectedEmailActivity.set(current);
+        }
+
+        if (thenPoll) this.pollWhileEmailsPending();
       },
-      error: () => {
-        this.emailActivities.set([]);
-        this.emailDrafts.set([]);
-        this.emailClosedActivities.set([]);
+      error: (err) => {
+        this.clearEmailLists();
+        this.loadingEmails.set(false);
+        this.notifyError(err, 'Could not load the email communication for this complaint.');
       }
     });
+  }
+
+  private clearEmailLists() {
+    this.emailActivities.set([]);
+    this.emailDrafts.set([]);
+    this.emailClosedActivities.set([]);
+  }
+
+  /**
+   * Re-reads the list a few times while anything is still queued.
+   *
+   * <p>A mail is PENDING the instant it is sent and only becomes SENT once cms-notification-service has
+   * dispatched it, which happens after this screen has already finished loading. Without this the officer
+   * would see "Sending…" until they navigated away and back.</p>
+   */
+  private pollWhileEmailsPending(attempt = 0) {
+    if (attempt >= EMAIL_POLL_DELAYS_MS.length) return;
+    if (!this.emailActivities().some(e => e.status === EMAIL_STATUS_PENDING)) return;
+
+    const handle = setTimeout(() => {
+      if (!this.actualComplaintNumber) return;
+      this.loadEmailThreads();
+      this.pollWhileEmailsPending(attempt + 1);
+    }, EMAIL_POLL_DELAYS_MS[attempt]);
+
+    // Leaving the screen must not leave a timer holding a reference to this component.
+    this.destroyRef.onDestroy(() => clearTimeout(handle));
+  }
+
+  /** Manual re-read, for when the bounded poll has given up but the mail is still queued. */
+  refreshEmails() {
+    this.loadEmailThreads(true);
+  }
+
+  emailStatusLabel(status?: string | null): string {
+    switch (status) {
+      case EMAIL_STATUS_DRAFT: return 'Draft';
+      case EMAIL_STATUS_PENDING: return 'Sending…';
+      case EMAIL_STATUS_SENT: return 'Sent';
+      case EMAIL_STATUS_FAILED: return 'Failed';
+      default: return status || '—';
+    }
+  }
+
+  /** Modifier class for the status pills and badges; keeps the mapping out of the template. */
+  emailStatusClass(status?: string | null): string {
+    switch (status) {
+      case EMAIL_STATUS_DRAFT: return 'draft';
+      case EMAIL_STATUS_PENDING: return 'pending';
+      case EMAIL_STATUS_FAILED: return 'failed';
+      default: return 'open';
+    }
+  }
+
+  /** Label for the timestamp in the reading pane, which means something different per state. */
+  emailDateLabel(status?: string | null): string {
+    switch (status) {
+      case EMAIL_STATUS_DRAFT: return 'Saved On';
+      case EMAIL_STATUS_PENDING: return 'Queued On';
+      case EMAIL_STATUS_FAILED: return 'Attempted On';
+      default: return 'Sent On';
+    }
   }
 
   
@@ -2905,7 +3051,7 @@ private getStatusColor(status: string): string {
       'complaintCategory', 'complaintSubCategory1', 'complaintSubCategory2',
       'filingDate', 'disputedAmount', 'loanDisposalAmount',
       'additionalComments', 'crpcProposedAction', 'vernacularLanguage',
-      'schemeFlag', 'rboCgpcOld', 'groundsFlag', 'currentComplaintNumber',
+      'schemeFlag', 'rboCgpcOld', 'groundsFlag', 'currentComplaintNumber', 'replyWithin30Days',
       'declarationAccepted'
     ];
   }
@@ -3037,7 +3183,8 @@ private getStatusColor(status: string): string {
           groundsFlag: this.groundsFlag || null
         },
         complaintLinkage: {
-          freeMarkedComplaint: this.freeMarkedComplaint
+          freeMarkedComplaint: this.freeMarkedComplaint,
+          replyWithin30Days: this.replyWithin30Days || null
         }
       }
     };
@@ -3073,73 +3220,268 @@ private getStatusColor(status: string): string {
   }
 
   // Email Communication methods
-  selectEmailActivity(activity: any) {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/email-simulation/thread/${activity?.threadId}`).subscribe({
+
+  /** Opens a row in the reading pane, fetching the whole thread so replies are shown alongside it. */
+  selectEmailActivity(activity: ComplaintEmail) {
+    if (!activity?.id || !this.actualComplaintNumber) return;
+
+    this.emailComposeMode.set(false);
+    this.selectedEmailActivity.set(activity);
+    this.emailThreadMessages.set([]);
+    this.loadingEmailThread.set(true);
+
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.actualComplaintNumber}/emails/${activity.id}`).subscribe({
       next: (res) => {
-        this.selectedEmailActivity.set(res);
-        this.emailComposeMode.set(false);
+        const thread: ComplaintEmailThread | null = res?.data || null;
+        if (thread?.email) this.selectedEmailActivity.set(thread.email);
+        this.emailThreadMessages.set(thread?.messages || []);
+        this.loadingEmailThread.set(false);
       },
-      error: () => { }
+      error: (err) => {
+        this.loadingEmailThread.set(false);
+        this.notifyError(err, 'Could not open this email.');
+      }
     });
   }
 
   createNewEmail() {
+    this.resetEmailForm();
+    this.selectedEmailActivity.set(null);
+    this.emailThreadMessages.set([]);
     this.emailComposeMode.set(true);
-    this.emailFrom = 'cmssupportngp@rbi.org.in';
+  }
+
+  /** Reopens a saved draft in the compose form so it can be finished and sent. */
+  editEmailDraft(draft: ComplaintEmail) {
+    this.resetEmailForm();
+    this.editingDraftId = draft.id;
+    this.emailFrom = draft.from || DEFAULT_EMAIL_FROM;
+    this.emailTo = draft.to || '';
+    this.emailCc = draft.cc || '';
+    this.emailBcc = draft.bcc || '';
+    this.emailSubject = draft.subject || '';
+    this.emailBody = draft.body || '';
+    this.emailComposeMode.set(true);
+  }
+
+  /**
+   * Replying is only meaningful once a mail has actually gone out - a draft has no recipient who could
+   * have received it - so an attempt on an unsent mail is refused with a toast rather than silently.
+   */
+  replyToEmail() {
+    const email = this.selectedEmailActivity();
+    if (!email) return;
+
+    if (!email.canReply) {
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Cannot reply yet',
+        detail: 'This email has not been sent yet. Send it before replying.',
+        life: 5000
+      });
+      return;
+    }
+
+    this.resetEmailForm();
+    this.replyToEmailId = email.id;
+    this.emailFrom = email.to || DEFAULT_EMAIL_FROM;
+    this.emailTo = email.from || '';
+    this.emailSubject = /^re:/i.test(email.subject || '') ? email.subject : `Re: ${email.subject || ''}`;
+    this.emailComposeMode.set(true);
+  }
+
+  cancelEmailCompose() {
+    this.resetEmailForm();
+    this.emailComposeMode.set(false);
+  }
+
+  private resetEmailForm() {
+    this.editingDraftId = null;
+    this.replyToEmailId = null;
+    this.emailFrom = DEFAULT_EMAIL_FROM;
     this.emailTo = '';
     this.emailCc = '';
     this.emailBcc = '';
     this.emailSubject = '';
     this.emailBody = '';
-    this.selectedEmailActivity.set(null);
+    this.emailFormError.set('');
   }
 
   saveEmailDraft() {
-    const payload = {
-      from: this.emailFrom,
-      to: this.emailTo,
-      subject: this.emailSubject,
-      body: this.emailBody,
-      status: 'DRAFT'
-    };
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/emails`, payload).subscribe({
-      next: (res) => {
-        const draft = { id: res?.data?.id || Date.now(), subject: this.emailSubject, date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'), from: this.emailFrom, to: this.emailTo, body: this.emailBody };
-        this.emailDrafts.set([draft, ...this.emailDrafts()]);
-      },
-      error: () => { }
-    });
-    this.emailComposeMode.set(false);
+    this.submitEmail(EMAIL_STATUS_DRAFT);
   }
 
   sendEmail() {
-    if (!this.emailTo || !this.emailSubject) return;
-    const payload = {
-      from: this.emailFrom,
-      to: this.emailTo,
-      subject: this.emailSubject,
-      body: this.emailBody,
-      status: 'SENT'
+    this.submitEmail(EMAIL_STATUS_SENT);
+  }
+
+  /**
+   * One path for both buttons: a new mail is POSTed, an existing draft is PUT. status decides whether the
+   * row lands in Draft or in Closed, and the server is re-read afterwards so the lists show what persisted.
+   */
+  private submitEmail(status: string) {
+    if (this.emailSaving()) return;
+
+    const validationError = this.validateEmailForm();
+    if (validationError) {
+      this.emailFormError.set(validationError);
+      this.messageService.add({
+        severity: 'warn',
+        summary: 'Check the email',
+        detail: validationError,
+        life: 5000
+      });
+      return;
+    }
+    this.emailFormError.set('');
+
+    if (!this.actualComplaintNumber) {
+      this.messageService.add({
+        severity: 'error',
+        summary: 'Cannot save',
+        detail: 'This complaint has no complaint number yet, so email cannot be saved against it.',
+        life: 5000
+      });
+      return;
+    }
+
+    const payload: Record<string, unknown> = {
+      from: this.emailFrom.trim(),
+      to: this.emailTo.trim(),
+      cc: this.emailCc.trim(),
+      bcc: this.emailBcc.trim(),
+      subject: this.emailSubject.trim(),
+      body: this.emailBody.trim(),
+      status
     };
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/emails`, payload).subscribe({
+    if (this.replyToEmailId != null) payload['inReplyToId'] = this.replyToEmailId;
+
+    const base = `${environment.apiBaseUrl}/api/v1/complaints/${this.actualComplaintNumber}/emails`;
+    const request$ = this.editingDraftId != null
+      ? this.http.put<any>(`${base}/${this.editingDraftId}`, payload)
+      : this.http.post<any>(base, payload);
+
+    this.emailSaving.set(true);
+    request$.subscribe({
       next: (res) => {
-        const newActivity = {
-          id: res?.data?.id || Date.now(),
-          subject: this.emailSubject,
-          date: new Date().toLocaleDateString('en-GB').replace(/\//g, '-'),
-          from: this.emailFrom,
-          to: this.emailTo,
-          assignedTo: this.loggedInUserName,
-          dueDate: '',
-          body: `<p>${this.emailBody}</p>`,
-          attachments: [] as { name: string; size: string }[]
-        };
-        this.emailActivities.set([newActivity, ...this.emailActivities()]);
-        this.selectedEmailActivity.set(newActivity);
+        this.emailSaving.set(false);
+        const saved: ComplaintEmail | null = res?.data || null;
+        this.resetEmailForm();
+        this.emailComposeMode.set(false);
+
+        // Expand whichever section the row actually landed in. A just-sent mail is PENDING and belongs to
+        // Open Activities, not Closed - expanding the wrong one makes it look like the mail vanished.
+        if (status === EMAIL_STATUS_DRAFT) {
+          this.emailDraftExpanded = true;
+        } else if (saved?.status === EMAIL_STATUS_SENT) {
+          this.emailClosedExpanded = true;
+        } else {
+          this.emailOpenActivitiesExpanded = true;
+        }
+
+        this.messageService.add({
+          severity: 'success',
+          summary: this.submitSuccessSummary(status, saved),
+          detail: res?.message || this.submitSuccessDetail(status, saved),
+          life: 4000
+        });
+
+        this.loadEmailThreads(true);
+        if (saved) this.selectEmailActivity(saved);
       },
-      error: () => { }
+      error: (err) => {
+        this.emailSaving.set(false);
+        const detail = this.errorDetail(err, status === EMAIL_STATUS_DRAFT
+          ? 'Could not save the draft. Your text is still here.'
+          : 'Could not send the email. Your text is still here.');
+        this.emailFormError.set(detail);
+        this.messageService.add({
+          severity: 'error',
+          summary: status === EMAIL_STATUS_DRAFT ? 'Draft not saved' : 'Email not sent',
+          detail,
+          life: 6000
+        });
+      }
     });
-    this.emailComposeMode.set(false);
+  }
+
+  private submitSuccessSummary(status: string, saved: ComplaintEmail | null): string {
+    if (status === EMAIL_STATUS_DRAFT) return 'Draft saved';
+    // Never claim "sent" for a mail that is only queued.
+    return saved?.status === EMAIL_STATUS_SENT ? 'Email sent' : 'Email queued';
+  }
+
+  private submitSuccessDetail(status: string, saved: ComplaintEmail | null): string {
+    if (status === EMAIL_STATUS_DRAFT) {
+      return 'The draft has been saved and will be here when you return.';
+    }
+    return saved?.status === EMAIL_STATUS_SENT
+      ? 'The email has been sent.'
+      : 'The email has been queued for sending. The list will update once it goes out.';
+  }
+
+  /** Queues a failed mail again. Without this a failed mail cannot be edited, replied to, or resent. */
+  retryEmail(email: ComplaintEmail) {
+    if (!email?.canRetry || !this.actualComplaintNumber || this.emailSaving()) return;
+
+    this.emailSaving.set(true);
+    this.http.post<any>(
+      `${environment.apiBaseUrl}/api/v1/complaints/${this.actualComplaintNumber}/emails/${email.id}/retry`, {}
+    ).subscribe({
+      next: (res) => {
+        this.emailSaving.set(false);
+        this.emailOpenActivitiesExpanded = true;
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Email queued',
+          detail: res?.message || 'The email has been queued for another attempt.',
+          life: 4000
+        });
+        this.loadEmailThreads(true);
+        const saved: ComplaintEmail | null = res?.data || null;
+        if (saved) this.selectEmailActivity(saved);
+      },
+      error: (err) => {
+        this.emailSaving.set(false);
+        this.notifyError(err, 'Could not queue this email for another attempt.');
+      }
+    });
+  }
+
+  /**
+   * Mirrors the server's ComplaintEmailRequest constraints so the common mistakes are caught without a
+   * round trip. A draft is held to the same rules: the columns it is stored in are the same either way.
+   */
+  private validateEmailForm(): string {
+    const emailList = /^\s*[^@\s,;]+@[^@\s,;]+\.[^@\s,;]{2,}\s*([,;]\s*[^@\s,;]+@[^@\s,;]+\.[^@\s,;]{2,}\s*)*$/;
+
+    if (!this.emailFrom?.trim()) return 'From address is required.';
+    if (!emailList.test(this.emailFrom.trim())) return 'From must be a valid email address.';
+    if (!this.emailTo?.trim()) return 'At least one recipient is required.';
+    if (!emailList.test(this.emailTo.trim())) return 'To must be a valid email address, or several separated by commas.';
+    if (this.emailTo.trim().length > 200) return 'The recipient list must be at most 200 characters.';
+    if (this.emailCc?.trim() && !emailList.test(this.emailCc.trim())) return 'CC must be a valid email address, or several separated by commas.';
+    if (this.emailBcc?.trim() && !emailList.test(this.emailBcc.trim())) return 'BCC must be a valid email address, or several separated by commas.';
+    if (!this.emailSubject?.trim()) return 'Subject is required.';
+    if (this.emailSubject.trim().length > 500) return 'The subject must be at most 500 characters.';
+    if (!this.emailBody?.trim()) return 'The email body cannot be empty.';
+    if (this.emailBody.trim().length > 20000) return 'The email body must be at most 20000 characters.';
+    return '';
+  }
+
+  /** The server sends a readable reason in ApiResponse.message; prefer it over a generic failure line. */
+  private errorDetail(err: any, fallback: string): string {
+    const message = err?.error?.message;
+    return typeof message === 'string' && message.trim() ? message : fallback;
+  }
+
+  private notifyError(err: any, fallback: string) {
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Something went wrong',
+      detail: this.errorDetail(err, fallback),
+      life: 6000
+    });
   }
 
   goBack() {

@@ -249,5 +249,7 @@ public class RbioComplaintSummaryResponse {
         private Long id;
         private Boolean freeMarkedComplaint;
         private String currentComplaintNumber;
+        /** Tri-state: "Yes" / "No" / "Not Applicable", or null when never answered. */
+        private String replyWithin30Days;
     }
 }

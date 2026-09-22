@@ -63,6 +63,10 @@ public class ComplaintRbioFormData {
 
     @Column(name = "free_marked_complaint", length = 10)    private String freeMarkedComplaint;
 
+    // Tri-state (YES/NO/NOT_APPLICABLE), so not a boolean: "Not Applicable" is a real answer here,
+    // distinct from NULL meaning the officer was never asked.
+    @Column(name = "reply_within_30_days", length = 20)     private String replyWithin30Days;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 

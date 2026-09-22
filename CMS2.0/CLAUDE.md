@@ -72,7 +72,7 @@ This is a **microservices-based complaint management system** for RBI (Reserve B
 | `cms-rules-service` | DRL rule management, routing/escalation rules | 8084 | Yes | Yes |
 | `cms-assignment-service` | Round-robin officer assignment, workload balancing | 8085 | Yes | Yes |
 | `cms-sla-monitor-service` | SLA breach detection, escalation triggers | 8086 | Yes | Yes |
-| `cms-notification-service` | Email/SMS dispatch (no DB, consumes Kafka) | 8087 | No | Yes |
+| `cms-notification-service` | Email dispatch (consumes Kafka; resolves SIMULATED_EMAILS in cms-backend's schema) | 8087 | Yes | Yes |
 | `cms-audit-service` | Audit trail logging | 8088 | Yes | Yes |
 | `cms-outbox-publisher` | Polls outbox table, publishes to Kafka topics | 8089 | Yes | Yes |
 | `cms-storage-service` | File storage (attachments, evidence) | 8090 | No | No |
@@ -100,6 +100,12 @@ complaint.resolved    → Resolution provided
 complaint.closed      → Final closure
 complaint.read        → An officer opened the complaint (carries readBy; read state is per officer)
 complaint.dlq         → Dead letter (permanently failed)
+
+notification.requested → Dispatch one outbound notification (a command, not a fact: nothing has been
+                         sent yet). Carries {channel, recordId} only — never the message body, which
+                         would put complainant PII on the broker and in the DLQ.
+notification.dlq       → Dead letter for dispatch requests, kept separate from complaint.dlq so each
+                         can be drained by whoever understands its records
 ```
 
 Topic names are defined once in `cms-common` `KafkaTopics`; never re-declare them as string literals.

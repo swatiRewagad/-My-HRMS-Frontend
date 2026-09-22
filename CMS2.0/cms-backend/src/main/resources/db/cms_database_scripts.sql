@@ -138,23 +138,35 @@ CREATE TABLE IF NOT EXISTS SIMULATED_EMAILS (
     thread_id         VARCHAR(100) NOT NULL,
     from_email        VARCHAR(200) NOT NULL,
     to_email          VARCHAR(200) NOT NULL,
+    cc_email          VARCHAR(500),
+    bcc_email         VARCHAR(500),
     subject           VARCHAR(500) NOT NULL,
     body              TEXT,
     direction         VARCHAR(10)  NOT NULL,
     status            VARCHAR(20)  NOT NULL DEFAULT 'UNREAD',
+    -- Outbound-only lifecycle: DRAFT / PENDING / SENT / FAILED. NULL for inbound rows, which have no
+    -- delivery lifecycle. Kept separate from status, which is overloaded with inbound values.
+    delivery_status   VARCHAR(20),
+    last_error        VARCHAR(2000),
+    dispatch_attempts INT,
     complaint_id      BIGINT,
     complaint_number  VARCHAR(50),
     attachment_url    VARCHAR(500),
+    created_by        VARCHAR(100),
     sent_at           DATETIME(6),
     received_at       DATETIME(6),
     processed_at      DATETIME(6),
+    updated_at        DATETIME(6),
     PRIMARY KEY (id),
     UNIQUE KEY uk_message_id            (message_id),
     INDEX idx_email_thread              (thread_id),
     INDEX idx_email_direction           (direction),
     INDEX idx_email_complaint           (complaint_id),
     INDEX idx_email_complaint_number    (complaint_number),
-    INDEX idx_email_sent_at             (sent_at)
+    INDEX idx_email_sent_at             (sent_at),
+    -- Serves the "what is stuck" query: PENDING rows whose updated_at has gone stale. The dispatch path
+    -- itself looks rows up by primary key.
+    INDEX idx_email_delivery_status     (delivery_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
