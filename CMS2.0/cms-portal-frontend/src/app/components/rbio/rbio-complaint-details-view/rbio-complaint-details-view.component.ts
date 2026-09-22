@@ -412,6 +412,7 @@ export class RbioComplaintDetailsView implements OnInit {
   submitting = signal(false);
   submitted = signal(false);
   draftSaved = signal(false);
+  assessmentSaving = signal(false);
   summaryActiveTab = signal<'summary' | 'email'>('summary');
   assessmentTab = signal<string>('summary');
   editMode = signal(false);
@@ -1381,6 +1382,8 @@ private getStatusColor(status: string): string {
         // whether the complaint reached the maintainable stage that conciliation belongs to.
         this.workflowAction.set(this.crpcProposedAction);
         this.proposedAction = this.crpcProposedAction;
+        this.proposedClause = additionalInfo?.proposedClause || '';
+        this.speakingOrderContent = additionalInfo?.speakingOrderContent || '';
         this.vernacularLanguage = additionalInfo?.vernacularLanguage || '';
         this.vernacular = !!this.vernacularLanguage;
 
@@ -2775,6 +2778,7 @@ private getStatusColor(status: string): string {
 
   private persistComment() {
     if (!this.assessmentComment.trim()) return;
+    if (!this.actualComplaintNumber) return;
     const commentPayload = {
       text: this.assessmentComment.trim(),
       author: this.loggedInUserName || 'Unknown',
@@ -2783,13 +2787,53 @@ private getStatusColor(status: string): string {
       color: '#6366f1'
     };
 
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/comments`, commentPayload).subscribe({
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.actualComplaintNumber}/comments`, commentPayload).subscribe({
       next: (res) => {
         this.assessmentComments.set([...this.assessmentComments(), res?.data || commentPayload]);
         this.assessmentComment = '';
       },
       error: () => {
         this.assessmentComment = '';
+      }
+    });
+  }
+
+  saveAssessment() {
+    if (this.assessmentSaving() || this.isReadOnlyViewer()) return;
+
+    this.assessmentSaving.set(true);
+    this.persistComment();
+
+    const payload = {
+      complainDetailsDto: {
+        additionalInformation: {
+          crpcProposedAction: this.proposedAction || null,
+          proposedClause: this.proposedClause || null,
+          speakingOrderContent: this.speakingOrderContent || null
+        }
+      }
+    };
+
+    this.http.put<any>(
+      `${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/summary`,
+      payload
+    ).subscribe({
+      next: (res) => {
+        this.assessmentSaving.set(false);
+        if (res?.data) this.applySummary(res.data);
+        this.messageService.add({
+          severity: 'success',
+          summary: 'Saved',
+          detail: 'Assessment details saved successfully.'
+        });
+      },
+      error: (err) => {
+        this.assessmentSaving.set(false);
+        this.messageService.add({
+          severity: 'error',
+          summary: 'Save Failed',
+          detail: err?.error?.message || 'Could not save assessment details.'
+        });
       }
     });
   }
