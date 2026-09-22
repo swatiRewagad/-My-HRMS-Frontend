@@ -208,7 +208,13 @@
                   <button class="btn btn-primary btn-sm" (click)="createNewEmail()"><i class="pi pi-plus"></i> Create New Email</button>
                 }
               } @else {
-                <button class="btn btn-icon" title="Save"><i class="pi pi-save"></i></button>
+                <button class="btn btn-icon" title="Save" (click)="saveAssessment()" [disabled]="assessmentSaving()">
+                  @if (assessmentSaving()) {
+                    <i class="pi pi-spin pi-spinner"></i>
+                  } @else {
+                    <i class="pi pi-save"></i>
+                  }
+                </button>
               }
             }
             <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
@@ -907,7 +913,7 @@
                 <p-button severity="primary" size="small" (onClick)="updateComplaint()" [loading]="saving()">
                   <i class="pi pi-check"></i> Update
                 </p-button>
-              } @else if (!isReadOnlyViewer()) {
+              } @else if (!isReadOnlyViewer() && userRole() === 'DO') {
                 <p-button [outlined]="true" class="editButton" severity="secondary" size="small" (onClick)="enterEditMode()">
                   <i class="pi pi-pencil "></i> Edit
                 </p-button>

@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'http://localhost:8082',
-  storageBaseUrl: '/api/v1/storage',
+  storageBaseUrl: 'http://localhost:8090/cms-storage/api/v1/storage',
   ocrServiceUrl: 'http://localhost:8000',
   keycloakUrl: 'http://localhost:8180',
   realm: 'cms',

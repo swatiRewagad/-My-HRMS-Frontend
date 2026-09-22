@@ -245,6 +245,9 @@ public class Complaint {
     @Column(name = "speaking_order_generated", length = 10)
     private String speakingOrderGenerated;
 
+    @Column(name = "speaking_order_content", columnDefinition = "TEXT")
+    private String speakingOrderContent;
+
     @Column(name = "gist_of_case", columnDefinition = "TEXT")
     private String gistOfCase;
 
@@ -334,6 +337,7 @@ public class Complaint {
         this.lastStatusChangeDate = LocalDateTime.now();
         if (this.status == null) this.status = "pending";
         if (this.priority == null) this.priority = "medium";
+        if(this.hasAttachment==null) this.hasAttachment=false;
     }
 
     @PreUpdate

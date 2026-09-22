@@ -227,6 +227,8 @@ public class RbioComplaintSummaryService {
                         .id(fdId)
                         .comments(fd != null ? fd.getAdditionalComments() : null)
                         .crpcProposedAction(c.getProposedAction())
+                        .proposedClause(c.getProposedClause())
+                        .speakingOrderContent(c.getSpeakingOrderContent())
                         .vernacularLanguage(fd != null ? fd.getVernacularLanguage() : null)
                         .dateOfFiling(dateOfFiling)
                         .build())
@@ -385,6 +387,8 @@ public class RbioComplaintSummaryService {
         setIfPresent(classification, "complaintCategory", v -> c.setCategoryName(str(v, "complaintCategory")));
         setIfPresent(financial, "disputedAmount", v -> c.setAmountInvolved(decimal(v, "disputedAmount")));
         setIfPresent(additional, "crpcProposedAction", v -> c.setProposedAction(str(v, "crpcProposedAction")));
+        setIfPresent(additional, "proposedClause", v -> c.setProposedClause(str(v, "proposedClause")));
+        setIfPresent(additional, "speakingOrderContent", v -> c.setSpeakingOrderContent(str(v, "speakingOrderContent")));
     }
 
     /**

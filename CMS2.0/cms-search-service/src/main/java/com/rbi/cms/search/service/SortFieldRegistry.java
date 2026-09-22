@@ -30,7 +30,7 @@ public final class SortFieldRegistry {
             // Both identifiers resolve to the business complaint number: the numeric `id` is only
             // present on documents written by the reindex path, so sorting on it would order just
             // the part of the corpus that has never been touched by a Kafka event.
-            Map.entry("complaintId", "complaintNumber.keyword"),
+            Map.entry("complaintId", "id"),
             Map.entry("complaintNumber", "complaintNumber.keyword"),
             // Still the username, deliberately. The grid now displays assignedOfficerName, so this
             // sorts by a different value than it shows — but only documents written since that field

@@ -223,6 +223,8 @@ public class RbioComplaintSummaryResponse {
         private Long id;
         private String comments;
         private String crpcProposedAction;
+        private String proposedClause;
+        private String speakingOrderContent;
         private String vernacularLanguage;
         private LocalDate dateOfFiling;
     }

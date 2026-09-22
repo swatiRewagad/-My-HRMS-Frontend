@@ -591,16 +591,16 @@ export class RbioCreateComplaintComponent implements OnInit {
           this.complaintStatus.set(status || 'NEW_COMPLAINT');
         }
         this.submitted.set(true);
+
+        // Load comments using the resolved complaint number
+        this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintId}/comments`).subscribe({
+          next: (res) => this.assessmentComments.set(res?.data || []),
+          error: () => this.assessmentComments.set([])
+        });
       },
       error: () => {
         this.loadError.set(true);
       }
-    });
-
-    // Load comments from API
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${id}/comments`).subscribe({
-      next: (res) => this.assessmentComments.set(res?.data || []),
-      error: () => this.assessmentComments.set([])
     });
 
     // Load email communications from API
