@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NavigationService } from '../../../services/navigation.service';
+import { AssignmentTarget, DepartmentContextService } from '../../../services/department-context.service';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
@@ -37,6 +38,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
 
   // Header
   complaintId = '';
@@ -44,6 +46,10 @@ export class RbioCreateComplaintComponent implements OnInit {
   complaintOffice = '';
   slaDaysRemaining = signal(30);
   userRole = signal<'DO' | 'REVIEWER' | 'DEPUTY_OMBUDSMAN' | 'OMBUDSMAN' | 'HEAD'>('DO');
+  readonly userRoleLabel = computed(() => {
+    const rung = this.userRole();
+    return rung === 'HEAD' ? 'CRPC Head' : `${this.dept.cfg().label} ${this.dept.rungTitle(rung)}`;
+  });
   activeTab = signal<'creation' | 'assignment'>('creation');
 
   // Section expand state
@@ -312,7 +318,7 @@ export class RbioCreateComplaintComponent implements OnInit {
       // CRPC Head actually works from — not the generic send-for-approval endpoint.
       const fromOffice = this.complaintOffice || '';
       const toOffice = this.forwardOfficeCode;
-      const deptOf = (code: string) => (code || '').split('-')[0] || 'RBIO';
+      const deptOf = (code: string) => (code || '').split('-')[0] || this.dept.cfg().code;
       const payload = {
         complaintNumber: this.complaintId,
         fromOffice,
@@ -616,26 +622,19 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   private detectUserRole() {
-    const roles = this.auth.getRoles ? this.auth.getRoles() : [];
-    if (roles.includes('CRPC_HEAD')) {
-      this.userRole.set('HEAD');
-    } else if (roles.includes('RBIO_OMBUDSMAN')) {
-      this.userRole.set('OMBUDSMAN');
-    } else if (roles.includes('RBIO_DEPUTY_OMBUDSMAN')) {
-      this.userRole.set('DEPUTY_OMBUDSMAN');
-    } else if (roles.includes('RBIO_SUPERVISOR') || roles.includes('RBIO_REVIEWER')) {
+    const rung = this.dept.currentRung();
+    // RBIO_SUPERVISOR is a legacy RBIO-only alias for the reviewer rung; CEPC has no counterpart.
+    if (rung === 'DO' && this.auth.hasRole('RBIO_SUPERVISOR')) {
       this.userRole.set('REVIEWER');
-    } else {
-      this.userRole.set('DO');
+      return;
     }
+    this.userRole.set(rung);
   }
 
   private detectUserOffice(username: string) {
     // Office is assigned per-officer via Team Management (OfficerAvailability), not inferred from the username.
     if (!username) return;
-    const roles = this.auth.getRoles ? this.auth.getRoles() : [];
-    const rbioRole = roles.find((r: string) => r.startsWith('RBIO_')) || 'RBIO_OFFICER';
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${rbioRole}`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${this.dept.primaryRole()}`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
         const me = (Array.isArray(data) ? data : []).find((u: any) => u.userId === username);
@@ -975,7 +974,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   saveDraft() {
     this.saving.set(true);
     const payload = this.buildPayload('DRAFT');
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/create-complaint`, payload).subscribe({
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1${this.dept.wf('create-complaint')}`, payload).subscribe({
       next: () => {
         this.saving.set(false);
         this.draftSaved.set(true);
@@ -1011,13 +1010,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   private loadApprovalTargetUsers(target: string) {
-    const roleMap: Record<string, string> = {
-      'DEALING_OFFICER': 'RBIO_OFFICER',
-      'REVIEWER': 'RBIO_SUPERVISOR',
-      'DEPUTY_OMBUDSMAN': 'RBIO_DEPUTY_OMBUDSMAN',
-      'OMBUDSMAN': 'RBIO_ADJUDICATOR'
-    };
-    const role = roleMap[target];
+    const role = this.dept.targetRole(target as AssignmentTarget);
     if (!role) return;
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${role}`).subscribe({
@@ -1067,13 +1060,7 @@ export class RbioCreateComplaintComponent implements OnInit {
       this.approvalFilteredUsers = this.approvalTargetUsers();
     } else {
       this.approvalFilteredUsers = [];
-      const roleMap: Record<string, string> = {
-        'DEALING_OFFICER': 'RBIO_OFFICER',
-        'REVIEWER': 'RBIO_SUPERVISOR',
-        'DEPUTY_OMBUDSMAN': 'RBIO_DEPUTY_OMBUDSMAN',
-        'OMBUDSMAN': 'RBIO_ADJUDICATOR'
-      };
-      const role = roleMap[this.approvalTarget()] || '';
+      const role = this.dept.targetRole(this.approvalTarget() as AssignmentTarget);
       if (role) {
         this.loadNextAssignee(role);
       }
@@ -1103,11 +1090,8 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   private loadSendBackTargetUsers(target: string) {
-    const roleMap: Record<string, string> = {
-      'DEALING_OFFICER': 'RBIO_OFFICER',
-      'REVIEWER': 'RBIO_SUPERVISOR'
-    };
-    const role = roleMap[target];
+    if (target !== 'DEALING_OFFICER' && target !== 'REVIEWER') return;
+    const role = this.dept.targetRole(target);
     if (!role) return;
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${role}`).subscribe({
@@ -1372,7 +1356,7 @@ export class RbioCreateComplaintComponent implements OnInit {
     formData.append('status', 'DRAFT');
     formData.append('assignedTo', this.selectedDeoId);
     formData.append('processedBy', username);
-    formData.append('source', 'RBIO');
+    formData.append('source', this.dept.cfg().code);
     formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
 
     if (this.scannedFile) {
@@ -1708,7 +1692,7 @@ export class RbioCreateComplaintComponent implements OnInit {
   }
 
   goBack() {
-    this.navService.goBack(['/rbio']);
+    this.navService.goBack([this.dept.cfg().routePrefix]);
   }
 
   goToDraft() {

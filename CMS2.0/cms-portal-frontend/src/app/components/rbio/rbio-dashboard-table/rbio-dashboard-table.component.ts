@@ -8,6 +8,7 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ColumnDefinition, ComplaintColumn, ComplaintColumnFilters, TableQueryMetadata } from '../../../models/rbio.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 import { Router } from '@angular/router';
 import { NavigationService } from '../../../services/navigation.service';
 import { RbioColumnPickerComponent } from '../rbio-column-picker/rbio-column-picker.component';
@@ -33,7 +34,9 @@ export class RbioDashboardTableComponent {
   private readonly router = inject(Router);
   private readonly navService = inject(NavigationService);
 
-  readonly isNotDoUser = computed(() => !this.auth?.currentUser()?.roles?.includes('RBIO_DO'));
+  readonly dept = inject(DepartmentContextService);
+
+  readonly isNotDoUser = computed(() => !this.dept.hasRung('DO'));
   readonly tabConfig = input.required<any>();
   readonly complaints = input<ComplaintColumn[]>([]);
   readonly isSearching = input<boolean>(false);
@@ -166,6 +169,6 @@ export class RbioDashboardTableComponent {
 
   navigateToDetail(complaint: any): void {
     const id = complaint.complaintId || complaint.complaintNumber;
-    this.navService.navigate(['/rbio/complaint', id]);
+    this.navService.navigate(this.dept.route('complaint', id));
   }
 }

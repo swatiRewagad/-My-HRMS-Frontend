@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
+import { DepartmentContextService } from './department-context.service';
 
 export interface ActionOverride {
   id: string;
@@ -62,6 +63,7 @@ export interface ReassignmentCandidate {
 export class RbioWorkflowService {
 
   private http = inject(HttpClient);
+  private dept = inject(DepartmentContextService);
   private baseUrl = `${environment.apiBaseUrl}/api/v1`;
 
   // --- Dealing Official Workflow Action ---
@@ -75,7 +77,7 @@ export class RbioWorkflowService {
     systemicIssue?: boolean;
   }): Observable<any> {
     return this.http.post<any>(
-      `${this.baseUrl}/workflow/rbio/action/${complaintId}`,
+      `${this.baseUrl}${this.dept.wf(`action/${complaintId}`)}`,
       body
     );
   }
@@ -88,7 +90,7 @@ export class RbioWorkflowService {
     actor: string;
   }): Observable<any> {
     return this.http.post<any>(
-      `${this.baseUrl}/workflow/rbio/action/${complaintId}`,
+      `${this.baseUrl}${this.dept.wf(`action/${complaintId}`)}`,
       { action: 'DEPUTY_OMBUDSMAN_DECISION', ...body }
     );
   }
@@ -105,7 +107,7 @@ export class RbioWorkflowService {
 
   reassignComplaint(complaintId: string, targetUserId: string, actor: string): Observable<any> {
     return this.http.post<any>(
-      `${this.baseUrl}/workflow/rbio/action/${complaintId}`,
+      `${this.baseUrl}${this.dept.wf(`action/${complaintId}`)}`,
       { action: 'REASSIGN', targetUserId, actor }
     );
   }
@@ -191,7 +193,7 @@ export class RbioWorkflowService {
     actor: string;
   }): Observable<any> {
     return this.http.post<any>(
-      `${this.baseUrl}/workflow/rbio/action/${complaintId}`,
+      `${this.baseUrl}${this.dept.wf(`action/${complaintId}`)}`,
       { action: 'FORWARD_TO_REGULATORY_BODY', ...body }
     );
   }

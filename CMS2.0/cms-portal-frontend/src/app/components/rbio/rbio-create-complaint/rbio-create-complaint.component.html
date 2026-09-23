@@ -28,7 +28,7 @@
       <span class="user-avatar">{{ (loggedInUserName || 'R').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUserName || 'Rahul Jain' }}</span>
-        <span class="user-role">{{ userRole() === 'HEAD' ? 'CRPC Head' : 'RBIO ' + (userRole() === 'DO' ? 'Dealing Officer' : userRole() === 'REVIEWER' ? 'Reviewer' : userRole() === 'DEPUTY_OMBUDSMAN' ? 'Deputy Ombudsman' : 'Ombudsman') }}</span>
+        <span class="user-role">{{ userRoleLabel() }}</span>
       </div>
       <button class="btn-logout" (click)="goBack()"><i class="pi pi-sign-out"></i></button>
     </div>
@@ -104,7 +104,7 @@
             <i class="pi pi-file"></i>
             Complaint {{ complaintId }}
           </div>
-          <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+          <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
             <i class="pi pi-plus"></i>
           </div>
         </div>
@@ -181,9 +181,9 @@
                   </button>
                   @if (showSendBackMenu()) {
                     <div class="approval-dropdown" [style.top.px]="sendBackMenuPos().top" [style.left.px]="sendBackMenuPos().left">
-                      <button (click)="openSendBack('DEALING_OFFICER')">to RBIO <strong>Dealing Officer</strong></button>
+                      <button (click)="openSendBack('DEALING_OFFICER')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('DO') }}</strong></button>
                       @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
-                        <button (click)="openSendBack('REVIEWER')">to RBIO <strong>Reviewer</strong></button>
+                        <button (click)="openSendBack('REVIEWER')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('REVIEWER') }}</strong></button>
                       }
                     </div>
                   }
@@ -196,14 +196,14 @@
                 @if (showApprovalMenu()) {
                   <div class="approval-dropdown" [style.top.px]="approvalMenuPos().top" [style.left.px]="approvalMenuPos().left">
                     @if (userRole() === 'DO') {
-                      <button (click)="sendForApproval('REVIEWER')">Send to RBIO <strong>Reviewer</strong></button>
-                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to RBIO <strong>Deputy Ombudsman</strong></button>
-                      <button (click)="sendForApproval('OMBUDSMAN')">Send to RBIO <strong>Ombudsman</strong></button>
+                      <button (click)="sendForApproval('REVIEWER')">Send to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('REVIEWER') }}</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('DEPUTY_OMBUDSMAN') }}</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">Send to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('OMBUDSMAN') }}</strong></button>
                     } @else if (userRole() === 'REVIEWER') {
-                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to RBIO <strong>Deputy Ombudsman</strong></button>
-                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('DEPUTY_OMBUDSMAN') }}</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('OMBUDSMAN') }}</strong></button>
                     } @else if (userRole() === 'DEPUTY_OMBUDSMAN') {
-                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('OMBUDSMAN') }}</strong></button>
                     }
                   </div>
                 }
@@ -1605,7 +1605,7 @@
         <i class="pi pi-file"></i>
         Complaint {{ complaintId }}
       </div>
-      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
         <i class="pi pi-plus"></i>
       </div>
     </div>
@@ -1798,7 +1798,7 @@
         <i class="pi pi-file"></i>
         Complaint {{ complaintId }}
       </div>
-      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
         <i class="pi pi-plus"></i>
       </div>
     </div>

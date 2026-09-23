@@ -2,7 +2,7 @@ import { Component, inject, model, output, computed, input } from '@angular/core
 import { CommonModule } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { KpiCounts, InternalKpiConfig } from '../../../models/rbio.model';
-import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 
 @Component({
   selector: 'app-rbio-dashboard-kpi',
@@ -12,7 +12,7 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
   styleUrl: './rbio-dashboard-kpi.component.scss'
 })
 export class RbioDashboardKpiComponent {
-  private readonly auth = inject(KeycloakAuthService);
+  private readonly dept = inject(DepartmentContextService);
 
   readonly selectedCardId = model<string | null>(null);
   readonly onKpiSelectionChange = output<string | null>();
@@ -27,7 +27,7 @@ export class RbioDashboardKpiComponent {
         icon: 'pi pi-copy',
         styleClass: 'bg-blue',
 
-        requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
+        requiredRungs: ['DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN', 'ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Total Pending Complaints', value: d?.totalPendingComplaints ?? 0 }]
       },
@@ -37,7 +37,7 @@ export class RbioDashboardKpiComponent {
         icon: 'pi pi-user',
         styleClass: 'bg-orange',
 
-        requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
+        requiredRungs: ['DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN', 'ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Pending with Me', value: d?.pendingWithMe ?? 0 }]
       },
@@ -47,7 +47,7 @@ export class RbioDashboardKpiComponent {
         icon: 'pi pi-building',
         styleClass: 'bg-orange',
 
-        requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
+        requiredRungs: ['DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN', 'ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Pending with RE', value: d?.pendingWithRe ?? 0 }]
       },
@@ -57,7 +57,7 @@ export class RbioDashboardKpiComponent {
         icon: 'pi pi-calendar',
         styleClass: 'bg-orange',
 
-        requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
+        requiredRungs: ['DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN', 'ADMIN'],
         layout: '1:1',
         metrics: [{ label: 'Pending at Meeting Scheduled', value: d?.pendingAtMeetingScheduled ?? 0 }]
       },
@@ -67,7 +67,7 @@ export class RbioDashboardKpiComponent {
         icon: 'pi pi-clock',
         styleClass: 'bg-red',
 
-        requiredRoles: ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'RBIO_ADMIN'],
+        requiredRungs: ['DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN', 'ADMIN'],
         layout: '3:1',
         metrics: [
           { label: 'SLA Breached', value: d?.slaBreached ?? 0, colorClass: 'color-red' },
@@ -79,10 +79,7 @@ export class RbioDashboardKpiComponent {
   });
 
   readonly computedRoleCards = computed<InternalKpiConfig[]>(() => {
-    const userRoles = this.auth.getRoles() || [];
-    return this.allMappedCards().filter(card =>
-      card.requiredRoles.some(role => userRoles.includes(role))
-    );
+    return this.allMappedCards().filter(card => this.dept.hasRung(...card.requiredRungs));
   });
 
   handleCardSelection(cardId: string): void {

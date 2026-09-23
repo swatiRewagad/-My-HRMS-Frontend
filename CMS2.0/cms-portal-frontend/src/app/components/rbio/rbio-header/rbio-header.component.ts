@@ -5,6 +5,7 @@ import { PopoverModule } from 'primeng/popover';
 import { PrimeNG } from 'primeng/config';
 
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
 import { LanguageSelectComponent } from '../../../shared/language-select/language-select.component';
 import { FontSizeControlsComponent } from '../../../shared/font-size-controls/font-size-controls.component';
@@ -26,6 +27,7 @@ import { FontSizeControlsComponent } from '../../../shared/font-size-controls/fo
 export class RbioHeaderComponent implements OnInit {
   private auth = inject(KeycloakAuthService);
   private primeng = inject(PrimeNG);
+  readonly dept = inject(DepartmentContextService);
 
   currentUser = this.auth.currentUser;
   isDarkMode = signal<boolean>(false);
@@ -42,11 +44,8 @@ export class RbioHeaderComponent implements OnInit {
   });
 
   displayRole = computed(() => {
-    const user = this.currentUser();
-    if (!user) return '';
-    return user.roles.find(r =>
-      ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_OMBUDSMAN', 'RBIO_DEPUTY_OMBUDSMAN'].includes(r)
-    ) || 'RBIO_DO';
+    if (!this.currentUser()) return '';
+    return this.dept.primaryRole();
   });
 
   ngOnInit(): void {

@@ -3,7 +3,7 @@
   <header class="dashboard-header">
     <div class="header-left">
       <button class="back-btn" (click)="goBack()">&larr;</button>
-      <h1>RBIO Supervisor Dashboard</h1>
+      <h1>{{ dept.cfg().label }} Supervisor Dashboard</h1>
     </div>
     <div class="header-right">
       @if (auth.currentUser(); as user) {

@@ -180,7 +180,11 @@
       }
       /* // Meta row (header buttons) and tab navigation stay usable so the officer can still
       // browse between tabs and see the "View Only" badge already handled in the template. */
-      .meta-row, .meta-row *, .page-tabs, .page-tabs * {
+      // The host selector is needed as well as .meta-row: the main meta row is now a child
+      // component, so `.meta-row *` no longer reaches the actions projected back into it.
+      .meta-row, .meta-row *,
+      app-rbio-complaint-meta-row, app-rbio-complaint-meta-row *,
+      .page-tabs, .page-tabs * {
         pointer-events: auto !important;
       }
     }
@@ -606,27 +610,33 @@
       }
     }
   
-    .meta-actions {      
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-      padding-left: 16px;
-  
-      .btn-icon {
-        width: 34px; height: 34px;
-        border: none;
-        outline: none;
-        background: #fff;
-        color: #475569;
-        cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 14px;
-        &:hover { background: #f1f5f9; border-color: #cbd5e1; }
-      }
+  }
+
+  /* // Deliberately NOT nested in .meta-row: the main meta row now lives in
+  // app-rbio-complaint-meta-row and this block is projected into it, so a
+  // `.meta-row .meta-actions` selector would no longer match across the style
+  // encapsulation boundary. At top level it matches both the projected actions
+  // and the nodal-detail row's own .meta-actions. */
+  .meta-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    padding-left: 16px;
+
+    .btn-icon {
+      width: 34px; height: 34px;
+      border: none;
+      outline: none;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      &:hover { background: #f1f5f9; border-color: #cbd5e1; }
     }
   }
-  
+
   /* // ═══ CONTENT BOX ═══ */
   .content-box {
     flex: 1;

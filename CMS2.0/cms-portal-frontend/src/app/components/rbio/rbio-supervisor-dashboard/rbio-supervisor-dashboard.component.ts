@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NavigationService } from '../../../services/navigation.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 import { environment } from '../../../../environments/environment';
 
 interface SupervisorComplaint {
@@ -33,6 +34,7 @@ export class RbioSupervisorDashboardComponent implements OnInit {
   private navService = inject(NavigationService);
   private http = inject(HttpClient);
   auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
 
   complaints = signal<SupervisorComplaint[]>([]);
   loading = signal(true);
@@ -112,7 +114,7 @@ export class RbioSupervisorDashboardComponent implements OnInit {
     this.loading.set(true);
     const officer = this.auth.currentUser()?.username || '';
 
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/all-tasks?officer=${officer}&role=SUPERVISOR`)
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1${this.dept.wf(`all-tasks?officer=${officer}&role=SUPERVISOR`)}`)
       .subscribe({
         next: (res) => {
           this.complaints.set(res?.data || []);
@@ -131,7 +133,7 @@ export class RbioSupervisorDashboardComponent implements OnInit {
     const actor = this.auth.currentUser()?.username || '';
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintNumber}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintNumber}`)}`,
       { action, actor, remarks: `Quick action by supervisor: ${action}` }
     ).subscribe({
       next: (res) => {
@@ -149,10 +151,10 @@ export class RbioSupervisorDashboardComponent implements OnInit {
   }
 
   openComplaint(complaintNumber: string) {
-    this.router.navigate(['/staff/rbio/task', complaintNumber]);
+    this.router.navigate([`/staff/${this.dept.cfg().apiSegment}/task`, complaintNumber]);
   }
 
   goBack() {
-    this.navService.goBack(['/rbio']);
+    this.navService.goBack([this.dept.cfg().routePrefix]);
   }
 }

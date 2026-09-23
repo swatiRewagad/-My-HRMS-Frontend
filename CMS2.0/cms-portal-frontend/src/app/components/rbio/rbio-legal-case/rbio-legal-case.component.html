@@ -97,7 +97,7 @@
 
       @if (isReadOnly && !editing()) {
         <div class="read-only-notice">
-          <i class="pi pi-lock"></i> Only Ombudsman Admin can edit legal case details.
+          <i class="pi pi-lock"></i> Only the {{ dept.cfg().label }} {{ dept.rungTitle('ADMIN') }} can edit legal case details.
         </div>
       }
     </div>

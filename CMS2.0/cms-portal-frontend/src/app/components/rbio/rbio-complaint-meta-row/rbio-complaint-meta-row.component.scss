@@ -1,0 +1,127 @@
+/* // Transparent wrapper: the host replaces .meta-row as the flex item of the parent's
+// column-flex .left-main-area, and an unstyled host would be display:inline. */
+:host {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* // ═══ META ROW (KPI) ═══ */
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  gap: 0;
+  padding: 12px 4px;
+  background: #fff;
+  flex-wrap: nowrap;
+  border: 1px solid #D1D7E0;
+  border-radius: 10px;
+  /* margin: 12px 16px; */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  overflow: auto;
+  flex-shrink: 0;
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 auto;
+    padding: 0 6px;
+    border-left: 1px solid #D1D7E0;
+    // min-width: 0;
+
+    &:first-of-type { border-left: none; padding-left: 10px; }
+
+    .meta-icon {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #146EF5;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      i { font-size: 14px; color: #fff; }
+
+      /* // Per-KPI colors from Figma (node 2371-37736) */
+      &.complaint-number { background: #146EF5; }
+      &.complainant-name { background: #2B1906; }
+      &.entity-name { background: #DE3D81; }
+      &.status-icon { background: #146EF5; }
+      &.category-icon { background: #7326D4; }
+      &.sla-icon { background: #FF4838; }
+
+      /* // Legacy generic modifiers */
+      &.blue { background: #146EF5; }
+      &.red { background: #FF4838; }
+      &.dark { background: #2B1906; }
+      &.green { background: #16a34a; }
+      &.orange { background: #f59e0b; }
+    }
+
+    .meta-text {
+      display: flex; flex-direction: column; gap: 4px;
+      min-width: 0;
+      .meta-label { font-size: 10px; color: #5B5D61; font-weight: 500; white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+        .pi-info-circle { font-size: 9px; color: #94a3b8; cursor: pointer; }
+      }
+      .meta-value { font-size: 11px; font-weight: 600; color: #202124; white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+        .status-flag { color: #3b82f6; margin-right: 2px; font-size: 11px; }
+      }
+    }
+  }
+}
+
+.back-arrow {
+  width: 32px; height: 32px;
+  // border-radius: 50%;
+  // border: 1px solid #e2e8f0;
+  border: none;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  // margin-right: 14px;
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: #f1f5f9; border-color: #cbd5e1; }
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &.green { background: #dcfce7; color: #166534; }
+  &.sent { background: #f3e8ff; color: #7c3aed; }
+  &.blue { background: #dbeafe; color: #1e40af; }
+  &.orange { background: #fef3c7; color: #92400e; }
+  &.grey { background: #f1f5f9; color: #475569; }
+
+  &[data-status="Sent Back To Do"], &[data-status="NEW"] { background: #fef3c7; color: #92400e; }
+  &[data-status="Ombudsman Decision"] { background: #FFDAD7; color: #9F2C22; }
+  &[data-status="Sent Back To DO"] { background: #FFEDD8; color: #A16624; }
+  &[data-status="Information Required"] { background: #FFEDD8; color: #A16624; }
+  &[data-status="MEETING_SCHEDULED"] { background: #f3e8ff; color: #6b21a8; }
+  &[data-status="Complaint Closed"] { background: #D1D7E0; color: #202124; }
+  &[data-status="New Complaint"] { background: #d1fae5; color: #065f46; }
+  &[data-status="Complaint Withdrawn"] { background: #FFD6F7; color: #A12471; }
+}
+
+.sla-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #FFA33C;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.breach {
+    background: #FFA33C;
+    color: #202124;
+  }
+}

@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NavigationService } from '../../../services/navigation.service';
 import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
+import { DepartmentContextService, Rung } from '../../../services/department-context.service';
 import { UploadLinkStatusComponent } from '../../../shared/upload-link-status/upload-link-status.component';
 import { RbioDeputyDecisionComponent } from '../rbio-deputy-decision/rbio-deputy-decision.component';
 import { RbioAddEntityComponent } from '../rbio-add-entity/rbio-add-entity.component';
@@ -68,6 +69,7 @@ export class RbioComplaintDetailComponent implements OnInit {
   private navService = inject(NavigationService);
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
   private rbioWorkflow = inject(RbioWorkflowService);
 
   complaint = signal<ComplaintDetail | null>(null);
@@ -182,10 +184,7 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   isViewOnly = computed<boolean>(() => {
     const status = (this.complaint()?.status || '').toUpperCase();
-    const role = (this.loggedInUser?.role || '').toUpperCase();
-    const keycloakRoles = this.auth.getRoles().map(r => r.toUpperCase());
-    const isDO = role === 'DEALING_OFFICIAL' || role === 'RBIO_DO' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER');
-    if (!isDO) return false;
+    if (!this.isRung('DO', 'DEALING_OFFICIAL', 'DO')) return false;
     const doViewOnlyStatuses = ['SENT_TO_REVIEWER', 'SENT_TO_DEPUTY_OMBUDSMAN', 'SENT_TO_OMBUDSMAN',
       'REVIEWER_REVIEW', 'DEPUTY_REVIEW', 'OMBUDSMAN_REVIEW', 'CLOSED', 'RESOLVED', 'REJECTED', 'WITHDRAWN'];
     if (doViewOnlyStatuses.includes(status)) return true;
@@ -201,26 +200,34 @@ export class RbioComplaintDetailComponent implements OnInit {
   availableActions = computed<WorkflowAction[]>(() => {
     if (this.isViewOnly()) return [];
 
-    const role = (this.loggedInUser?.role || '').toUpperCase();
-    const keycloakRoles = this.auth.getRoles().map(r => r.toUpperCase());
-
-    if (role === 'DEALING_OFFICIAL' || role === 'RBIO_DO' || role === 'DO' || keycloakRoles.includes('RBIO_OFFICER')) {
+    if (this.isRung('DO', 'DEALING_OFFICIAL', 'DO')) {
       return this.dealingOfficialActions;
     }
-    if (role === 'REVIEWER' || role === 'RBIO_REVIEWER' || keycloakRoles.includes('RBIO_REVIEWER')) {
+    if (this.isRung('REVIEWER', 'REVIEWER')) {
       return this.reviewerActions;
     }
-    if (role === 'DEPUTY_OMBUDSMAN' || role === 'RBIO_DEPUTY_OMBUDSMAN' || keycloakRoles.includes('RBIO_DEPUTY_OMBUDSMAN')) {
+    if (this.isRung('DEPUTY_OMBUDSMAN', 'DEPUTY_OMBUDSMAN')) {
       return this.deputyOmbudsmanActions;
     }
-    if (role === 'OMBUDSMAN' || role === 'RBIO_OMBUDSMAN' || keycloakRoles.includes('RBIO_OMBUDSMAN')) {
+    if (this.isRung('OMBUDSMAN', 'OMBUDSMAN')) {
       return this.ombudsmanActions;
     }
     return this.dealingOfficialActions;
   });
 
+  /**
+   * The cached `loggedInUser.role` can hold either a department role name or one of the legacy
+   * display aliases, so both spellings have to be accepted alongside the live Keycloak roles.
+   */
+  private isRung(rung: Rung, ...storedAliases: string[]): boolean {
+    const stored = (this.loggedInUser?.role || '').toUpperCase();
+    if (storedAliases.includes(stored) || stored === this.dept.role(rung)) return true;
+    if (this.dept.hasRung(rung)) return true;
+    return rung === 'DO' && this.auth.hasRole('RBIO_OFFICER');
+  }
+
   ngOnInit() {
-    const stored = sessionStorage.getItem('rbio_user');
+    const stored = sessionStorage.getItem(this.dept.key('user'));
     if (stored) this.loggedInUser = JSON.parse(stored);
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -229,7 +236,7 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   loadComplaint(id: string) {
     this.loading.set(true);
-    const cachedStatus = sessionStorage.getItem(`rbio_status_${id}`);
+    const cachedStatus = sessionStorage.getItem(this.dept.key(`status_${id}`));
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${id}`).subscribe({
       next: (res) => {
         const d = res.data || res;
@@ -301,7 +308,7 @@ export class RbioComplaintDetailComponent implements OnInit {
   }
 
   goBack() {
-    this.navService.goBack(['/rbio']);
+    this.navService.goBack([this.dept.cfg().routePrefix]);
   }
 
   openWorkflowAction(action: WorkflowAction) {
@@ -332,7 +339,7 @@ export class RbioComplaintDetailComponent implements OnInit {
     };
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintId}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintId}`)}`,
       body
     ).subscribe({
       next: () => {
@@ -375,7 +382,7 @@ export class RbioComplaintDetailComponent implements OnInit {
       if (current) {
         this.complaint.set({ ...current, status: newStatus });
         const complaintId = current.complaintNumber || current.complaintId;
-        sessionStorage.setItem(`rbio_status_${complaintId}`, newStatus);
+        sessionStorage.setItem(this.dept.key(`status_${complaintId}`), newStatus);
       }
     }
   }
@@ -458,7 +465,10 @@ export class RbioComplaintDetailComponent implements OnInit {
   isClosureBlocked(): boolean {
     if (!this.uploadLinkActive()) return false;
     const role = this.loggedInUser?.role?.toUpperCase() || '';
-    const exemptRoles = ['RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN'];
+    const exemptRoles = [
+      ...this.dept.rolesFor('DEPUTY_OMBUDSMAN', 'OMBUDSMAN'),
+      'DEPUTY_OMBUDSMAN', 'OMBUDSMAN'
+    ];
     return !exemptRoles.includes(role);
   }
 
@@ -514,7 +524,9 @@ export class RbioComplaintDetailComponent implements OnInit {
   }
 
   isFieldReadOnlyDueToDecision(): boolean {
-    return this.hasFinalDecisionUpstream() && (this.loggedInUser?.role || '').toUpperCase() === 'RBIO_OFFICER';
+    const role = (this.loggedInUser?.role || '').toUpperCase();
+    // 'RBIO_OFFICER' is the legacy spelling; the cached role is now the department's own DO role.
+    return this.hasFinalDecisionUpstream() && (role === 'RBIO_OFFICER' || role === this.dept.role('DO'));
   }
 
   getReadOnlyTooltip(): string {
@@ -528,7 +540,7 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   onProposedActionChange(newValue: string) {
     const roles = this.auth.getRoles();
-    const overrideRoles = ['RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_ADJUDICATOR'];
+    const overrideRoles = this.overrideRoles();
     if (roles.some(r => overrideRoles.includes(r)) && this.previousProposedAction && this.previousProposedAction !== newValue) {
       const c = this.complaint();
       const complaintId = c?.complaintNumber || c?.complaintId;
@@ -547,7 +559,7 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   onProposedClauseChange(newValue: string) {
     const roles = this.auth.getRoles();
-    const overrideRoles = ['RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_ADJUDICATOR'];
+    const overrideRoles = this.overrideRoles();
     if (roles.some(r => overrideRoles.includes(r)) && this.previousProposedClause && this.previousProposedClause !== newValue) {
       const c = this.complaint();
       const complaintId = c?.complaintNumber || c?.complaintId;
@@ -564,9 +576,20 @@ export class RbioComplaintDetailComponent implements OnInit {
     this.previousProposedClause = newValue;
   }
 
+  /**
+   * RBIO_SUPERVISOR and RBIO_ADJUDICATOR are legacy RBIO-only aliases of the reviewer and ombudsman
+   * rungs; they have no CEPC counterpart but still appear on some RBIO accounts.
+   */
+  private overrideRoles(): string[] {
+    return [
+      ...this.dept.rolesFor('REVIEWER', 'DEPUTY_OMBUDSMAN', 'OMBUDSMAN'),
+      'RBIO_SUPERVISOR', 'RBIO_ADJUDICATOR'
+    ];
+  }
+
   // ═══ Feature: Deputy Ombudsman Decision visibility ═══
   showDeputyDecision(): boolean {
-    return this.auth.hasRole('RBIO_DEPUTY_OMBUDSMAN');
+    return this.dept.hasRung('DEPUTY_OMBUDSMAN');
   }
 
   onDeputyDecisionSubmitted() {
@@ -576,13 +599,11 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   // ═══ Feature: Add Entity visibility ═══
   showAddEntity(): boolean {
-    const roles = this.auth.getRoles();
-    return roles.some(r => ['RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN'].includes(r));
+    return this.dept.hasRung('DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN') || this.auth.hasRole('RBIO_OFFICER');
   }
 
   // ═══ Feature: Forward Regulatory visibility ═══
   showForwardRegulatory(): boolean {
-    const roles = this.auth.getRoles();
-    return roles.some(r => ['RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_ADJUDICATOR'].includes(r));
+    return this.showAddEntity() || this.dept.hasRung('OMBUDSMAN');
   }
 }

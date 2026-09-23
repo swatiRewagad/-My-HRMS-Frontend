@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -17,6 +18,7 @@ export class RbioAdvisoryComponent {
 
   private http = inject(HttpClient);
   auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
 
   // State
   showForm = signal(true);
@@ -59,7 +61,7 @@ export class RbioAdvisoryComponent {
     };
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintNumber}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintNumber}`)}`,
       body
     ).subscribe({
       next: () => {

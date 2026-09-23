@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { RbioWorkflowService, AdditionalEntity } from '../../../services/rbio-workflow.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 
 @Component({
   selector: 'app-rbio-add-entity',
@@ -16,6 +17,7 @@ export class RbioAddEntityComponent implements OnInit {
 
   private auth = inject(KeycloakAuthService);
   private workflowService = inject(RbioWorkflowService);
+  private dept = inject(DepartmentContextService);
 
   readonly MAX_ADDITIONAL_ENTITIES = 6;
 
@@ -34,9 +36,7 @@ export class RbioAddEntityComponent implements OnInit {
   entityCategory = '';
 
   get canAddEntity(): boolean {
-    const roles = this.auth.getRoles();
-    const allowedRoles = ['RBIO_DO', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN'];
-    return roles.some(r => allowedRoles.includes(r));
+    return this.dept.hasRung('DO', 'REVIEWER', 'DEPUTY_OMBUDSMAN');
   }
 
   get hasReachedMax(): boolean {

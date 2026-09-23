@@ -1,8 +1,9 @@
-import { Component, input, signal, effect } from '@angular/core';
+import { Component, computed, inject, input, signal, effect } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { Tooltip } from 'primeng/tooltip';
 import { animate, state, style, transition, trigger } from '@angular/animations';
+import { DepartmentContextService } from '../../../services/department-context.service';
 
 interface NavItem {
   label: string;
@@ -33,25 +34,27 @@ interface NavItem {
 })
 export class RbioSidebarComponent {
 
-  readonly navItems: NavItem[] = [
+  private readonly dept = inject(DepartmentContextService);
+
+  readonly navItems = computed<NavItem[]>(() => [
     {
       label: 'Complaints',
       icon: 'pi pi-th-large',
-      routerLink: ['/rbio']
+      routerLink: [this.dept.cfg().routePrefix]
     },
     {
       label: 'Reports',
       icon: 'pi pi-chart-bar',
       routerLink: ['/admin/dashboard'],
-      queryParams: { department: 'RBIO' }
+      queryParams: { department: this.dept.cfg().code }
     },
     {
       label: 'Appeals and Representations',
       icon: 'pi pi-file',
       routerLink: ['/admin/dashboard'],
-      queryParams: { department: 'RBIO' }
+      queryParams: { department: this.dept.cfg().code }
     }
-  ];
+  ]);
 
   initialCollapsed = input(false);
   isCollapsed = signal(false);

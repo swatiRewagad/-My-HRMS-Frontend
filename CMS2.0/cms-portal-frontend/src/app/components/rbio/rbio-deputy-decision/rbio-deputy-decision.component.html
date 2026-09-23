@@ -1,6 +1,6 @@
 @if (canShowAction) {
   <div class="rbio-deputy-decision">
-    <h4>Deputy Ombudsman Decision</h4>
+    <h4>{{ dept.rungTitle('DEPUTY_OMBUDSMAN') }} Decision</h4>
 
     @if (!showForm()) {
       <button class="action-btn decision-btn" (click)="openForm()">
@@ -10,7 +10,7 @@
 
     @if (showForm()) {
       <div class="form-section">
-        <h5>Record DRBIO Decision</h5>
+        <h5>Record {{ dept.rungTitle('DEPUTY_OMBUDSMAN') }} Decision</h5>
         <div class="form-grid">
           <div class="form-field full">
             <label>Maintainability *</label>
@@ -21,7 +21,7 @@
           </div>
 
           <div class="form-field full">
-            <label>DRBIO Decision *</label>
+            <label>{{ dept.rungTitle('DEPUTY_OMBUDSMAN') }} Decision *</label>
             <select [(ngModel)]="drbioDecision" [disabled]="maintainability === 'NON_MAINTAINABLE'">
               <option value="FACILITATION">Facilitation</option>
               <option value="REJECTION">Rejection</option>

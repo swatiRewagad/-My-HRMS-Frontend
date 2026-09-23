@@ -57,7 +57,7 @@ import { environment } from '../../../../environments/environment';
             }
 
             @if (user()!.department === 'CEPC') {
-              <div class="action-card" (click)="navigate('/staff/cepc/tasks')">
+              <div class="action-card" (click)="navigate('/cepc')">
                 <h3>My Tasks</h3>
                 <p>View assigned complaints pending your action</p>
                 @if (pendingCount() > 0) { <span class="badge">{{ pendingCount() }}</span> }
@@ -67,8 +67,8 @@ import { environment } from '../../../../environments/environment';
                 <p>View complaints you've processed</p>
                 @if (completedCount() > 0) { <span class="badge completed">{{ completedCount() }}</span> }
               </div>
-              @if (auth.hasAnyRole(['CEPC_SUPERVISOR', 'CEPC_ADJUDICATOR'])) {
-                <div class="action-card" (click)="navigate('/staff/cepc/escalations')">
+              @if (auth.hasAnyRole(['CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY'])) {
+                <div class="action-card" (click)="navigate('/cepc/supervisor-dashboard')">
                   <h3>Escalations</h3>
                   <p>Complaints escalated for your review</p>
                 </div>
@@ -208,7 +208,7 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       return;
     }
     if (dept === 'CEPC' || roles.some(r => ['CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY', 'CEPC_CONTACT_PERSON'].includes(r))) {
-      this.router.navigate(['/cepc/dashboard']);
+      this.router.navigate(['/cepc']);
       return;
     }
 

@@ -45,10 +45,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/geo/**").permitAll()
                         .requestMatchers("/api/v1/masters/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/v1/workflow/rbio/**").hasAnyRole("RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "ADMIN")
-                        .requestMatchers("/api/v1/workflow/cepc/**").hasAnyRole("CEPC_OFFICER", "CEPC_SUPERVISOR", "CEPC_CONCILIATOR", "CEPC_ADJUDICATOR", "ADMIN")
+                        .requestMatchers("/api/v1/workflow/rbio/**").hasAnyRole("RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "ADMIN")
+                        .requestMatchers("/api/v1/workflow/cepc/**").hasAnyRole("CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "ADMIN")
                         .requestMatchers("/api/v1/workflow/**").hasAnyRole("OFFICER", "DEO", "REVIEWER", "CRPC_HEAD", "CRPC_ADMIN", "CRPC_INCHARGE", "ADMIN")
-                        .requestMatchers("/api/v1/assignment/**").hasAnyRole("OFFICER", "ADMIN", "RBIO_SUPERVISOR", "CEPC_SUPERVISOR")
+                        .requestMatchers("/api/v1/assignment/**").hasAnyRole("OFFICER", "ADMIN", "RBIO_REVIEWER", "RBIO_SUPERVISOR", "CEPC_REVIEWER")
                         .requestMatchers("/api/v1/audit/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -10,10 +10,12 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NavigationService } from '../../../services/navigation.service';
+import { AssignmentTarget, DepartmentContextService } from '../../../services/department-context.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { RbioHeaderComponent } from '../rbio-header/rbio-header.component';
 import { RbioSidebarComponent } from '../rbio-sidebar/rbio-sidebar.component';
+import { RbioComplaintMetaRowComponent } from '../rbio-complaint-meta-row/rbio-complaint-meta-row.component';
 // import { RbioHeader } from '../rbio-header/rbio-header';
 
 
@@ -26,7 +28,7 @@ interface EligibilityQuestionItem {
   dateValue: string | null;
 }
 
-// eligibilityQuestions[].key -> the key the `eligibility` section of /api/complaints/rbio/{id}/summary
+// eligibilityQuestions[].key -> the key the `eligibility` section of /api/complaints/{department}/{id}/summary
 // uses. The two vocabularies differ, and a key missing from this map would be silently dropped on save.
 const ELIGIBILITY_ANSWER_KEYS: Record<string, string> = {
   entityRegulatedByRbi: 'entityRegulatedByRbi',
@@ -144,7 +146,7 @@ interface ForwardRecipient {
   email: string | null;
 }
 
-// One CONCILIATION_MEETINGS row, as returned by /api/complaints/rbio/{id}/conciliation. The newest row
+// One CONCILIATION_MEETINGS row, as returned by /api/complaints/{department}/{id}/conciliation. The newest row
 // is the live meeting; the earlier rows are the reschedule trail and are read-only.
 interface ConciliationMeeting {
   id: number | null;
@@ -255,7 +257,7 @@ interface ComplaintEmailThread {
 
 @Component({
   selector: 'app-rbio-complaint-details-view',
-  imports: [CommonModule, FormsModule, ButtonModule, ToastModule, SpeechButtonComponent, RbioHeaderComponent, RbioSidebarComponent],
+  imports: [CommonModule, FormsModule, ButtonModule, ToastModule, SpeechButtonComponent, RbioHeaderComponent, RbioSidebarComponent, RbioComplaintMetaRowComponent],
   providers: [MessageService],
   templateUrl: './rbio-complaint-details-view.component.html',
   styleUrl: './rbio-complaint-details-view.component.scss',
@@ -268,6 +270,7 @@ export class RbioComplaintDetailsView implements OnInit {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
   private messageService = inject(MessageService);
   activatedRoute = inject(ActivatedRoute)
   private destroyRef = inject(DestroyRef);
@@ -842,7 +845,7 @@ export class RbioComplaintDetailsView implements OnInit {
     if (target === 'OFFICE') {
       const fromOffice = this.complaintOffice || '';
       const toOffice = this.forwardOfficeCode;
-      const deptOf = (code: string) => (code || '').split('-')[0] || 'RBIO';
+      const deptOf = (code: string) => (code || '').split('-')[0] || this.dept.cfg().code;
       const payload = {
         complaintNumber: this.complaintNumber,
         fromOffice,
@@ -1258,7 +1261,7 @@ private getStatusColor(status: string): string {
   }
 
   private loadExistingComplaint(id: string) {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${id}/summary`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}${this.dept.cx(`${id}/summary`)}`).subscribe({
       next: (res) => {
         this.applySummary(res?.data || res || {});
         this.submitted.set(true);
@@ -1581,27 +1584,14 @@ private getStatusColor(status: string): string {
   }
 
   private detectUserRole() {
-    const roles = this.auth.getRoles ? this.auth.getRoles() : [];
-    this.isRbioDo.set(roles.includes('RBIO_DO'));
-    if (roles.includes('CRPC_HEAD')) {
-      this.userRole.set('HEAD');
-    } else if (roles.includes('RBIO_OMBUDSMAN')) {
-      this.userRole.set('OMBUDSMAN');
-    } else if (roles.includes('RBIO_DEPUTY_OMBUDSMAN')) {
-      this.userRole.set('DEPUTY_OMBUDSMAN');
-    } else if (roles.includes('RBIO_REVIEWER')) {
-      this.userRole.set('REVIEWER');
-    } else {
-      this.userRole.set('DO');
-    }
+    this.isRbioDo.set(this.dept.hasRung('DO'));
+    this.userRole.set(this.dept.currentRung());
   }
 
   private detectUserOffice(username: string) {
     // Office is assigned per-officer via Team Management (OfficerAvailability), not inferred from the username.
     if (!username) return;
-    const roles = this.auth.getRoles ? this.auth.getRoles() : [];
-    const rbioRole = roles.find((r: string) => r.startsWith('RBIO_')) || 'RBIO_DO';
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${rbioRole}`).subscribe({
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${this.dept.primaryRole()}`).subscribe({
       next: (res) => {
         const data = res?.data || res || [];
         const me = (Array.isArray(data) ? data : []).find((u: any) => u.userId === username);
@@ -2013,7 +2003,7 @@ private getStatusColor(status: string): string {
   saveDraft() {
     this.saving.set(true);
     const payload = this.buildPayload('DRAFT');
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/workflow/rbio/create-complaint`, payload).subscribe({
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1${this.dept.wf('create-complaint')}`, payload).subscribe({
       next: () => {
         this.saving.set(false);
         this.draftSaved.set(true);
@@ -2049,13 +2039,7 @@ private getStatusColor(status: string): string {
   }
 
   private loadApprovalTargetUsers(target: string) {
-    const roleMap: Record<string, string> = {
-      'DEALING_OFFICER': 'RBIO_DO',
-      'REVIEWER': 'RBIO_REVIEWER',
-      'DEPUTY_OMBUDSMAN': 'RBIO_DEPUTY_OMBUDSMAN',
-      'OMBUDSMAN': 'RBIO_OMBUDSMAN'
-    };
-    const role = roleMap[target];
+    const role = this.dept.targetRole(target as AssignmentTarget);
     if (!role) return;
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${role}`).subscribe({
@@ -2105,13 +2089,7 @@ private getStatusColor(status: string): string {
       this.approvalFilteredUsers = this.approvalTargetUsers();
     } else {
       this.approvalFilteredUsers = [];
-      const roleMap: Record<string, string> = {
-        'DEALING_OFFICER': 'RBIO_OFFICER',
-        'REVIEWER': 'RBIO_SUPERVISOR',
-        'DEPUTY_OMBUDSMAN': 'RBIO_DEPUTY_OMBUDSMAN',
-        'OMBUDSMAN': 'RBIO_ADJUDICATOR'
-      };
-      const role = roleMap[this.approvalTarget()] || '';
+      const role = this.dept.targetRole(this.approvalTarget() as AssignmentTarget);
       if (role) {
         this.loadNextAssignee(role);
       }
@@ -2141,11 +2119,8 @@ private getStatusColor(status: string): string {
   }
 
   private loadSendBackTargetUsers(target: string) {
-    const roleMap: Record<string, string> = {
-      'DEALING_OFFICER': 'RBIO_DO',
-      'REVIEWER': 'RBIO_REVIEWER'
-    };
-    const role = roleMap[target];
+    if (target !== 'DEALING_OFFICER' && target !== 'REVIEWER') return;
+    const role = this.dept.targetRole(target);
     if (!role) return;
 
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/availability?role=${role}`).subscribe({
@@ -2556,7 +2531,7 @@ private getStatusColor(status: string): string {
     formData.append('status', 'DRAFT');
     formData.append('assignedTo', this.selectedDeoId);
     formData.append('processedBy', username);
-    formData.append('source', 'RBIO');
+    formData.append('source', this.dept.cfg().code);
     formData.append('receivedAt', (this.receivedDate || new Date().toISOString().split('T')[0]) + 'T00:00:00');
 
     if (this.scannedFile) {
@@ -2595,7 +2570,7 @@ private getStatusColor(status: string): string {
 
     this.conciliationLoading.set(true);
     this.conciliationError.set('');
-    this.http.get<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${id}/conciliation`)
+    this.http.get<any>(`${environment.apiBaseUrl}${this.dept.cx(`${id}/conciliation`)}`)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
@@ -2670,7 +2645,7 @@ private getStatusColor(status: string): string {
     };
 
     this.conciliationSaving.set(true);
-    this.http.put<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/conciliation`, payload)
+    this.http.put<any>(`${environment.apiBaseUrl}${this.dept.cx(`${this.complaintId}/conciliation`)}`, payload)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
@@ -2961,7 +2936,7 @@ private getStatusColor(status: string): string {
     };
 
     this.http.put<any>(
-      `${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/summary`,
+      `${environment.apiBaseUrl}${this.dept.cx(`${this.complaintId}/summary`)}`,
       payload
     ).subscribe({
       next: (res) => {
@@ -3145,7 +3120,7 @@ private getStatusColor(status: string): string {
   }
 
   /**
-   * Mirrors the nested shape GET /api/complaints/rbio/{id}/summary returns, which is what its PUT
+   * Mirrors the nested shape GET /api/complaints/{department}/{id}/summary returns, which is what its PUT
    * accepts. navBarDto is deliberately omitted: status is workflow-owned and sending it here would let
    * the form overwrite a transition the officer did not make.
    */
@@ -3246,7 +3221,7 @@ private getStatusColor(status: string): string {
     }
     this.saving.set(true);
     this.saveError.set('');
-    this.http.put<any>(`${environment.apiBaseUrl}/api/complaints/rbio/${this.complaintId}/summary`,
+    this.http.put<any>(`${environment.apiBaseUrl}${this.dept.cx(`${this.complaintId}/summary`)}`,
       this.buildSummaryPayload()).subscribe({
       next: (res) => {
         this.saving.set(false);
@@ -3529,7 +3504,7 @@ private getStatusColor(status: string): string {
   }
 
   goBack() {
-    this.navService.goBack(['/rbio']);
+    this.navService.goBack([this.dept.cfg().routePrefix]);
   }
 
   goToDraft() {

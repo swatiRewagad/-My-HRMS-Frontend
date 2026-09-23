@@ -72,7 +72,7 @@ public class WorkflowController {
     private static final List<String> CLOSED_STATUSES = List.of("resolved", "closed", "rejected", "withdrawn", "adjudicated", "conciliated");
 
     @GetMapping("/rbio/tasks")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getRbioTasks(
             @RequestParam(required = false) String role,
             @RequestParam(required = false) String officer) {
@@ -80,7 +80,7 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/all-tasks")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getRbioAllTasks(
             @RequestParam(required = false) String officer) {
         return getAllTasksByDepartment("RBIO", officer);
@@ -102,7 +102,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/assign/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR"})
     public ResponseEntity<ApiResponse<ComplaintAssignmentResponse>> assignToRbio(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -118,7 +118,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/action/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<ApiResponse<WorkflowActionResponse>> rbioAction(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, String> request) {
@@ -134,14 +134,14 @@ public class WorkflowController {
     }
 
     @GetMapping("/rbio/completed")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<ApiResponse<List<WorkflowTaskResponse>>> getRbioCompleted(
             @RequestParam(required = false) String officer) {
         return getCompletedByDepartment("RBIO", officer);
     }
 
     @GetMapping("/rbio/available-actions/{complaintNumber}")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<ApiResponse<AvailableActionsResponse>> getRbioAvailableActions(
             @PathVariable String complaintNumber,
             @RequestParam String userRole) {
@@ -156,14 +156,14 @@ public class WorkflowController {
     // The stat keys are derived from whatever SLA buckets the service finds, so this payload stays a
     // Map rather than a DTO that would have to be edited every time a bucket is added.
     @GetMapping("/rbio/sla-stats")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "RBIO_DEPUTY_OMBUDSMAN", "CRPC_HEAD", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
     public ResponseEntity<ApiResponse<Map<String, Long>>> getRbioSlaStats() {
         Map<String, Long> stats = rbioSlaService.getComplianceStats();
         return ResponseEntity.ok(ApiResponse.success(stats, "RBIO SLA compliance stats"));
     }
 
     @PostMapping("/rbio/validate-award")
-    @RbioRoleGuard(roles = {"RBIO_ADJUDICATOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DEPUTY_OMBUDSMAN", "RBIO_OMBUDSMAN", "RBIO_ADMIN", "RBIO_ADJUDICATOR"})
     public ResponseEntity<ApiResponse<AwardValidationResponse>> validateRbioAward(
             @RequestBody Map<String, String> request) {
         String amountStr = request.getOrDefault("amount", "0");
@@ -275,7 +275,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/rbio/create-complaint")
-    @RbioRoleGuard(roles = {"RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_ADMIN"})
+    @RbioRoleGuard(roles = {"RBIO_DO", "RBIO_REVIEWER", "RBIO_ADMIN", "RBIO_OFFICER", "RBIO_SUPERVISOR"})
     public ResponseEntity<ApiResponse<ComplaintCreatedResponse>> rbioCreateComplaint(
             @RequestBody Map<String, String> request) {
         String number = "CMP-" + java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd").format(java.time.LocalDate.now())

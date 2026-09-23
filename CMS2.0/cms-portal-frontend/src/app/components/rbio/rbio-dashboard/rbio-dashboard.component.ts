@@ -14,6 +14,7 @@ import { of, Subject } from "rxjs";
 import { catchError, debounceTime, finalize, switchMap } from "rxjs/operators";
 import { KeycloakAuthService } from "../../../services/keycloak-auth.service";
 import { NavigationService } from "../../../services/navigation.service";
+import { DepartmentContextService } from "../../../services/department-context.service";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import {
   AdvancedSearchCriteria,
@@ -55,6 +56,7 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly navService = inject(NavigationService);
   private readonly auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
   private readonly destroyRef = inject(DestroyRef);
 
   // private readonly complaintsSearchUrl = "/cms-search/api/v1/search/complaints/search";
@@ -365,65 +367,56 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadStatusCodes(): void {
-    const role = this.loggedInUser?.role || "RBIO_DO";
+    const role = this.loggedInUser?.role || this.dept.primaryRole();
     this.isSearching.set(true);
     this.apiService
       .get<{ success: boolean; message: string; data: string[] }>(
-        `/departments/RBIO/role-status`,
+        `/departments/${this.dept.cfg().code}/role-status`,
         { params: { role } },
       )
       .subscribe({
         next: (response) => {
-          this.statusCodes.set(
-            (response.data || []).map((status) => ({
-              label: status,
-              value: status,
-            })),
-          );
+          const codes = response.data || [];
+          // ROLE_STATUS_MAPPING is seeded per role outside this repo, so a role with no rows comes
+          // back as an empty 200 rather than an error; without this the dropdown renders blank.
+          if (codes.length === 0) {
+            this.applyDefaultStatusCodes();
+          } else {
+            this.statusCodes.set(codes.map((status) => ({ label: status, value: status })));
+          }
           this.isSearching.set(false);
         },
         error: () => {
-          this.statusCodes.set([
-            {
-              label: "Complaint Assigned To Me",
-              value: "Complaint Assigned To Me",
-            },
-            { label: "All Complaints", value: "All Complaints" },
-          ]);
+          this.applyDefaultStatusCodes();
           this.isSearching.set(false);
         },
       });
   }
 
+  private applyDefaultStatusCodes(): void {
+    this.statusCodes.set([
+      { label: "Complaint Assigned To Me", value: "Complaint Assigned To Me" },
+      { label: "All Complaints", value: "All Complaints" },
+    ]);
+  }
+
   private hydrateUserAndSessionState(): void {
     try {
-      const visited = localStorage.getItem("rbio_visitedComplaintIds");
+      const visited = localStorage.getItem(this.dept.key("visitedComplaintIds"));
       if (visited) this.visitedIds.set(new Set(JSON.parse(visited)));
     } catch { }
-    const stored = sessionStorage.getItem("rbio_user");
+    const stored = sessionStorage.getItem(this.dept.key("user"));
     if (stored) {
       this.loggedInUser = JSON.parse(stored);
     } else {
       const user = this.auth.currentUser();
       if (user) {
-        const role =
-          this.auth
-            .getRoles()
-            .find((r) =>
-              [
-                "RBIO_DO",
-                "RBIO_REVIEWER",
-                "RBIO_OMBUDSMAN",
-                "RBIO_DEPUTY_OMBUDSMAN",
-              ].includes(r),
-            ) || "RBIO_DO";
-
         this.loggedInUser = {
           id: user.username,
           name: `${user.firstName} ${user.lastName}`.trim() || user.username,
-          role,
+          role: this.dept.primaryRole(),
         };
-        sessionStorage.setItem("rbio_user", JSON.stringify(this.loggedInUser));
+        sessionStorage.setItem(this.dept.key("user"), JSON.stringify(this.loggedInUser));
       }
     }
   }
@@ -432,14 +425,14 @@ export class RbioDashboardComponent implements OnInit, OnDestroy {
     this.visitedIds.update((ids) => {
       const s = new Set(ids);
       s.add(complaintId);
-      localStorage.setItem("rbio_visitedComplaintIds", JSON.stringify([...s]));
+      localStorage.setItem(this.dept.key("visitedComplaintIds"), JSON.stringify([...s]));
       return s;
     });
-    this.navService.navigate(["/rbio/complaint", complaintId]);
+    this.navService.navigate(this.dept.route("complaint", complaintId));
   }
 
   navigateToCreateComplaint(): void {
-    this.navService.navigate(["/rbio/create-complaint"]);
+    this.navService.navigate(this.dept.route("create-complaint"));
   }
 
   ngOnDestroy(): void {

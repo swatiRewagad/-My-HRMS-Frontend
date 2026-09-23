@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { RbioWorkflowService, LegalCase } from '../../../services/rbio-workflow.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 
 @Component({
   selector: 'app-rbio-legal-case',
@@ -16,6 +17,7 @@ export class RbioLegalCaseComponent implements OnInit {
 
   private auth = inject(KeycloakAuthService);
   private workflowService = inject(RbioWorkflowService);
+  readonly dept = inject(DepartmentContextService);
 
   // State
   legalCase = signal<LegalCase | null>(null);
@@ -34,7 +36,8 @@ export class RbioLegalCaseComponent implements OnInit {
   remarks = '';
 
   get isOmbudsmanAdmin(): boolean {
-    return this.auth.hasRole('RBIO_ADMIN') || this.auth.hasRole('RBIO_OMBUDSMAN_ADMIN');
+    // RBIO_OMBUDSMAN_ADMIN has no CEPC counterpart, so it stays an RBIO-only literal.
+    return this.dept.hasRung('ADMIN') || this.auth.hasRole('RBIO_OMBUDSMAN_ADMIN');
   }
 
   get isReadOnly(): boolean {

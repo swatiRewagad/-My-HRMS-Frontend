@@ -122,10 +122,13 @@ Flow: Service writes to `OUTBOX_EVENTS` table → `cms-outbox-publisher` polls (
 | `cms-officer-portal` | Officer frontend |
 
 **Roles:**
-- CEPC: `DO`, `REVIEWER`, `INCHARGE`, `CA`, `ADMIN`, `CP`
-- RBIO: `RBIO_OFFICER`, `RBIO_SUPERVISOR`, `RBIO_CONCILIATOR`, `RBIO_ADJUDICATOR`, `RBIO_ADMIN`
+- CEPC: `CEPC_DO`, `CEPC_REVIEWER`, `CEPC_INCHARGE`, `CEPC_CLOSING_AUTHORITY`, `CEPC_ADMIN`
+- RBIO: `RBIO_DO`, `RBIO_REVIEWER`, `RBIO_DEPUTY_OMBUDSMAN`, `RBIO_OMBUDSMAN`, `RBIO_ADMIN`
 - RE: `RE_NODAL_OFFICER`, `RE_PNO`
 - AA: `AA_REGISTRAR`, `AA_BENCH_OFFICER`, `AA_AUTHORITY`, `AA_ADMIN`
+
+RBIO and CEPC names are defined in `cms-common` `RoleConstants`; the frontend maps them
+to shared workflow rungs in `department-context.service.ts`.
 
 Backend validates JWT via `spring.security.oauth2.resourceserver.jwt.issuer-uri`. Role extraction from `realm_access.roles` claim with `ROLE_` prefix.
 

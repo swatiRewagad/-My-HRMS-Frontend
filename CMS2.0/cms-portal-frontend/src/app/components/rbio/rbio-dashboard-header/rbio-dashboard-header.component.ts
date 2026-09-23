@@ -7,6 +7,7 @@ import { Tag } from 'primeng/tag';
 import { RbioDashboardFilterComponent } from '../rbio-dashboard-filter/rbio-dashboard-filter.component';
 import { SelectedFilters } from '../../../models/rbio.model';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 
 const EMPTY_FILTERS: SelectedFilters = {
   states: [], districts: [], years: [], quarters: [], meetingTypes: [], documentTypes: []
@@ -33,8 +34,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 })
 export class RbioDashboardHeaderComponent {
   private readonly auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
 
-  isDOUser = computed(() => this.auth.currentUser()?.roles?.includes('RBIO_DO') ?? false);
+  isDOUser = computed(() => this.dept.hasRung('DO'));
 
   isFilterOpen = model<boolean>(false);
 

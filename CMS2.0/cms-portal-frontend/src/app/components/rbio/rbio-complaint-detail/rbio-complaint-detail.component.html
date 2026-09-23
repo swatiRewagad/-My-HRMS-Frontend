@@ -22,7 +22,7 @@
       <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
       <div class="user-details">
         <span class="user-name">{{ loggedInUser?.name || 'Rahul Jain' }}</span>
-        <span class="user-role">RBIO Dealing Officer</span>
+        <span class="user-role">{{ dept.cfg().label }} {{ dept.rungTitle('DO') }}</span>
       </div>
     </div>
   </header>

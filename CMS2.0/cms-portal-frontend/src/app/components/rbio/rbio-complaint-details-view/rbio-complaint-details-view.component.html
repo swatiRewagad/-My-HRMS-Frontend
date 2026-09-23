@@ -62,7 +62,7 @@
             <i class="pi pi-file"></i>
             Complaint {{ complaintNumber || complaintId }}
           </div>
-          <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+          <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
             <i class="pi pi-plus"></i>
           </div>
           <!-- <button class="sidebar-toggle-btn" (click)="toggleRightSidebar()" [title]="rightSidebarOpen() ? 'Hide sidebar' : 'Show sidebar'">
@@ -80,50 +80,16 @@
         <!-- Hidden when viewing a NO Record's own detail sub-page: that view renders its own
              meta-row below, and showing both stacked duplicates Complaint Number/Complainant Name. -->
         @if (!nodalDetailView()) {
-        <div class="meta-row">
-          <button class="back-arrow" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
-          <div class="meta-item">
-            <span class="meta-icon complaint-number"><i class="pi pi-id-card"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value">{{ complaintNumber || complaintId }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon complainant-name"><i class="pi pi-user"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Complainant Name <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value">{{ complainantName || 'Not Assigned' }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon entity-name"><i class="pi pi-building"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Entity Name <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value">{{ entityName || 'Not Assigned' }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon status-icon"><i class="pi pi-chart-bar"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value"><span class="status-pill"  [attr.data-status]="complaintStatusNav" [ngClass]="getStatusClass()">{{complaintStatusNav}}</span></span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon category-icon"><i class="pi pi-tag"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Complaint Category <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value">{{ category || 'General Banking' }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon sla-icon"><i class="pi pi-clock"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">SLA Breach In <i class="pi pi-info-circle"></i></span>
-              <span class="meta-value"><span class="sla-badge" [class.breach]="slaDaysRemaining() <= 5">{{ sla }} </span></span>
-            </div>
-          </div>
+        <app-rbio-complaint-meta-row
+          [complaintNumber]="complaintNumber || complaintId"
+          [complainantName]="complainantName"
+          [entityName]="entityName"
+          [status]="complaintStatusNav"
+          [statusClass]="getStatusClass()"
+          [category]="category"
+          [sla]="sla"
+          [slaBreach]="slaDaysRemaining() <= 5"
+          (back)="goBack()">
           <div class="meta-actions">
             @if (userRole() === 'HEAD') {
               @if (complaintStatus() === 'PENDING_OFFICE_HEAD_APPROVAL') {
@@ -142,9 +108,9 @@
                   </button>
                   @if (showSendBackMenu()) {
                     <div class="approval-dropdown" [style.top.px]="sendBackMenuPos().top" [style.left.px]="sendBackMenuPos().left">
-                      <button (click)="openSendBack('DEALING_OFFICER')">to RBIO <strong>Dealing Officer</strong></button>
+                      <button (click)="openSendBack('DEALING_OFFICER')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('DO') }}</strong></button>
                       @if (userRole() === 'DEPUTY_OMBUDSMAN' || userRole() === 'OMBUDSMAN') {
-                        <button (click)="openSendBack('REVIEWER')">to RBIO <strong>Reviewer</strong></button>
+                        <button (click)="openSendBack('REVIEWER')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('REVIEWER') }}</strong></button>
                       }
                     </div>
                   }
@@ -162,14 +128,14 @@
                 @if (showApprovalMenu()) {
                   <div class="approval-dropdown" [style.top.px]="approvalMenuPos().top" [style.left.px]="approvalMenuPos().left">
                     @if (userRole() === 'DO') {
-                      <button (click)="sendForApproval('REVIEWER')">Send to RBIO <strong>Reviewer</strong></button>
-                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to RBIO <strong>Deputy Ombudsman</strong></button>
-                      <button (click)="sendForApproval('OMBUDSMAN')">Send to RBIO <strong>Ombudsman</strong></button>
+                      <button (click)="sendForApproval('REVIEWER')">Send to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('REVIEWER') }}</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">Send to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('DEPUTY_OMBUDSMAN') }}</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">Send to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('OMBUDSMAN') }}</strong></button>
                     } @else if (userRole() === 'REVIEWER') {
-                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to RBIO <strong>Deputy Ombudsman</strong></button>
-                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                      <button (click)="sendForApproval('DEPUTY_OMBUDSMAN')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('DEPUTY_OMBUDSMAN') }}</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('OMBUDSMAN') }}</strong></button>
                     } @else if (userRole() === 'DEPUTY_OMBUDSMAN') {
-                      <button (click)="sendForApproval('OMBUDSMAN')">to RBIO <strong>Ombudsman</strong></button>
+                      <button (click)="sendForApproval('OMBUDSMAN')">to {{ dept.cfg().label }} <strong>{{ dept.rungTitle('OMBUDSMAN') }}</strong></button>
                     }
                   </div>
                 }
@@ -219,7 +185,7 @@
             }
             <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
           </div>
-        </div>
+        </app-rbio-complaint-meta-row>
 
         <!-- Assessment Tabs -->
         <div class="page-tabs">
@@ -2722,7 +2688,7 @@
         <i class="pi pi-file"></i>
         Complaint {{ complaintNumber || complaintId }}
       </div>
-      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
         <i class="pi pi-plus"></i>
       </div>
     </div>
@@ -2922,7 +2888,7 @@
         <i class="pi pi-file"></i>
         Complaint {{ complaintId }}
       </div>
-      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to RBIO">
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
         <i class="pi pi-plus"></i>
       </div>
     </div> -->

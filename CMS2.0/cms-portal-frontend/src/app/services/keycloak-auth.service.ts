@@ -89,7 +89,9 @@ export class KeycloakAuthService {
     this.token.set('');
     this.initialized = false;
     this.initPromise = null;
-    sessionStorage.removeItem('crpc_user');
+    for (const prefix of ['crpc', 'rbio', 'cepc']) {
+      sessionStorage.removeItem(`${prefix}_user`);
+    }
     if (this.warningTimer) clearInterval(this.warningTimer);
     if (this.sessionTimer) clearTimeout(this.sessionTimer);
 

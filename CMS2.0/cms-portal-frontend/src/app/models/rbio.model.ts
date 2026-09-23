@@ -1,3 +1,5 @@
+import { Rung } from '../services/department-context.service';
+
 export interface DraftComplaintColumn {
     complaintId: number;
     assignedTo: string | null;
@@ -137,7 +139,7 @@ export interface InternalKpiConfig {
     icon: string;
     styleClass: 'bg-blue' | 'bg-orange' | 'bg-red';
 
-    requiredRoles: string[];
+    requiredRungs: Rung[];
     layout: '1:1' | '2:1' | '3:1' | '4:1';
     metrics: MetricItem[];
 }

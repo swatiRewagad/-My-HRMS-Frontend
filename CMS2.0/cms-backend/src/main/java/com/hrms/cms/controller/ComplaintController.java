@@ -106,11 +106,15 @@ public class ComplaintController {
      * Guarded because it surfaces account and card numbers that the other routes on this controller
      * do not expose.
      */
-    @GetMapping("/rbio/{id}/summary")
+    @GetMapping("/{department}/{id}/summary")
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            RoleConstants.CEPC_DO, RoleConstants.CEPC_REVIEWER, RoleConstants.CEPC_INCHARGE,
+            RoleConstants.CEPC_CLOSING_AUTHORITY, RoleConstants.CEPC_ADMIN,
             "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
-    public ResponseEntity<ApiResponse<RbioComplaintSummaryResponse>> getRbioSummary(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RbioComplaintSummaryResponse>> getRbioSummary(
+            @PathVariable String department, @PathVariable Long id) {
+        requireDepartment(department);
         try {
             RbioComplaintSummaryResponse summary = rbioComplaintSummaryService.getSummary(id);
             // Lets the screen render read-only rather than let the officer fill a form the PUT will reject.
@@ -134,14 +138,18 @@ public class ComplaintController {
      * round-trip one object. An omitted key is left untouched; a key present with a null value is
      * cleared.
      */
-    @PutMapping("/rbio/{id}/summary")
+    @PutMapping("/{department}/{id}/summary")
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            RoleConstants.CEPC_DO, RoleConstants.CEPC_REVIEWER, RoleConstants.CEPC_INCHARGE,
+            RoleConstants.CEPC_CLOSING_AUTHORITY, RoleConstants.CEPC_ADMIN,
             "RBIO_OFFICER", "RBIO_SUPERVISOR"})
     public ResponseEntity<ApiResponse<RbioComplaintSummaryResponse>> updateRbioSummary(
+            @PathVariable String department,
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
+        requireDepartment(department);
         try {
             String actor = Objects.requireNonNullElse(callerIdentity.username(), userId);
             RbioComplaintSummaryResponse updated = rbioComplaintSummaryService.updateSummary(
@@ -160,11 +168,15 @@ public class ComplaintController {
     /**
      * Conciliation tab: the live meeting plus the reschedule trail behind it.
      */
-    @GetMapping("/rbio/{id}/conciliation")
+    @GetMapping("/{department}/{id}/conciliation")
     @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_REVIEWER,
             RoleConstants.RBIO_DEPUTY_OMBUDSMAN, RoleConstants.RBIO_OMBUDSMAN, RoleConstants.RBIO_ADMIN,
+            RoleConstants.CEPC_DO, RoleConstants.CEPC_REVIEWER, RoleConstants.CEPC_INCHARGE,
+            RoleConstants.CEPC_CLOSING_AUTHORITY, RoleConstants.CEPC_ADMIN,
             "RBIO_OFFICER", "RBIO_SUPERVISOR", "RBIO_CONCILIATOR", "RBIO_ADJUDICATOR", "CRPC_HEAD"})
-    public ResponseEntity<ApiResponse<RbioConciliationResponse>> getRbioConciliation(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<RbioConciliationResponse>> getRbioConciliation(
+            @PathVariable String department, @PathVariable Long id) {
+        requireDepartment(department);
         try {
             return ResponseEntity.ok(ApiResponse.success(rbioConciliationService.getConciliation(id), "OK"));
         } catch (IllegalArgumentException e) {
@@ -178,12 +190,15 @@ public class ComplaintController {
      * live meeting in place; a {@code meetingStatus} of RESCHEDULED, or a live meeting that has already
      * been completed or cancelled, opens a new meeting instead so the previous one is preserved.
      */
-    @PutMapping("/rbio/{id}/conciliation")
-    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_ADMIN})
+    @PutMapping("/{department}/{id}/conciliation")
+    @RbioRoleGuard(roles = {RoleConstants.RBIO_DO, RoleConstants.RBIO_ADMIN,
+            RoleConstants.CEPC_DO, RoleConstants.CEPC_ADMIN})
     public ResponseEntity<ApiResponse<RbioConciliationResponse>> updateRbioConciliation(
+            @PathVariable String department,
             @PathVariable Long id,
             @RequestBody Map<String, Object> payload,
             @RequestHeader(value = "X-User-Id", defaultValue = "system") String userId) {
+        requireDepartment(department);
         try {
             String actor = Objects.requireNonNullElse(callerIdentity.username(), userId);
             RbioConciliationResponse updated = rbioConciliationService.saveMeeting(
@@ -196,6 +211,16 @@ public class ComplaintController {
                     ? HttpStatus.NOT_FOUND
                     : HttpStatus.BAD_REQUEST;
             return ResponseEntity.status(status).body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * The {@code {department}} segment is greedy, so anything other than a department this controller
+     * actually serves has to be rejected rather than fall through to the summary handlers.
+     */
+    private void requireDepartment(String department) {
+        if (!"rbio".equalsIgnoreCase(department) && !"cepc".equalsIgnoreCase(department)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported department: " + department);
         }
     }
 }

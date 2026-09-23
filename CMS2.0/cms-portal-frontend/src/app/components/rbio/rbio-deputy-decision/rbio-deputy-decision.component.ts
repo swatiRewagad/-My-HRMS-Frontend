@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 
 @Component({
   selector: 'app-rbio-deputy-decision',
@@ -18,6 +19,7 @@ export class RbioDeputyDecisionComponent {
 
   private auth = inject(KeycloakAuthService);
   private workflowService = inject(RbioWorkflowService);
+  readonly dept = inject(DepartmentContextService);
 
   // State
   showForm = signal(false);
@@ -35,7 +37,7 @@ export class RbioDeputyDecisionComponent {
   reassignErrorMessage = signal('');
 
   get isDeputyOmbudsman(): boolean {
-    return this.auth.hasRole('RBIO_DEPUTY_OMBUDSMAN');
+    return this.dept.hasRung('DEPUTY_OMBUDSMAN');
   }
 
   get canShowAction(): boolean {

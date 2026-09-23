@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { publicAuthGuard } from './guards/public-auth.guard';
 import { staffAuthGuard, staffRoleGuard } from './guards/staff-auth.guard';
+import { departmentContextGuard } from './services/department-context.service';
 
 export const routes: Routes = [
   {
@@ -122,19 +123,26 @@ export const routes: Routes = [
   },
   {
     path: 'rbio',
+    data: { department: 'RBIO' },
+    canActivate: [departmentContextGuard],
     loadComponent: () => import('./components/rbio/rbio-home/rbio-home.component').then(m => m.RbioHomeComponent)
   },
   {
     path: 'rbio/create-complaint',
+    data: { department: 'RBIO' },
+    canActivate: [departmentContextGuard],
     loadComponent: () => import('./components/rbio/rbio-create-complaint/rbio-create-complaint.component').then(m => m.RbioCreateComplaintComponent)
   },
   {
     path: 'rbio/complaint/:id',
+    data: { department: 'RBIO' },
+    canActivate: [departmentContextGuard],
     loadComponent: () => import('./components/rbio/rbio-complaint-details-view/rbio-complaint-details-view.component').then(m => m.RbioComplaintDetailsView)
   },
   {
     path: 'rbio/supervisor-dashboard',
-    canActivate: [staffAuthGuard],
+    data: { department: 'RBIO' },
+    canActivate: [staffAuthGuard, departmentContextGuard],
     loadComponent: () => import('./components/rbio/rbio-supervisor-dashboard/rbio-supervisor-dashboard.component').then(m => m.RbioSupervisorDashboardComponent)
   },
   {
@@ -157,16 +165,35 @@ export const routes: Routes = [
     canActivate: [staffAuthGuard],
     loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
   },
-  // ── CEPC Module ──
+  // ── CEPC Module — served by the RBIO components, department-scoped via route data ──
+  {
+    path: 'cepc',
+    data: { department: 'CEPC' },
+    canActivate: [staffAuthGuard, departmentContextGuard],
+    loadComponent: () => import('./components/rbio/rbio-home/rbio-home.component').then(m => m.RbioHomeComponent)
+  },
   {
     path: 'cepc/dashboard',
-    canActivate: [staffAuthGuard],
-    loadComponent: () => import('./components/cepc/cepc-dashboard/cepc-dashboard.component').then(m => m.CepcDashboardComponent)
+    redirectTo: 'cepc',
+    pathMatch: 'full'
+  },
+  {
+    path: 'cepc/create-complaint',
+    data: { department: 'CEPC' },
+    canActivate: [staffAuthGuard, departmentContextGuard],
+    loadComponent: () => import('./components/rbio/rbio-create-complaint/rbio-create-complaint.component').then(m => m.RbioCreateComplaintComponent)
+  },
+  {
+    path: 'cepc/supervisor-dashboard',
+    data: { department: 'CEPC' },
+    canActivate: [staffAuthGuard, departmentContextGuard],
+    loadComponent: () => import('./components/rbio/rbio-supervisor-dashboard/rbio-supervisor-dashboard.component').then(m => m.RbioSupervisorDashboardComponent)
   },
   {
     path: 'cepc/complaint/:id',
-    canActivate: [staffAuthGuard],
-    loadComponent: () => import('./components/cepc/cepc-complaint-detail/cepc-complaint-detail.component').then(m => m.CepcComplaintDetailComponent)
+    data: { department: 'CEPC' },
+    canActivate: [staffAuthGuard, departmentContextGuard],
+    loadComponent: () => import('./components/rbio/rbio-complaint-details-view/rbio-complaint-details-view.component').then(m => m.RbioComplaintDetailsView)
   },
   {
     path: 'cepc/complaint/:id/crpc/create',

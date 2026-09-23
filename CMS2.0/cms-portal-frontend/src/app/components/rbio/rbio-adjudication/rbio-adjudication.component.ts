@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
+import { DepartmentContextService } from '../../../services/department-context.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -18,6 +19,7 @@ export class RbioAdjudicationComponent {
 
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);
+  readonly dept = inject(DepartmentContextService);
   private rbioWorkflow = inject(RbioWorkflowService);
 
   // State
@@ -125,7 +127,7 @@ export class RbioAdjudicationComponent {
     };
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintNumber}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintNumber}`)}`,
       body
     ).subscribe({
       next: () => {
@@ -159,7 +161,7 @@ export class RbioAdjudicationComponent {
     };
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintNumber}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintNumber}`)}`,
       body
     ).subscribe({
       next: () => {
@@ -212,7 +214,7 @@ export class RbioAdjudicationComponent {
     };
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintNumber}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintNumber}`)}`,
       body
     ).subscribe({
       next: () => {
@@ -243,7 +245,7 @@ export class RbioAdjudicationComponent {
     };
 
     this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/workflow/rbio/action/${complaintNumber}`,
+      `${environment.apiBaseUrl}/api/v1${this.dept.wf(`action/${complaintNumber}`)}`,
       body
     ).subscribe({
       next: () => {

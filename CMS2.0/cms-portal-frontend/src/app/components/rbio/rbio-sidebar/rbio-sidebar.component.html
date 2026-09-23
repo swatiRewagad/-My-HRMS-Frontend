@@ -1,7 +1,7 @@
 <aside class="sb" [@sidebarWidth]="isCollapsed() ? 'collapsed' : 'expanded'">
 
   <nav class="sb-nav">
-    @for (item of navItems; track item.label) {
+    @for (item of navItems(); track item.label) {
       <a class="sb-item" [routerLink]="item.routerLink" [queryParams]="item.queryParams || null"
         routerLinkActive="sb-item--active" [routerLinkActiveOptions]="{ exact: false }"
         [pTooltip]="isCollapsed() ? item.label : ''" tooltipPosition="right">
