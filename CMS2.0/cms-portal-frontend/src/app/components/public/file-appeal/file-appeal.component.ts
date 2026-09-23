@@ -1,45 +1,105 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormGroup,
+  FormControl,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
+import {
+  Subject,
+  interval,
+  switchMap,
+  takeUntil,
+  filter,
+  catchError,
+  EMPTY,
+  finalize,
+  forkJoin,
+} from 'rxjs';
+import {
+  AppealService,
+  FileMeta,
+  AppealDraftPayload,
+  AppealDraftRecord,
+} from '../../../services/appeal.service';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { validateFile } from '../../../utils/file-validator';
+
+function repAuthValidator(group: AbstractControl): ValidationErrors | null {
+  const name = group.get('representativeName')?.value;
+  const doc = group.get('authorizationDoc')?.value;
+  if (name?.trim() && !doc) {
+    return { authDocRequired: true };
+  }
+  return null;
+}
 
 @Component({
   selector: 'app-file-appeal',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, TranslatePipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    SpeechButtonComponent,
+    TranslatePipe,
+  ],
   templateUrl: './file-appeal.component.html',
-  styleUrl: './file-appeal.component.scss'
+  styleUrl: './file-appeal.component.scss',
 })
-export class FileAppealComponent {
-
+export class FileAppealComponent implements OnInit, OnDestroy {
   private router = inject(Router);
-  private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);
+  private appealService = inject(AppealService);
+  private destroy$ = new Subject<void>();
 
-  // FR-G-032: Appeal phases
   phase = signal<'search' | 'eligibility' | 'form' | 'success'>('search');
   submitting = signal(false);
   checking = signal(false);
   error = '';
 
-  // Search
   complaintId = '';
   complaintFound = false;
 
-  // Eligibility check result
   eligibilityResult = signal<any>(null);
   classification = signal<'APPEAL' | 'REPRESENTATION' | null>(null);
-
-  // FR-G-042: Reason for delay (31-60 days window)
-  reasonForDelay = '';
   isDelayedFiling = signal(false);
 
-  // FR-G-033: Appeal details
-  appealGround = '';
-  appealGrounds = [
+  currentStep = signal(0);
+  highestStepReached = signal(0);
+  readonly stepLabels = [
+    'Complaint Details',
+    'Representative Authorization',
+    'Review & Submit',
+  ];
+
+  wizardForm = new FormGroup({
+    complaintDetails: new FormGroup({
+      appealGround: new FormControl('', Validators.required),
+      appealDetails: new FormControl('', Validators.required),
+      reliefSought: new FormControl(''),
+      reasonForDelay: new FormControl(''),
+      attachments: new FormControl<FileMeta[]>([]),
+    }),
+    repAuth: new FormGroup(
+      {
+        representativeName: new FormControl(''),
+        authorizationDoc: new FormControl<FileMeta | null>(null),
+      },
+      { validators: repAuthValidator },
+    ),
+    declaration: new FormGroup({
+      declarationChecked: new FormControl(false, Validators.requiredTrue),
+    }),
+  });
+
+  readonly appealGrounds = [
     'The complaint was not resolved within 30 days',
     'Dissatisfied with the resolution/award',
     'The complaint was rejected without valid reason',
@@ -47,16 +107,44 @@ export class FileAppealComponent {
     'Non-implementation of the award by Regulated Entity',
     'Other',
   ];
-  appealDetails = '';
-  reliefSought = '';
-  appealAttachments: File[] = [];
-  isDragOver = false;
-  declarationChecked = false;
 
-  // Success
+  uploading = signal<Record<string, boolean>>({});
+  isDragOver = false;
+
+  draftId: string | null = null;
+  autoSaveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   appealRefNumber = '';
 
-  searchComplaint() {
+  get stepGroups(): FormGroup[] {
+    return [
+      this.wizardForm.get('complaintDetails') as FormGroup,
+      this.wizardForm.get('repAuth') as FormGroup,
+      this.wizardForm.get('declaration') as FormGroup,
+    ];
+  }
+
+  get currentStepGroup(): FormGroup {
+    return this.stepGroups[this.currentStep()];
+  }
+
+  ngOnInit(): void {
+    const idFromRoute = this.route.snapshot.paramMap.get('id');
+    if (idFromRoute) {
+      this.complaintId = idFromRoute;
+      this.searchComplaint();
+    }
+    this.startAutoSave();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // ── Search ──────────────────────────────────────────────
+
+  searchComplaint(): void {
     if (!this.complaintId.trim()) {
       this.error = 'Please enter your complaint reference number.';
       return;
@@ -64,12 +152,9 @@ export class FileAppealComponent {
     this.error = '';
     this.checking.set(true);
 
-    this.http.get<any>(
-      `${environment.apiBaseUrl}/api/v1/appeals/check-eligibility?complaintNumber=${encodeURIComponent(this.complaintId.trim())}`
-    ).subscribe({
-      next: (res) => {
+    this.appealService.checkEligibility(this.complaintId.trim()).subscribe({
+      next: (data) => {
         this.checking.set(false);
-        const data = res?.data;
         if (data) {
           this.eligibilityResult.set(data);
           this.classification.set(data.classification || null);
@@ -81,109 +166,249 @@ export class FileAppealComponent {
       },
       error: (err) => {
         this.checking.set(false);
-        this.error = err.error?.message || 'Unable to verify complaint. Please try again.';
-      }
+        this.error =
+          err.error?.message || 'Unable to verify complaint. Please try again.';
+      },
     });
   }
 
-  proceedToForm() {
+  // ── Eligibility → Form ─────────────────────────────────
+
+  proceedToForm(): void {
     const result = this.eligibilityResult();
     if (!result?.eligible) {
       this.error = 'This complaint is not eligible for appeal.';
       return;
     }
     this.error = '';
+
     const days = result.complaintSummary?.daysSinceDecision || 0;
     this.isDelayedFiling.set(days > 30 && days <= 60);
+
+    const delayCtrl = this.wizardForm.get('complaintDetails.reasonForDelay')!;
+    if (this.isDelayedFiling()) {
+      delayCtrl.setValidators([Validators.required, Validators.maxLength(500)]);
+    } else {
+      delayCtrl.clearValidators();
+    }
+    delayCtrl.updateValueAndValidity();
+
+    const existingDraftId = result.draftId as string | undefined;
+    if (existingDraftId) {
+      this.appealService.getDraft(existingDraftId).subscribe({
+        next: (draft) => this.hydrateDraft(draft),
+        error: () => {},
+      });
+    }
+
+    this.currentStep.set(0);
     this.phase.set('form');
   }
 
-  onFilesSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files) return;
-    for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      if (file.size > 2 * 1024 * 1024) continue;
-      this.appealAttachments.push(file);
+  // ── Stepper Navigation ─────────────────────────────────
+
+  nextStep(): void {
+    this.currentStepGroup.markAllAsTouched();
+    if (this.currentStepGroup.invalid) return;
+    if (this.currentStep() < this.stepLabels.length - 1) {
+      this.currentStep.update((s) => s + 1);
+      this.highestStepReached.update((h) => Math.max(h, this.currentStep()));
+      this.saveDraftNow();
     }
+  }
+
+  prevStep(): void {
+    if (this.currentStep() > 0) {
+      this.currentStep.update((s) => s - 1);
+    }
+  }
+
+  // ── File Upload ────────────────────────────────────────
+
+  onFileSelected(event: Event, controlPath: string): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.uploadFiles(Array.from(input.files), controlPath);
     input.value = '';
   }
 
-  onFileDrop(event: DragEvent) {
+  onFileDrop(event: DragEvent, controlPath: string): void {
     event.preventDefault();
+    this.isDragOver = false;
     if (!event.dataTransfer?.files?.length) return;
-    for (let i = 0; i < event.dataTransfer.files.length; i++) {
-      const file = event.dataTransfer.files[i];
-      if (file.size > 2 * 1024 * 1024) continue;
-      this.appealAttachments.push(file);
+    this.uploadFiles(Array.from(event.dataTransfer.files), controlPath);
+  }
+
+  private uploadFiles(files: File[], controlPath: string): void {
+    if (!files.length) return;
+    const control = this.wizardForm.get(controlPath);
+    if (!control) return;
+
+    for (const file of files) {
+      const result = validateFile(file);
+      if (!result.valid) {
+        this.error = result.error!;
+        return;
+      }
     }
-  }
-
-  removeFile(index: number) {
-    this.appealAttachments.splice(index, 1);
-  }
-
-  // FR-G-034: Submit appeal
-  submitAppeal() {
     this.error = '';
-    if (this.isDelayedFiling() && !this.reasonForDelay.trim()) {
-      this.error = 'Reason for delay is required.';
-      return;
+
+    const isArray = Array.isArray(control.value);
+    this.uploading.update((s) => ({ ...s, [controlPath]: true }));
+
+    forkJoin(files.map((f) => this.appealService.uploadFile(f)))
+      .pipe(
+        finalize(() =>
+          this.uploading.update((s) => ({ ...s, [controlPath]: false })),
+        ),
+      )
+      .subscribe({
+        next: (metas) => {
+          if (isArray) {
+            control.setValue([...(control.value || []), ...metas]);
+          } else {
+            control.setValue(metas[metas.length - 1]);
+          }
+          control.markAsDirty();
+        },
+        error: () => {
+          this.error = 'File upload failed. Please try again.';
+        },
+      });
+  }
+
+  removeUploadedFile(controlPath: string, index?: number): void {
+    const control = this.wizardForm.get(controlPath);
+    if (!control) return;
+
+    let fileId: string | undefined;
+    if (Array.isArray(control.value) && index !== undefined) {
+      fileId = control.value[index]?.fileId;
+      const updated = [...control.value];
+      updated.splice(index, 1);
+      control.setValue(updated);
+    } else {
+      fileId = (control.value as FileMeta | null)?.fileId;
+      control.setValue(null);
     }
-    if (this.isDelayedFiling() && this.reasonForDelay.length > 500) {
-      this.error = 'Reason must be within 500 characters.';
-      return;
+    control.markAsDirty();
+
+    if (fileId) {
+      this.appealService.deleteFile(fileId).subscribe();
     }
-    if (!this.appealGround) {
-      this.error = 'Please select a ground for appeal.';
-      return;
-    }
-    if (!this.appealDetails.trim()) {
-      this.error = 'Please provide details supporting your appeal.';
-      return;
-    }
-    if (!this.declarationChecked) {
-      this.error = 'Please accept the declaration before submitting.';
+  }
+
+  // ── Speech-to-Text ────────────────────────────────────
+
+  appendTranscription(controlPath: string, text: string): void {
+    const control = this.wizardForm.get(controlPath);
+    if (!control) return;
+    const current = ((control.value as string) || '').trim();
+    control.setValue(current ? current + ' ' + text : text);
+    control.markAsDirty();
+  }
+
+  // ── Auto-Save / Draft ─────────────────────────────────
+
+  private startAutoSave(): void {
+    interval(120_000)
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(() => this.phase() === 'form' && this.wizardForm.dirty),
+        switchMap(() => {
+          this.autoSaveStatus.set('saving');
+          return this.appealService.saveDraft(this.buildDraftPayload()).pipe(
+            catchError(() => {
+              this.autoSaveStatus.set('error');
+              return EMPTY;
+            }),
+          );
+        }),
+      )
+      .subscribe((res) => {
+        this.draftId = res.draftId;
+        this.autoSaveStatus.set('saved');
+        this.wizardForm.markAsPristine();
+      });
+  }
+
+  saveDraftNow(): void {
+    this.autoSaveStatus.set('saving');
+    this.appealService
+      .saveDraft(this.buildDraftPayload())
+      .pipe(
+        catchError(() => {
+          this.autoSaveStatus.set('error');
+          return EMPTY;
+        }),
+      )
+      .subscribe((res) => {
+        this.draftId = res.draftId;
+        this.autoSaveStatus.set('saved');
+        this.wizardForm.markAsPristine();
+      });
+  }
+
+  private buildDraftPayload(): AppealDraftPayload {
+    return {
+      phone: '',
+      complaintNumber: this.complaintId,
+      classification: this.classification() || '',
+      formData: this.wizardForm.getRawValue(),
+      currentStep: this.currentStep(),
+      highestStepReached: this.highestStepReached(),
+      phase: this.phase(),
+    };
+  }
+
+  private hydrateDraft(draft: AppealDraftRecord): void {
+    this.wizardForm.patchValue(draft.formData);
+    this.currentStep.set(draft.currentStep);
+    this.highestStepReached.set(draft.highestStepReached);
+    this.draftId = draft.draftId;
+  }
+
+  // ── Submit ─────────────────────────────────────────────
+
+  submitAppeal(): void {
+    this.wizardForm.markAllAsTouched();
+    if (this.wizardForm.invalid) {
+      this.error = 'Please complete all required fields.';
       return;
     }
 
     this.submitting.set(true);
+    this.error = '';
 
-    const formData = new FormData();
-    formData.append('complaintNumber', this.complaintId);
-    formData.append('ground', this.appealGround);
-    formData.append('details', this.appealDetails);
-    formData.append('reliefSought', this.reliefSought);
-    formData.append('classification', this.classification() || '');
-    if (this.isDelayedFiling() && this.reasonForDelay) {
-      formData.append('reasonForDelay', this.reasonForDelay);
-    }
+    const payload = {
+      complaintNumber: this.complaintId,
+      classification: this.classification() || '',
+      ...this.wizardForm.getRawValue(),
+      draftId: this.draftId,
+    };
 
-    for (const file of this.appealAttachments) {
-      formData.append('attachments', file);
-    }
-
-    this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/appeals/file`,
-      formData
-    ).subscribe({
+    this.appealService.submitAppeal(payload).subscribe({
       next: (res) => {
-        this.appealRefNumber = res?.data?.appealNumber || 'APL-' + Date.now().toString().slice(-10);
+        this.appealRefNumber = res.appealNumber;
         this.submitting.set(false);
         this.phase.set('success');
+        if (this.draftId) {
+          this.appealService.deleteDraft(this.draftId).subscribe();
+        }
       },
       error: (err) => {
         this.submitting.set(false);
-        this.error = err.error?.message || 'Failed to submit appeal. Please try again.';
-      }
+        this.error =
+          err.error?.message || 'Failed to submit appeal. Please try again.';
+      },
     });
   }
 
-  goHome() {
+  goHome(): void {
     this.router.navigate(['/public']);
   }
 
-  trackAppeal() {
+  trackAppeal(): void {
     this.router.navigate(['/public/track', this.appealRefNumber]);
   }
 }

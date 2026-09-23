@@ -205,11 +205,13 @@
         </button>
       </div>
 
-      <!-- FR-G-026: Feedback link -->
-      <div class="feedback-section">
-        <p>Was your complaint resolved satisfactorily?</p>
-        <a routerLink="/public/feedback" class="feedback-link"><i class="pi pi-star"></i> Share Your Feedback</a>
-      </div>
+      <!-- FR-G-026: Feedback link (only for closed complaints) -->
+      @if (s.status === 'CLOSED' || s.status === 'NON_MAINTAINABLE') {
+        <div class="feedback-section">
+          <p>Was your complaint resolved satisfactorily?</p>
+          <a routerLink="/public/feedback" [queryParams]="{complaintId: s.complaintId}" class="feedback-link"><i class="pi pi-star"></i> Share Your Feedback</a>
+        </div>
+      }
     </div>
   }
 </div>

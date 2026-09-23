@@ -17,7 +17,7 @@ public class ComplaintStatusDeserializer extends JsonDeserializer<ComplaintStatu
         try {
             return ComplaintStatus.valueOf(value);
         } catch (IllegalArgumentException e) {
-            return ComplaintStatus.NEW;
+            return ComplaintStatus.NEW_COMPLAINT;
         }
     }
 }

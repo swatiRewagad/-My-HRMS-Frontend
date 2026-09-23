@@ -1,5 +1,9 @@
 package com.hrms.cms.entity;
 
+import com.rbi.cms.common.enums.ComplaintStatus;
+import com.rbi.cms.common.enums.ComplaintType;
+import com.rbi.cms.common.enums.Priority;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -64,6 +68,12 @@ public class Complaint {
     @Column(length = 300)
     private String entityName;
 
+    @Column(length = 100)
+    private String entityType;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal amountInvolved;
+
     // Entity/branch detail fields carried over from the CRPC draft (email_drafts has the full
     // set; Complaint previously only tracked entityName/entityCode/bankBranch, so this data was
     // silently dropped on approval and RBIO officers never saw it).
@@ -118,14 +128,17 @@ public class Complaint {
     @Column(columnDefinition = "TEXT")
     private String reliefSought;
 
+    @Enumerated(EnumType.String)
     @Column(length = 30, nullable = false)
-    private String status;
+    private ComplaintStatus status;
 
+    @Enumerated(EnumType.String)
     @Column(length = 20)
-    private String priority;
+    private Priority priority;
 
+    @Enumerated(EnumType.String)
     @Column(length = 50)
-    private String filingType;
+    private ComplaintType filingType;
 
     @Column(length = 200)
     private String bankComplaintReference;
@@ -286,6 +299,12 @@ public class Complaint {
 
     @Column(name = "last_status_change_date")
     private LocalDateTime lastStatusChangeDate;
+
+    @Column(name = "is_read")
+    private Boolean isRead;
+
+    @Column(name = "has_attachment")
+    private Boolean hasAttachment;
 
     // ═══ Timestamps ═══
     private LocalDateTime filedAt;

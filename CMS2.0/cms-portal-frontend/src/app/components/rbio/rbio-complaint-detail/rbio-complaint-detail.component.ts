@@ -378,6 +378,14 @@ export class RbioComplaintDetailComponent implements OnInit {
     }
   }
 
+  getSlaDisplay(hours: number): string {
+    if (hours >= 24) {
+      const days = Math.floor(hours / 24);
+      return `${days} day${days > 1 ? 's' : ''}`;
+    }
+    return `${hours} hrs`;
+  }
+
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       'NEW': 'New Complaint',

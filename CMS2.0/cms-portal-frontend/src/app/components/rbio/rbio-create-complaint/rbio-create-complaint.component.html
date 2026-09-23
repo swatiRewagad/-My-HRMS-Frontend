@@ -980,8 +980,10 @@
           <div class="panel-header">
             <h3><i class="pi pi-th-large"></i> Complaint</h3>
             <div class="panel-header-actions">
-              <button class="btn btn-outline btn-sm" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> {{ editMode() ? 'Done' : 'Edit' }}</button>
-              <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+              <p-button [outlined]="true" severity="secondary" size="small" (onClick)="toggleEditMode()">
+                <i class="pi pi-pencil"></i> {{ editMode() ? 'Done' : 'Edit' }}
+              </p-button>
+              <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())" title="Full Screen">
                 <i class="pi pi-window-maximize"></i>
               </button>
             </div>

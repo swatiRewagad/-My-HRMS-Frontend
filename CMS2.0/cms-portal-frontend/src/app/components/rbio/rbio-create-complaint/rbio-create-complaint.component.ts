@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { ButtonModule } from 'primeng/button';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
@@ -24,7 +25,7 @@ interface DeoUser {
 @Component({
   selector: 'app-rbio-create-complaint',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, NotificationBellComponent, LanguageSelectComponent, FontSizeControlsComponent],
+  imports: [CommonModule, FormsModule, ButtonModule, SpeechButtonComponent],
   templateUrl: './rbio-create-complaint.component.html',
   styleUrl: './rbio-create-complaint.component.scss'
 })

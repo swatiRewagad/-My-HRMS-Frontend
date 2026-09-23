@@ -1,0 +1,252 @@
+:host ::ng-deep {
+  .filing-method-dialog {
+    .p-dialog {
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+      font-family: 'Poppins', sans-serif;
+      border: 1px solid #e0e0e0;
+    }
+
+    .p-dialog-header {
+      padding: 20px 24px 8px;
+      border-bottom: none;
+      background: #fff;
+    }
+
+    .p-dialog-content {
+      padding: 0 24px 8px;
+      background: #fff;
+    }
+
+    .p-dialog-footer {
+      padding: 12px 24px 20px;
+      border-top: none;
+      background: #fff;
+    }
+
+    .p-dialog-header-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #333;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #f0f0f0;
+        color: #000;
+      }
+
+      .p-icon {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+// ── Header ──
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.popup-header-icon {
+  font-size: 20px;
+  color: #ff6b35;
+}
+
+.popup-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+// ── Body ──
+.popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.popup-description {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+}
+
+.popup-detail {
+  font-size: 13px;
+  color: #333;
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+
+  strong {
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+}
+
+.popup-address {
+  font-size: 13px;
+  color: #333;
+  line-height: 1.6;
+  font-family: 'Poppins', sans-serif;
+
+  .address-label {
+    display: block;
+    font-weight: 400;
+    color: #555;
+    margin-bottom: 2px;
+  }
+
+  .address-line {
+    display: block;
+    font-weight: 700;
+    color: #1a1a2e;
+  }
+}
+
+// ── Download link ──
+.popup-download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1565c0;
+  cursor: pointer;
+  text-decoration: none;
+  font-family: 'Poppins', sans-serif;
+
+  i {
+    font-size: 14px;
+    color: #1565c0;
+  }
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// ── Info Banner ──
+.popup-info-banner {
+  background: #f3edff;
+  border: 1px solid #d9ccf5;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.popup-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.popup-info-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: #1565c0;
+  margin-top: 1px;
+}
+
+.popup-info-text {
+  font-size: 12px;
+  color: #444;
+  line-height: 1.6;
+  margin: 0;
+  flex: 1;
+  font-family: 'Poppins', sans-serif;
+}
+
+.popup-info-dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #888;
+  font-size: 12px;
+  line-height: 1;
+
+  &:hover {
+    color: #333;
+  }
+}
+
+.popup-portal-action {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-file-on-portal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  background: #ff6b35;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #e85d2c;
+  }
+}
+
+// ── Footer ──
+.popup-footer {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.btn-cancel {
+  padding: 9px 30px;
+  background: #fff;
+  color: #1a1a2e;
+  border: 1.5px solid #999;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #472293;
+    color: #472293;
+    background: #faf8ff;
+  }
+}
+
+.btn-ok {
+  padding: 9px 38px;
+  background: #472293;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #3a1b78;
+  }
+}
