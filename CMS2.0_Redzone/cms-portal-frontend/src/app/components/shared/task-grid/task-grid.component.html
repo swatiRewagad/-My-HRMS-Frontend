@@ -1,0 +1,192 @@
+<div class="table-section" data-testid="task-grid">
+  <div class="table-header-row">
+    <h3>{{ titleKey() | translate }}</h3>
+
+    <div class="table-actions">
+      <label class="grid-search">
+        <span class="sr-only">{{ 'ui.common.search' | translate }}</span>
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <input type="search"
+               class="form-input"
+               data-testid="task-grid-search"
+               [attr.placeholder]="'ui.common.search' | translate"
+               [value]="search()"
+               (input)="setSearch($any($event.target).value)" />
+      </label>
+
+      @for (action of visibleActions(); track action.labelKey) {
+        <button type="button"
+                class="btn"
+                [class.btn-primary]="action.style === 'primary'"
+                [class.btn-danger]="action.style === 'danger'"
+                [class.btn-outline]="!action.style || action.style === 'outline'"
+                [disabled]="!actionEnabled(action)"
+                data-testid="task-grid-action"
+                (click)="runAction(action)">
+          @if (action.icon) { <i [class]="action.icon" aria-hidden="true"></i> }
+          {{ action.labelKey | translate }}
+        </button>
+      }
+
+      <button type="button"
+              class="btn-icon"
+              data-testid="task-grid-columns"
+              [attr.aria-label]="'ui.common.columns' | translate"
+              [attr.aria-expanded]="showColumnChooser()"
+              (click)="showColumnChooser.set(!showColumnChooser())">
+        <i class="pi pi-cog" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  @if (showColumnChooser()) {
+    <div class="column-chooser" data-testid="task-grid-column-chooser">
+      @for (col of columns(); track col.key) {
+        <label class="column-option">
+          <input type="checkbox"
+                 [checked]="!hiddenKeys().has(col.key)"
+                 (change)="toggleColumn(col.key)" />
+          <span>{{ col.labelKey | translate }}</span>
+        </label>
+      }
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="ui-loading" data-testid="task-grid-loading">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>{{ 'ui.common.loading' | translate }}</span>
+    </div>
+  } @else if (errorKey()) {
+    <div class="ui-error-state" role="alert" data-testid="task-grid-error">
+      {{ errorKey()! | translate }}
+    </div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="data-grid">
+        <thead>
+          <tr>
+            @if (selectable()) {
+              <th scope="col" class="checkbox-col">
+                <input type="checkbox"
+                       [attr.aria-label]="'ui.grid.select_all' | translate"
+                       [checked]="allOnPageSelected()"
+                       (change)="toggleAllOnPage()" />
+              </th>
+            }
+            @for (col of visibleColumns(); track col.key) {
+              <th scope="col"
+                  [style.width]="col.width"
+                  [class.sortable]="col.sortable !== false"
+                  [attr.aria-sort]="sortKey() === col.key ? (sortDir() === 'asc' ? 'ascending' : 'descending') : null">
+                @if (col.sortable !== false) {
+                  <button type="button" class="th-sort" (click)="toggleSort(col)">
+                    {{ col.labelKey | translate }}
+                    @if (sortKey() === col.key) {
+                      <i class="pi sort-icon"
+                         [class.pi-sort-amount-up]="sortDir() === 'asc'"
+                         [class.pi-sort-amount-down]="sortDir() === 'desc'"
+                         aria-hidden="true"></i>
+                    }
+                  </button>
+                } @else {
+                  {{ col.labelKey | translate }}
+                }
+              </th>
+            }
+          </tr>
+
+          <tr class="filter-row">
+            @if (selectable()) { <th scope="col"></th> }
+            @for (col of visibleColumns(); track col.key) {
+              <th scope="col">
+                @if (col.filterable !== false) {
+                  <input type="text"
+                         class="col-search"
+                         data-testid="task-grid-column-filter"
+                         [attr.data-column]="col.key"
+                         [attr.aria-label]="col.labelKey | translate"
+                         [value]="columnFilters()[col.key] || ''"
+                         (input)="setColumnFilter(col.key, $any($event.target).value)" />
+                }
+              </th>
+            }
+          </tr>
+        </thead>
+
+        <tbody>
+          @for (row of paged(); track row[rowKey()]) {
+            <tr [class.selected]="isSelected(row)"
+                data-testid="task-grid-row"
+                (click)="onRowClick(row)">
+              @if (selectable()) {
+                <td class="checkbox-col" (click)="$event.stopPropagation()">
+                  <input type="checkbox"
+                         [attr.aria-label]="'ui.grid.select_row' | translate"
+                         [checked]="isSelected(row)"
+                         (change)="toggleRow(row)" />
+                </td>
+              }
+              @for (col of visibleColumns(); track col.key) {
+                <td [attr.data-column]="col.key">
+                  @switch (col.kind) {
+                    @case ('status') {
+                      <app-status-badge [status]="text(row, col)"></app-status-badge>
+                    }
+                    @case ('ageing') {
+                      <span class="ageing-badge" [class]="severityClass(row, col)">{{ text(row, col) }}</span>
+                    }
+                    @case ('custom') {
+                      @if (templateFor(col)) {
+                        <ng-container [ngTemplateOutlet]="templateFor(col)!"
+                                      [ngTemplateOutletContext]="{ $implicit: row }"></ng-container>
+                      } @else {
+                        {{ text(row, col) }}
+                      }
+                    }
+                    @default {
+                      {{ text(row, col) }}
+                    }
+                  }
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="visibleColumns().length + (selectable() ? 1 : 0)">
+                <div class="ui-empty-state" data-testid="task-grid-empty">
+                  {{ 'ui.common.no_records' | translate }}
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="ui-pagination pagination">
+      <span class="page-info" data-testid="task-grid-range">
+        {{ 'ui.common.showing_count' | translate: countParams() }}
+      </span>
+      <div class="page-controls">
+        <button type="button"
+                class="page-btn"
+                data-testid="task-grid-prev"
+                [disabled]="page() <= 1"
+                (click)="goToPage(page() - 1)">
+          {{ 'ui.common.previous' | translate }}
+        </button>
+        <span class="page-indicator">
+          {{ 'ui.common.page_of' | translate: pageParams() }}
+        </span>
+        <button type="button"
+                class="page-btn"
+                data-testid="task-grid-next"
+                [disabled]="page() >= totalPages()"
+                (click)="goToPage(page() + 1)">
+          {{ 'ui.common.next' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+</div>

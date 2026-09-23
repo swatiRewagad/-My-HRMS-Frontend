@@ -71,7 +71,6 @@ MAPPING: dict[str, str] = {
     "#1565c0": "var(--brand-primary)",
     "#0d47a1": "var(--brand-primary-strong)",
     "#e8f0fe": "var(--brand-primary-bg)",
-    "#2460b9": "var(--brand-primary-strong)",
     # ── success ──
     "#d1fae5": "var(--state-success-bg)",
     "#065f46": "var(--state-success-fg)",
@@ -104,6 +103,22 @@ MAPPING: dict[str, str] = {
     # ── info / neutral ──
     "#e0f2fe": "var(--state-info-bg)",
     "#075985": "var(--state-info-fg)",
+    # ── citizen-facing brand (public/ only) ──
+    # Deliberately NOT mapped onto --brand-primary: the public portal has its own identity and
+    # flattening it onto the staff palette would change what every complainant sees.
+    "#472293": "var(--citizen-primary)",
+    "#4a3fc7": "var(--citizen-primary-alt)",
+    "#2460b9": "var(--citizen-accent)",
+    "#146ef5": "var(--citizen-accent-bright)",
+    "#f0f4ff": "var(--citizen-surface-tint)",
+    "#1a1a2e": "var(--citizen-surface-dark)",
+    # ── remaining neutrals and states seen in public/ and admin/ ──
+    "#d32f2f": "var(--state-danger-solid-hover)",
+    "#999": "var(--text-subtle)",
+    "#888": "var(--text-subtle)",
+    "#f5f5f5": "var(--surface-subtle)",
+    "#d1d7e0": "var(--border-strong)",
+    "#4b5563": "var(--text-secondary)",
     # ── categorical accents ──
     "#ede9fe": "var(--accent-violet-bg)",
     "#5b21b6": "var(--accent-violet-fg)",

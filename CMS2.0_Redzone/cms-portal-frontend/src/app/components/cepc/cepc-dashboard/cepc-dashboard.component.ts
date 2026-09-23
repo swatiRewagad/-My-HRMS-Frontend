@@ -12,6 +12,8 @@ import { environment } from '../../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TaskGridComponent } from '../../shared/task-grid/task-grid.component';
+import { TaskGridColumn } from '../../shared/task-grid/task-grid.types';
 
 interface CepcComplaint {
   complaintId: string;
@@ -40,7 +42,7 @@ type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AU
 @Component({
   selector: 'app-cepc-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe, TaskGridComponent],
   templateUrl: './cepc-dashboard.component.html',
   styleUrl: './cepc-dashboard.component.scss'
 })
@@ -104,6 +106,28 @@ export class CepcDashboardComponent implements OnInit {
   createError = signal('');
 
   // ─── Column Config ───
+  /**
+   * Column configuration for the shared task grid.
+   *
+   * Headers are translation KEYS, not literals — CEPC had zero localisation before, and hardcoding a
+   * header here would put it straight back. The grid owns sorting, per-column filtering, the column
+   * chooser, empty/loading states and pagination, so none of that is re-implemented in this component.
+   */
+  readonly gridColumns: TaskGridColumn<CepcComplaint>[] = [
+    { key: 'complaintId', labelKey: 'ui.col.complaint_id' },
+    { key: 'complaintNumber', labelKey: 'ui.col.complaint_number' },
+    { key: 'complainantName', labelKey: 'ui.col.complainant_name' },
+    { key: 'entityName', labelKey: 'ui.col.entity_name' },
+    { key: 'subject', labelKey: 'ui.col.subject' },
+    { key: 'priority', labelKey: 'ui.col.priority' },
+    { key: 'status', labelKey: 'ui.col.status', kind: 'status' },
+    { key: 'slaDueDate', labelKey: 'ui.col.deadline', kind: 'custom', template: 'sla' },
+    { key: 'category', labelKey: 'ui.col.category', visible: false },
+    { key: 'modeOfReceipt', labelKey: 'ui.col.mode_of_receipt', visible: false },
+    { key: 'assignedOfficer', labelKey: 'ui.col.assigned_officer', visible: false },
+    { key: 'createdAt', labelKey: 'ui.col.created_at', visible: false },
+  ];
+
   allColumns = signal([
     { key: 'complaintId', label: 'Complaint Id', visible: true },
     { key: 'complaintNumber', label: 'Complaint Number', visible: true },

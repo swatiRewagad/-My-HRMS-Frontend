@@ -191,7 +191,7 @@ interface SelectedFile {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      background: #f4f6f9;
+      background: var(--surface-sunken);
       font-family: 'Segoe UI', sans-serif;
     }
     .upload-header {
@@ -199,13 +199,13 @@ interface SelectedFile {
       align-items: center;
       gap: 12px;
       padding: 16px 32px;
-      background: #fff;
+      background: var(--surface-card);
       border-bottom: 2px solid #1565c0;
     }
     .rbi-logo { height: 48px; }
     .header-text { display: flex; flex-direction: column; }
-    .header-title { font-weight: 700; font-size: 16px; color: #1a237e; }
-    .header-subtitle { font-size: 13px; color: #555; }
+    .header-title { font-weight: 700; font-size: 16px; color: var(--brand-primary-strong); }
+    .header-subtitle { font-size: 13px; color: var(--text-secondary); }
 
     .upload-main {
       flex: 1;
@@ -216,7 +216,7 @@ interface SelectedFile {
     }
 
     .phase-card {
-      background: #fff;
+      background: var(--surface-card);
       border-radius: 8px;
       padding: 40px;
       max-width: 520px;
@@ -226,10 +226,10 @@ interface SelectedFile {
     .phase-card h2 {
       margin: 0 0 8px;
       font-size: 20px;
-      color: #1a237e;
+      color: var(--brand-primary-strong);
     }
     .phase-desc {
-      color: #555;
+      color: var(--text-secondary);
       font-size: 14px;
       margin-bottom: 24px;
     }
@@ -241,12 +241,12 @@ interface SelectedFile {
     }
     .error-icon { font-size: 48px; color: #e53935; margin-bottom: 16px; }
     .success-icon { font-size: 48px; color: #4caf50; margin-bottom: 16px; }
-    .success-count { color: #666; font-size: 14px; margin-top: 8px; }
+    .success-count { color: var(--text-muted); font-size: 14px; margin-top: 8px; }
 
     .loading-spinner {
       text-align: center;
       padding: 32px;
-      color: #666;
+      color: var(--text-muted);
       font-size: 15px;
     }
 
@@ -260,7 +260,7 @@ interface SelectedFile {
       display: block;
       font-size: 13px;
       font-weight: 600;
-      color: #333;
+      color: var(--text-body);
       margin-bottom: 4px;
     }
     .otp-field input {
@@ -281,8 +281,8 @@ interface SelectedFile {
     }
     .btn-verify {
       padding: 12px;
-      background: #472293;
-      color: #fff;
+      background: var(--citizen-primary);
+      color: var(--surface-card);
       border: none;
       border-radius: 4px;
       font-size: 14px;
@@ -308,17 +308,17 @@ interface SelectedFile {
       margin-bottom: 16px;
     }
     .drop-zone.drag-over {
-      border-color: #1565c0;
+      border-color: var(--brand-primary);
       background: #e3f2fd;
     }
     .drop-icon { font-size: 36px; color: #90caf9; margin-bottom: 8px; }
-    .drop-zone p { margin: 8px 0; color: #555; font-size: 14px; }
-    .drop-hint { font-size: 12px; color: #999; }
+    .drop-zone p { margin: 8px 0; color: var(--text-secondary); font-size: 14px; }
+    .drop-hint { font-size: 12px; color: var(--text-subtle); }
     .btn-browse {
       display: inline-block;
       padding: 8px 16px;
-      background: #472293;
-      color: #fff;
+      background: var(--citizen-primary);
+      color: var(--surface-card);
       border-radius: 4px;
       font-size: 13px;
       cursor: pointer;
@@ -331,7 +331,7 @@ interface SelectedFile {
     }
     .file-list h4 {
       font-size: 13px;
-      color: #333;
+      color: var(--text-body);
       margin: 0 0 8px;
     }
     .file-item {
@@ -348,14 +348,14 @@ interface SelectedFile {
       background: #fff3f3;
       border: 1px solid #ffcdd2;
     }
-    .file-item i { color: #1565c0; }
+    .file-item i { color: var(--brand-primary); }
     .file-name { flex: 1; font-weight: 500; }
-    .file-size { color: #888; }
+    .file-size { color: var(--text-subtle); }
     .file-error { color: #e53935; font-size: 11px; }
     .btn-remove {
       background: none;
       border: none;
-      color: #999;
+      color: var(--text-subtle);
       cursor: pointer;
       padding: 4px;
     }
@@ -363,7 +363,7 @@ interface SelectedFile {
 
     .upload-error {
       padding: 8px 12px;
-      background: #ffebee;
+      background: var(--state-danger-bg);
       color: #c62828;
       border-radius: 4px;
       font-size: 13px;
@@ -376,8 +376,8 @@ interface SelectedFile {
     }
     .btn-upload {
       padding: 12px 24px;
-      background: #2e7d32;
-      color: #fff;
+      background: var(--state-success-fg);
+      color: var(--surface-card);
       border: none;
       border-radius: 4px;
       font-size: 14px;
@@ -396,7 +396,7 @@ interface SelectedFile {
       text-align: center;
       padding: 16px;
       font-size: 12px;
-      color: #999;
+      color: var(--text-subtle);
       border-top: 1px solid #e0e0e0;
     }
   `]

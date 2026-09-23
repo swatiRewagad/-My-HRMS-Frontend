@@ -9,11 +9,11 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.5rem;
-  h1 { font-size: 1.5rem; font-weight: 600; color: #1a1a2e; }
+  h1 { font-size: 1.5rem; font-weight: 600; color: var(--citizen-surface-dark); }
 }
 
 .subtitle {
-  color: #64748b;
+  color: var(--text-muted);
   margin-bottom: 1.5rem;
 }
 
@@ -24,11 +24,11 @@
   font-weight: 500;
   cursor: pointer;
 
-  &-back { background: transparent; color: #64748b; &:hover { color: #1e293b; } }
-  &-run { background: #059669; color: white; width: 100%; margin-top: 1rem; &:hover { background: #047857; } &:disabled { background: #9ca3af; } }
+  &-back { background: transparent; color: var(--text-muted); &:hover { color: var(--text-heading); } }
+  &-run { background: #059669; color: white; width: 100%; margin-top: 1rem; &:hover { background: #047857; } &:disabled { background: var(--text-subtle); } }
 }
 
-.alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+.alert-error { background: var(--state-danger-bg); color: var(--state-danger-fg); border: 1px solid var(--state-danger-bg); padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
 
 .test-container {
   display: grid;
@@ -38,33 +38,33 @@
 
 .input-panel, .output-panel {
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 1.5rem;
 
-  h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: #1e293b; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; color: var(--text-heading); }
 }
 
 .form-group {
   margin-bottom: 1rem;
 
-  label { display: block; font-weight: 500; color: #374151; margin-bottom: 0.3rem; font-size: 0.85rem; }
+  label { display: block; font-weight: 500; color: var(--state-neutral-fg); margin-bottom: 0.3rem; font-size: 0.85rem; }
   input, select {
     width: 100%;
     padding: 0.5rem 0.7rem;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--border-input);
     border-radius: 6px;
     font-size: 0.9rem;
-    &:focus { outline: none; border-color: #2563eb; }
+    &:focus { outline: none; border-color: var(--brand-primary-hover); }
   }
-  small { color: #9ca3af; font-size: 0.8rem; }
+  small { color: var(--text-subtle); font-size: 0.8rem; }
 }
 
 .slider-labels {
   display: flex;
   justify-content: space-between;
   font-size: 0.7rem;
-  color: #9ca3af;
+  color: var(--text-subtle);
   margin-top: 0.25rem;
 }
 
@@ -72,8 +72,8 @@
   border-radius: 6px;
   padding: 1.25rem;
 
-  &.success { background: #f0fdf4; border: 1px solid #bbf7d0; }
-  &.error { background: #fef2f2; border: 1px solid #fecaca; }
+  &.success { background: var(--state-success-bg); border: 1px solid var(--state-success-bg); }
+  &.error { background: var(--state-danger-bg); border: 1px solid var(--state-danger-bg); }
 }
 
 .result-header {
@@ -92,7 +92,7 @@
 .output-section {
   margin-bottom: 1.25rem;
 
-  h4 { font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  h4 { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.03em; }
 }
 
 .output-grid {
@@ -105,10 +105,10 @@
     padding: 0.5rem 0.75rem;
     background: white;
     border-radius: 4px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border-subtle);
 
-    .key { font-weight: 500; color: #475569; font-size: 0.85rem; }
-    .value { font-family: monospace; color: #64748b; font-size: 0.85rem; &.highlight { color: #059669; font-weight: 600; } }
+    .key { font-weight: 500; color: var(--text-secondary); font-size: 0.85rem; }
+    .value { font-family: monospace; color: var(--text-muted); font-size: 0.85rem; &.highlight { color: #059669; font-weight: 600; } }
   }
 }
 
@@ -116,11 +116,11 @@
   margin: 0;
   padding-left: 1.25rem;
 
-  li { padding: 0.3rem 0; color: #374151; font-size: 0.9rem; }
+  li { padding: 0.3rem 0; color: var(--state-neutral-fg); font-size: 0.9rem; }
 }
 
 .placeholder {
   text-align: center;
   padding: 3rem;
-  color: #94a3b8;
+  color: var(--text-subtle);
 }

@@ -105,7 +105,7 @@ class RbioCompensationServiceTest {
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // validateAward() - COMBINED cap (30 Lakh)
+    // validateAward() - COMBINED cap (33 Lakh = 30L financial + 3L harassment)
     // ═══════════════════════════════════════════════════════════════════
 
     @Nested
@@ -113,10 +113,10 @@ class RbioCompensationServiceTest {
     class ValidateAwardCombined {
 
         @Test
-        @DisplayName("should pass when combined amount is at cap (Rs 30 Lakh)")
+        @DisplayName("should pass when combined amount is at cap (Rs 33 Lakh)")
         void shouldPassAtCap() {
             assertThatCode(() -> compensationService.validateAward(
-                    new BigDecimal("3000000"), "COMBINED"))
+                    new BigDecimal("3300000"), "COMBINED"))
                     .doesNotThrowAnyException();
         }
 
@@ -135,7 +135,34 @@ class RbioCompensationServiceTest {
                     new BigDecimal("3500000"), "COMBINED"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("exceeds the maximum permitted cap")
-                    .hasMessageContaining("3000000");
+                    .hasMessageContaining("3300000");
+        }
+
+        /**
+         * The defect this cap change fixes: a combined ceiling equal to the financial cap alone left a
+         * complainant awarded the full Rs 30 Lakh financial loss with nothing available for harassment.
+         * Asserting the identity rather than the literal means the three figures cannot drift apart if a
+         * component cap is amended later.
+         */
+        @Test
+        @DisplayName("combined cap equals the sum of the two component caps")
+        void combinedEqualsSumOfComponents() {
+            BigDecimal financial = compensationService.getMaxAllowed("CONSEQUENTIAL_LOSS");
+            BigDecimal harassment = compensationService.getMaxAllowed("TIME_HARASSMENT");
+
+            assertThat(compensationService.getMaxAllowed("COMBINED"))
+                    .isEqualByComparingTo(financial.add(harassment));
+        }
+
+        @Test
+        @DisplayName("a full financial award still leaves the whole harassment allowance usable")
+        void fullFinancialAwardLeavesHarassmentHeadroom() {
+            BigDecimal financial = compensationService.getMaxAllowed("CONSEQUENTIAL_LOSS");
+            BigDecimal harassment = compensationService.getMaxAllowed("TIME_HARASSMENT");
+
+            assertThatCode(() -> compensationService.validateAward(
+                    financial.add(harassment), "COMBINED"))
+                    .doesNotThrowAnyException();
         }
     }
 
@@ -291,10 +318,10 @@ class RbioCompensationServiceTest {
         }
 
         @Test
-        @DisplayName("should return Rs 30 Lakh for COMBINED")
+        @DisplayName("should return Rs 33 Lakh for COMBINED")
         void shouldReturnCapForCombined() {
             assertThat(compensationService.getMaxAllowed("COMBINED"))
-                    .isEqualByComparingTo(new BigDecimal("3000000"));
+                    .isEqualByComparingTo(new BigDecimal("3300000"));
         }
 
         @Test

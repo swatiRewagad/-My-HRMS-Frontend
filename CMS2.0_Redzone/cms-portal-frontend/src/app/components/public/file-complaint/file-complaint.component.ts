@@ -437,20 +437,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.formData['subCategory2'] = '';
   }
 
-  private defaultCategories(): { label: string; value: string }[] {
-    return [
-      { label: 'ATM / Debit Card', value: 'ATM_DEBIT_CARD' },
-      { label: 'Credit Card', value: 'CREDIT_CARD' },
-      { label: 'Internet / Mobile Banking', value: 'INTERNET_MOBILE_BANKING' },
-      { label: 'UPI', value: 'UPI' },
-      { label: 'Loans and Advances', value: 'LOANS_ADVANCES' },
-      { label: 'Deposit Accounts', value: 'DEPOSIT_ACCOUNTS' },
-      { label: 'Remittances (NEFT/RTGS/IMPS)', value: 'REMITTANCES' },
-      { label: 'Insurance', value: 'INSURANCE' },
-      { label: 'Pension', value: 'PENSION' },
-      { label: 'Para Banking', value: 'PARA_BANKING' },
-      { label: 'Others', value: 'OTHERS' }
-    ];
+  /**
+   * True when the grievance categories could not be loaded from the master table.
+   *
+   * <p>There is deliberately NO hardcoded category list any more. This flag drives a blocking message
+   * with a retry instead: the category steers routing and maintainability, so filing a complaint under a
+   * guessed category is worse for the complainant than being asked to try again.
+   */
+  categoriesUnavailable = false;
+
+  retryLoadCategories() {
+    this.loadMasterData();
   }
 
   private loadAccountTypesFromLocal() {
@@ -753,15 +750,33 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.startAutoSave();
   }
 
+  /**
+   * Loads the grievance categories the complainant chooses from.
+   *
+   * <p>SOURCE IS `/api/categories` (COMPLAINT_CATEGORIES) — the authoritative master holding the ten real
+   * RBI grievance categories. This previously called `/api/v1/masters/categories` (CATEGORY_MASTER),
+   * which contains nothing but inactive E2E test probes, so the endpoint returned an empty array and the
+   * wizard quietly substituted a compiled-in list. The citizen was choosing from hardcoded constants that
+   * no master table governed.
+   *
+   * <p>FAILS CLOSED: no hardcoded fallback. The category drives routing and maintainability, so if the
+   * master cannot be reached the step is blocked with a retry rather than filed under a guess.
+   *
+   * <p>The selected value stays the category NAME, not the id: the submit payload sends `category` as a
+   * string and also derives `subject` from it.
+   */
   private loadMasterData() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/masters/categories`).subscribe({
+    this.categoriesUnavailable = false;
+    this.http.get<any>(`${environment.apiBaseUrl}/api/categories`).subscribe({
       next: (res) => {
         const data = res?.data ?? res ?? [];
         const categoryMap: Record<string, { label: string; value: string }[]> = {};
         const categorySet = new Map<string, string>();
         data.forEach((item: any) => {
-          const catValue = item.categoryName || item.value;
-          const catLabel = item.categoryLabel || item.label || catValue;
+          // COMPLAINT_CATEGORIES exposes `name`; CATEGORY_MASTER used `categoryName`.
+          const catValue = item.name || item.categoryName || item.value;
+          const catLabel = item.name || item.categoryLabel || item.label || catValue;
+          if (!catValue) return;
           if (!categorySet.has(catValue)) {
             categorySet.set(catValue, catLabel);
           }
@@ -771,13 +786,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
           }
         });
         this.categories = Array.from(categorySet.entries()).map(([value, label]) => ({ label, value }));
-        if (this.categories.length === 0) {
-          this.categories = this.defaultCategories();
-        }
+        this.categoriesUnavailable = this.categories.length === 0;
         this.subCategories = categoryMap;
       },
       error: () => {
-        this.categories = this.defaultCategories();
+        this.categories = [];
+        this.categoriesUnavailable = true;
       }
     });
 
@@ -1532,7 +1546,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       scale: 2,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff'
+      backgroundColor: 'var(--surface-card)'
     });
 
     if (stepHeader) stepHeader.style.display = '';

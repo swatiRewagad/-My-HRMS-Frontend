@@ -124,7 +124,7 @@ public class UiShellTranslationSeeder implements CommandLineRunner {
         m.put("ui.common.load_failed", "The data could not be loaded. Please try again.");
         m.put("ui.common.page_of", "Page {{current}} of {{total}}");
         m.put("ui.common.rows_per_page", "Rows per page");
-        m.put("ui.common.showing_count", "Showing {{shown}} of {{total}}");
+        m.put("ui.common.showing_count", "Showing {{shown}} of {{total}} entries");
         m.put("ui.common.all", "All");
         m.put("ui.common.yes", "Yes");
         m.put("ui.common.no", "No");

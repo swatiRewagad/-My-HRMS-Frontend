@@ -88,118 +88,21 @@
       </div>
 
       <!-- Complaints Table -->
-      <div class="table-section">
-        <div class="table-header-row">
-          <h3>Complaints</h3>
-          <div class="table-actions">
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterUnread()">
-                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Unread
-            </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
-                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Without Attachments
-            </label>
-            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
-              <i class="pi pi-cog"></i>
-            </button>
-          </div>
-        </div>
+      <!-- The SLA cell is a module-specific component, so it is supplied to the shared grid as a
+           template rather than being downgraded to plain text. -->
+      <ng-template #slaCell let-item>
+        <app-cepc-sla-indicator [slaDueDate]="item.slaDueDate" [status]="item.status"></app-cepc-sla-indicator>
+      </ng-template>
 
-        @if (loading()) {
-          <div class="loading-overlay">
-            <div class="spinner"></div>
-            <span>Loading...</span>
-          </div>
-        }
-
-        <div class="table-wrapper">
-          <table class="data-grid">
-            <thead>
-              <tr>
-                <th class="checkbox-col">
-                  <input type="checkbox"
-                    [checked]="selectedIds().size === filteredComplaints().length && filteredComplaints().length > 0"
-                    (change)="toggleSelectAll()" />
-                </th>
-                @for (col of visibleColumns(); track col.key) {
-                  <th (click)="sortBy(col.key)">
-                    {{ col.label }}
-                    @if (sortColumn === col.key) {
-                      <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
-                    }
-                  </th>
-                }
-              </tr>
-              <!-- Column Search Row -->
-              <tr class="filter-row">
-                <th></th>
-                @for (col of visibleColumns(); track col.key) {
-                  <th>
-                    <input type="text" class="col-search" placeholder="Search"
-                      [(ngModel)]="columnFilters[col.key]" />
-                  </th>
-                }
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of paginatedComplaints(); track item.complaintId) {
-                <tr [class.selected]="selectedIds().has(item.complaintId)" [class.visited]="visitedIds().has(item.complaintId)" (click)="openComplaint(item)">
-                  <td class="checkbox-col" (click)="$event.stopPropagation()">
-                    <input type="checkbox"
-                      [checked]="selectedIds().has(item.complaintId)"
-                      (change)="toggleSelect(item.complaintId)" />
-                  </td>
-                  @for (col of visibleColumns(); track col.key) {
-                    <td [class]="'cell-' + col.key">
-                      @if (col.key === 'status') {
-                        <app-status-badge [status]="item.status" />
-                      } @else if (col.key === 'priority') {
-                        <span class="priority-badge" [attr.data-priority]="item.priority">{{ item.priority }}</span>
-                      } @else if (col.key === 'slaDueDate') {
-                        <app-cepc-sla-indicator [slaDueDate]="item.slaDueDate" [status]="item.status"></app-cepc-sla-indicator>
-                      } @else {
-                        {{ getCellValue(item, col.key) }}
-                      }
-                    </td>
-                  }
-                </tr>
-              } @empty {
-                <tr>
-                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
-                    No complaints found.
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination">
-          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredComplaints().length }} entries</span>
-          <div class="page-controls">
-            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
-            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
-            @for (p of pageNumbers(); track p) {
-              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
-            }
-            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
-            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
-            <select class="page-size-select" [value]="pageSize" (change)="changePageSize(+$any($event.target).value)">
-              <option [value]="10">10</option>
-              <option [value]="25">25</option>
-              <option [value]="50">50</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <app-task-grid
+        [rows]="filteredComplaints()"
+        [columns]="gridColumns"
+        [titleKey]="'ui.grid.complaints'"
+        rowKey="complaintId"
+        [loading]="loading()"
+        [cellTemplates]="{ sla: slaCell }"
+        (rowClick)="openComplaint($event)">
+      </app-task-grid>
   </div>
 </app-shell>
 

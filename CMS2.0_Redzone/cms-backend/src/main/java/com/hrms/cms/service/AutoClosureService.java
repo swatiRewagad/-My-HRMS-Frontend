@@ -2,10 +2,12 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.entity.AutoClosureQuestion;
 import com.hrms.cms.repository.AutoClosureQuestionRepository;
+import com.hrms.cms.repository.ClosureClauseMasterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.*;
 
 @Slf4j
@@ -13,7 +15,70 @@ import java.util.*;
 @RequiredArgsConstructor
 public class AutoClosureService {
 
+    /**
+     * Clause cited when the complainant has not approached the Regulated Entity at all.
+     * Resolved against CLOSURE_CLAUSE_MASTER, never emitted blind — see {@link #clause}.
+     */
+    static final String CLAUSE_NO_PRIOR_RE_COMPLAINT = "10(1)(e)";
+
+    /** Clause cited when the complainant approached the RE but filed before the reply window elapsed. */
+    static final String CLAUSE_FILED_BEFORE_WINDOW = "10(1)(g)";
+
+    /** Scheme whose clause vocabulary these defaults are expressed in. */
+    private static final String CLAUSE_SCHEME = "RBIOS_2021";
+
     private final AutoClosureQuestionRepository questionRepository;
+    private final ClosureClauseMasterRepository clauseRepository;
+
+    /**
+     * Resolves a clause code against CLOSURE_CLAUSE_MASTER and returns its display reference.
+     *
+     * <p>FAIL CLOSED on a citizen-facing legal citation: this previously emitted the placeholder literal
+     * {@code "Clause FRC"}, which is not a clause of any Scheme, straight into text a complainant reads.
+     * If the master does not carry the clause the reference is omitted rather than invented — an absent
+     * citation is a visible gap, whereas a fabricated one is a misstatement of law.
+     */
+    private String clause(String clauseCode) {
+        boolean inForce = clauseRepository
+                .findInForce(CLAUSE_SCHEME, clauseCode, LocalDate.now())
+                .isPresent();
+        if (!inForce) {
+            log.warn("Auto-closure: clause {} is not in force in {} — omitting the citation rather than "
+                    + "emitting an unverified one", clauseCode, CLAUSE_SCHEME);
+            return null;
+        }
+        return "Clause " + clauseCode;
+    }
+
+    /**
+     * Resolves the First-Resolution closure clause from the complaint's own data.
+     *
+     * <p>Per the ruling the two FRC failures are distinct and cite different clauses, so they cannot be
+     * carried by a single yes/no checklist answer:
+     * <ul>
+     *   <li>the complainant never approached the Regulated Entity — {@value #CLAUSE_NO_PRIOR_RE_COMPLAINT}</li>
+     *   <li>the complainant approached the RE but filed before the reply window elapsed —
+     *       {@value #CLAUSE_FILED_BEFORE_WINDOW}</li>
+     * </ul>
+     *
+     * <p>The inputs are the persisted signals {@code Complaint.priorReComplaint} and the RE-window
+     * determination made by {@code MaintainabilityRulesEngine} — the window length is category-dependent
+     * ({@code cms.mre.re-window-days}, 60 for card networks), so it is decided there and passed in rather
+     * than recomputed here.
+     *
+     * @param priorReComplaint whether the complainant first complained to the RE
+     * @param reWindowElapsed  whether the RE reply window had elapsed when the complaint was filed
+     * @return the clause reference to cite, or empty if the complaint is not an FRC failure at all
+     */
+    public Optional<String> resolveFrcClosureClause(boolean priorReComplaint, boolean reWindowElapsed) {
+        if (!priorReComplaint) {
+            return Optional.ofNullable(clause(CLAUSE_NO_PRIOR_RE_COMPLAINT));
+        }
+        if (!reWindowElapsed) {
+            return Optional.ofNullable(clause(CLAUSE_FILED_BEFORE_WINDOW));
+        }
+        return Optional.empty();
+    }
 
     public List<AutoClosureQuestion> getQuestions(String schemeVersion, String entityType) {
         List<AutoClosureQuestion> questions = questionRepository
@@ -119,7 +184,7 @@ public class AutoClosureService {
             defaults.add(buildQuestion(16, "Has the complainant filed any case in any court/forum?", "NO", "SUB_JUDICE", "NEXT", "Clause 10(1)(f)"));
         } else if ("RBIOS_2026".equals(schemeVersion) && "CEPC".equals(entityType)) {
             defaults.add(buildQuestion(1, "Is the entity regulated by RBI?", "YES", "NEXT", "CRPC_REJECTION", "Clause 10(1)(a)"));
-            defaults.add(buildQuestion(2, "Has the complainant NOT obtained First Resolution from the entity (FRC)?", "NO", "NEXT", "CRPC_REJECTION", "Clause FRC"));
+            defaults.add(buildQuestion(2, "Has the complainant NOT obtained First Resolution from the entity (FRC)?", "NO", "NEXT", "CRPC_REJECTION", clause(CLAUSE_NO_PRIOR_RE_COMPLAINT)));
             defaults.add(buildQuestion(3, "Is the complaint NOT already dealt with?", "YES", "NEXT", "CRPC_REJECTION", "Clause 10(1)(d)"));
             defaults.add(buildQuestion(4, "Is the complaint NOT related to employer-employee dispute?", "YES", "NEXT", "CRPC_REJECTION", "Clause 10(1)(e)"));
             defaults.add(buildQuestion(5, "Is the complaint directly addressed to RBI?", "YES", "NEXT", "CRPC_REJECTION", "Clause Direct"));

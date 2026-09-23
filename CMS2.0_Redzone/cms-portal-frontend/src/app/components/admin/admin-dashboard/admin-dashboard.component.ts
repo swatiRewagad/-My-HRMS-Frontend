@@ -156,10 +156,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       data: {
         labels: data.months,
         datasets: [
-          { label: 'CRPC', data: data.complaintsByType.CRPC, backgroundColor: '#3b82f6' },
-          { label: 'RBIO', data: data.complaintsByType.RBIO, backgroundColor: '#22c55e' },
-          { label: 'CEPC', data: data.complaintsByType.CEPC, backgroundColor: '#f59e0b' },
-          { label: 'Appellate Authority', data: data.complaintsByType.AppellateAuthority, backgroundColor: '#ef4444' },
+          { label: 'CRPC', data: data.complaintsByType.CRPC, backgroundColor: 'var(--brand-primary)' },
+          { label: 'RBIO', data: data.complaintsByType.RBIO, backgroundColor: 'var(--state-success-solid)' },
+          { label: 'CEPC', data: data.complaintsByType.CEPC, backgroundColor: 'var(--state-warning-solid)' },
+          { label: 'Appellate Authority', data: data.complaintsByType.AppellateAuthority, backgroundColor: 'var(--state-danger-solid)' },
         ]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
@@ -174,9 +174,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       data: {
         labels: data.maintainabilityMonths,
         datasets: [
-          { label: 'Total', data: data.maintainability.total, borderColor: '#22c55e', backgroundColor: 'transparent', tension: 0.3 },
-          { label: 'Email', data: data.maintainability.email, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
-          { label: 'Physical Letter', data: data.maintainability.physical, borderColor: '#3b82f6', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
+          { label: 'Total', data: data.maintainability.total, borderColor: 'var(--state-success-solid)', backgroundColor: 'transparent', tension: 0.3 },
+          { label: 'Email', data: data.maintainability.email, borderColor: 'var(--state-warning-solid)', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
+          { label: 'Physical Letter', data: data.maintainability.physical, borderColor: 'var(--brand-primary)', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
         ]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
@@ -191,8 +191,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       data: {
         labels: data.modeMonths,
         datasets: [
-          { label: 'Email', data: data.modeOfReceipt.email, backgroundColor: '#1e293b' },
-          { label: 'Physical Letter', data: data.modeOfReceipt.physical, backgroundColor: '#22c55e' },
+          { label: 'Email', data: data.modeOfReceipt.email, backgroundColor: 'var(--text-heading)' },
+          { label: 'Physical Letter', data: data.modeOfReceipt.physical, backgroundColor: 'var(--state-success-solid)' },
         ]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
@@ -207,9 +207,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       data: {
         labels: data.maintainabilityMonths,
         datasets: [
-          { label: 'Email', data: data.maintainability.email, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
-          { label: 'Physical Letter', data: data.maintainability.physical, borderColor: '#3b82f6', backgroundColor: 'transparent', tension: 0.3 },
-          { label: 'Total', data: data.maintainability.total, borderColor: '#22c55e', backgroundColor: 'transparent', tension: 0.3 },
+          { label: 'Email', data: data.maintainability.email, borderColor: 'var(--state-warning-solid)', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
+          { label: 'Physical Letter', data: data.maintainability.physical, borderColor: 'var(--brand-primary)', backgroundColor: 'transparent', tension: 0.3 },
+          { label: 'Total', data: data.maintainability.total, borderColor: 'var(--state-success-solid)', backgroundColor: 'transparent', tension: 0.3 },
         ]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
@@ -224,10 +224,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       data: {
         labels: data.actionMonths,
         datasets: [
-          { label: 'Closed', data: data.actionsTaken.closed, backgroundColor: '#22c55e' },
-          { label: 'NAC', data: data.actionsTaken.nac, backgroundColor: '#1e293b' },
-          { label: 'Sent to Regulatory', data: data.actionsTaken.sentToRegulatory, backgroundColor: '#f59e0b' },
-          { label: 'Sent to RBI Dept', data: data.actionsTaken.sentToRbi, backgroundColor: '#ef4444' },
+          { label: 'Closed', data: data.actionsTaken.closed, backgroundColor: 'var(--state-success-solid)' },
+          { label: 'NAC', data: data.actionsTaken.nac, backgroundColor: 'var(--text-heading)' },
+          { label: 'Sent to Regulatory', data: data.actionsTaken.sentToRegulatory, backgroundColor: 'var(--state-warning-solid)' },
+          { label: 'Sent to RBI Dept', data: data.actionsTaken.sentToRbi, backgroundColor: 'var(--state-danger-solid)' },
         ]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
@@ -242,10 +242,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy, AfterViewInit
       data: {
         labels: data.tatMonths,
         datasets: [
-          { label: 'CRPC', data: data.tat.crpc, borderColor: '#1e293b', backgroundColor: 'transparent', tension: 0.3 },
-          { label: 'RBIO', data: data.tat.rbio, borderColor: '#ef4444', backgroundColor: 'transparent', tension: 0.3 },
-          { label: 'CEPC', data: data.tat.cepc, borderColor: '#22c55e', backgroundColor: 'transparent', tension: 0.3 },
-          { label: 'Average', data: data.tat.average, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
+          { label: 'CRPC', data: data.tat.crpc, borderColor: 'var(--text-heading)', backgroundColor: 'transparent', tension: 0.3 },
+          { label: 'RBIO', data: data.tat.rbio, borderColor: 'var(--state-danger-solid)', backgroundColor: 'transparent', tension: 0.3 },
+          { label: 'CEPC', data: data.tat.cepc, borderColor: 'var(--state-success-solid)', backgroundColor: 'transparent', tension: 0.3 },
+          { label: 'Average', data: data.tat.average, borderColor: 'var(--state-warning-solid)', backgroundColor: 'transparent', tension: 0.3, borderDash: [5, 5] },
         ]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }

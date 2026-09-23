@@ -120,25 +120,25 @@ import { CommentTemplateService, CommentTemplate } from '../../../services/comme
     .page-header h1 { font-size: 22px; font-weight: 700; margin: 0; }
     .filters { display: flex; gap: 12px; margin-bottom: 16px; }
     .filters select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 13px; }
-    .table-wrap { overflow-x: auto; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .table-wrap { overflow-x: auto; background: var(--surface-card); border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
     table { width: 100%; border-collapse: collapse; }
-    th { background: #f8fafc; padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: #475569; }
+    th { background: var(--surface-page); padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
     td { padding: 12px 16px; font-size: 14px; border-top: 1px solid #f1f5f9; }
-    td small { color: #64748b; }
-    .tag { background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-    .status { padding: 2px 8px; border-radius: 4px; font-size: 12px; background: #fee2e2; color: #991b1b; }
-    .status.active { background: #dcfce7; color: #166534; }
+    td small { color: var(--text-muted); }
+    .tag { background: var(--border-subtle); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
+    .status { padding: 2px 8px; border-radius: 4px; font-size: 12px; background: var(--state-danger-bg); color: var(--state-danger-fg); }
+    .status.active { background: var(--state-success-bg); color: var(--state-success-fg); }
     .actions { display: flex; gap: 8px; }
-    .btn-primary { background: #3b82f6; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
-    .btn-secondary { background: #e2e8f0; color: #334155; border: none; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
-    .btn-sm { padding: 4px 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 12px; cursor: pointer; }
-    .btn-danger { border-color: #fca5a5; color: #dc2626; }
-    .empty { text-align: center; color: #94a3b8; padding: 24px; }
+    .btn-primary { background: var(--brand-primary); color: var(--surface-card); border: none; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .btn-secondary { background: var(--border-subtle); color: var(--text-body); border: none; padding: 8px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+    .btn-sm { padding: 4px 10px; border: 1px solid var(--border-input); border-radius: 6px; background: var(--surface-card); font-size: 12px; cursor: pointer; }
+    .btn-danger { border-color: #fca5a5; color: var(--state-danger-solid-hover); }
+    .empty { text-align: center; color: var(--text-subtle); padding: 24px; }
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-    .modal { background: #fff; border-radius: 16px; padding: 24px; width: 560px; max-height: 90vh; overflow-y: auto; }
+    .modal { background: var(--surface-card); border-radius: 16px; padding: 24px; width: 560px; max-height: 90vh; overflow-y: auto; }
     .modal h2 { margin: 0 0 20px; font-size: 18px; }
     .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
     .form-group textarea { resize: vertical; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

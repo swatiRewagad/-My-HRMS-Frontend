@@ -109,14 +109,26 @@ class TranslationServiceTest {
     }
 
     @Test
-    @DisplayName("should return all 10 supported locales")
+    @DisplayName("should return all 11 supported locales, including Punjabi")
     void shouldReturnSupportedLocales() {
         List<Map<String, Object>> locales = service.getSupportedLocales();
 
-        assertThat(locales).hasSize(10);
-        assertThat(locales.get(0).get("code")).isEqualTo("en");
-        assertThat(locales.get(7).get("code")).isEqualTo("ur");
-        assertThat(locales.get(7).get("rtl")).isEqualTo(true);
+        // Eleven since Punjabi was added. Asserted by CODE rather than by list position: `pa` was
+        // appended after `ml`, and an index-based assertion silently checks a different locale once the
+        // enum grows.
+        assertThat(locales).hasSize(11);
+        assertThat(locales).extracting(l -> l.get("code"))
+                .containsExactly("en", "hi", "bn", "mr", "te", "ta", "gu", "ur", "kn", "ml", "pa");
+
+        Map<String, Object> urdu = locales.stream()
+                .filter(l -> "ur".equals(l.get("code"))).findFirst().orElseThrow();
+        assertThat(urdu.get("rtl")).isEqualTo(true);
+
+        // Punjabi is LTR and must carry its own Gurmukhi name — that is what the switcher renders.
+        Map<String, Object> punjabi = locales.stream()
+                .filter(l -> "pa".equals(l.get("code"))).findFirst().orElseThrow();
+        assertThat(punjabi.get("rtl")).isEqualTo(false);
+        assertThat((String) punjabi.get("nativeName")).matches(".*[\\u0A00-\\u0A7F].*");
     }
 
     @Test

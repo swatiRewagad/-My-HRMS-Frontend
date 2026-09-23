@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -126,14 +127,102 @@ class AaAppealOrderServiceTest {
             assertThat(order.getAwardAmount()).isEqualByComparingTo(new BigDecimal("3000000"));
         }
 
+        /**
+         * Replaces an earlier test that asserted the ceiling was inert by default. That behaviour was
+         * overruled by the product owner: shipping 0 meant no statutory ceiling was enforced at all, so
+         * an AA order could exceed the limit. The cap is now armed at 33,00,000 out of the box.
+         */
         @Test
-        @DisplayName("with no ceiling configured the cap is inert, so shipping it changes nothing")
-        void ceilingIsInertByDefault() {
-            // Deliberately NOT armed: proves the default is genuinely off rather than accidentally on,
-            // which is what makes this safe to ship ahead of legal sign-off.
+        @DisplayName("with nothing configured the cap is ARMED at the combined statutory ceiling")
+        void ceilingIsArmedByDefault() {
+            assertThatThrownBy(() -> issue(new BigDecimal("99999999"), null))
+                    .isInstanceOf(AaAppealOrderService.AwardCapExceededException.class)
+                    .hasMessageContaining("3300000");
+
+            verify(orderRepository, never()).save(any(AppealOrder.class));
+        }
+
+        @Test
+        @DisplayName("an award at the default combined ceiling still issues")
+        void awardAtDefaultCombinedCeilingIssues() {
+            AppealOrder order = issue(new BigDecimal("3300000"), null);
+
+            assertThat(order.getAwardAmount()).isEqualByComparingTo(new BigDecimal("3300000"));
+        }
+
+        @Test
+        @DisplayName("an explicit ceiling of 0 still disables the check, preserving the escape hatch")
+        void explicitZeroDisablesTheCheck() {
+            armCeiling(0L);
+
             AppealOrder order = issue(new BigDecimal("99999999"), null);
 
             assertThat(order.getAwardAmount()).isEqualByComparingTo(new BigDecimal("99999999"));
+        }
+    }
+
+    @Nested
+    @DisplayName("component compensation ceilings")
+    class ComponentCeilings {
+
+        /**
+         * The AA ceiling mirrors RBIO by ruling. Asserting the identity rather than the literals means a
+         * later amendment to one component cannot silently leave the combined figure inconsistent.
+         */
+        @Test
+        @DisplayName("combined ceiling equals financial + harassment")
+        void combinedEqualsSumOfComponents() {
+            BigDecimal financial = service.maxCompensation(AaAppealOrderService.COMPENSATION_FINANCIAL);
+            BigDecimal harassment = service.maxCompensation(AaAppealOrderService.COMPENSATION_HARASSMENT);
+
+            assertThat(service.maxCompensation(AaAppealOrderService.COMPENSATION_COMBINED))
+                    .isEqualByComparingTo(financial.add(harassment));
+        }
+
+        @Test
+        @DisplayName("the components default to the RBIO figures of 30 Lakh and 3 Lakh")
+        void componentsMirrorRbio() {
+            assertThat(service.maxCompensation(AaAppealOrderService.COMPENSATION_FINANCIAL))
+                    .isEqualByComparingTo(new BigDecimal("3000000"));
+            assertThat(service.maxCompensation(AaAppealOrderService.COMPENSATION_HARASSMENT))
+                    .isEqualByComparingTo(new BigDecimal("300000"));
+        }
+
+        @Test
+        @DisplayName("an amount above the financial ceiling is refused")
+        void overFinancialCeilingIsRefused() {
+            assertThatThrownBy(() -> service.validateAwardComponent(
+                    new BigDecimal("3000001"), AaAppealOrderService.COMPENSATION_FINANCIAL))
+                    .isInstanceOf(AaAppealOrderService.AwardCapExceededException.class)
+                    .hasMessageContaining("3000000");
+        }
+
+        @Test
+        @DisplayName("an amount above the harassment ceiling is refused")
+        void overHarassmentCeilingIsRefused() {
+            assertThatThrownBy(() -> service.validateAwardComponent(
+                    new BigDecimal("300001"), AaAppealOrderService.COMPENSATION_HARASSMENT))
+                    .isInstanceOf(AaAppealOrderService.AwardCapExceededException.class)
+                    .hasMessageContaining("300000");
+        }
+
+        @Test
+        @DisplayName("an amount at either component ceiling is allowed — the boundary is inclusive")
+        void componentBoundariesAreInclusive() {
+            assertThatCode(() -> {
+                service.validateAwardComponent(
+                        new BigDecimal("3000000"), AaAppealOrderService.COMPENSATION_FINANCIAL);
+                service.validateAwardComponent(
+                        new BigDecimal("300000"), AaAppealOrderService.COMPENSATION_HARASSMENT);
+            }).doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("an unknown component is rejected rather than silently uncapped")
+        void unknownComponentIsRejected() {
+            assertThatThrownBy(() -> service.maxCompensation("MYSTERY"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Unknown compensation component");
         }
 
         @Test

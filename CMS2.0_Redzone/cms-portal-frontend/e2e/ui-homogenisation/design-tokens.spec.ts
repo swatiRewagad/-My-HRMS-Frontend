@@ -69,6 +69,25 @@ test.describe('Design tokens', () => {
     }
   });
 
+  /**
+   * The citizen portal has its own identity — a violet primary and a deeper blue — and it must NOT be
+   * flattened onto the staff palette. Tokenising it made the values swappable; this asserts they are
+   * still distinct, so a future mapping pass cannot quietly collapse the public brand into the staff
+   * one and change what every complainant sees.
+   */
+  test('the citizen brand is tokenised and remains distinct from the staff brand', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+    const citizenPrimary = await resolveToken(page, '--citizen-primary');
+    const citizenAccent = await resolveToken(page, '--citizen-accent');
+    const staffPrimary = await resolveToken(page, '--brand-primary');
+
+    expect(citizenPrimary, '--citizen-primary must be defined').not.toBe('');
+    expect(citizenAccent, '--citizen-accent must be defined').not.toBe('');
+    expect(citizenPrimary, 'the citizen brand must not be flattened onto the staff brand').not.toBe(staffPrimary);
+    expect(citizenAccent).not.toBe(staffPrimary);
+  });
+
   test('focus styling comes from a token rather than being suppressed', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 

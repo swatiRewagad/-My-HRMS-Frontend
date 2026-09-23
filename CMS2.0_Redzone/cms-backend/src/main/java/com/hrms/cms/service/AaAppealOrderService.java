@@ -39,8 +39,35 @@ public class AaAppealOrderService {
 
     static final String CFG_REQUIRE_ED_APPROVAL = "cms.aa.order.require_ed_approval";
     static final String CFG_SCHEME_VERSION = "cms.aa.order.scheme_version";
-    /** Statutory award ceiling in rupees. 0 or absent = unenforced. See {@link #validateAward}. */
+    /**
+     * Statutory award ceiling in rupees, applied to the order total. 0 or absent = unenforced.
+     * Now ARMED at the sum of the two component ceilings. See {@link #validateAward}.
+     */
     static final String CFG_MAX_AWARD_AMOUNT = "cms.aa.order.max_award_amount";
+    /** Ceiling on financial/consequential-loss compensation in an AA order. Mirrors the RBIO cap. */
+    static final String CFG_MAX_FINANCIAL_COMPENSATION = "cms.aa.order.max_financial_compensation";
+    /** Ceiling on mental-harassment compensation in an AA order. Mirrors the RBIO cap. */
+    static final String CFG_MAX_HARASSMENT_COMPENSATION = "cms.aa.order.max_harassment_compensation";
+    /** Ceiling on the two components combined. Must equal financial + harassment. */
+    static final String CFG_MAX_COMBINED = "cms.aa.order.max_combined";
+
+    /**
+     * Documented defaults, armed. The AA ceiling mirrors RBIO exactly by ruling: 30,00,000 financial
+     * plus 3,00,000 mental harassment, 33,00,000 combined.
+     *
+     * <p>These are no longer 0/unenforced. An absent config row previously meant "no ceiling at all",
+     * so an AA order could record an award of any size — the statutory limit existed only in prose.
+     * The values remain configurable; only the default changed.
+     */
+    static final long DEFAULT_MAX_FINANCIAL_COMPENSATION = 3000000L;
+    static final long DEFAULT_MAX_HARASSMENT_COMPENSATION = 300000L;
+    static final long DEFAULT_MAX_COMBINED =
+            DEFAULT_MAX_FINANCIAL_COMPENSATION + DEFAULT_MAX_HARASSMENT_COMPENSATION;
+
+    /** Award component an amount is being validated against. */
+    public static final String COMPENSATION_FINANCIAL = "FINANCIAL";
+    public static final String COMPENSATION_HARASSMENT = "HARASSMENT";
+    public static final String COMPENSATION_COMBINED = "COMBINED";
     /** Refuse an order on a declared sub-judice matter without a stated ground. Default false. */
     static final String CFG_BLOCK_SUB_JUDICE = "cms.aa.order.block_sub_judice";
 
@@ -290,14 +317,15 @@ public class AaAppealOrderService {
      * a hidden field should not block a dismissal, but the amount must not be recorded against an
      * outcome that awards nothing.
      *
-     * <p><b>The ceiling is configuration, not a constant, and is DISABLED by default.</b> AA previously
-     * enforced no cap at all, so an Appellate Authority could record an award of any size. The
-     * mechanism now exists and is exercised by tests, but the VALUE is a question of Scheme law rather
-     * than engineering: hardcoding a guess would either block lawful awards or permit unlawful ones,
-     * both worse than the status quo. Set {@code cms.aa.order.max_award_amount} to a positive value to
-     * arm it (0 or absent = no ceiling), following the same config-gated pattern as
-     * {@code cms.aa.order.require_ed_approval}. Until it is set, an over-ceiling award is still
-     * recorded — this is reported as requiring legal sign-off, not silently resolved.
+     * <p><b>The ceiling is configuration, and it is now ARMED.</b> It previously defaulted to 0, which
+     * meant no ceiling was enforced at all and an AA order could exceed the statutory limit. The
+     * default is the combined ceiling of 33,00,000 (30,00,000 financial + 3,00,000 harassment),
+     * mirroring RBIO. Setting {@code cms.aa.order.max_award_amount} to 0 still disables the check, so
+     * an operator retains an escape hatch, but shipping unenforced is no longer the default.
+     *
+     * <p>{@code AppealOrder} records one award TOTAL, so the total is what can be checked here; the
+     * per-component ceilings are enforced by {@link #validateAwardComponent} for callers that know
+     * which component an amount represents.
      */
     private BigDecimal validateAward(String outcome, BigDecimal awardAmount) {
         if (awardAmount == null) return null;
@@ -309,7 +337,7 @@ public class AaAppealOrderService {
             return null;
         }
 
-        long ceiling = systemConfigService.getLong(CFG_MAX_AWARD_AMOUNT, 0L);
+        long ceiling = systemConfigService.getLong(CFG_MAX_AWARD_AMOUNT, DEFAULT_MAX_COMBINED);
         if (ceiling > 0 && awardAmount.compareTo(BigDecimal.valueOf(ceiling)) > 0) {
             throw new AwardCapExceededException(String.format(
                     "Award amount Rs %s exceeds the maximum permitted cap of Rs %s. "
@@ -317,6 +345,46 @@ public class AaAppealOrderService {
                     awardAmount.toPlainString(), BigDecimal.valueOf(ceiling).toPlainString()));
         }
         return awardAmount;
+    }
+
+    /**
+     * Returns the configured ceiling for one award component, so the two tiers cannot drift apart.
+     *
+     * @param component FINANCIAL, HARASSMENT or COMBINED
+     */
+    public BigDecimal maxCompensation(String component) {
+        if (component == null) {
+            throw new IllegalArgumentException("Compensation component must not be null");
+        }
+        return switch (component.toUpperCase()) {
+            case COMPENSATION_FINANCIAL -> BigDecimal.valueOf(systemConfigService.getLong(
+                    CFG_MAX_FINANCIAL_COMPENSATION, DEFAULT_MAX_FINANCIAL_COMPENSATION));
+            case COMPENSATION_HARASSMENT -> BigDecimal.valueOf(systemConfigService.getLong(
+                    CFG_MAX_HARASSMENT_COMPENSATION, DEFAULT_MAX_HARASSMENT_COMPENSATION));
+            case COMPENSATION_COMBINED -> BigDecimal.valueOf(systemConfigService.getLong(
+                    CFG_MAX_COMBINED, DEFAULT_MAX_COMBINED));
+            default -> throw new IllegalArgumentException(
+                    "Unknown compensation component: " + component
+                            + ". Valid components are: FINANCIAL, HARASSMENT, COMBINED");
+        };
+    }
+
+    /**
+     * Refuses an amount that exceeds the ceiling for its component. A ceiling of 0 disables the check,
+     * matching {@link #validateAward}.
+     */
+    public void validateAwardComponent(BigDecimal amount, String component) {
+        if (amount == null) return;
+        if (amount.signum() < 0) {
+            throw new IllegalArgumentException("An award amount cannot be negative");
+        }
+        BigDecimal ceiling = maxCompensation(component);
+        if (ceiling.signum() > 0 && amount.compareTo(ceiling) > 0) {
+            throw new AwardCapExceededException(String.format(
+                    "Award amount Rs %s exceeds the maximum permitted %s compensation of Rs %s. "
+                            + "Per the RBI Integrated Ombudsman Scheme, this award cannot be issued.",
+                    amount.toPlainString(), component.toUpperCase(), ceiling.toPlainString()));
+        }
     }
 
     /**

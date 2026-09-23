@@ -9,12 +9,12 @@
 .page-title {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--citizen-surface-dark);
   margin: 0 0 1.5rem;
 }
 
 .verify-card {
-  background: #fff;
+  background: var(--surface-card);
   border-radius: 12px;
   padding: 2.5rem;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
@@ -31,7 +31,7 @@
     h2 {
       font-size: 1.15rem;
       font-weight: 700;
-      color: #1a1a2e;
+      color: var(--citizen-surface-dark);
       margin: 0;
     }
   }
@@ -41,18 +41,18 @@
     border: none;
     cursor: pointer;
     font-size: 1.1rem;
-    color: #666;
+    color: var(--text-muted);
     padding: 4px;
-    &:hover { color: #333; }
+    &:hover { color: var(--text-body); }
   }
 }
 
 .error-banner {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--state-danger-bg);
+  border: 1px solid var(--state-danger-bg);
   border-radius: 8px;
   padding: 0.75rem 1rem;
-  color: #b91c1c;
+  color: var(--state-danger-fg);
   font-size: 0.85rem;
   margin-bottom: 1rem;
   display: flex;
@@ -74,20 +74,20 @@
   label {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #333;
+    color: var(--text-body);
   }
 }
 
 .phone-input {
   display: flex;
   align-items: stretch;
-  border: 1.5px solid #d1d7e0;
+  border: 1.5px solid var(--border-strong);
   border-radius: 6px;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface-card);
 
   &:focus-within {
-    border-color: #2460b9;
+    border-color: var(--citizen-accent);
     box-shadow: 0 0 0 2px rgba(36, 96, 185, 0.1);
   }
 
@@ -95,11 +95,11 @@
     display: flex;
     align-items: center;
     padding: 0.65rem 0.75rem;
-    background: #f5f5f5;
-    border-right: 1.5px solid #d1d7e0;
+    background: var(--surface-subtle);
+    border-right: 1.5px solid var(--border-strong);
     font-size: 0.9rem;
     font-weight: 500;
-    color: #555;
+    color: var(--text-secondary);
   }
 
   input {
@@ -128,7 +128,7 @@
 .captcha-label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: #333;
+  color: var(--text-body);
 }
 
 // Captcha row — image left, input right
@@ -139,8 +139,8 @@
 }
 
 .captcha-image-box {
-  background: #fff;
-  border: 1.5px solid #d1d7e0;
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-strong);
   border-radius: 6px;
   padding: 0;
   flex: 1;
@@ -159,13 +159,13 @@
 
   .captcha-loading {
     font-size: 0.8rem;
-    color: #999;
+    color: var(--text-subtle);
   }
 
   .captcha-math {
     font-size: 1rem;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--citizen-surface-dark);
   }
 }
 
@@ -173,10 +173,10 @@
   .math-question {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--citizen-surface-dark);
     margin: 0 0 0.5rem;
     padding: 0.5rem 0.75rem;
-    background: #f5f5f5;
+    background: var(--surface-subtle);
     border-radius: 6px;
   }
 }
@@ -191,25 +191,25 @@
   height: 28px;
   border-radius: 50%;
   border: none;
-  background: #f0f0f0;
+  background: var(--surface-subtle);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #555;
+  color: var(--text-secondary);
   font-size: 12px;
   transition: all 0.2s;
 
   &:hover {
-    background: #e0e0e0;
-    color: #333;
+    background: var(--border-subtle);
+    color: var(--text-body);
   }
 }
 
 .captcha-input {
   width: 100%;
   padding: 0.65rem 0.75rem;
-  border: 1.5px solid #d1d7e0;
+  border: 1.5px solid var(--border-strong);
   border-radius: 6px;
   font-size: 0.9rem;
   font-family: inherit;
@@ -218,7 +218,7 @@
 
   &:focus {
     outline: none;
-    border-color: #2460b9;
+    border-color: var(--citizen-accent);
     box-shadow: 0 0 0 2px rgba(36, 96, 185, 0.1);
   }
 }
@@ -229,8 +229,8 @@
   margin-top: 0.75rem;
   width: auto;
   padding: 0.7rem 2rem;
-  background: #472293;
-  color: #fff;
+  background: var(--citizen-primary);
+  color: var(--surface-card);
   border: none;
   border-radius: 24px;
   font-size: 0.9rem;
@@ -253,7 +253,7 @@
     h2 {
       font-size: 1.15rem;
       font-weight: 700;
-      color: #1a1a2e;
+      color: var(--citizen-surface-dark);
       margin: 0;
     }
   }
@@ -261,7 +261,7 @@
 
 .otp-instruction {
   font-size: 0.85rem;
-  color: #555;
+  color: var(--text-secondary);
   margin: 0 0 1.5rem;
 }
 
@@ -276,21 +276,21 @@
     text-align: center;
     font-size: 1.3rem;
     font-weight: 700;
-    border: 2px solid #d1d7e0;
+    border: 2px solid var(--border-strong);
     border-radius: 6px;
     transition: border-color 0.2s;
     font-family: monospace;
 
     &:focus {
       outline: none;
-      border-color: #2460b9;
+      border-color: var(--citizen-accent);
       box-shadow: 0 0 0 2px rgba(36, 96, 185, 0.1);
     }
   }
 }
 
 .field-error {
-  color: #b91c1c;
+  color: var(--state-danger-fg);
   font-size: 0.8rem;
   margin: 0 0 0.75rem;
 }
@@ -301,7 +301,7 @@
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   font-size: 0.82rem;
-  color: #666;
+  color: var(--text-muted);
 }
 
 .otp-footer {
@@ -309,20 +309,20 @@
   justify-content: space-between;
   align-items: center;
   padding-top: 1rem;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-subtle);
 
   .change-number {
     font-size: 0.85rem;
     font-weight: 600;
-    color: #472293;
+    color: var(--citizen-primary);
     text-decoration: none;
     &:hover { text-decoration: underline; }
   }
 
   .verify-btn {
     padding: 0.6rem 1.5rem;
-    background: #472293;
-    color: #fff;
+    background: var(--citizen-primary);
+    color: var(--surface-card);
     border: none;
     border-radius: 6px;
     font-size: 0.9rem;
@@ -336,12 +336,12 @@
 .link-btn {
   background: none;
   border: none;
-  color: #472293;
+  color: var(--citizen-primary);
   font-size: 0.82rem;
   cursor: pointer;
   text-decoration: underline;
 
-  &:disabled { color: #999; cursor: not-allowed; text-decoration: none; }
+  &:disabled { color: var(--text-subtle); cursor: not-allowed; text-decoration: none; }
 }
 
 .cooloff-timer {
@@ -349,7 +349,7 @@
 }
 
 .email-fallback-section {
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-subtle);
   padding-top: 1rem;
 }
 
@@ -362,14 +362,14 @@
   input[type="email"] {
     width: 100%;
     padding: 0.65rem 0.75rem;
-    border: 1.5px solid #d1d7e0;
+    border: 1.5px solid var(--border-strong);
     border-radius: 6px;
     font-size: 0.9rem;
     font-family: inherit;
 
     &:focus {
       outline: none;
-      border-color: #2460b9;
+      border-color: var(--citizen-accent);
       box-shadow: 0 0 0 2px rgba(36, 96, 185, 0.1);
     }
   }
@@ -382,7 +382,7 @@
 }
 
 .send-otp-btn.secondary {
-  background: #472293;
+  background: var(--citizen-primary);
 }
 
 .link-btn.small {
@@ -391,7 +391,7 @@
 }
 
 .info-banner {
-  background: #eff6ff;
+  background: var(--brand-primary-bg);
   border: 1px solid #bfdbfe;
   border-radius: 8px;
   padding: 0.75rem 1rem;
@@ -403,11 +403,11 @@
 }
 
 .dev-otp-notice {
-  background: #e8f5e9;
+  background: var(--state-success-bg);
   border: 1px solid #a5d6a7;
   border-radius: 6px;
   padding: 0.6rem 1rem;
-  color: #2e7d32;
+  color: var(--state-success-fg);
   font-size: 0.8rem;
   font-weight: 500;
   margin-bottom: 0.75rem;
@@ -422,7 +422,7 @@
     align-items: flex-start;
     gap: 0.5rem;
     font-size: 0.8rem;
-    color: #555;
+    color: var(--text-secondary);
     cursor: pointer;
 
     input[type="checkbox"] {
@@ -440,7 +440,7 @@
   gap: 0.75rem;
   margin-top: 1.5rem;
   padding: 1rem 1.25rem;
-  background: #fff8e1;
+  background: var(--state-warning-bg);
   border: 1px solid #ffe082;
   border-radius: 8px;
   width: 90vw;
@@ -464,11 +464,11 @@
     background: none;
     border: none;
     cursor: pointer;
-    color: #999;
+    color: var(--text-subtle);
     font-size: 0.9rem;
     margin-left: auto;
     flex-shrink: 0;
-    &:hover { color: #333; }
+    &:hover { color: var(--text-body); }
   }
 }
 

@@ -13,7 +13,14 @@ import java.math.BigDecimal;
  * Caps (per RB-IOS 2021):
  * - Consequential loss: max 30,00,000 (30 Lakh)
  * - Time/harassment: max 3,00,000 (3 Lakh)
- * - Combined total: must not exceed 30,00,000
+ * - Combined total: must not exceed 33,00,000 (33 Lakh) = the sum of the two component caps
+ *
+ * <p>THE COMBINED CAP IS THE SUM OF ITS COMPONENTS. It was previously 30,00,000 — equal to the
+ * consequential-loss cap alone — which made the harassment allowance partly unusable: a complainant
+ * awarded the full 30 Lakh financial loss could receive nothing for mental harassment, because the
+ * combined ceiling was already reached. The product owner ruled the combined cap is 33,00,000.
+ * {@code RbioCompensationServiceTest} asserts combined == consequential + harassment so the three
+ * figures cannot silently drift apart again.
  *
  * <p>THE CAPS ARE CONFIGURATION, NOT CONSTANTS (UST541-542). They were {@code private static final}
  * literals, so amending a statutory figure required a code change and a redeploy — and the same numbers
@@ -48,8 +55,15 @@ public class RbioCompensationService {
     /** Default cap for mental agony/time/harassment (Rs 3 Lakh) — the behaviour-neutral fallback. */
     static final BigDecimal DEFAULT_MAX_TIME_HARASSMENT = new BigDecimal("300000");
 
-    /** Default combined cap (Rs 30 Lakh) — the behaviour-neutral fallback. */
-    static final BigDecimal DEFAULT_MAX_COMBINED = new BigDecimal("3000000");
+    /**
+     * Default combined cap (Rs 33 Lakh) = consequential loss + time/harassment.
+     *
+     * <p>Unlike the two component caps this is NOT behaviour-neutral: it was 3000000, equal to the
+     * consequential-loss cap, which capped the two components below their sum and made the harassment
+     * allowance unreachable once a full financial award was granted.
+     */
+    static final BigDecimal DEFAULT_MAX_COMBINED =
+            DEFAULT_MAX_CONSEQUENTIAL_LOSS.add(DEFAULT_MAX_TIME_HARASSMENT);
 
     static final BigDecimal DEFAULT_BAND_LOW_UPTO = new BigDecimal("100000");
     static final BigDecimal DEFAULT_BAND_MEDIUM_UPTO = new BigDecimal("1000000");

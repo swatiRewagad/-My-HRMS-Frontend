@@ -111,6 +111,19 @@
   /* ── Focus ── */
   --focus-ring: 3px solid #2460b9;
   --focus-ring-offset: 2px;
+
+  /* ═══ CITIZEN-FACING BRAND ═══
+     The public portal is a DIFFERENT audience with its own established identity: a violet primary
+     (#472293) and a deeper blue (#2460b9), neither of which appears in the staff modules. These are
+     tokenised rather than flattened onto --brand-primary, because collapsing the citizen brand into
+     the staff palette is a design decision nobody has taken — and it would change what every
+     complainant sees. Tokenising makes that change a one-line edit if it is ever wanted. */
+  --citizen-primary: #472293;
+  --citizen-primary-alt: #4a3fc7;
+  --citizen-accent: #2460b9;
+  --citizen-accent-bright: #146ef5;
+  --citizen-surface-tint: #f0f4ff;
+  --citizen-surface-dark: #1a1a2e;
 }
 
 @import 'primitives';

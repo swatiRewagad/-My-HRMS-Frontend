@@ -15,8 +15,8 @@
 }
 
 .open-badge {
-  background: #b91c1c;
-  color: #fff;
+  background: var(--state-danger-fg);
+  color: var(--surface-card);
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
   font-size: 0.8rem;
@@ -26,7 +26,7 @@
 .console-tabs {
   display: flex;
   gap: 0.25rem;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle);
   margin-bottom: 1rem;
 
   button {
@@ -36,7 +36,7 @@
     padding: 0.6rem 1rem;
     cursor: pointer;
     font-size: 0.9rem;
-    color: #475569;
+    color: var(--text-secondary);
 
     &.active {
       border-bottom-color: #1d4ed8;
@@ -55,7 +55,7 @@
   select,
   input[type='text'] {
     padding: 0.4rem 0.6rem;
-    border: 1px solid #cbd5e1;
+    border: 1px solid var(--border-strong);
     border-radius: 4px;
   }
 }
@@ -74,9 +74,9 @@
   }
 
   th {
-    background: #f8fafc;
+    background: var(--surface-page);
     font-weight: 600;
-    color: #334155;
+    color: var(--text-body);
   }
 }
 
@@ -88,18 +88,18 @@
   font-weight: 700;
 
   &.sev-high {
-    background: #fee2e2;
-    color: #991b1b;
+    background: var(--state-danger-bg);
+    color: var(--state-danger-fg);
   }
 
   &.sev-medium {
-    background: #fef3c7;
-    color: #92400e;
+    background: var(--state-warning-bg);
+    color: var(--state-warning-fg);
   }
 
   &.sev-low {
-    background: #e0f2fe;
-    color: #075985;
+    background: var(--state-info-bg);
+    color: var(--state-info-fg);
   }
 }
 
@@ -113,13 +113,13 @@
 .user-id {
   display: block;
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .audit-chip {
   margin-left: 0.4rem;
-  background: #ede9fe;
-  color: #5b21b6;
+  background: var(--accent-violet-bg);
+  color: var(--accent-violet-fg);
   border-radius: 4px;
   padding: 0.05rem 0.35rem;
   font-size: 0.7rem;
@@ -134,7 +134,7 @@
 .btn-ack,
 .btn-secondary {
   background: #1d4ed8;
-  color: #fff;
+  color: var(--surface-card);
   border: none;
   border-radius: 4px;
   padding: 0.35rem 0.75rem;
@@ -142,7 +142,7 @@
   font-size: 0.8rem;
 
   &:hover {
-    background: #1e40af;
+    background: var(--brand-primary-strong);
   }
 }
 
@@ -153,12 +153,12 @@
 
 .empty-state {
   text-align: center;
-  color: #64748b;
+  color: var(--text-muted);
   padding: 1.5rem;
 }
 
 .loading {
-  color: #475569;
+  color: var(--text-secondary);
 }
 
 .error-banner,
@@ -174,21 +174,21 @@
 }
 
 .error-banner {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
 }
 
 .info-banner {
-  background: #e0f2fe;
-  color: #075985;
+  background: var(--state-info-bg);
+  color: var(--state-info-fg);
 }
 
 .warning-banner {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--state-warning-bg);
+  color: var(--state-warning-fg);
 }
 
 .retention-message {
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--text-secondary);
 }

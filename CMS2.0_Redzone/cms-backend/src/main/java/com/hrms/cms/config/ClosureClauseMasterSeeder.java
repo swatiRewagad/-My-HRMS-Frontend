@@ -81,6 +81,22 @@ public class ClosureClauseMasterSeeder implements CommandLineRunner {
                 false, false, null);
         seed("16(4)", "Closed - matter settled between the parties", "clause.16_4", "CLOSURE",
                 false, false, null);
+
+        // ── First Resolution (FRC) pre-conditions under clause 10(1) ───────────
+        // Added so AutoClosureService can cite a clause from this master instead of the placeholder
+        // literal "Clause FRC", which was being emitted into citizen-facing text. Per the ruling: a
+        // complainant who has not approached the RE at all closes under 10(1)(e); one who approached the
+        // RE but filed before the reply window elapsed closes under 10(1)(g). Both are maintainability
+        // failures the complainant can cure by re-filing, so neither is appealable.
+        //
+        // NOTE FOR THE REPORT: 10(1)(g) is already used elsewhere in this codebase for the
+        // employer-employee bar (EligibilityQuestionMasterSeeder:173 and :220). Under RB-IOS 2021 the
+        // two cannot both be 10(1)(g). This is flagged as a clause-citation conflict requiring legal
+        // confirmation rather than silently renumbered.
+        seed("10(1)(e)", "Not maintainable - complainant has not first approached the Regulated Entity",
+                "clause.10_1_e", "NON_MAINTAINABLE", false, false, null);
+        seed("10(1)(g)", "Not maintainable - filed before the Regulated Entity reply window elapsed",
+                "clause.10_1_g", "NON_MAINTAINABLE", false, false, null);
     }
 
     private void seed(String clauseCode, String label, String labelKey, String category,

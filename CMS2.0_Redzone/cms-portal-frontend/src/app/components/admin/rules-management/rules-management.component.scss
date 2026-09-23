@@ -13,7 +13,7 @@
   h1 {
     font-size: 1.75rem;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--citizen-surface-dark);
   }
 
   .header-actions {
@@ -31,23 +31,23 @@
   transition: all 0.2s;
 
   &-primary {
-    background: #2563eb;
+    background: var(--brand-primary-hover);
     color: white;
     &:hover { background: #1d4ed8; }
   }
 
   &-secondary {
-    background: #f1f5f9;
-    color: #475569;
-    border: 1px solid #e2e8f0;
-    &:hover { background: #e2e8f0; }
+    background: var(--surface-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    &:hover { background: var(--border-subtle); }
   }
 
   &-deploy {
     background: #059669;
     color: white;
     &:hover { background: #047857; }
-    &:disabled { background: #9ca3af; cursor: not-allowed; }
+    &:disabled { background: var(--text-subtle); cursor: not-allowed; }
   }
 }
 
@@ -57,8 +57,8 @@
   margin-bottom: 1rem;
   font-size: 0.9rem;
 
-  &-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-  &-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  &-success { background: var(--state-success-bg); color: var(--state-success-fg); border: 1px solid var(--state-success-bg); }
+  &-error { background: var(--state-danger-bg); color: var(--state-danger-fg); border: 1px solid var(--state-danger-bg); }
 }
 
 .deployment-banner {
@@ -69,8 +69,8 @@
   justify-content: space-between;
   font-weight: 500;
 
-  &.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-  &.failed { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  &.success { background: #ecfdf5; color: var(--state-success-fg); border: 1px solid #a7f3d0; }
+  &.failed { background: var(--state-danger-bg); color: var(--state-danger-fg); border: 1px solid var(--state-danger-bg); }
 
   .deployment-id { font-family: monospace; font-size: 0.85rem; opacity: 0.7; }
 }
@@ -88,10 +88,10 @@
     align-items: center;
     gap: 0.5rem;
 
-    label { font-size: 0.85rem; color: #64748b; }
+    label { font-size: 0.85rem; color: var(--text-muted); }
     input {
       padding: 0.4rem 0.6rem;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border-subtle);
       border-radius: 4px;
       font-size: 0.85rem;
       width: 120px;
@@ -104,7 +104,7 @@
 
     select {
       padding: 0.5rem 0.75rem;
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--border-subtle);
       border-radius: 6px;
       font-size: 0.9rem;
       background: white;
@@ -123,25 +123,25 @@
     th, td {
       padding: 0.75rem 1rem;
       text-align: left;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--surface-subtle);
     }
 
     th {
-      background: #f8fafc;
+      background: var(--surface-page);
       font-weight: 600;
-      color: #475569;
+      color: var(--text-secondary);
       font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.03em;
     }
 
-    tr:hover td { background: #f8fafc; }
+    tr:hover td { background: var(--surface-page); }
   }
 
-  .rule-name { font-weight: 500; color: #1e293b; }
-  .rule-code { font-family: monospace; font-size: 0.8rem; color: #64748b; }
+  .rule-name { font-weight: 500; color: var(--text-heading); }
+  .rule-code { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); }
   .center { text-align: center; }
-  .empty { text-align: center; color: #94a3b8; padding: 2rem; }
+  .empty { text-align: center; color: var(--text-subtle); padding: 2rem; }
 }
 
 .status-badge {
@@ -152,11 +152,11 @@
   text-transform: uppercase;
 }
 
-.status-active { background: #dcfce7; color: #166534; }
-.status-draft { background: #fef3c7; color: #92400e; }
-.status-inactive { background: #f1f5f9; color: #475569; }
-.status-pending { background: #e0e7ff; color: #3730a3; }
-.status-archived { background: #f1f5f9; color: #94a3b8; }
+.status-active { background: var(--state-success-bg); color: var(--state-success-fg); }
+.status-draft { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+.status-inactive { background: var(--surface-subtle); color: var(--text-secondary); }
+.status-pending { background: var(--accent-indigo-bg); color: var(--accent-indigo-fg); }
+.status-archived { background: var(--surface-subtle); color: var(--text-subtle); }
 
 .actions {
   display: flex;
@@ -172,15 +172,15 @@
   cursor: pointer;
   font-weight: 500;
 
-  &.btn-edit { background: #e0e7ff; color: #4338ca; &:hover { background: #c7d2fe; } }
-  &.btn-activate { background: #dcfce7; color: #166534; &:hover { background: #bbf7d0; } }
-  &.btn-deactivate { background: #fef3c7; color: #92400e; &:hover { background: #fde68a; } }
-  &.btn-rollback { background: #fef2f2; color: #991b1b; &:hover { background: #fecaca; } }
-  &.btn-history { background: #f1f5f9; color: #475569; &:hover { background: #e2e8f0; } }
+  &.btn-edit { background: var(--accent-indigo-bg); color: #4338ca; &:hover { background: #c7d2fe; } }
+  &.btn-activate { background: var(--state-success-bg); color: var(--state-success-fg); &:hover { background: var(--state-success-bg); } }
+  &.btn-deactivate { background: var(--state-warning-bg); color: var(--state-warning-fg); &:hover { background: #fde68a; } }
+  &.btn-rollback { background: var(--state-danger-bg); color: var(--state-danger-fg); &:hover { background: var(--state-danger-bg); } }
+  &.btn-history { background: var(--surface-subtle); color: var(--text-secondary); &:hover { background: var(--border-subtle); } }
 }
 
 .loading {
   text-align: center;
   padding: 3rem;
-  color: #64748b;
+  color: var(--text-muted);
 }

@@ -10,7 +10,8 @@ public enum SupportedLocale {
     GU("gu", "Gujarati", "ગુજરાતી", false),
     UR("ur", "Urdu", "اردو", true),
     KN("kn", "Kannada", "ಕನ್ನಡ", false),
-    ML("ml", "Malayalam", "മലയാളം", false);
+    ML("ml", "Malayalam", "മലയാളം", false),
+    PA("pa", "Punjabi", "ਪੰਜਾਬੀ", false);
 
     private final String code;
     private final String nameEn;

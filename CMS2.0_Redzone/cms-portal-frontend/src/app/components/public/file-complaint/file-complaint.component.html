@@ -610,15 +610,28 @@
         <div class="step-content" (keydown)="onStepKeydown($event)">
 
           <div class="form-group" style="max-width: 360px;">
-            <label>Select a complaint Category <span class="required">*</span></label>
-            <select class="form-select" [class.invalid]="validationErrors['complaintCategory']"
-                    [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
-                    (ngModelChange)="onCategoryChange()">
-              <option value="">Select Value</option>
-              @for (c of categories; track c.value) {
-                <option [value]="c.value">{{ c.label }}</option>
-              }
-            </select>
+            <label>{{ 'form.complaint_category' | translate }} <span class="required">*</span></label>
+            <!--
+              FAIL CLOSED on master data. The category steers routing and maintainability, so when the
+              master cannot be loaded the citizen is offered a retry instead of a compiled-in list.
+            -->
+            @if (categoriesUnavailable) {
+              <div class="ui-error-state" data-testid="categories-unavailable" role="alert">
+                <p>{{ 'form.categories_unavailable' | translate }}</p>
+                <button type="button" class="btn btn-outline" data-testid="categories-retry"
+                        (click)="retryLoadCategories()">{{ 'ui.common.retry' | translate }}</button>
+              </div>
+            } @else {
+              <select class="form-select" [class.invalid]="validationErrors['complaintCategory']"
+                      [(ngModel)]="formData['complaintCategory']" name="complaintCategory"
+                      data-testid="complaint-category"
+                      (ngModelChange)="onCategoryChange()">
+                <option value="">{{ 'ui.common.select_value' | translate }}</option>
+                @for (c of categories; track c.value) {
+                  <option [value]="c.value">{{ c.label }}</option>
+                }
+              </select>
+            }
             @if (validationErrors['complaintCategory']) { <span class="field-error">{{ validationErrors['complaintCategory'] }}</span> }
           </div>
 
@@ -1211,7 +1224,7 @@
               @if (submitting() || checkingDuplicate()) { {{ 'form.submitting' | translate }} } @else { {{ 'form.submit_complaint' | translate }} }
             </button>
             @if (validationErrors['submit']) {
-              <div class="error-msg" style="margin-top: 10px; color: #dc2626;"><i class="pi pi-exclamation-circle"></i> {{ validationErrors['submit'] }}</div>
+              <div class="error-msg" style="margin-top: 10px; color: var(--state-danger-solid-hover);"><i class="pi pi-exclamation-circle"></i> {{ validationErrors['submit'] }}</div>
             }
           }
         </div>
