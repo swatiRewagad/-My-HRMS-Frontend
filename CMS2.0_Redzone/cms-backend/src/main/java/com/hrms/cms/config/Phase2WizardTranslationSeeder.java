@@ -81,12 +81,19 @@ public class Phase2WizardTranslationSeeder implements CommandLineRunner {
         seedIfAbsent("wizard.timeline_title", "wizard", "Timeline section title", "YOUR FILING TIMELINE");
         seedIfAbsent("wizard.timeline_step1", "wizard", "Timeline step 1", "Complained to Institution");
         seedIfAbsent("wizard.timeline_step1_desc", "wizard", "Timeline step 1 desc", "Filed written complaint with the Regulated Entity");
-        seedIfAbsent("wizard.timeline_step2", "wizard", "Timeline step 2", "Wait Period (30 days)");
-        seedIfAbsent("wizard.timeline_step2_desc", "wizard", "Timeline step 2 desc", "Allow the institution 30 days to respond");
+        // UST11/6: the window is cms.mre.re-window-days, served to the portal as reWindowDays. Baking
+        // "30" into the prose meant raising the property changed the rule the product ENFORCED while
+        // the timeline still promised the citizen 30 days.
+        seedIfAbsent("wizard.timeline_step2", "wizard", "Timeline step 2", "Wait Period ({{days}} days)");
+        seedIfAbsent("wizard.timeline_step2_desc", "wizard", "Timeline step 2 desc", "Allow the institution {{days}} days to respond");
         seedIfAbsent("wizard.timeline_step3", "wizard", "Timeline step 3", "File with RBI Ombudsman");
         seedIfAbsent("wizard.timeline_step3_desc", "wizard", "Timeline step 3 desc", "Eligible to file within 1 year of the complaint date");
         seedIfAbsent("wizard.days_remaining", "wizard", "Days remaining label", "days remaining");
         seedIfAbsent("wizard.compensation_title", "wizard", "Compensation title", "Potential Compensation");
+        // Fail-closed notice: the wizard used to compute its own verdict when /wizard-check failed,
+        // handing the citizen an eligibility determination no server ever issued.
+        seedIfAbsent("wizard.check_unavailable", "wizard", "Eligibility check unavailable",
+            "The eligibility check could not be completed because the service is unavailable. Please retry. This check is advisory only — you may still proceed to file your complaint.");
 
         // ── OTP / Login ──
         seedIfAbsent("login.title", "login", "Login page title", "Verification");
@@ -102,6 +109,18 @@ public class Phase2WizardTranslationSeeder implements CommandLineRunner {
         seedIfAbsent("login.otp_sent_to", "login", "OTP sent message", "OTP sent to");
         seedIfAbsent("login.email_fallback", "login", "Email fallback link", "Send OTP to email instead");
         seedIfAbsent("login.dev_otp_notice", "login", "Dev OTP auto-populated notice", "OTP auto-populated (dev mode)");
+
+        // The SMS a citizen actually receives. A translation key rather than a literal in OtpService for
+        // two reasons: the message must localise like every other citizen-facing string, and the validity
+        // it quotes is CONFIGURABLE (cms.auth.otp.expiry-minutes, overridable via SYSTEM_CONFIG) — baking
+        // "5 minutes" into the text would let the enforced window be retuned while the citizen was still
+        // promised five, the same defect V102 and V107 fixed for the RE and filing windows.
+        //
+        // English only, deliberately: OtpService refuses to dispatch a message with an unresolved
+        // placeholder, so a machine-guessed Hindi OTP text would be worse than the documented English
+        // fallback. The nine Indian-language values are for the translation team.
+        seedIfAbsent("login.otp_sms_body", "login", "OTP SMS body sent to the citizen",
+            "Your OTP for Mobile Number authentication on RBI CMS is {{otp}}. This is valid only for {{minutes}} minutes");
 
         // ── Portal navigation ──
         seedIfAbsent("portal.portal1_title", "portal", "Portal 1 title", "Public Portal 1");
@@ -159,8 +178,8 @@ public class Phase2WizardTranslationSeeder implements CommandLineRunner {
         hi.put("wizard.timeline_title", "आपकी शिकायत दर्ज करने की समय-सीमा");
         hi.put("wizard.timeline_step1", "संस्था में शिकायत की");
         hi.put("wizard.timeline_step1_desc", "विनियमित संस्था में लिखित शिकायत दर्ज की");
-        hi.put("wizard.timeline_step2", "प्रतीक्षा अवधि (30 दिन)");
-        hi.put("wizard.timeline_step2_desc", "संस्था को उत्तर देने के लिए 30 दिन दें");
+        hi.put("wizard.timeline_step2", "प्रतीक्षा अवधि ({{days}} दिन)");
+        hi.put("wizard.timeline_step2_desc", "संस्था को उत्तर देने के लिए {{days}} दिन दें");
         hi.put("wizard.timeline_step3", "RBI लोकपाल में दर्ज करें");
         hi.put("wizard.timeline_step3_desc", "शिकायत तिथि से 1 वर्ष के भीतर दर्ज करने के पात्र");
         hi.put("wizard.days_remaining", "दिन शेष");

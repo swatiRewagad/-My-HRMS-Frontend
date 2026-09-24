@@ -34,11 +34,17 @@
     "zone.js": "^0.16.1"
   },
   "devDependencies": {
+    "@angular-eslint/builder": "^21.4.0",
     "@angular/build": "21.2.8",
     "@angular/cli": "21.2.8",
     "@angular/compiler-cli": "21.2.8",
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.61.1",
+    "angular-eslint": "^21.4.0",
     "docx": "^9.7.1",
-    "typescript": "~5.9.2"
+    "eslint": "^9.39.5",
+    "eslint-plugin-sonarjs": "^3.0.7",
+    "typescript": "~5.9.2",
+    "typescript-eslint": "^8.70.1"
   }
 }

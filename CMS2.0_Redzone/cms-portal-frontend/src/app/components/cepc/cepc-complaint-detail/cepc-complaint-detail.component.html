@@ -31,8 +31,56 @@
             <div class="header-meta">
               <span>Filed: {{ complaint().registeredAt | date:'dd MMM yyyy' }}</span>
               <app-cepc-sla-indicator [slaDueDate]="complaint().slaDueDate" [status]="complaint().status"></app-cepc-sla-indicator>
+              @if (canEdit()) {
+                <button class="btn-edit" type="button" title="Edit" (click)="startEdit()">Edit</button>
+              }
             </div>
           </div>
+
+          @if (editing()) {
+            <section class="detail-section edit-section">
+              <h4>Edit Complaint</h4>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="edit-status">Status</label>
+                  <select id="edit-status" [(ngModel)]="editForm.status">
+                    <option value="pending">Pending</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="escalated">Escalated</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="edit-priority">Priority</label>
+                  <select id="edit-priority" [(ngModel)]="editForm.priority">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="edit-officer">Assigned Officer</label>
+                  <input id="edit-officer" type="text" [(ngModel)]="editForm.assignedOfficer" />
+                </div>
+              </div>
+              <div class="field full-width">
+                <label for="edit-remarks">Remarks</label>
+                <textarea id="edit-remarks" rows="3" [(ngModel)]="editForm.remarks"
+                          placeholder="Why is this record being changed?"></textarea>
+              </div>
+              @if (editError()) {
+                <p class="edit-error">{{ editError() }}</p>
+              }
+              <div class="form-actions">
+                <button class="submit-btn" type="button" [disabled]="savingEdit()" (click)="saveEdit()">
+                  @if (savingEdit()) { Saving... } @else { Save Changes }
+                </button>
+                <button class="cancel-btn" type="button" (click)="cancelEdit()">Cancel</button>
+              </div>
+            </section>
+          }
 
           <!-- Complainant Details -->
           <section class="detail-section">

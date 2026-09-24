@@ -135,10 +135,16 @@ public class RbioCaseFileController {
 
     // ═══════════════════════════ Legal case (UST553) ═══════════════════════════
 
+    // CEPC roles are admitted alongside RBIO ones: a complaint can be sub judice while it still sits
+    // with CEPC, and the officer handling it then needs the court reference visible and recordable.
+    // The guard only matches role strings, so the RBIO-named annotation is reused rather than adding a
+    // second aspect that would have to agree with this one.
     @GetMapping("/{complaintNumber}/legal-case")
     @RbioRoleGuard(roles = {RbioRoles.OFFICER, RbioRoles.SUPERVISOR, RbioRoles.CONCILIATOR,
             RbioRoles.ADJUDICATOR, RbioRoles.ADMIN, RbioRoles.DEALING_OFFICIAL, RbioRoles.REVIEWER,
-            RbioRoles.DEPUTY_OMBUDSMAN, RbioRoles.OMBUDSMAN})
+            RbioRoles.DEPUTY_OMBUDSMAN, RbioRoles.OMBUDSMAN,
+            "CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN",
+            "CEPC_CONTACT_PERSON"})
     public ResponseEntity<Map<String, Object>> getLegalCase(@PathVariable String complaintNumber) {
         Map<String, Object> legalCase = legalCaseService.find(complaintNumber);
         return ResponseEntity.ok(envelope(true,
@@ -146,8 +152,10 @@ public class RbioCaseFileController {
     }
 
     @PostMapping("/{complaintNumber}/legal-case")
+    // CEPC_CONTACT_PERSON is deliberately absent: it reads the case file, it does not write to it.
     @RbioRoleGuard(roles = {RbioRoles.DEALING_OFFICIAL, RbioRoles.REVIEWER, RbioRoles.DEPUTY_OMBUDSMAN,
-            RbioRoles.OMBUDSMAN, RbioRoles.OFFICER, RbioRoles.SUPERVISOR, RbioRoles.ADMIN})
+            RbioRoles.OMBUDSMAN, RbioRoles.OFFICER, RbioRoles.SUPERVISOR, RbioRoles.ADMIN,
+            "CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN"})
     public ResponseEntity<Map<String, Object>> saveLegalCase(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> request) {
@@ -158,8 +166,10 @@ public class RbioCaseFileController {
 
     /** PUT and POST are the same operation; see {@code RbioLegalCaseService.save}. */
     @PutMapping("/{complaintNumber}/legal-case")
+    // CEPC_CONTACT_PERSON is deliberately absent: it reads the case file, it does not write to it.
     @RbioRoleGuard(roles = {RbioRoles.DEALING_OFFICIAL, RbioRoles.REVIEWER, RbioRoles.DEPUTY_OMBUDSMAN,
-            RbioRoles.OMBUDSMAN, RbioRoles.OFFICER, RbioRoles.SUPERVISOR, RbioRoles.ADMIN})
+            RbioRoles.OMBUDSMAN, RbioRoles.OFFICER, RbioRoles.SUPERVISOR, RbioRoles.ADMIN,
+            "CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN"})
     public ResponseEntity<Map<String, Object>> updateLegalCase(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> request) {

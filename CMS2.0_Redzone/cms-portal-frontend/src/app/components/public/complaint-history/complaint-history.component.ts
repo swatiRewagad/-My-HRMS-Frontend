@@ -36,11 +36,19 @@ export class ComplaintHistoryComponent implements OnInit {
   loading = signal(true);
   private entityMap: Record<string, string> = {};
 
-  filters = { complaintId: '', entityName: '', date: '', status: '', comments: '' };
+  // A signal holding the whole filter object, not a plain object: `filteredComplaints` is a
+  // computed() and reading a plain field inside one registers NO dependency, so typing in any of
+  // these five column filters left the list unchanged. Updated immutably via setFilter so the
+  // signal actually notifies -- mutating a property of a signal's value would not.
+  filters = signal({ complaintId: '', entityName: '', date: '', status: '', comments: '' });
+
+  setFilter(field: 'complaintId' | 'entityName' | 'date' | 'status' | 'comments', value: string) {
+    this.filters.update(f => ({ ...f, [field]: value }));
+  }
 
   filteredComplaints = computed(() => {
     return this.complaints().filter(c => {
-      const f = this.filters;
+      const f = this.filters();
       return (!f.complaintId || c.complaintId.toLowerCase().includes(f.complaintId.toLowerCase()))
         && (!f.entityName || c.entityName.toLowerCase().includes(f.entityName.toLowerCase()))
         && (!f.status || c.status.toLowerCase().includes(f.status.toLowerCase()))

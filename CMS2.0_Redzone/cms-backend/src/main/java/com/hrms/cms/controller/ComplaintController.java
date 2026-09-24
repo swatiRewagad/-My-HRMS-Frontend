@@ -4,6 +4,7 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.security.CepcRoleGuard;
 import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.ComplaintService;
@@ -14,8 +15,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -95,10 +98,26 @@ public class ComplaintController {
         return piiMaskingService.maskComplaint(complaintService.fileComplaint(request), true);
     }
 
+    /**
+     * Editing is restricted to the CEPC roles that own the complaint record. CEPC_CONTACT_PERSON is
+     * deliberately absent: a contact person responds to a complaint, they do not amend it.
+     *
+     * <p>Attribution comes from {@link RequestIdentityResolver}, never from the body — the audit row
+     * used to be stamped with the literal string "System" for every edit, so the trail could not say
+     * who changed what.
+     */
     @PutMapping("/{id}")
+    @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN"})
     public Map<String, Object> update(@PathVariable Long id,
-                                      @RequestBody UpdateComplaintRequest request) {
-        return piiMaskingService.maskComplaint(complaintService.updateComplaint(id, request), false);
+                                      @RequestBody UpdateComplaintRequest request,
+                                      HttpServletRequest httpRequest) {
+        RequestIdentity identity = requestIdentityResolver.resolve(httpRequest);
+        if (identity == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied: the editor's identity could not be established");
+        }
+        return piiMaskingService.maskComplaint(
+                complaintService.updateComplaint(id, request, identity), false);
     }
 
     @DeleteMapping("/{id}")

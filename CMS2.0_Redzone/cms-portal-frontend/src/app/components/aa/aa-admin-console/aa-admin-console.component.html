@@ -1,6 +1,5 @@
-<div class="aa-admin-console">
-  <header class="console-header">
-    <h2>{{ heading() | translate }}</h2>
+<app-shell [titleKey]="heading()">
+  <div shell-actions>
     <div class="role-group-tabs">
       @for (group of roleGroups; track group) {
         <button
@@ -11,7 +10,9 @@
           (click)="changeRoleGroup(group)">{{ group }}</button>
       }
     </div>
-  </header>
+  </div>
+
+  <div class="aa-admin-console">
 
   @if (notice()) {
     <div class="notice-banner" data-testid="console-notice">
@@ -162,7 +163,8 @@
       </table>
     }
   </section>
-</div>
+  </div>
+</app-shell>
 
 @if (thresholdTarget()) {
   <div class="modal-overlay" (click)="closeThresholdDialog()">

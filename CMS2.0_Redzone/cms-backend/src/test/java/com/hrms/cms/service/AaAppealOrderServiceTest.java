@@ -42,14 +42,17 @@ import static org.mockito.Mockito.when;
  * that does not exist in AA, and routed the resulting failure into a swallowed catch — so they passed
  * over entirely absent functionality. See e2e/aa/backlog-traceable.spec.ts.
  *
- * <h2>Why both guards default to OFF</h2>
+ * <h2>Both guards are now ARMED by default</h2>
  *
- * <p>The ceiling VALUE and the question of whether the AA may proceed on a sub-judice matter are
- * questions of Scheme law, not engineering. Hardcoding a guess would either block lawful orders or
- * permit unlawful ones. The mechanisms are therefore config-gated and disabled by default, following
- * the existing {@code cms.aa.order.require_ed_approval} precedent, and these tests prove BOTH that the
- * guard fires when armed AND that it is genuinely inert until then — so arming it after legal sign-off
- * is a config change rather than a code change.
+ * <p>Both shipped config-OFF originally, on the grounds that the ceiling figure and the question of
+ * whether the AA may proceed on a sub-judice matter were questions of Scheme law. Both defaults have
+ * since been overruled by the product owner: the ceiling on 2026-09-22 (0 meant no statutory limit was
+ * enforced at all) and the sub-judice guard on 2026-09-23 (false meant an order could issue on a matter
+ * before a court with nothing recording the decision).
+ *
+ * <p>Arming the sub-judice guard cannot refuse a lawful order, because stating a ground always permits
+ * one — it only requires that the reasoning be recorded. Both remain configurable, and these tests prove
+ * the armed default, the override path, AND that setting the flag back restores the old behaviour.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -285,14 +288,50 @@ class AaAppealOrderServiceTest {
             assertThat(issue(null, null)).isNotNull();
         }
 
+        /**
+         * Replaces an earlier test that asserted the guard was inert by default. That behaviour was
+         * overruled by the product owner on 2026-09-23: shipping false meant an order could issue on a
+         * matter before a court with nothing recording that the point was considered.
+         */
         @Test
-        @DisplayName("with the block disabled a sub-judice order still issues — the default is inert")
-        void blockIsInertByDefault() {
-            // Not armed. Documents the CURRENT go-live behaviour honestly: until legal sign-off arms
-            // this, an order CAN be passed on a sub-judice matter.
+        @DisplayName("with nothing configured the guard is ARMED, so a groundless order is refused")
+        void guardIsArmedByDefault() {
+            appeal.setHasRelatedCourtTrial(true);
+
+            assertThatThrownBy(() -> issue(null, null))
+                    .isInstanceOf(AaAppealOrderService.SubJudiceException.class);
+
+            verify(orderRepository, never()).save(any(AppealOrder.class));
+        }
+
+        @Test
+        @DisplayName("setting the flag false restores the previous unenforced behaviour")
+        void blockCanBeDisabledByConfiguration() {
+            when(systemConfigService.getBoolean(
+                    eq(AaAppealOrderService.CFG_BLOCK_SUB_JUDICE), any(Boolean.class)))
+                    .thenReturn(false);
             appeal.setHasRelatedCourtTrial(true);
 
             assertThat(issue(null, null)).isNotNull();
+        }
+
+        /**
+         * The default must come from the constant rather than a literal at the call site. A
+         * {@code getBoolean(KEY, false)} typo would silently disarm the guard in production while every
+         * other test here still passed, because they all stub the lookup.
+         */
+        @Test
+        @DisplayName("the guard reads its default from DEFAULT_BLOCK_SUB_JUDICE, which is true")
+        void defaultIsSourcedFromTheArmedConstant() {
+            appeal.setHasRelatedCourtTrial(true);
+
+            assertThatThrownBy(() -> issue(null, null))
+                    .isInstanceOf(AaAppealOrderService.SubJudiceException.class);
+
+            verify(systemConfigService).getBoolean(
+                    AaAppealOrderService.CFG_BLOCK_SUB_JUDICE,
+                    AaAppealOrderService.DEFAULT_BLOCK_SUB_JUDICE);
+            assertThat(AaAppealOrderService.DEFAULT_BLOCK_SUB_JUDICE).isTrue();
         }
     }
 }

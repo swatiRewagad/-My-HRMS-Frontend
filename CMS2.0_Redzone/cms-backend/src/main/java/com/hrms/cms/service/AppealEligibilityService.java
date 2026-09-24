@@ -2,6 +2,7 @@ package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Appeal;
 import com.hrms.cms.entity.Bank;
+import com.hrms.cms.entity.ClosureClauseMaster;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.SystemConfig;
@@ -32,6 +33,7 @@ public class AppealEligibilityService {
     private final SystemConfigRepository systemConfigRepository;
     private final BankRepository bankRepository;
     private final ComplaintCategoryRepository complaintCategoryRepository;
+    private final AppealClassificationService classificationService;
 
     // "withdrawn" removed — withdrawn complaints are not appealable
     private static final List<String> TERMINAL_STATUSES = List.of(
@@ -46,6 +48,15 @@ public class AppealEligibilityService {
 
     private static final int DEFAULT_FILING_WINDOW_DAYS = 30;
     private static final int DEFAULT_EXTENDED_WINDOW_DAYS = 60;
+
+    /**
+     * The one string a citizen may be shown when the filing window has closed.
+     *
+     * <p>Fixed wording, because it is the refusal a complainant is told at the point they lose a
+     * statutory remedy. The diagnostic detail that used to be concatenated into it still travels, on
+     * {@code reasonDetail} — an operator needs "days elapsed: 90", a citizen does not.
+     */
+    public static final String WINDOW_CLOSED_MESSAGE = "Not eligible for filing appeal.";
 
     /**
      * Check whether the given complaint is eligible for an appeal/representation.
@@ -110,22 +121,48 @@ public class AppealEligibilityService {
             // Tier 3: Ineligible (>60 days)
             result.put("eligible", false);
             result.put("delayedFiling", false);
-            result.put("reason", "Filing deadline exceeded. Appeals must be filed within "
+            result.put("reason", WINDOW_CLOSED_MESSAGE);
+            // The arithmetic stays available for operators and support, just not in the citizen's face.
+            result.put("reasonDetail", "Filing deadline exceeded. Appeals must be filed within "
                     + extendedWindowDays + " days of closure. Days elapsed: " + daysSinceDecision);
+            result.put("filingWindowDays", filingWindowDays);
+            result.put("extendedWindowDays", extendedWindowDays);
             result.put("complaintSummary", buildComplaintSummary(complaint, closureDateTime, daysSinceDecision));
             return result;
         }
 
         boolean delayedFiling = daysSinceDecision > filingWindowDays && daysSinceDecision <= extendedWindowDays;
 
-        // 6. Determine suggested type
+        // 6. Appealability comes from the closure clause, not from a heuristic.
+        //
+        // A complainant may appeal a closure under 15(1)(a) or 15(1)(b) and nothing else; every other
+        // clause is at most a REPRESENTATION. That decision lives in CLOSURE_CLAUSE_MASTER, so this
+        // asks the clause service rather than re-deriving the rule.
+        //
+        // `appealable` is a SEPARATE flag from `eligible` on purpose. Setting eligible=false here would
+        // also block the REPRESENTATION route, which POST /appeals/file gates on eligible==true — a
+        // non-appealable closure would then have no escalation path at all. So the citizen appeal screen
+        // refuses on `appealable`, while the representation route stays open.
+        Appealability appealability = resolveAppealability(complaint);
+
+        result.put("eligible", true);
+        result.put("delayedFiling", delayedFiling);
+        result.put("appealable", appealability.appealable());
+        result.put("closureClause", complaint.getClosureClause());
+        result.put("filingWindowDays", filingWindowDays);
+        result.put("extendedWindowDays", extendedWindowDays);
+        if (!appealability.appealable()) {
+            result.put("appealableReason", appealability.reason());
+        }
+
+        // suggestedType keeps its existing advisoryText heuristic UNCHANGED. It has no basis in the
+        // Scheme — AppealClassificationService says so, and that service is the authority the FILING path
+        // uses — but it is only a display hint on a read, and correcting it is a separate change from
+        // clause-based appealability. `appealable` above is the flag that now gates the appeal route.
         String suggestedType = "APPEAL";
         if (complaint.getAdvisoryText() != null && !complaint.getAdvisoryText().isBlank()) {
             suggestedType = "REPRESENTATION";
         }
-
-        result.put("eligible", true);
-        result.put("delayedFiling", delayedFiling);
         if (delayedFiling) {
             result.put("reason", "Eligible for appeal with reason for delay. Filed " + daysSinceDecision
                     + " days after closure (standard window: " + filingWindowDays + " days).");
@@ -138,6 +175,39 @@ public class AppealEligibilityService {
         result.put("complaintSummary", buildComplaintSummary(complaint, closureDateTime, daysSinceDecision));
 
         return result;
+    }
+
+    /**
+     * Whether this closure is appealable by the complainant, and what the escalation is called.
+     *
+     * <p>Fails OPEN to REPRESENTATION rather than throwing. The filing endpoint itself fails closed on an
+     * unmapped clause (AppealClassificationService), which is the right place for that: refusing to
+     * CLASSIFY is a data problem an AA Admin fixes. But the eligibility CHECK is a read a citizen makes
+     * before filing, and turning it into a 503 would replace a usable refusal with an error page.
+     */
+    private Appealability resolveAppealability(Complaint complaint) {
+        String clause = complaint.getClosureClause();
+        if (clause == null || clause.isBlank()) {
+            return new Appealability(false,
+                    "This complaint was closed without a clause of the Scheme being recorded, so it"
+                            + " cannot be appealed. Please contact the office that closed it.");
+        }
+        try {
+            ClosureClauseMaster master = classificationService.resolveClause(complaint);
+            if (master.isAppealableBy(ClosureClauseMaster.AppealParty.COMPLAINANT)) {
+                return new Appealability(true, null);
+            }
+            return new Appealability(false,
+                    "Complaints closed under clause " + master.getClauseCode()
+                            + " are not appealable. Only closures under 15(1)(a) or 15(1)(b) may be appealed.");
+        } catch (AppealClassificationService.UnmappedClauseException e) {
+            return new Appealability(false,
+                    "Closure clause " + clause + " is not configured in the Clause Master, so"
+                            + " appealability cannot be determined.");
+        }
+    }
+
+    private record Appealability(boolean appealable, String reason) {
     }
 
     /**

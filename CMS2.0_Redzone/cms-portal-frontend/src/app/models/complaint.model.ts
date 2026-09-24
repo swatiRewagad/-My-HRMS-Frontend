@@ -55,6 +55,18 @@ export interface ComplaintStatus {
   currentStage?: number;
   stages?: StageInfo[];
   priority?: string;
+  /**
+   * Whether an appeal has already been filed against this complaint.
+   *
+   * Derived server-side from the complaint's own APPEAL_FILED timeline event, NOT from the APPEALS
+   * table — the appeal record itself is Appellate Authority state behind a role guard, and this
+   * payload is also served to anonymous track-by-reference callers. The complaint's `status` stays
+   * `closed` after an appeal is filed (see AppealWorkflowService), so this flag is the only thing
+   * that tells the tracker an appeal exists.
+   */
+  appealFiled?: boolean;
+  appealNumber?: string | null;
+  appealFiledAt?: string | null;
 }
 
 export interface StatusTransition {

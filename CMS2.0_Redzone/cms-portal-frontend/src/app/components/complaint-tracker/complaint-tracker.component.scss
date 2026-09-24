@@ -126,6 +126,25 @@
   tr:hover td { background: #f9f9f9; }
 }
 
+/* The whole row opens the complaint, so it has to LOOK clickable and show a focus ring — it is
+   role="button" tabindex="0", and an invisible focus indicator would make it unusable by keyboard. */
+.complaint-row {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 3px solid #1565c0;
+    outline-offset: -3px;
+  }
+}
+
+/* A failed list load, distinguished from the neutral "no complaints" message beside it. */
+.empty-load-error {
+  color: #b71c1c;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .view-btn {
   padding: 6px 12px;
   background: #1565c0;
@@ -329,6 +348,30 @@
   &:active {
     transform: scale(0.98);
   }
+}
+
+// UST111: the state shown in place of the File Appeal offer once an appeal exists.
+.appeal-filed-section {
+  padding: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+  text-align: center;
+}
+.appeal-filed-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  i { color: #2e7d32; font-size: 18px; }
+}
+.appeal-filed-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2e7d32;
+}
+.appeal-filed-meta {
+  font-size: 13px;
+  color: #666;
+  margin: 0 0 4px;
 }
 
 // FR-G-026: Feedback

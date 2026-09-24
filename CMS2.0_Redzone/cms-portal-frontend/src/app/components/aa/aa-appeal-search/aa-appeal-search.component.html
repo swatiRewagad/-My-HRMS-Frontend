@@ -1,5 +1,5 @@
-<div class="aa-appeal-search">
-  <h2>{{ 'aa.search.heading' | translate }}</h2>
+<app-shell [titleKey]="'aa.search.heading'">
+  <div class="aa-appeal-search">
 
   <form class="search-filters" data-testid="aa-search-form" (ngSubmit)="search()">
     <div class="filter-grid">
@@ -161,4 +161,5 @@
       </tbody>
     </table>
   }
-</div>
+  </div>
+</app-shell>

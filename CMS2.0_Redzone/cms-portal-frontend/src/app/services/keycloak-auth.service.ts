@@ -9,7 +9,7 @@ export interface StaffUser {
   lastName: string;
   email: string;
   roles: string[];
-  department: 'RBIO' | 'CEPC' | 'CRPC' | 'ADMIN' | 'UNKNOWN';
+  department: 'RBIO' | 'CEPC' | 'CRPC' | 'AA' | 'RE' | 'ADMIN' | 'UNKNOWN';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -217,6 +217,8 @@ export class KeycloakAuthService {
     if (roles.some(r => r.startsWith('RBIO_'))) return 'RBIO';
     if (roles.some(r => r.startsWith('CEPC_'))) return 'CEPC';
     if (roles.some(r => r.startsWith('CRPC_') || r === 'DEO' || r === 'REVIEWER')) return 'CRPC';
+    if (roles.some(r => r.startsWith('AA_'))) return 'AA';
+    if (roles.some(r => r.startsWith('RE_'))) return 'RE';
     if (roles.includes('ADMIN')) return 'ADMIN';
     return 'UNKNOWN';
   }

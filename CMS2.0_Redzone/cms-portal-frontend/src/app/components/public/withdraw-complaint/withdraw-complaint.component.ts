@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 @Component({
   selector: 'app-withdraw-complaint',
@@ -18,6 +19,8 @@ export class WithdrawComplaintComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private complaintService = inject(ComplaintService);
+  // Public: the templates render the configured limit in their upload hints.
+  uploadLimits = inject(UploadLimitsService);
 
   // FR-G-027: Withdraw complaint
   phase = signal<'search' | 'confirm' | 'success'>('search');
@@ -98,8 +101,10 @@ export class WithdrawComplaintComponent implements OnInit {
     this.fileUploadError = '';
     for (let i = 0; i < input.files.length; i++) {
       const file = input.files[i];
-      if (file.size > 2 * 1024 * 1024) {
-        this.fileUploadError = 'File size exceeds limit (2MB).';
+      // Configured limit (cms.upload.max_file_size). The hardcoded 2 MB rejected files the server
+      // accepts, and hardcoding 5 would drift the next time the limit is retuned.
+      if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+        this.fileUploadError = `File size exceeds limit (${this.uploadLimits.maxFileSizeMb()}MB).`;
         continue;
       }
       if (![
@@ -123,8 +128,10 @@ export class WithdrawComplaintComponent implements OnInit {
     this.fileUploadError = '';
     for (let i = 0; i < event.dataTransfer.files.length; i++) {
       const file = event.dataTransfer.files[i];
-      if (file.size > 2 * 1024 * 1024) {
-        this.fileUploadError = 'File size exceeds limit (2MB).';
+      // Configured limit (cms.upload.max_file_size). The hardcoded 2 MB rejected files the server
+      // accepts, and hardcoding 5 would drift the next time the limit is retuned.
+      if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+        this.fileUploadError = `File size exceeds limit (${this.uploadLimits.maxFileSizeMb()}MB).`;
         continue;
       }
       if (![

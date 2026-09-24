@@ -80,7 +80,8 @@ cms:
     azure-api-key: ""
   attachments:
     root-path: ./cms-attachments
-    # NFR-006 limits must match production, or a file that passes locally fails in SIT.
+    # These limits must match production, or a file that passes locally fails in SIT. They are only the
+    # FALLBACK for a database with no SYSTEM_CONFIG row; enforcement reads UploadLimitsService.
     max-file-size: 2097152
     max-total-size: 26214400
     chunk-size: 5242880

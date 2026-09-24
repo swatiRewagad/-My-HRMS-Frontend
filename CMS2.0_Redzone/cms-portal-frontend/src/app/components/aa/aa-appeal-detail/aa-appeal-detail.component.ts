@@ -8,6 +8,7 @@ import { environment } from '../../../../environments/environment';
 import { AaHearingComponent } from '../aa-hearing/aa-hearing.component';
 import { AaOrderComponent } from '../aa-order/aa-order.component';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 type AaRole = 'AA_DO' | 'AA_REVIEWER' | 'AA_SECRETARIAT' | 'AA_ADMIN';
@@ -47,7 +48,7 @@ interface TimelineEntry {
 @Component({
   selector: 'app-aa-appeal-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe],
   templateUrl: './aa-appeal-detail.component.html',
   styleUrl: './aa-appeal-detail.component.scss'
 })

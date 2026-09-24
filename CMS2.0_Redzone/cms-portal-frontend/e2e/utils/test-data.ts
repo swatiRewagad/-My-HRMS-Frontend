@@ -1250,6 +1250,97 @@ export function readImpleadedParties(
 }
 
 /**
+ * Moves a closed complaint's decision date into the past, so the appeal filing window can be tested.
+ *
+ * ── Why SQL, and why a helper at all ────────────────────────────────────────────────────────────
+ * The appeal window is `ChronoUnit.DAYS.between(closureDateTime.toLocalDate(), LocalDate.now())`
+ * (AppealEligibilityService), where closureDateTime is closed_at ?: resolved_at ?: updated_at. No
+ * workflow action accepts a closure DATE — CLOSE_COMPLAINT stamps `now()` — so there is no API through
+ * which a 61-day-old closure can be created, and the boundary cases (30 / 60 / 61) are the entire
+ * requirement.
+ *
+ * Two specs previously tried to express this as
+ * `advanceToStatus(request, n, 'closed', { backdateDays: 45 })`. The 4th positional parameter of
+ * advanceToStatus is `token`, so that object was sent as a bearer token, silently ignored, and the
+ * complaint stayed 0 days old — both "31-60 day" and ">60 day" tests were asserting against a
+ * same-day closure. That is a HARNESS defect, not a product one.
+ *
+ * Both columns are written because a complaint that reached `closed` through the CEPC path has
+ * resolved_at set too, and leaving it at today would make the fallback disagree with closed_at.
+ */
+export function backdateComplaintClosure(complaintNumber: string, days: number): void {
+  if (!/^[A-Za-z0-9-]+$/.test(complaintNumber)) {
+    throw new Error(`Refusing to use an unexpected complaint number in SQL: ${complaintNumber}`);
+  }
+  if (!Number.isInteger(days) || days < 0 || days > 3650) {
+    throw new Error(`Refusing an implausible backdate: ${days}`);
+  }
+
+  const sql =
+    `UPDATE COMPLAINTS SET closed_at = DATE_SUB(NOW(), INTERVAL ${days} DAY), ` +
+    `resolved_at = DATE_SUB(NOW(), INTERVAL ${days} DAY) ` +
+    `WHERE complaint_number = '${complaintNumber}';`;
+  execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+}
+
+/**
+ * Reads the staff bell rows an appeal has raised, oldest first.
+ *
+ * <p>SQL, for the reason {@link rbioReadComplaintColumns} gives: the defect being guarded against is a
+ * filing that reports success while notifying nobody. POST /appeals/file answered 201 with an appeal
+ * number whether or not the Designated Officer was told, and GET /api/v1/notifications is scoped to the
+ * CALLER — a citizen filing the appeal cannot read the officer's inbox, so no API visible to this test
+ * can prove the notification exists.
+ *
+ * <p>`title` holds the translation KEY (NotificationService.send passes event.officerKey() as the
+ * title), which is what makes `aa.notify.officer.appeal_filed` assertable without a locale lookup.
+ */
+export function readAppealNotifications(
+  appealNumber: string
+): Array<{ targetUserId: string; type: string; title: string }> {
+  if (!/^[A-Za-z0-9-]+$/.test(appealNumber)) {
+    throw new Error(`Refusing to use an unexpected appeal number in SQL: ${appealNumber}`);
+  }
+
+  const sql =
+    `SELECT target_user_id, type, title FROM in_app_notifications ` +
+    `WHERE related_entity_id = '${appealNumber}' ORDER BY id ASC;`;
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  return out
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const [targetUserId, type, title] = line.split('\t');
+      return { targetUserId, type, title };
+    });
+}
+
+/** Reads one SYSTEM_CONFIG value, or '' when the row is absent. Used to restore what a test changed. */
+export function readSystemConfig(key: string): string {
+  if (!/^[A-Za-z0-9._]+$/.test(key)) {
+    throw new Error(`Refusing to use an unexpected config key in SQL: ${key}`);
+  }
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e',
+      `SELECT config_value FROM SYSTEM_CONFIG WHERE config_key = '${key}';`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+  const value = out.trim();
+  return value === 'NULL' ? '' : value;
+}
+
+/**
  * Flips a SYSTEM_CONFIG row and waits out SystemConfigService's 30-second TTL (S4).
  *
  * <p>The wait is the point. SystemConfigService caches values in a short-TTL local map, so a test that
@@ -1279,4 +1370,220 @@ export async function setSystemConfig(key: string, value: string): Promise<void>
 
   // 35s, not 30: the TTL is measured from the last read, so the boundary itself is not safe to race.
   await new Promise((resolve) => setTimeout(resolve, 35_000));
+}
+
+/**
+ * Deletes a SYSTEM_CONFIG row outright, restoring the ABSENCE of an override.
+ *
+ * <p>Distinct from `setSystemConfig(key, '')` on purpose. SystemConfigService.getInt falls back to the
+ * caller's default when the row is missing OR unparseable, but an empty-string row is a row: it is
+ * returned by every `readSystemConfig`, it shows up in the admin UI as a configured-but-blank value, and
+ * a later reader that does not parse to int would see '' rather than nothing. A test that narrowed a
+ * window must put the environment back exactly as it found it, which for a key that had no row means
+ * having no row.
+ *
+ * <p>No TTL wait: the caller is in teardown and the next reader is a different suite, which will be at
+ * least 30s away. Add one explicitly if a test asserts the restored behaviour within the same run.
+ */
+export function clearSystemConfig(key: string): void {
+  if (!/^[A-Za-z0-9._]+$/.test(key)) {
+    throw new Error(`Refusing to use an unexpected config key in SQL: ${key}`);
+  }
+  execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e',
+      `DELETE FROM SYSTEM_CONFIG WHERE config_key = '${key}';`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+}
+
+/**
+ * Fetches a MATH captcha and solves it, returning the token to post back with the answer.
+ *
+ * ── Why MATH and not VISUAL ─────────────────────────────────────────────────────────────────────
+ * CaptchaService.generateVisualCaptcha deliberately returns `audioQuestion = null` — the answer is only
+ * legible from the rendered PNG, precisely so a script cannot read it off the response. MATH is the
+ * accessible challenge, and its question ("What is 7 plus 12?") is plain text by design. So MATH is the
+ * only variant an automated test can complete WITHOUT weakening the product, and any citizen-auth spec
+ * that needs a captcha has to ask for `type=MATH`.
+ *
+ * <p>The answer is computed from the question rather than read from a fixture: the operands are
+ * SecureRandom per call and the operator is either plus or minus (always max-minus-min, so the answer is
+ * never negative). Hardcoding a pair would make the test pass only when the RNG cooperated.
+ *
+ * <p>Throws rather than returning a sentinel on an unparseable question — a spec that silently posted a
+ * wrong answer would fail later as "captcha invalid", which reads as a product defect.
+ */
+export async function solveMathCaptcha(
+  request: APIRequestContext
+): Promise<{ token: string; answer: number }> {
+  const res = await request.get(`${API_BASE}/api/v1/citizen/auth/captcha?type=MATH`);
+  if (!res.ok()) {
+    throw new Error(`MATH captcha request failed with ${res.status()}: ${await res.text()}`);
+  }
+  const body = await res.json();
+  const question: string = body.audioQuestion || '';
+  const match = /(\d+)\s*(plus|minus)\s*(\d+)/i.exec(question);
+  if (!match) {
+    throw new Error(`Could not parse the MATH captcha question: "${question}"`);
+  }
+  const left = Number(match[1]);
+  const right = Number(match[3]);
+  const answer = match[2].toLowerCase() === 'plus' ? left + right : left - right;
+  return { token: body.token, answer };
+}
+
+/**
+ * Reads the OTP rows issued to one mobile, newest first.
+ *
+ * ── Why SQL ─────────────────────────────────────────────────────────────────────────────────────
+ * There is no endpoint that lists a mobile's OTPs, and there must never be one. The code itself is
+ * stored only as a SHA-256 hash, and under any profile but dev-local OtpExposureGuard strips it from the
+ * response — so the LIFECYCLE questions ("did Resend issue a genuinely new code?", "did the old one stop
+ * being live?") are not answerable from any API surface at all. They are answerable from these rows, and
+ * only from these rows.
+ *
+ * <p>`used` is a MySQL `bit(1)`, which the CLI prints as a raw control byte. `used+0` coerces it to the
+ * text '0' or '1', which is what callers compare against. `otp_hash` is returned so a test can prove two
+ * codes DIFFER without ever learning either — comparing hashes is enough to distinguish "a new OTP was
+ * generated" from "the same OTP was re-sent", and it leaks nothing a log would not.
+ */
+export function otpAttemptsFor(
+  mobile: string
+): Array<{ id: string; otpHash: string; used: string; attemptCount: string; createdAt: string; expiresAt: string }> {
+  if (!/^\d{10}$/.test(mobile)) {
+    throw new Error(`Refusing to use an unexpected mobile number in SQL: ${mobile}`);
+  }
+
+  const sql =
+    `SELECT id, otp_hash, used+0, attempt_count, created_at, expires_at FROM otp_attempts ` +
+    `WHERE mobile_number = '${mobile}' ORDER BY id DESC;`;
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  return out
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const [id, otpHash, used, attemptCount, createdAt, expiresAt] = line.split('\t');
+      return { id, otpHash, used, attemptCount, createdAt, expiresAt };
+    });
+}
+
+/**
+ * Ages the newest OTP issued to a mobile by `seconds`, moving BOTH of its timestamps into the past.
+ *
+ * ── Why SQL, and why both columns ───────────────────────────────────────────────────────────────
+ * Two windows govern the OTP flow and each reads exactly one of these columns:
+ *
+ *   EXPIRY   — verifyOtp selects `used = false AND expires_at > now()`.
+ *   COOLDOWN — resendCooldownRemaining is `cooldown - secondsBetween(created_at, now())`, and
+ *              hasRecentOtpRequest tests created_at against a floor. created_at is the ONLY input
+ *              either function has.
+ *
+ * Shifting both by the same interval makes the row exactly `seconds` old as far as every line of
+ * shipping code is concerned, while preserving the validity span the server actually granted — so a code
+ * aged past its own expiry is expired, and one aged to just inside it is still live. Moving only
+ * expires_at would produce a row that no configuration could ever have created (issued now, expiring in
+ * the past), and the test would be asserting against a state the product cannot reach.
+ *
+ * <p>This is what replaces WAITING. The alternative for the 5-minute and 2-minute cases is a test that
+ * sleeps for minutes and still races the boundary it is trying to assert; driving the clock instead makes
+ * both sides of a boundary exact and the suite fast. No API accepts an OTP issue-time, so SQL is the only
+ * way in.
+ *
+ * <p>Newest row only (`ORDER BY id DESC LIMIT 1`): a mobile accumulates rows, and a test that regenerated
+ * a code means the LATEST one, not all of its history.
+ */
+export function backdateOtpAttempt(mobile: string, seconds: number): void {
+  if (!/^\d{10}$/.test(mobile)) {
+    throw new Error(`Refusing to use an unexpected mobile number in SQL: ${mobile}`);
+  }
+  if (!Number.isInteger(seconds) || seconds < 0 || seconds > 86_400) {
+    throw new Error(`Refusing an implausible OTP backdate: ${seconds}`);
+  }
+
+  // MySQL refuses a LIMIT on a plain multi-table-safe UPDATE ... ORDER BY across a subquery on the same
+  // table, so the target id is resolved first and then updated by primary key.
+  const idOut = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e',
+      `SELECT id FROM otp_attempts WHERE mobile_number = '${mobile}' ORDER BY id DESC LIMIT 1;`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+  const id = idOut.trim();
+  if (!/^\d+$/.test(id)) {
+    throw new Error(`No OTP row to backdate for ${mobile} — was an OTP actually requested?`);
+  }
+
+  const sql =
+    `UPDATE otp_attempts SET created_at = DATE_SUB(created_at, INTERVAL ${seconds} SECOND), ` +
+    `expires_at = DATE_SUB(expires_at, INTERVAL ${seconds} SECOND) WHERE id = ${id};`;
+  execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+}
+
+/**
+ * Removes every OTP row for a mobile.
+ *
+ * <p>Teardown, and it matters more here than for most fixtures: OTP state is keyed on the MOBILE NUMBER,
+ * not on a per-test id, so leftover rows change the outcome of the next run. The per-mobile hourly limit
+ * counts rows in the last hour (a suite re-run inside the hour would hit the limit and report a product
+ * defect that is not there), the resend cooldown is measured from the newest row, and hasRecentOtpRequest
+ * would let a resend through that should have been refused. Also removes rows another session's stray
+ * test left on the same number.
+ */
+export function deleteOtpAttempts(mobile: string): void {
+  if (!/^\d{10}$/.test(mobile)) {
+    throw new Error(`Refusing to use an unexpected mobile number in SQL: ${mobile}`);
+  }
+  execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e',
+      `DELETE FROM otp_attempts WHERE mobile_number = '${mobile}';`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+}
+
+/**
+ * Appeal rows that exist against one complaint, oldest first.
+ *
+ * <p>SQL, for the same reason as {@link readAppealNotifications}: the assertions that need this are
+ * "the appeal was NOT created" and "a second appeal was NOT created", and no API reachable by a
+ * citizen can prove a NEGATIVE about the APPEALS table. GET /api/v1/appeals/* is Appellate Authority
+ * state behind {@code @AaRoleGuard}, and the refusal being tested is delivered as an HTTP status —
+ * a test that trusted the status alone would still pass if the row were written and the response
+ * merely said otherwise, which is precisely the silent-persistence class of defect in this codebase.
+ */
+export function readAppealsForComplaint(
+  complaintNumber: string
+): Array<{ appealNumber: string; status: string; appealGround: string }> {
+  if (!/^[A-Za-z0-9-]+$/.test(complaintNumber)) {
+    throw new Error(`Refusing to use an unexpected complaint number in SQL: ${complaintNumber}`);
+  }
+
+  const sql =
+    `SELECT appeal_number, status, COALESCE(appeal_ground, '') FROM APPEALS ` +
+    `WHERE original_complaint_number = '${complaintNumber}' ORDER BY id ASC;`;
+  const out = execFileSync(
+    process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe',
+    ['--default-character-set=utf8mb4', '-u', 'cms_user', '-pcms_pass', 'cms_db', '-N', '-B', '-e', sql],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  );
+
+  return out
+    .trim()
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const [appealNumber, status, appealGround] = line.split('\t');
+      return { appealNumber, status, appealGround };
+    });
 }

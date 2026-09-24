@@ -1,6 +1,12 @@
 <div class="tracker-container">
-  <h2>Track Your Complaint</h2>
-  <p class="subtitle">Enter your complaint reference number or verify via mobile number to check the current status.</p>
+  <!--
+    h1, not h2. This page is indexable and had NO h1 at all, so a crawler had nothing identifying its
+    subject — on the one public page people reach by searching "track RBI complaint". Reusing the
+    seo.track_* keys rather than adding new ones keeps the heading and the <title> in step, and replaces
+    hardcoded English on an eleven-locale page.
+  -->
+  <h1>{{ 'seo.track_title' | translate }}</h1>
+  <p class="subtitle">{{ 'seo.track_description' | translate }}</p>
 
   <!-- UST98: Mode switcher -->
   <div class="track-mode-tabs">
@@ -107,18 +113,24 @@
           </select>
         </div>
 
-        @if (mobileComplaints().length > 0) {
+        <!--
+          Rendered as soon as a fetch has ANSWERED, not only when it returned rows. This was
+          `@if (mobileComplaints().length > 0)`, so the one state the table's own `emptymessage` template
+          exists to describe — no complaints — was the one state in which the table did not exist. The
+          citizen instead saw a red error banner and no table, and "No complaints found." was unreachable
+          dead markup.
+        -->
+        @if (listLoaded() || mobileComplaints().length > 0) {
           <p-table
             [value]="mobileComplaints()"
             [paginator]="true"
             [rows]="pageSize()"
             [totalRecords]="totalRecords()"
             [lazy]="true"
-            (onLazyLoad)="onTablePage($event)"
+            (onLazyLoad)="onTableLazyLoad($event)"
             [rowsPerPageOptions]="[10, 20, 50]"
             [sortField]="'createdAtFormatted'"
             [sortOrder]="-1"
-            (onSort)="onTableSort($event)"
             [tableStyle]="{'min-width': '60rem'}"
             role="table"
             styleClass="p-datatable-sm p-datatable-striped"
@@ -136,7 +148,21 @@
               </tr>
             </ng-template>
             <ng-template pTemplate="body" let-c>
-              <tr>
+              <!--
+                The whole ROW opens the complaint, not only the View button. FR-G-031 S2 is "when they
+                click on a row", and a citizen who clicks the complaint number reasonably expects the
+                complaint. The View button is kept (and stops propagation) so the affordance stays
+                obvious and keyboard/AT users have a real focusable control; the row carries
+                role="button" and a keyboard handler for the same reason, because a click handler on a
+                <tr> alone is not reachable without a mouse.
+              -->
+              <tr class="complaint-row"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-label]="'Open complaint ' + (c.complaintNumber || c.complaintId)"
+                  (click)="selectMobileComplaint(c)"
+                  (keydown.enter)="selectMobileComplaint(c)"
+                  (keydown.space)="selectMobileComplaint(c)">
                 <td>{{ c.complaintNumber || c.complaintId }}</td>
                 <td>{{ c.createdAtFormatted || formatDate(c.createdAt) || formatDate(c.complaintDate) || '--' }}</td>
                 <td>{{ c.categoryName || '--' }}</td>
@@ -147,7 +173,8 @@
                 <td>{{ c.closureClause || '--' }}</td>
                 <td>{{ c.closedAtFormatted || formatDate(c.closedAt) || '--' }}</td>
                 <td>
-                  <button class="view-btn" (click)="selectMobileComplaint(c)">
+                  <!-- stopPropagation, or the row handler would fire a second time for one click. -->
+                  <button class="view-btn" (click)="$event.stopPropagation(); selectMobileComplaint(c)">
                     <i class="pi pi-eye"></i> View
                   </button>
                 </td>
@@ -155,7 +182,22 @@
             </ng-template>
             <ng-template pTemplate="emptymessage">
               <tr>
-                <td colspan="8" class="text-center">No complaints found.</td>
+                <!--
+                  A FAILED fetch must not read as "you have no complaints". Previously both outcomes set
+                  the same error() signal, so a 500 and an empty account were the same screen. The message
+                  is also translated now rather than hardcoded English: this page serves eleven locales,
+                  and `history.no_complaints` already carries all ten non-en translations.
+                -->
+                <td colspan="8" class="text-center">
+                  @if (listLoadFailed()) {
+                    <span class="empty-load-error">
+                      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+                      {{ 'ui.common.load_failed' | translate }}
+                    </span>
+                  } @else {
+                    {{ 'history.no_complaints' | translate }}
+                  }
+                </td>
               </tr>
             </ng-template>
           </p-table>
@@ -250,7 +292,7 @@
               <div class="timeline-entry">
                 <div class="timeline-dot"></div>
                 <div class="timeline-content">
-                  <span class="timeline-action">{{ entry.action }}</span>
+                  <span class="timeline-action">{{ getTimelineActionLabel(entry.action) }}</span>
                   <span class="timeline-status">{{ entry.fromStatus }} → {{ entry.toStatus }}</span>
                   <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, hh:mm a' }}</span>
                 </div>
@@ -314,12 +356,33 @@
         </button>
       </div>
 
-      <!-- UST111: File Appeal — visible for closed/resolved/rejected complaints -->
-      @if (isAppealEligibleStatus(s.status)) {
+      <!--
+        UST111: File Appeal — offered for closed/resolved/rejected complaints that have NOT already
+        been appealed. The `!s.appealFiled` half is new: filing an appeal leaves the complaint's
+        status `closed` on purpose, so the status test alone kept offering the button forever and the
+        citizen was walked to /public/appeal only to be refused there. Once an appeal exists the
+        offer is replaced by a statement of the appeal that exists.
+      -->
+      @if (canFileAppeal(s)) {
         <div class="appeal-section">
           <button class="btn-secondary" (click)="fileAppeal()">
             <i class="pi pi-replay"></i> File Appeal / Representation
           </button>
+        </div>
+      } @else if (s.appealFiled) {
+        <div class="appeal-filed-section">
+          <p class="appeal-filed-state">
+            <i class="pi pi-check-circle" aria-hidden="true"></i>
+            <span class="appeal-filed-label">Appeal Filed</span>
+          </p>
+          @if (s.appealNumber) {
+            <p class="appeal-filed-meta">
+              Appeal reference <strong>{{ s.appealNumber }}</strong>@if (s.appealFiledAt) {, filed on {{ s.appealFiledAt | date:'dd MMM yyyy' }}}.
+            </p>
+          }
+          <p class="appeal-filed-meta">
+            Your appeal is with the Appellate Authority. No further appeal can be filed against this complaint.
+          </p>
         </div>
       }
 

@@ -8,6 +8,7 @@ import { environment } from '../../../../environments/environment';
 import { QueryThreadComponent } from '../../shared/query-thread/query-thread.component';
 import { InternalNotesComponent } from '../../shared/internal-notes/internal-notes.component';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 interface ComplaintDetail {
   complaintNumber: string;
@@ -44,6 +45,8 @@ interface TimelineEntry {
 })
 export class ReComplaintDetailComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  // Public: the template renders the configured limit in its upload hint.
+  uploadLimits = inject(UploadLimitsService);
   private router = inject(Router);
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);

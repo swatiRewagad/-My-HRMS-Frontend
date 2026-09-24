@@ -1,4 +1,5 @@
-import { Injectable, signal, computed, inject, ApplicationRef } from '@angular/core';
+import { Injectable, signal, computed, inject, ApplicationRef, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
@@ -18,6 +19,12 @@ export class TranslationService {
 
   private http = inject(HttpClient);
   private appRef = inject(ApplicationRef);
+  /**
+   * localStorage and document do not exist during prerendering, and touching either throws before the
+   * page can be rendered at all. Guarding on the platform lets the same service run in both places:
+   * the prerendered HTML carries the default locale, and the browser corrects it on hydration.
+   */
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private translations = signal<Record<string, string>>({});
   private _currentLocale = signal<string>(this.getStoredLocale());
@@ -46,7 +53,11 @@ export class TranslationService {
     let value = this.translations()[key] || key;
     if (params) {
       Object.entries(params).forEach(([k, v]) => {
-        value = value.replace(`{{${k}}}`, v);
+        // Global, not String.replace with a string pattern: that substitutes only the FIRST
+        // occurrence, and the RE-window prose names the window twice ("not yet been given {{days}}
+        // days ... wait until {{days}} days have elapsed"), so a raw second placeholder reached the
+        // citizen. The key is escaped because it is interpolated into a regex.
+        value = value.replace(new RegExp(`\\{\\{${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`, 'g'), v);
       });
     }
     return value;
@@ -54,7 +65,7 @@ export class TranslationService {
 
   async setLocale(locale: string): Promise<void> {
     if (locale === this._currentLocale() && locale === this._loadedLocale) return;
-    localStorage.setItem(STORAGE_KEY, locale);
+    if (this.isBrowser) localStorage.setItem(STORAGE_KEY, locale);
     this._currentLocale.set(locale);
     await this.loadTranslations(locale);
     this.applyDirection();
@@ -108,10 +119,12 @@ export class TranslationService {
   }
 
   private getStoredLocale(): string {
+    if (!this.isBrowser) return DEFAULT_LOCALE;
     return localStorage.getItem(STORAGE_KEY) || DEFAULT_LOCALE;
   }
 
   private applyDirection(): void {
+    if (!this.isBrowser) return;
     const dir = this.isRtl() ? 'rtl' : 'ltr';
     document.documentElement.setAttribute('dir', dir);
     document.documentElement.setAttribute('lang', this._currentLocale());

@@ -1,6 +1,7 @@
 package com.hrms.cms.service;
 
 import com.hrms.cms.config.FileStorageConfig;
+import com.hrms.cms.repository.SystemConfigRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -10,14 +11,20 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DisplayName("FileUploadValidator (UST16/20/23)")
 class FileUploadValidatorTest {
 
     private FileUploadValidator validator;
+    /** The configured ceiling, so the oversized-file test cannot drift away from it. */
+    private long maxFileSize;
 
     private static final byte[] PDF_BYTES = "%PDF-1.7\nstub".getBytes();
     private static final byte[] PNG_BYTES = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0};
@@ -26,9 +33,21 @@ class FileUploadValidatorTest {
     @BeforeEach
     void setup() {
         FileStorageConfig config = new FileStorageConfig();
-        config.setMaxFileSize(2 * 1024 * 1024);
         config.setAllowedTypes("pdf,png,jpg,jpeg,doc,docx,txt");
-        validator = new FileUploadValidator(config);
+
+        // The SIZE limit no longer comes from FileStorageConfig. It is a SYSTEM_CONFIG row read through
+        // UploadLimitsService, because FileStorageConfig is an application.yml startup snapshot and
+        // /api/files/upload was therefore ignoring the configured limit entirely. Taking the size from
+        // `config` here would assert against a figure the validator does not consult.
+        //
+        // An empty repository is used rather than a mock so the service returns its own documented
+        // fallbacks: the fixture then tracks whatever the product default is, and no literal appears.
+        SystemConfigRepository emptyConfig = mock(SystemConfigRepository.class);
+        when(emptyConfig.findByConfigKey(anyString())).thenReturn(Optional.empty());
+        UploadLimitsService uploadLimits = new UploadLimitsService(new SystemConfigService(emptyConfig));
+
+        maxFileSize = uploadLimits.maxFileSizeBytes();
+        validator = new FileUploadValidator(config, uploadLimits);
     }
 
     @Nested
@@ -82,7 +101,10 @@ class FileUploadValidatorTest {
         @Test
         @DisplayName("should reject a file over the configured size")
         void shouldRejectOversizedFile() {
-            byte[] big = new byte[3 * 1024 * 1024];
+            // Derived from the configured ceiling, not a literal. A fixed 3 MB stopped being oversized
+            // the moment the limit rose from 2 MB to 5 MB, which is how this test came to pass only
+            // because the fixture was stale.
+            byte[] big = new byte[(int) maxFileSize + 1];
             System.arraycopy(PDF_BYTES, 0, big, 0, PDF_BYTES.length);
             var file = new MockMultipartFile("file", "big.pdf", "application/pdf", big);
 

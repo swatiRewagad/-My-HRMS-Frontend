@@ -130,15 +130,23 @@ test.describe('Shell localisation', () => {
     const message = bundle['ui.upload.error_file_too_large'];
 
     expect(message).toContain('{{size}}');
-    // A baked digit is the defect: the hint said 5MB while enforcement was 2MB because the text
-    // carried its own number and could not track configuration.
+    // A baked digit is the defect: the hint quoted one figure while enforcement used another, because
+    // the text carried its own number and could not track configuration.
     expect(message, 'the limit must be interpolated, never literal').not.toMatch(/\d+\s*MB/i);
   });
 
-  test('the served limit and the citizen-facing hint agree', async ({ request }) => {
+  /**
+   * NO PARTICULAR SIZE IS ASSERTED. Configuration is authoritative and the figure is expected to move,
+   * so pinning a digit here would make this spec fail on a legitimate retune while saying nothing about
+   * the property that matters: that the MB figure shown to a citizen is the byte figure enforced.
+   */
+  test('the served limit is internally coherent and below the servlet cap', async ({ request }) => {
     const limits = await (await request.get(`${API_BASE}/api/v1/config/upload-limits`)).json();
-    expect(limits.maxFileSizeMb).toBe(5);
-    expect(limits.maxTotalSizeMb).toBe(25);
+
+    expect(limits.maxFileSizeMb).toBe(Math.floor(limits.maxFileSizeBytes / (1024 * 1024)));
+    expect(limits.maxTotalSizeMb).toBe(Math.floor(limits.maxTotalSizeBytes / (1024 * 1024)));
+    expect(limits.maxFileSizeBytes).toBeLessThanOrEqual(limits.maxTotalSizeBytes);
+    expect(limits.maxFileCount).toBeGreaterThan(0);
     // 50MB is Spring's servlet cap and must remain strictly above the product rule, or a rejection
     // surfaces as a container error instead of a translated message.
     expect(limits.maxFileSizeBytes).toBeLessThan(50 * 1024 * 1024);

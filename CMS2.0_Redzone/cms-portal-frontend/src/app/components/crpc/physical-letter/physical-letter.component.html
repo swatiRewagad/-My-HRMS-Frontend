@@ -141,7 +141,7 @@
                 </div>
                 <div class="upload-meta">
                   <span>Support formats: PDF, WORD, JPEG</span>
-                  <span>Maximum size: 5MB</span>
+                  <span>Maximum size: {{ uploadLimits.maxFileSizeMb() }}MB</span>
                 </div>
                 @if (scanError) { <p class="error-text">{{ scanError }}</p> }
               </div>

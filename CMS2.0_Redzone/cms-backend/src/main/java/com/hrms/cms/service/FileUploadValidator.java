@@ -26,6 +26,19 @@ public class FileUploadValidator {
 
     private final FileStorageConfig config;
 
+    /**
+     * Sizes and counts come from here, not from {@link FileStorageConfig}.
+     *
+     * <p>The yml-backed config is a startup snapshot, so this validator — which guards
+     * {@code /api/files/upload}, the path every citizen attachment takes — enforced a limit an
+     * administrator could not change, while the browser was already being shown the live SYSTEM_CONFIG
+     * value from {@code /api/v1/config/upload-limits}. The two disagreeing is the defect
+     * {@link UploadLimitsService} exists to remove; this class was simply never wired into it.
+     *
+     * <p>Extension and filename rules stay on FileStorageConfig: those are not runtime-tunable.
+     */
+    private final UploadLimitsService uploadLimits;
+
     /** Longest signature below is 8 bytes; read a little more so future signatures fit. */
     private static final int SIGNATURE_BYTES = 16;
 
@@ -68,9 +81,10 @@ public class FileUploadValidator {
             throw new InvalidUploadException("File is empty");
         }
         validateName(file.getOriginalFilename());
-        if (file.getSize() > config.getMaxFileSize()) {
+        long maxFileSize = uploadLimits.maxFileSizeBytes();
+        if (file.getSize() > maxFileSize) {
             throw new InvalidUploadException(
-                    "File exceeds maximum size of " + (config.getMaxFileSize() / 1048576) + "MB");
+                    "File exceeds maximum size of " + (maxFileSize / 1048576) + "MB");
         }
         validateSignature(file, extensionOf(file.getOriginalFilename()));
     }
@@ -92,20 +106,22 @@ public class FileUploadValidator {
             return;
         }
 
+        int maxFileCount = uploadLimits.maxFileCount();
         long incomingCount = files.stream().filter(f -> f != null && !f.isEmpty()).count();
-        if (existingCount + incomingCount > config.getMaxFilesPerComplaint()) {
+        if (existingCount + incomingCount > maxFileCount) {
             throw new InvalidUploadException(
-                    "A maximum of " + config.getMaxFilesPerComplaint() + " files may be attached");
+                    "A maximum of " + maxFileCount + " files may be attached");
         }
 
+        long maxTotalSize = uploadLimits.maxTotalSizeBytes();
         long incomingBytes = files.stream()
                 .filter(f -> f != null && !f.isEmpty())
                 .mapToLong(MultipartFile::getSize)
                 .sum();
-        if (existingBytes + incomingBytes > config.getMaxTotalSize()) {
+        if (existingBytes + incomingBytes > maxTotalSize) {
             throw new InvalidUploadException(
                     "Attachments exceed the total size limit of "
-                            + (config.getMaxTotalSize() / 1048576) + "MB");
+                            + (maxTotalSize / 1048576) + "MB");
         }
 
         for (MultipartFile file : files) {

@@ -62,7 +62,9 @@ export class DeoHomeComponent implements OnInit {
   filterSatisfiesRules = signal(false);
   filterVernacular = signal(false);
   columnFilters: Record<string, string> = {};
-  columnSearchText = '';
+  // A signal, not a plain field: `filteredColumns` is a computed() and a plain field read
+  // inside one registers NO dependency, so typing in the column search did nothing at all.
+  columnSearchText = signal('');
 
   // Role-based module selector
   selectedRoleModule = signal('CRPC_COMPLAINT');
@@ -121,8 +123,8 @@ export class DeoHomeComponent implements OnInit {
   visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
 
   filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns();
-    const q = this.columnSearchText.toLowerCase();
+    const q = this.columnSearchText().toLowerCase();
+    if (!q) return this.allColumns();
     return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
   });
 

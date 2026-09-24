@@ -127,6 +127,9 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                 .questionType("radio")
                 .questionText("Is your complaint being made through an advocate?")
                 .translationKey("eligibility.q_through_advocate")
+                .simplifiedText("Are you filing this complaint with the help of a lawyer or legal "
+                        + "representative?")
+                .simplifiedTextKey("eligibility.q_through_advocate_simple")
                 .build());
 
         seed(EligibilityQuestionMaster.builder()
@@ -143,6 +146,9 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                         + "Duplicate complaints cannot be filed.")
                 .blockMessageKey("eligibility.block_pending_ombudsman")
                 .nonMaintainable(true)
+                .simplifiedText("Have you already filed a complaint about this same issue with the "
+                        + "Ombudsman and it is still under review?")
+                .simplifiedTextKey("eligibility.q_pending_ombudsman_simple")
                 .build());
 
         seed(EligibilityQuestionMaster.builder()
@@ -159,6 +165,9 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                         + "You cannot file a fresh complaint on the same issue.")
                 .blockMessageKey("eligibility.block_settled_ombudsman")
                 .nonMaintainable(true)
+                .simplifiedText("Has the Ombudsman already reviewed and resolved this same complaint "
+                        + "in the past?")
+                .simplifiedTextKey("eligibility.q_settled_ombudsman_simple")
                 .build());
 
         seed(EligibilityQuestionMaster.builder()
@@ -175,6 +184,9 @@ public class EligibilityQuestionMasterSeeder implements CommandLineRunner {
                         + "Entity, it cannot be processed under the Integrated Ombudsman Scheme, 2021.")
                 .blockMessageKey("eligibility.block_staff_of_re")
                 .nonMaintainable(true)
+                .simplifiedText("Are you an employee of the bank/NBFC you are complaining against, and "
+                        + "is your complaint about your job or employment?")
+                .simplifiedTextKey("eligibility.q_staff_of_re_simple")
                 .build());
 
         seed(EligibilityQuestionMaster.builder()

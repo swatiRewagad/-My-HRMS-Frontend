@@ -204,6 +204,14 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       this.router.navigate(['/cepc/dashboard']);
       return;
     }
+    if (dept === 'AA' || roles.some(r => r.startsWith('AA_'))) {
+      this.router.navigate(['/aa/dashboard']);
+      return;
+    }
+    if (dept === 'RE' || roles.some(r => r.startsWith('RE_'))) {
+      this.router.navigate(['/re-portal/dashboard']);
+      return;
+    }
 
     // Fallback: stay on this page
     this.loadCounts();

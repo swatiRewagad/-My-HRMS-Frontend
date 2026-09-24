@@ -237,7 +237,7 @@
         <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
       </div>
       <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
+      <input type="text" class="column-search" placeholder="Search Column Name" [ngModel]="columnSearchText()" (ngModelChange)="columnSearchText.set($event)" />
       <div class="column-list">
         @for (col of filteredColumns(); track col.key; let i = $index) {
           <label class="column-option"

@@ -60,6 +60,11 @@ public class AppealController {
             @RequestParam(required = false) String reliefSought,
             @RequestParam(required = false) String classification,
             @RequestParam(required = false) String reasonForDelay,
+            @RequestParam(required = false) String appellantName,
+            @RequestParam(required = false) String appellantPhone,
+            @RequestParam(required = false) String appellantEmail,
+            @RequestParam(required = false) String comments,
+            @RequestParam(required = false) String dateOfReceipt,
             @RequestPart(required = false) MultipartFile[] attachments) {
 
         // Validate required fields
@@ -77,6 +82,23 @@ public class AppealController {
         String appealGround = details;
         if (appealGround.length() > 5000) {
             return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appeal details must not exceed 5000 characters");
+        }
+
+        // Appellant identity, server-validated. The browser checks these too, but a client-side check is
+        // a convenience, not a control — these land on a statutory record and the API is reachable
+        // without the form.
+        if (appellantName != null && appellantName.length() > 100) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appellant name must not exceed 100 characters");
+        }
+        if (appellantPhone != null && !appellantPhone.isBlank() && !appellantPhone.trim().matches("\\d{10}")) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appellant mobile must be exactly 10 digits");
+        }
+        if (appellantEmail != null && !appellantEmail.isBlank()
+                && !appellantEmail.trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$")) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appellant email is not a valid address");
+        }
+        if (comments != null && comments.length() > 500) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Comments must not exceed 500 characters");
         }
 
         // Determine if this is a delayed filing based on eligibility check
@@ -101,6 +123,19 @@ public class AppealController {
                     "Appeal not eligible: " + eligibility.get("reason"));
         }
 
+        // Clause gate. Only 15(1)(a) and 15(1)(b) are appealable by a complainant; anything else may at
+        // most be a REPRESENTATION. Enforced HERE and not only in the browser, because the eligibility
+        // check and the filing call are two separate requests and nothing stopped a caller from skipping
+        // the first. The workflow service still derives the classification itself — this refuses the
+        // APPEAL route rather than quietly downgrading what the citizen asked for.
+        if (Boolean.FALSE.equals(eligibility.get("appealable"))
+                && "APPEAL".equalsIgnoreCase(classification == null ? "APPEAL" : classification)) {
+            Object why = eligibility.get("appealableReason");
+            return buildErrorResponse(HttpStatus.BAD_REQUEST,
+                    why != null ? why.toString()
+                            : "This complaint's closure clause is not appealable.");
+        }
+
         // Check for duplicate active appeal
         List<Appeal> existingAppeals = appealRepository.findByOriginalComplaintNumber(complaintNumber);
         boolean hasDuplicate = existingAppeals.stream()
@@ -118,8 +153,26 @@ public class AppealController {
                     ? classification : "APPEAL");
             request.put("appealGround", ground + "\n\n" + details);
             request.put("reliefSought", reliefSought != null ? reliefSought : "");
-            // Appellant details will be derived from complaint in the workflow service
-            request.put("appellantName", "Citizen"); // Placeholder — workflow service can override from complaint
+            // Appellant identity as SUPPLIED, falling back to the parent complaint's complainant when the
+            // caller sends nothing. This used to be the literal "Citizen" unconditionally, which meant
+            // every appeal in the system named the same non-existent appellant and carried no way to
+            // contact the person who filed it. The workflow service already fills the blanks from the
+            // parent when these are absent, so omitting them is still safe.
+            if (appellantName != null && !appellantName.isBlank()) {
+                request.put("appellantName", appellantName.trim());
+            }
+            if (appellantPhone != null && !appellantPhone.isBlank()) {
+                request.put("appellantPhone", appellantPhone.trim());
+            }
+            if (appellantEmail != null && !appellantEmail.isBlank()) {
+                request.put("appellantEmail", appellantEmail.trim());
+            }
+            if (comments != null && !comments.isBlank()) {
+                request.put("comments", comments.trim());
+            }
+            if (dateOfReceipt != null && !dateOfReceipt.isBlank()) {
+                request.put("dateOfReceipt", dateOfReceipt.trim());
+            }
             if (reasonForDelay != null && !reasonForDelay.isBlank()) {
                 request.put("reasonForDelay", reasonForDelay);
             }

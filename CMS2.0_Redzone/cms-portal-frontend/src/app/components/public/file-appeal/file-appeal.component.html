@@ -49,17 +49,24 @@
       <p class="subtitle">Complaint: <strong>{{ complaintId }}</strong></p>
 
       @if (eligibilityResult(); as result) {
-        <div class="eligibility-result" [class.eligible]="result.eligible" [class.ineligible]="!result.eligible">
+        <!-- Appealability is a SEPARATE axis from eligibility: an in-window closure under a clause that
+             is not 15(1)(a)/(b) is "eligible" (it may still be escalated as a representation) but is
+             NOT appealable, and the appeal screen must present that as a refusal. -->
+        <div class="eligibility-result"
+             [class.eligible]="result.eligible && result.appealable !== false"
+             [class.ineligible]="!result.eligible || result.appealable === false">
           <div class="eligibility-icon">
-            @if (result.eligible) {
+            @if (result.eligible && result.appealable !== false) {
               <i class="pi pi-check-circle"></i>
             } @else {
               <i class="pi pi-times-circle"></i>
             }
           </div>
           <div class="eligibility-info">
-            <h3>{{ result.eligible ? ('appeal.eligible' | translate) : ('appeal.not_eligible' | translate) }}</h3>
-            @if (result.reason) {
+            <h3>{{ (result.eligible && result.appealable !== false) ? ('appeal.eligible' | translate) : ('appeal.not_eligible' | translate) }}</h3>
+            @if (result.appealable === false && result.appealableReason) {
+              <p class="clause-refusal">{{ result.appealableReason }}</p>
+            } @else if (result.reason) {
               <p>{{ result.reason }}</p>
             }
           </div>
@@ -135,7 +142,7 @@
 
       <div class="form-actions">
         <button class="btn-secondary" (click)="phase.set('search')">{{ 'appeal.back' | translate }}</button>
-        @if (eligibilityResult()?.eligible) {
+        @if (eligibilityResult()?.eligible && eligibilityResult()?.appealable !== false) {
           <button class="btn-primary" (click)="proceedToForm()">
             <i class="pi pi-arrow-right"></i> {{ 'appeal.proceed' | translate }}
           </button>
@@ -174,6 +181,71 @@
         </div>
       }
 
+      <!-- Appellant identity. These fields did not exist: the appeal was persisted with the literal
+           name "Citizen" and no contact details at all. -->
+      <div class="appellant-section">
+        <h4>Appellant Details</h4>
+
+        <div class="form-group">
+          <label for="appellantName">Name <span class="required">*</span></label>
+          <input id="appellantName" type="text" class="form-input" name="appellantName"
+                 [(ngModel)]="appellantName" [maxlength]="100"
+                 [class.invalid]="fieldErrors['appellantName']" placeholder="Full name as per records">
+          @if (fieldErrors['appellantName']) {
+            <span class="field-error" data-field="appellantName">{{ fieldErrors['appellantName'] }}</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="appellantMobile">Mobile Number <span class="required">*</span></label>
+          <input id="appellantMobile" type="tel" class="form-input" name="appellantMobile"
+                 [(ngModel)]="appellantMobile" maxlength="10" inputmode="numeric"
+                 [class.invalid]="fieldErrors['appellantMobile']" placeholder="10-digit mobile number">
+          @if (fieldErrors['appellantMobile']) {
+            <span class="field-error" data-field="appellantMobile">{{ fieldErrors['appellantMobile'] }}</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="appellantEmail">Email Address</label>
+          <input id="appellantEmail" type="email" class="form-input" name="appellantEmail"
+                 [(ngModel)]="appellantEmail"
+                 [class.invalid]="fieldErrors['appellantEmail']" placeholder="Optional">
+          @if (fieldErrors['appellantEmail']) {
+            <span class="field-error" data-field="appellantEmail">{{ fieldErrors['appellantEmail'] }}</span>
+          }
+        </div>
+
+        <!-- Date-picker ONLY: the visible input is readonly so the value cannot be typed freehand. -->
+        <div class="form-group">
+          <label for="dateOfReceipt">Date of Receipt of Order <span class="required">*</span></label>
+          <div class="date-picker-wrapper">
+            <input id="dateOfReceipt" type="text" class="form-input" name="dateOfReceipt" readonly
+                   [value]="dateOfReceiptDisplay" placeholder="dd/mm/yyyy"
+                   [class.invalid]="fieldErrors['dateOfReceipt']">
+            <input type="date" class="date-hidden-picker" [max]="todayISO"
+                   (change)="onDateOfReceiptChange($event)">
+            <button type="button" class="date-picker-btn" (click)="openDatePicker($event)"
+                    aria-label="Open date picker"><i class="pi pi-calendar" aria-hidden="true"></i></button>
+          </div>
+          @if (fieldErrors['dateOfReceipt']) {
+            <span class="field-error" data-field="dateOfReceipt">{{ fieldErrors['dateOfReceipt'] }}</span>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="appellantComments">Comments</label>
+          <textarea id="appellantComments" class="form-textarea" name="appellantComments" rows="3"
+                    [(ngModel)]="appellantComments" [maxlength]="500"
+                    [class.invalid]="fieldErrors['appellantComments']"
+                    placeholder="Any additional remarks (optional)"></textarea>
+          <span class="char-count">{{ appellantComments.length }}/500</span>
+          @if (fieldErrors['appellantComments']) {
+            <span class="field-error" data-field="appellantComments">{{ fieldErrors['appellantComments'] }}</span>
+          }
+        </div>
+      </div>
+
       <div class="form-group">
         <label>{{ 'appeal.ground' | translate }} <span class="required">*</span></label>
         <div class="radio-group">
@@ -211,13 +283,16 @@
              (dragenter)="$event.preventDefault(); isDragOver = true"
              (dragleave)="isDragOver = false"
              (drop)="isDragOver = false; onFileDrop($event)">
-          <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          <input type="file" id="appealFiles" multiple (change)="onFilesSelected($event)" accept=".jpg,.jpeg,.pdf,.docx"
                  class="file-input-hidden">
           <span class="file-upload-text">Drag and Drop or <label for="appealFiles" class="file-upload-browse-link">Browse</label> File</span>
         </div>
+        <!-- The size is read from the server, never printed as a literal: a hardcoded number in the
+             hint is exactly how the UI came to promise one limit while the API enforced another. -->
         <div class="file-upload-meta">
-          <span>Support formats: PDF, DOC, JPG, PNG</span>
-          <span>Maximum Size of All Files: 2MB</span>
+          <span>Support formats: JPG, PDF, DOCX</span>
+          <span>Maximum Size per File: {{ uploadLimits.maxFileSizeMb() }}MB</span>
+          <span>Maximum Size of All Files: {{ uploadLimits.maxTotalSizeMb() }}MB</span>
         </div>
         @if (appealAttachments.length > 0) {
           <div class="file-list">

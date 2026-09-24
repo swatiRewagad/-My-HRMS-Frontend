@@ -7,17 +7,21 @@ import org.springframework.stereotype.Service;
  * The single source of truth for attachment size limits (13.1).
  *
  * <h2>Why this exists</h2>
- * The product ruling is 5 MB per file and 25 MB per complaint, both configurable. Before this, the
- * per-file limit was compiled into four independent places that did not agree:
- * {@code FileStorageConfig.maxFileSize} (2 MB), {@code application.yml} (2 MB),
- * {@code IntakeAttachmentValidator}'s own {@code @Value} (2 MB), and {@code maxFileSizeMB: 2} in all
- * three Angular environment files. Meanwhile the citizen-facing hint seeded in ten locales already
- * promised 5 MB. So the UI contradicted enforcement, and "make it configurable" meant editing four
- * files and cutting a release.
+ * The ruling is that CONFIGURATION is authoritative and the number itself is expected to move; it
+ * currently stands at 2 MB per file and 25 MB per complaint. What matters is that ONE place decides.
+ * The limit used to be compiled into several places that did not agree — FileStorageConfig,
+ * application.yml, IntakeAttachmentValidator's own {@code @Value}, and {@code maxFileSizeMB} in all
+ * three Angular environment files — while the citizen-facing hint seeded in ten locales quoted a
+ * different figure again. The UI therefore contradicted enforcement in both directions, and changing
+ * the limit meant editing several files and cutting a release.
  *
  * <p>Reading from {@code SYSTEM_CONFIG} makes the limit changeable at runtime by an administrator, and
- * lets the browser ask the server what the limit is instead of shipping its own copy. The yml value
- * remains only as the fallback for a database that has no row yet.
+ * lets the browser ask the server what the limit is instead of shipping its own copy. The constants
+ * below are the fallback for a database that has no row yet, and must equal the yml defaults.
+ *
+ * <p>Every enforcement path must come through here. {@code FileUploadValidator} and
+ * {@code FileStorageService} originally read FileStorageConfig instead, so {@code /api/files/upload}
+ * — the path every citizen attachment takes — silently ignored the configured limit.
  *
  * <p>Spring's {@code max-file-size: 50MB} servlet cap is deliberately left alone: it is the outer
  * bound that stops a malicious multipart body from being buffered at all, not the product rule. It
@@ -32,7 +36,7 @@ public class UploadLimitsService {
     public static final String KEY_MAX_TOTAL_BYTES = "cms.attachments.max_total_size_bytes";
     public static final String KEY_MAX_FILE_COUNT = "cms.attachments.max_file_count";
 
-    private static final long DEFAULT_MAX_FILE_BYTES = 5L * 1024 * 1024;
+    private static final long DEFAULT_MAX_FILE_BYTES = 2L * 1024 * 1024;
     private static final long DEFAULT_MAX_TOTAL_BYTES = 25L * 1024 * 1024;
     private static final int DEFAULT_MAX_FILE_COUNT = 10;
 

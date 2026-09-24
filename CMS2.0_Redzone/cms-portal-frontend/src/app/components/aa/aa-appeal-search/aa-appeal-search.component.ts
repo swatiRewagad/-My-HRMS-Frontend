@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 /** One row of the parent-complaint result grid. PII arrives already masked from the server. */
@@ -69,7 +70,7 @@ interface CategoryOption {
 @Component({
   selector: 'app-aa-appeal-search',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, AppShellComponent, TranslatePipe],
   templateUrl: './aa-appeal-search.component.html',
   styleUrl: './aa-appeal-search.component.scss'
 })

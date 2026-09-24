@@ -21,16 +21,17 @@ public class FileStorageConfig {
     private String rootPath = "/data/cms-attachments";
 
     /**
-     * NFR-006: 5MB per file, per the product ruling. This was 2MB while the citizen-facing upload hint
-     * promised 5MB in all ten locales, so the interface contradicted what the server enforced.
+     * NFR-006: 2MB per file.
      *
-     * <p>This is now only a FALLBACK. {@link com.hrms.cms.service.UploadLimitsService} reads the live
-     * value from SYSTEM_CONFIG so an administrator can change the limit without a release; this
-     * constant applies only where no configuration row exists yet.
+     * <p>No enforcement path reads this any more, and none should. It is the fallback the yml binds
+     * when SYSTEM_CONFIG has no row, and it must equal the yml default; the live value comes from
+     * {@link com.hrms.cms.service.UploadLimitsService} so an administrator can change the limit
+     * without a release. Reading it directly is how {@code /api/files/upload} came to ignore the
+     * configured limit while the browser was being shown it.
      */
-    private long maxFileSize = 5242880;  // 5MB
+    private long maxFileSize = 2097152;  // 2MB
 
-    /** NFR-006: 25MB across all files on one record. There was previously no aggregate cap at all. */
+    /** NFR-006: 25MB across all files on one record. Fallback only — see maxFileSize. */
     private long maxTotalSize = 26214400; // 25MB
 
     private long chunkSize = 5242880;    // 5MB

@@ -98,7 +98,9 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   private lastWidgetRefresh: number = 0;
 
   // Filter search
-  filterSearch = '';
+  // Signal-backed: `filteredFilters` is a computed() and a plain field read inside one registers
+  // no dependency, so the filter search box was inert.
+  filterSearch = signal('');
 
   maxWidgets = MAX_WIDGETS;
 
@@ -181,7 +183,7 @@ export class ReportBuilderComponent implements OnInit, AfterViewChecked {
   });
 
   filteredFilters = computed(() => {
-    const search = this.filterSearch.toLowerCase();
+    const search = this.filterSearch().toLowerCase();
     if (!search) return this.filters();
     return this.filters().filter(f =>
       f.label.toLowerCase().includes(search) ||

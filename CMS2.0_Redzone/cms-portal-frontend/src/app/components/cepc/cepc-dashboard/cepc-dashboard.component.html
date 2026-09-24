@@ -106,40 +106,6 @@
   </div>
 </app-shell>
 
-<!-- Column Selection Dialog -->
-@if (showColumnConfig()) {
-  <div class="modal-overlay" (click)="showColumnConfig.set(false)">
-    <div class="modal-dialog column-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-title">
-        <i class="pi pi-th-large"></i> Choose columns to see in "Complaints" Table
-        <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
-      </div>
-      <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [(ngModel)]="columnSearchText" />
-      <div class="column-list">
-        @for (col of filteredColumns(); track col.key; let i = $index) {
-          <label class="column-option"
-            draggable="true"
-            (dragstart)="onColumnDragStart(i)"
-            (dragover)="onColumnDragOver($event, i)"
-            (drop)="onColumnDrop(i)"
-            (dragend)="onColumnDragEnd()"
-            [class.dragging]="dragIndex === i"
-            [class.drag-over]="dragOverIndex === i">
-            <i class="pi pi-bars drag-handle"></i>
-            <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
-            {{ col.label }}
-          </label>
-        }
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">Cancel</button>
-        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">Save</button>
-      </div>
-    </div>
-  </div>
-}
-
 <!-- Advanced Search Dialog -->
 @if (showAdvancedSearch()) {
   <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">

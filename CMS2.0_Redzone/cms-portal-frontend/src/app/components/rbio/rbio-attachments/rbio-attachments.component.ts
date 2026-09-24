@@ -5,6 +5,7 @@ import { TranslatePipe } from '../../../pipes/translate.pipe';
 import {
   ComplaintCorrespondenceService, ComplaintAttachmentRow
 } from '../../../services/complaint-correspondence.service';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 import { environment } from '../../../../environments/environment';
 
 /**
@@ -49,14 +50,17 @@ export class RbioAttachmentsComponent implements OnInit {
   /** UST589: a source filter. A signal, because the computed below reads it. */
   sourceFilter = signal('ALL');
 
-  readonly maxFileSizeMb = environment.maxFileSizeMB ?? 2;
-  readonly maxTotalSizeMb = environment.maxTotalUploadSizeMB ?? 25;
+  private uploadLimits = inject(UploadLimitsService);
 
-  /** Strings, because the translate pipe takes Record<string, string>. */
-  readonly limitParams: Record<string, string> = {
-    maxFile: String(this.maxFileSizeMb),
-    maxTotal: String(this.maxTotalSizeMb)
-  };
+  /**
+   * Strings, because the translate pipe takes Record<string, string>. Computed, because the limits
+   * arrive from /api/v1/config/upload-limits after first render: a plain field would freeze the
+   * fallback into the note and state a limit the server does not enforce.
+   */
+  readonly limitParams = computed<Record<string, string>>(() => ({
+    maxFile: String(this.uploadLimits.maxFileSizeMb()),
+    maxTotal: String(this.uploadLimits.maxTotalSizeMb())
+  }));
 
   visibleAttachments = computed(() => {
     const f = this.sourceFilter();

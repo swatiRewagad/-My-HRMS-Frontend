@@ -15,6 +15,15 @@ export interface SendOtpResponse {
   message: string;
   sessionId: string;
   expiresInSeconds: number;
+  /**
+   * Seconds that must pass before a RESEND is accepted, as the SERVER computes it.
+   *
+   * <p>The component used to disable its own Resend button for a hardcoded 120s. That is a rule the
+   * server owns (cms.auth.otp.resend-cooldown-seconds, overridable via SYSTEM_CONFIG), so a literal
+   * here means the button stays dead for two minutes in an environment where the server would have
+   * accepted the resend immediately — and stays enabled if the window is ever raised above two minutes.
+   */
+  resendAfterSeconds?: number;
   devOtp?: string;
 }
 
@@ -55,6 +64,20 @@ export class CitizenAuthApiService {
                   consentGiven: boolean, locale: string): Observable<SendOtpResponse> {
     return this.http.post<SendOtpResponse>(`${this.baseUrl}/send-otp-email`, {
       mobile, email, captchaToken, captchaAnswer, consentGiven: String(consentGiven), locale
+    }, { withCredentials: true });
+  }
+
+  /**
+   * Requests a FRESH OTP for a mobile that already has a request in flight.
+   *
+   * <p>Takes no CAPTCHA by design — a citizen who has already solved one and is waiting for a code
+   * should not have to solve another to be sent it again. The server only accepts this while an
+   * earlier, CAPTCHA-gated request for the same mobile is still recent, and applies the same cooldown
+   * and hourly limit as send-otp.
+   */
+  resendOtp(mobile: string, locale: string): Observable<SendOtpResponse> {
+    return this.http.post<SendOtpResponse>(`${this.baseUrl}/resend-otp`, {
+      mobile, locale
     }, { withCredentials: true });
   }
 

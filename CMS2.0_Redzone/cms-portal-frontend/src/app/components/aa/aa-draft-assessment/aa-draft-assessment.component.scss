@@ -1,21 +1,12 @@
 .aa-draft-assessment {
-  min-height: 100vh;
-  background: var(--surface-sunken);
-  padding: 24px 20px;
-
-  h2 { margin: 0; font-size: 18px; color: var(--brand-primary-strong); }
   h3 { margin: 0 0 12px; font-size: 15px; color: var(--brand-primary-strong); }
   h4 { margin: 16px 0 6px; font-size: 13px; color: #37474f; }
 }
 
-.topbar {
-  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
-
-  .back-btn {
-    border: 1px solid #c5cae9; background: var(--surface-card); color: var(--brand-primary);
-    border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 15px;
-    &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 1px; }
-  }
+.back-btn {
+  border: 1px solid #c5cae9; background: var(--surface-card); color: var(--brand-primary);
+  border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 15px;
+  &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 1px; }
 }
 
 .notice-banner, .error-banner {

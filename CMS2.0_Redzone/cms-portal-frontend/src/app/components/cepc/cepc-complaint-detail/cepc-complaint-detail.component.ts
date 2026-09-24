@@ -298,6 +298,67 @@ export class CepcComplaintDetailComponent implements OnInit {
     return ['closed', 'resolved', 'rejected', 'withdrawn'].includes(status);
   }
 
+  // ── Editing the complaint record ────────────────────────────────────────────────────────────────
+  // Mirrors the server's own rule (ComplaintController PUT /{id}): the case-handling roles may edit,
+  // a contact person may not, and a settled record may not be edited at all. The server refuses
+  // independently — this only avoids offering a control that would be rejected.
+  private static readonly EDIT_ROLES: CepcRole[] = [
+    'CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY', 'CEPC_ADMIN'
+  ];
+
+  editing = signal(false);
+  savingEdit = signal(false);
+  editError = signal('');
+  editForm = { status: '', priority: '', assignedOfficer: '', remarks: '' };
+
+  canEdit(): boolean {
+    return !this.isTerminalState()
+      && CepcComplaintDetailComponent.EDIT_ROLES.includes(this.userRole());
+  }
+
+  startEdit() {
+    const c = this.complaint() || {};
+    this.editForm = {
+      status: (c.status || '').toLowerCase(),
+      priority: (c.priority || '').toLowerCase(),
+      assignedOfficer: c.assignedTo || '',
+      remarks: ''
+    };
+    this.editError.set('');
+    this.editing.set(true);
+  }
+
+  cancelEdit() {
+    this.editing.set(false);
+    this.editError.set('');
+  }
+
+  saveEdit() {
+    const id = this.complaint()?.id;
+    if (!id) return;
+
+    // The server rejects a blank mandatory field with "Please fill mandatory fields"; catching it here
+    // saves a round trip without becoming the only check.
+    if (!this.editForm.status.trim() || !this.editForm.priority.trim()) {
+      this.editError.set('Please fill mandatory fields');
+      return;
+    }
+
+    this.savingEdit.set(true);
+    this.editError.set('');
+    this.http.put<any>(`${environment.apiBaseUrl}/api/complaints/${id}`, this.editForm).subscribe({
+      next: () => {
+        this.savingEdit.set(false);
+        this.editing.set(false);
+        this.loadComplaint(this.complaint()?.complaintNumber || this.complaint()?.complaintId);
+      },
+      error: (err) => {
+        this.savingEdit.set(false);
+        this.editError.set(err.error?.message || err.message || 'The edit could not be saved');
+      }
+    });
+  }
+
   goBack() {
     this.router.navigate(['/cepc/dashboard']);
   }

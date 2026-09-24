@@ -17,41 +17,59 @@ export interface ShellNavItem {
   roles: string[];
 }
 
+/**
+ * Role names MUST be roles the `cms` realm actually issues, not the `rbi-cms` taxonomy
+ * (DO, CA, CP, INCHARGE, AA_REGISTRAR, AA_BENCH_OFFICER, RE_NODAL_OFFICER). Both realms exist on
+ * the same Keycloak, but every app here authenticates against `cms`, so an `rbi-cms` name matches
+ * no token and its item silently never renders. A nav that is empty for every real user is
+ * indistinguishable from one that is merely permissive, which is how the original list survived.
+ *
+ * Each list mirrors the corresponding guard in app.routes.ts: offering a link the guard would then
+ * bounce to /staff/unauthorized is worse than not offering it.
+ */
 export const SHELL_NAV: ShellNavItem[] = [
   {
     labelKey: 'ui.nav.crpc_complaints',
     icon: 'pi pi-list',
     route: '/crpc/home',
-    roles: ['DO', 'CA', 'REVIEWER', 'INCHARGE', 'CP', 'ADMIN'],
+    roles: ['DEO', 'REVIEWER', 'CRPC_HEAD', 'CRPC_INCHARGE', 'CRPC_ADMIN', 'ADMIN'],
   },
   {
     labelKey: 'ui.nav.cepc_dashboard',
     icon: 'pi pi-inbox',
     route: '/cepc/dashboard',
-    roles: ['DO', 'REVIEWER', 'INCHARGE', 'CA', 'CP', 'ADMIN'],
+    roles: [
+      'CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_OFFICER', 'CEPC_SUPERVISOR',
+      'CEPC_CLOSING_AUTHORITY', 'CEPC_CONCILIATOR', 'CEPC_ADJUDICATOR', 'CEPC_CONTACT_PERSON',
+      'CEPC_ADMIN', 'ADMIN',
+    ],
   },
   {
     labelKey: 'ui.nav.rbio_workbench',
     icon: 'pi pi-briefcase',
     route: '/rbio',
-    roles: ['RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_CONCILIATOR', 'RBIO_ADJUDICATOR', 'RBIO_ADMIN', 'ADMIN'],
+    roles: [
+      'RBIO_DEALING_OFFICIAL', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN',
+      'RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_CONCILIATOR', 'RBIO_ADJUDICATOR',
+      'RBIO_ADMIN', 'ADMIN',
+    ],
   },
   {
     labelKey: 'ui.nav.aa_appeals',
     icon: 'pi pi-gavel',
     route: '/aa/dashboard',
-    roles: ['AA_REGISTRAR', 'AA_BENCH_OFFICER', 'AA_AUTHORITY', 'AA_ADMIN', 'ADMIN'],
+    roles: ['AA_DO', 'AA_REVIEWER', 'AA_SECRETARIAT', 'AA_ADMIN', 'ADMIN'],
   },
   {
     labelKey: 'ui.nav.re_portal',
     icon: 'pi pi-building',
     route: '/re-portal/dashboard',
-    roles: ['RE_NODAL_OFFICER', 'RE_PNO', 'RE_ADMIN'],
+    roles: ['RE_PNO', 'ADMIN'],
   },
   {
     labelKey: 'ui.nav.reports',
     icon: 'pi pi-chart-bar',
     route: '/admin/dashboard',
-    roles: ['ADMIN', 'CP', 'INCHARGE', 'RBIO_SUPERVISOR', 'RBIO_ADMIN'],
+    roles: ['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'],
   },
 ];

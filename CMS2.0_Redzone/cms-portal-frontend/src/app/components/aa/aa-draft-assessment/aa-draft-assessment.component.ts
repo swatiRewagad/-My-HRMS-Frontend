@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 /** A related draft the server proposes, with its similarity score. */
@@ -46,7 +47,7 @@ interface DraftAttachment {
 @Component({
   selector: 'app-aa-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, AppShellComponent, TranslatePipe],
   templateUrl: './aa-draft-assessment.component.html',
   styleUrl: './aa-draft-assessment.component.scss'
 })

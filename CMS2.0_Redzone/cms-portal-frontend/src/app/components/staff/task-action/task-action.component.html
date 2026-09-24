@@ -647,7 +647,7 @@
           <div class="sidebar-section-body">
             <div class="sidebar-search">
               <i class="pi pi-search"></i>
-              <input type="text" placeholder="Search past complaints" [(ngModel)]="pastComplaintSearch" />
+              <input type="text" placeholder="Search past complaints" [ngModel]="pastComplaintSearch()" (ngModelChange)="pastComplaintSearch.set($event)" />
             </div>
             @if (loadingPastComplaints()) {
               <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
@@ -757,15 +757,25 @@
           <button class="expand-btn" (click)="showHistoryPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
         </div>
         @if (complaint()!.timeline?.length) {
+          <label class="history-comments-toggle">
+            <input type="checkbox" [checked]="hideHistoryComments()" (change)="toggleHistoryComments()" />
+            <span>Hide comments</span>
+          </label>
           <div class="history-timeline">
             @for (entry of complaint()!.timeline; track entry.timestamp) {
               <div class="history-entry">
                 <div class="history-status-badge">{{ entry.action }}</div>
                 <p class="history-description">{{ entry.fromStatus }} → {{ entry.toStatus }}</p>
                 <div class="history-meta">
-                  <span class="history-date">{{ entry.timestamp }}</span>
+                  <span class="history-date">{{ entry.timestamp | date: 'dd-MM-yyyy HH:mm' }}</span>
+                  @if (entry.performedBy) {
+                    <span class="history-actor">{{ entry.performedBy }}</span>
+                    @if (entry.performedByRole) {
+                      <span class="history-actor-role">{{ entry.performedByRole }}</span>
+                    }
+                  }
                 </div>
-                @if (entry.remarks) {
+                @if (entry.remarks && !hideHistoryComments()) {
                   <p class="history-remarks">{{ entry.remarks }}</p>
                 }
               </div>

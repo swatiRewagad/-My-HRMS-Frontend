@@ -164,14 +164,18 @@ class FileStorageConfigTest {
         void shouldHaveCorrectDefaults() {
             FileStorageConfig defaults = new FileStorageConfig();
 
-            // 5MB per the product ruling (item 13.1). This asserted 2MB, which was the value that made
-            // the UI contradict enforcement: the citizen-facing upload hint promised 5MB in all ten
-            // locales while the server rejected at 2MB.
+            // maxFileSize IS NO LONGER AN ENFORCED LIMIT and is deliberately not asserted here.
             //
-            // This is now only the FALLBACK. The live limit is a SYSTEM_CONFIG row read by
-            // UploadLimitsService, so this constant applies only to a database with no row yet, and
-            // asserting it is asserting the safety net rather than the product rule.
-            assertThat(defaults.getMaxFileSize()).isEqualTo(5242880L);
+            // Every enforcement path (FileUploadValidator, FileStorageService, IntakeAttachmentValidator,
+            // RePortalController) now reads UploadLimitsService → SYSTEM_CONFIG, because this class is an
+            // application.yml STARTUP SNAPSHOT and could not track a runtime change. Pinning a figure
+            // here asserts a value no upload consults, which is how the previous version of this test
+            // passed while /api/files/upload enforced something else entirely.
+            //
+            // ⚠️ The field is kept only because `cms.attachments.max-file-size` is still bound from
+            // CMS_MAX_FILE_SIZE, which cms-infrastructure/openshift/configmaps.yaml sets to 52428800.
+            // That value now has NO EFFECT on any upload. Removing the property is a deployment-facing
+            // change and needs sign-off, so it is recorded rather than done here.
             assertThat(defaults.getChunkSize()).isEqualTo(5242880L);
             assertThat(defaults.getMaxFilesPerComplaint()).isEqualTo(10);
             assertThat(defaults.getRootPath()).isEqualTo("/data/cms-attachments");

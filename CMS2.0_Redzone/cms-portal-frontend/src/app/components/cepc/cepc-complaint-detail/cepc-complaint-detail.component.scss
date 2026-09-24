@@ -157,3 +157,22 @@
   .detail-layout { grid-template-columns: 1fr; }
   .action-panel { position: static; }
 }
+
+.cepc-detail {
+  .btn-edit {
+    padding: 4px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    background: var(--surface-subtle); color: var(--text-secondary);
+    border: 1px solid var(--border-subtle); border-radius: 6px;
+    &:hover { background: var(--border-subtle); color: var(--text-heading); }
+  }
+
+  .edit-section {
+    select, input[type="text"], textarea {
+      width: 100%; padding: 6px 10px; font-size: 13px; font-family: inherit;
+      color: var(--text-heading); background: var(--surface-page);
+      border: 1px solid var(--border-subtle); border-radius: 6px;
+    }
+    .edit-error { margin: 8px 0 0; font-size: 12px; color: var(--state-danger-text, #b3261e); }
+    .form-actions { display: flex; gap: 8px; margin-top: 12px; }
+  }
+}

@@ -11,6 +11,7 @@ import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { AutoClosureComponent } from '../auto-closure/auto-closure.component';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -53,6 +54,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   private auth = inject(KeycloakAuthService);
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
+  private uploadLimits = inject(UploadLimitsService);
 
   // ─── View Mode ───
   editMode = signal(false);
@@ -85,6 +87,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── Blob URL cache: maps attachment id → safe blob URL (avoids X-Frame-Options block) ───
   private blobUrlCache = new Map<string, string>();
   attachmentBlobUrls = signal<Record<string, SafeResourceUrl>>({});
+  /** Attachments whose blob fetch failed, so the tab reports it instead of rendering an untrusted URL. */
+  attachmentLoadFailed = signal<Set<string>>(new Set());
 
   // ─── Attachments Side Panel ───
   showAttachmentsPanel = signal(false);
@@ -867,10 +871,19 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       if (draft?.subject) suggs.push({ field: 'Subject', value: draft.subject, applied: false });
       this.suggestions.set(suggs);
 
-      // Load PDF preview from sessionStorage blob if available
+      // PDF preview handed over from the physical-letter screen via sessionStorage.
+      //
+      // VALIDATED BEFORE TRUSTING. The value is only ever a blob: URL this application minted for a file
+      // the officer selected, and that is all we accept. sessionStorage is writable by any script on the
+      // origin, so passing whatever it holds to bypassSecurityTrustResourceUrl would turn a stored string
+      // into a trusted iframe source — a javascript: or data: payload would execute in the officer's
+      // session. Blob URLs cannot carry script this way, so pinning the scheme closes it.
       const pdfBlob = sessionStorage.getItem('physicalLetterPdfUrl');
-      if (pdfBlob) {
+      if (pdfBlob?.startsWith('blob:')) {
         this.pdfPreviewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(pdfBlob));
+      } else if (pdfBlob) {
+        console.warn('Ignoring non-blob physicalLetterPdfUrl in sessionStorage');
+        sessionStorage.removeItem('physicalLetterPdfUrl');
       }
 
       this.emailCorrespondence.set([]);
@@ -991,8 +1004,10 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.uploadError = 'Only PDF, JPEG, PNG, TIFF, or EML files are accepted.';
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      this.uploadError = 'File size must not exceed 2 MB.';
+    // The limit is CONFIGURED (cms.upload.max_file_size), not compiled in: a hardcoded 2 MB here
+    // rejected files the server accepts, and hardcoding 5 would drift the next time it is retuned.
+    if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+      this.uploadError = `File size must not exceed ${this.uploadLimits.maxFileSizeMb()} MB.`;
       return;
     }
 
@@ -1043,13 +1058,15 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
         }));
       },
       error: (err) => {
-        console.error('Failed to load attachment blob:', att.url, err);
-        if (att.url) {
-          this.attachmentBlobUrls.update(map => ({
-            ...map,
-            [att.id]: this.sanitizer.bypassSecurityTrustResourceUrl(att.url!)
-          }));
-        }
+        // NO SANITISER BYPASS ON THE FAILURE PATH. This previously fell back to trusting `att.url`
+        // verbatim, which is server-supplied data reaching bypassSecurityTrustResourceUrl — the fetch
+        // having just failed is the least safe moment to start trusting it. A blob URL we minted
+        // ourselves is safe to trust; an arbitrary URL from a record is not.
+        //
+        // The tab now shows a load error instead. Nothing is silently swallowed, and the officer is told
+        // the document could not be fetched rather than being shown a frame pointed at an unvetted URL.
+        console.error('Failed to load attachment blob:', att.id, err);
+        this.attachmentLoadFailed.update(ids => new Set(ids).add(att.id));
       }
     });
   }
@@ -1072,10 +1089,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     const id = this.activeDocTabId();
     return id ? this.openedDocTabs().find(t => t.id === id) ?? null : null;
   });
-
-  getSafeUrl(url: string): SafeResourceUrl {
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-  }
 
   prevDocument() {
     const idx = this.activePreviewIndex();

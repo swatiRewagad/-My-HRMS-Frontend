@@ -4,7 +4,9 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 import { environment } from '../../../../environments/environment';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 /** Standard response envelope used by every AA endpoint. */
@@ -177,7 +179,7 @@ const EMPTY_FORM: RegisterForm = {
 @Component({
   selector: 'app-aa-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, AppShellComponent, TranslatePipe],
   templateUrl: './aa-register.component.html',
   styleUrl: './aa-register.component.scss'
 })
@@ -217,9 +219,21 @@ export class AaRegisterComponent implements OnInit {
   selectedFiles = signal<File[]>([]);
   uploadErrorKey = signal<string | null>(null);
 
-  readonly maxFileSizeBytes = environment.maxFileSizeMB * 1024 * 1024;
-  readonly maxTotalBytes = environment.maxTotalUploadSizeMB * 1024 * 1024;
-  readonly maxFileCount = environment.maxFileCount;
+  /**
+   * Interpolation values for the upload error keys, which carry {{size}}/{{total}}/{{count}}.
+   *
+   * <p>Rendering those keys with NO params printed a literal "{{size}}" to the registrar in all ten
+   * locales: V67 added the placeholder to aa.upload.error_file_too_large but nothing here supplied it.
+   */
+  readonly uploadErrorParams = computed<Record<string, string>>(() => ({
+    size: String(this.uploadLimits.maxFileSizeMb()),
+    total: String(this.uploadLimits.maxTotalSizeMb()),
+    count: String(this.uploadLimits.maxFileCount())
+  }));
+
+  // Asked of the server rather than compiled in: an administrator can change the limit without a
+  // release, and a bundled constant would silently disagree with what /api/files/upload enforces.
+  private uploadLimits = inject(UploadLimitsService);
 
   /**
    * Who may be recorded as filing, taken from the parent clause's appealability flags rather than a
@@ -440,17 +454,17 @@ export class AaRegisterComponent implements OnInit {
     const files = input.files ? Array.from(input.files) : [];
     this.uploadErrorKey.set(null);
 
-    if (files.length > this.maxFileCount) {
+    if (files.length > this.uploadLimits.maxFileCount()) {
       this.uploadErrorKey.set('aa.upload.error_too_many_files');
       this.selectedFiles.set([]);
       return;
     }
-    if (files.some(f => f.size > this.maxFileSizeBytes)) {
+    if (files.some(f => f.size > this.uploadLimits.maxFileSizeBytes())) {
       this.uploadErrorKey.set('aa.upload.error_file_too_large');
       this.selectedFiles.set([]);
       return;
     }
-    if (files.reduce((total, f) => total + f.size, 0) > this.maxTotalBytes) {
+    if (files.reduce((total, f) => total + f.size, 0) > this.uploadLimits.maxTotalSizeBytes()) {
       this.uploadErrorKey.set('aa.upload.error_total_too_large');
       this.selectedFiles.set([]);
       return;

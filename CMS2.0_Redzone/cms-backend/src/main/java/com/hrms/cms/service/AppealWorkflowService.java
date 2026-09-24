@@ -96,14 +96,17 @@ public class AppealWorkflowService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Parent complaint not found: " + originalComplaintNumber));
 
+        // Each contact field falls back independently. They used to be nested inside the name check, so a
+        // caller who supplied a name but no email got NO email — now that the portal sends the name, that
+        // nesting would have silently dropped the appellant's contact details.
         if (appellantName == null || appellantName.isBlank()) {
             appellantName = parent.getComplainantName();
-            if (appellantEmail == null || appellantEmail.isBlank()) {
-                appellantEmail = parent.getComplainantEmail();
-            }
-            if (appellantPhone == null || appellantPhone.isBlank()) {
-                appellantPhone = parent.getComplainantPhone();
-            }
+        }
+        if (appellantEmail == null || appellantEmail.isBlank()) {
+            appellantEmail = parent.getComplainantEmail();
+        }
+        if (appellantPhone == null || appellantPhone.isBlank()) {
+            appellantPhone = parent.getComplainantPhone();
         }
         if (appellantName == null || appellantName.isBlank()) {
             throw new IllegalArgumentException("appellantName is required");
@@ -172,6 +175,14 @@ public class AppealWorkflowService {
             saved = appealRepository.save(saved);
             workflowNotifier.notifyOfficer(initialOfficer, saved.getAppealNumber(),
                     AaWorkflowEvent.FILED);
+        } else {
+            // An unassignable pool must not mean an unnotified appeal. Every appeal in this database is
+            // filed with assignedOfficer null (the engine has no eligible AA_DO), so the branch above never
+            // ran and NOBODY was told a new appeal had arrived. The bell already supports role-addressed
+            // rows, so the assigned ROLE is notified instead — which is also the queue the appeal is
+            // actually sitting in.
+            workflowNotifier.notifyOfficer(saved.getAssignedRole(), saved.getAppealNumber(),
+                    AaWorkflowEvent.FILED);
         }
 
         // The appellant is a citizen: this records the obligation to tell them, which the delivery log
@@ -191,7 +202,56 @@ public class AppealWorkflowService {
         if (reasonForDelay != null && !reasonForDelay.isBlank()) {
             timelineRemarks += " (delayed filing — reason: " + reasonForDelay + ")";
         }
+        // Recorded on the timeline rather than as new APPEALS columns: both are statements the appellant
+        // made at filing, so their place is the audit trail. Adding columns would also mean a schema
+        // change for two free-text values nothing queries.
+        String dateOfReceipt = request.get("dateOfReceipt");
+        if (dateOfReceipt != null && !dateOfReceipt.isBlank()) {
+            timelineRemarks += " | date of receipt of order: " + dateOfReceipt;
+        }
+        String comments = request.get("comments");
+        if (comments != null && !comments.isBlank()) {
+            timelineRemarks += " | appellant comments: " + comments;
+        }
         addTimeline(appealNumber, "FILED", "SYSTEM", null, timelineRemarks, null, "filed");
+
+        // ═══ The PARENT COMPLAINT's own history records that it has been appealed ═══
+        //
+        // Nothing was written here. The row above lands in APPEAL_TIMELINE, which is keyed on the APPEAL
+        // number — a record the citizen who filed the appeal cannot read (GET /api/v1/appeals/{n} sits
+        // behind @AaRoleGuard). So a complainant who tracked their complaint straight after filing saw a
+        // screen IDENTICAL to the one before they filed: status "Closed", the same six timeline rows, and
+        // the File Appeal button still offered. The appeal did exist in APPEALS and a second attempt was
+        // refused, but the complaint said nothing about it — indistinguishable, from the citizen's side,
+        // from the silent-failure class this codebase already has.
+        //
+        // Written as a COMPLAINT_TIMELINE row rather than as a new COMPLAINTS.status value, deliberately:
+        //
+        //  * The complaint's status is the OMBUDSMAN's finding, and an appeal does not disturb it.
+        //    Overwriting it with "appeal_filed" would make the closure unreadable, break every status
+        //    filter and SLA query that selects on `closed`, and — worse — make the complaint appear
+        //    non-terminal, so AppealEligibilityService.TERMINAL_STATUSES would stop matching it and the
+        //    appeal route would close behind the citizen who had just used it.
+        //  * The ONE thing that legitimately changed is that an appeal now exists against it. That is an
+        //    EVENT, and COMPLAINT_TIMELINE is the append-only record for one.
+        //
+        // AUTOMATIC, not MANUAL: a person filed the appeal, but the complaint-side entry is a consequence
+        // the system derived — the same discrimination reopenOriginalComplaint already makes.
+        complaintTimelineRepository.save(ComplaintTimeline.builder()
+                .complaintId(parent.getId())
+                .action("APPEAL_FILED")
+                .performedBy(saved.getCreatedBy() == null || saved.getCreatedBy().isBlank()
+                        ? "CITIZEN" : saved.getCreatedBy())
+                .remarks(saved.getClassificationType() + " " + saved.getAppealNumber()
+                        + " filed against this complaint")
+                // fromStatus == toStatus, because the status genuinely did NOT change. Stating it
+                // explicitly is what stops a reader inferring a transition that never happened.
+                .fromStatus(parent.getStatus())
+                .toStatus(parent.getStatus())
+                .fieldName("appealNumber")
+                .newValue(saved.getAppealNumber())
+                .eventSource(TimelineEventSource.AUTOMATIC)
+                .build());
 
         // TODO: Write to OUTBOX_EVENTS for "appeal.filed" topic once OutboxEvent entity is created.
         // The outbox pattern should publish { appealNumber, originalComplaintNumber, classificationType,

@@ -49,6 +49,26 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   pageSize = input<number>(10);
 
   /**
+   * Total row count ON THE SERVER, for grids whose API pages for them.
+   *
+   * <p>When null (the default) the grid owns paging and slices `rows` itself. When supplied, the caller
+   * owns paging: `rows` is understood to be ONE PAGE, the grid stops slicing, and `pageChange` asks the
+   * caller to fetch another. That distinction has to be explicit — a grid that slices an already-paged
+   * array shows 10 of the 25 rows the server sent and calls it the whole result.
+   *
+   * <p>It must be the SERVER'S total, never the loaded row count. A previous grid's footer read "of 20"
+   * because 20 was the backend page size, which looks like a plausible total and silently understates
+   * a queue of thousands.
+   */
+  totalCount = input<number | null>(null);
+
+  /** 1-based page the caller should load. Only emitted when `totalCount` is supplied. */
+  pageChange = output<number>();
+
+  /** True when the caller pages server-side, so this grid must not slice or re-count. */
+  readonly serverPaged = computed(() => this.totalCount() !== null);
+
+  /**
    * Cell templates for columns with kind 'custom', keyed by the column's `template` name.
    *
    * Needed because a few cells are genuinely module-specific components (CEPC's SLA indicator). Without
@@ -56,7 +76,29 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
    */
   cellTemplates = input<Record<string, TemplateRef<{ $implicit: T }>>>({});
 
+  /**
+   * Replaces the generic "no records" body.
+   *
+   * <p>RBIO's empty state echoes the search criteria back, so the user can see WHAT returned nothing.
+   * Flattening that to "no records" would lose working behaviour, which is the kind of regression that
+   * consolidation is supposed to avoid rather than cause.
+   */
+  emptyState = input<TemplateRef<unknown> | null>(null);
+
+  /** Offers a retry button on the error state. Error text alone leaves the user only a page reload. */
+  retryable = input<boolean>(false);
+
+  /**
+   * Per-row CSS class, for grids that signal urgency on the whole row rather than in one cell.
+   *
+   * <p>RE's dashboard tints a row by how close its response deadline is. Without this the migration
+   * would silently drop that cue, which is the difference between a nodal officer seeing what is about
+   * to breach and not.
+   */
+  rowClass = input<((row: T) => string) | null>(null);
+
   rowClick = output<T>();
+  retry = output<void>();
 
   /** Free-text search across every filterable column. */
   search = signal('');
@@ -116,9 +158,19 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
     return out;
   });
 
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
+  /** Rows the footer is counting: the server's total when it pages, else what filtering produced. */
+  readonly effectiveTotal = computed(() =>
+    this.serverPaged() ? (this.totalCount() ?? 0) : this.filtered().length
+  );
+
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.effectiveTotal() / this.pageSize())));
 
   readonly paged = computed(() => {
+    // When the caller pages server-side, `rows` IS the page — slicing it again would hide rows the
+    // server deliberately sent.
+    if (this.serverPaged()) {
+      return this.filtered();
+    }
     // Clamped rather than trusted: filtering down to fewer pages while sitting on a high page number
     // would otherwise render an empty grid over a non-empty result set.
     const page = Math.min(this.page(), this.totalPages());
@@ -127,11 +179,21 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   });
 
   readonly rangeStart = computed(() =>
-    this.filtered().length === 0 ? 0 : (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize() + 1
+    this.effectiveTotal() === 0 ? 0 : (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize() + 1
   );
 
   readonly rangeEnd = computed(() =>
-    Math.min(Math.min(this.page(), this.totalPages()) * this.pageSize(), this.filtered().length)
+    Math.min(Math.min(this.page(), this.totalPages()) * this.pageSize(), this.effectiveTotal())
+  );
+
+  /**
+   * True when a page-local column filter is narrowing what the server sent.
+   *
+   * <p>Server-paged callers filter columns client-side over one page only, so the footer must not present
+   * a refined count against a server-wide total as if they were comparable.
+   */
+  readonly refinementActive = computed(() =>
+    this.serverPaged() && this.filtered().length !== this.rows().length
   );
 
   /**
@@ -139,8 +201,10 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
    * than in the template so the numbers are stringified once, in typed code.
    */
   readonly countParams = computed(() => ({
-    shown: `${this.rangeStart()} to ${this.rangeEnd()}`,
-    total: String(this.filtered().length),
+    shown: this.refinementActive()
+      ? String(this.filtered().length)
+      : `${this.rangeStart()} to ${this.rangeEnd()}`,
+    total: String(this.effectiveTotal()),
   }));
 
   readonly pageParams = computed(() => ({
@@ -166,12 +230,27 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
 
   setColumnFilter(key: string, value: string): void {
     this.columnFilters.update(current => ({ ...current, [key]: value }));
-    this.page.set(1);
+    this.resetToFirstPage();
   }
 
   setSearch(value: string): void {
     this.search.set(value);
+    this.resetToFirstPage();
+  }
+
+  /**
+   * Returns to page 1 after a filter change.
+   *
+   * <p>A server-paged caller must be TOLD, or it keeps showing the page it last fetched while the footer
+   * claims page 1. Guarded on already being there so filtering on page 1 does not refetch on every
+   * keystroke.
+   */
+  private resetToFirstPage(): void {
+    if (this.page() === 1) return;
     this.page.set(1);
+    if (this.serverPaged()) {
+      this.pageChange.emit(1);
+    }
   }
 
   toggleSort(col: TaskGridColumn<T>): void {
@@ -210,6 +289,11 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
     return this.selectedKeys().has(row[this.rowKey()]);
   }
 
+  classFor(row: T): string {
+    const fn = this.rowClass();
+    return fn ? fn(row) : '';
+  }
+
   toggleColumn(key: string): void {
     this.hiddenKeys.update(keys => {
       const next = new Set(keys);
@@ -219,7 +303,13 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   }
 
   goToPage(page: number): void {
-    this.page.set(Math.min(Math.max(1, page), this.totalPages()));
+    const target = Math.min(Math.max(1, page), this.totalPages());
+    if (target === this.page()) return;
+    this.page.set(target);
+    // Only the server-paged caller needs telling; a client-paged grid already has every row.
+    if (this.serverPaged()) {
+      this.pageChange.emit(target);
+    }
   }
 
   onRowClick(row: T): void {

@@ -1,10 +1,11 @@
-<div class="aa-draft-assessment">
-  <header class="topbar">
+<app-shell [titleKey]="'aa.draft.title'">
+  <div shell-actions>
     <button type="button" class="back-btn" data-testid="back-to-dashboard" (click)="goBack()">
       <span aria-hidden="true">&larr;</span>
     </button>
-    <h2>{{ 'aa.draft.title' | translate }}</h2>
-  </header>
+  </div>
+
+  <div class="aa-draft-assessment">
 
   @if (noticeKey()) {
     <div class="notice-banner" role="status" aria-live="polite" data-testid="draft-notice">
@@ -199,4 +200,5 @@
       </section>
     </div>
   }
-</div>
+  </div>
+</app-shell>

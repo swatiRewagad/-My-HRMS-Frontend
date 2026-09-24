@@ -42,7 +42,7 @@ export class EligibilityWizardComponent implements OnInit {
   private router = inject(Router);
   private http = inject(HttpClient);
 
-  phase = signal<'questions' | 'checking' | 'result'>('questions');
+  phase = signal<'questions' | 'checking' | 'result' | 'unavailable'>('questions');
   currentStep = signal(0);
   answers = signal<Record<string, string>>({});
   result = signal<MreEligibilityResult | null>(null);
@@ -142,9 +142,36 @@ export class EligibilityWizardComponent implements OnInit {
     return !!this.answers()[q.key];
   });
 
-  today = new Date().toISOString().slice(0, 10);
+  /**
+   * The [max] of the RE-complaint-date input, as a LOCAL calendar date. toISOString() converts to UTC
+   * first, so in IST (UTC+5:30) local midnight becomes 18:30 the previous day and the sliced string is
+   * yesterday — the citizen could not enter today's date, and the server counts the window in local
+   * dates, so the two disagreed on where the window starts.
+   */
+  today = (() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  })();
 
-  ngOnInit() {}
+  /**
+   * UST11/6: the RE response window is cms.mre.re-window-days, read from
+   * GET /api/v1/eligibility/questions. It is only quoted in the citizen-facing prose the SERVER
+   * returns, but the wizard also needs it to render the "why you must wait" copy, so it is fetched
+   * rather than compiled in. The initialiser is the pre-response placeholder, not the rule.
+   */
+  reWindowDays = signal(30);
+  /** TranslatePipe params are strings. */
+  reWindowDaysText = computed(() => String(this.reWindowDays()));
+
+  ngOnInit() {
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/eligibility/questions`).subscribe({
+      next: res => { if (res?.reWindowDays) this.reWindowDays.set(res.reWindowDays); },
+      // Non-fatal: /wizard-check returns its own prose carrying the server's window, so a failure
+      // here degrades a label, not the rule.
+      error: () => { /* keep the placeholder */ },
+    });
+  }
 
   setAnswer(key: string, value: string) {
     this.answers.update(prev => ({ ...prev, [key]: value }));
@@ -177,78 +204,24 @@ export class EligibilityWizardComponent implements OnInit {
         this.result.set(res);
         this.phase.set('result');
       },
-      error: (err) => {
-        const outcome = this.computeLocalOutcome();
-        this.result.set(outcome);
-        this.phase.set('result');
+      // UST11/6: this used to fall back to a computeLocalOutcome() that re-implemented the whole
+      // eligibility determination with the window, the limitation period and every message baked
+      // into this file. Two consequences, both worse than an error: raising
+      // cms.mre.re-window-days left the fallback enforcing 30 days and quoting "30 days", and the
+      // citizen was handed a verdict — including "you are eligible" — that no server ever issued,
+      // with no indication the check had failed. A maintainability determination is a legal
+      // statement about the Scheme, so when the authority for it is unreachable the wizard now says
+      // so and offers a retry.
+      error: () => {
+        this.error.set('');
+        this.phase.set('unavailable');
       }
     });
   }
 
-  private computeLocalOutcome(): MreEligibilityResult {
-    const a = this.answers();
-
-    if (a['complainedToRE'] === 'NO') {
-      return {
-        eligible: false,
-        outcome: 'RE_FIRST',
-        message: 'You must first file a complaint with your bank/financial institution and wait for their response (up to 30 days) before approaching RBI.',
-        reWindowDays: 30,
-        filingDeadlineDays: 90
-      };
-    }
-
-    if (a['reRespondedSatisfactorily'] === 'RESOLVED') {
-      return {
-        eligible: false,
-        outcome: 'RANT_GATE',
-        message: 'Since the institution has already resolved your issue, RBI Ombudsman may not be able to take further action. If you believe the resolution is inadequate, you may still proceed.',
-      };
-    }
-
-    if (a['reComplaintDate']) {
-      const complaintDate = new Date(a['reComplaintDate']);
-      const now = new Date();
-      const daysSinceComplaint = Math.floor((now.getTime() - complaintDate.getTime()) / (1000 * 60 * 60 * 24));
-
-      if (daysSinceComplaint < 30 && a['reRespondedSatisfactorily'] === 'NO_REPLY') {
-        const windowOpenDate = new Date(complaintDate);
-        windowOpenDate.setDate(windowOpenDate.getDate() + 30);
-        return {
-          eligible: false,
-          outcome: 'TOO_EARLY',
-          message: `Please wait until ${windowOpenDate.toLocaleDateString('en-IN')} (30 days from your complaint to the entity) before filing with RBI Ombudsman.`,
-          daysRemaining: 30 - daysSinceComplaint,
-          windowOpenDate: windowOpenDate.toISOString().slice(0, 10),
-        };
-      }
-
-      if (daysSinceComplaint > 365) {
-        return {
-          eligible: false,
-          outcome: 'TOO_LATE',
-          message: 'Your complaint to the entity was filed over 1 year ago. The filing window under the Scheme has expired. You may still proceed but your complaint may be closed as time-barred.',
-          filingDeadlineDate: new Date(complaintDate.getTime() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        };
-      }
-    }
-
-    const entityType = a['entityType'];
-    if (entityType === 'UNKNOWN') {
-      return {
-        eligible: true,
-        outcome: 'READY',
-        message: 'Based on your answers, you appear eligible to file a complaint. We will help determine the correct entity type during the filing process.',
-        compensationBand: 'Up to ₹20 lakh (consequential loss) + ₹1 lakh (mental agony)',
-      };
-    }
-
-    return {
-      eligible: true,
-      outcome: 'READY',
-      message: 'You are eligible to file a complaint with the RBI Ombudsman under the Integrated Ombudsman Scheme, 2021.',
-      compensationBand: 'Up to ₹20 lakh (consequential loss) + ₹1 lakh (mental agony)',
-    };
+  /** Re-runs the server check after an 'unavailable' result. */
+  retryCheck() {
+    this.checkEligibility();
   }
 
   getOutcomeIcon(): string {

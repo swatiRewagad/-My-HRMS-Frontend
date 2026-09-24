@@ -13,21 +13,23 @@ export interface UploadLimits {
 /**
  * Attachment limits, fetched from the server rather than compiled in (13.1).
  *
- * `environment.maxFileSizeMB` said 2 in all three environment files while the server's own hint text
- * promised 5 MB in ten locales. A constant in the bundle cannot track a configuration change, so the
- * two were guaranteed to drift; this asks the server what the limit is.
+ * The ruling is that CONFIGURATION is authoritative and the figure is expected to move; it currently
+ * stands at 2 MB per file and 25 MB per set. A constant in the bundle cannot track that, and when the
+ * limit lived in `environment.maxFileSizeMB` the browser and the server disagreed in both directions:
+ * files the API would have taken were refused, and files it refuses were offered.
  *
- * The fallback matches the server's own default so a failed fetch degrades to the correct product rule
- * rather than to the stale 2 MB.
+ * THIS IS THE ONLY PLACE IN THE FRONTEND ALLOWED TO NAME A SIZE, and only as the fallback for a failed
+ * fetch. It must equal the server's own default in UploadLimitsService, or a citizen whose
+ * /api/v1/config/upload-limits call fails is shown a limit /api/files/upload does not enforce.
  */
 @Injectable({ providedIn: 'root' })
 export class UploadLimitsService {
   private http = inject(HttpClient);
 
   private readonly fallback: UploadLimits = {
-    maxFileSizeBytes: 5 * 1024 * 1024,
+    maxFileSizeBytes: 2 * 1024 * 1024,
     maxTotalSizeBytes: 25 * 1024 * 1024,
-    maxFileSizeMb: 5,
+    maxFileSizeMb: 2,
     maxTotalSizeMb: 25,
     maxFileCount: 10,
   };
@@ -46,8 +48,8 @@ export class UploadLimitsService {
           this._limits.set(limits);
         }
       },
-      // Keeping the product default is the right failure mode; showing 2 MB would recreate the
-      // contradiction this service exists to remove.
+      // Keeping the fallback is the right failure mode: it equals the server default, so a fetch
+      // failure degrades to the same rule /api/files/upload enforces rather than to a guess.
       error: () => {},
     });
   }

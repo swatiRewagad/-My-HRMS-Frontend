@@ -14,6 +14,17 @@ package com.hrms.cms.service;
  */
 public enum AaNotifyEvent {
 
+    /**
+     * A new appeal has been filed and is now someone's work.
+     *
+     * <p>Officer-only. The appellant is acknowledged synchronously at the point of filing — they are shown
+     * the appeal number — so a second citizen notice would duplicate it. Hence the null appellant key.
+     *
+     * <p>This constant did not exist, so {@code AaWorkflowEvent.FILED} mapped to null and the bell raised
+     * at filing was silently dropped: the Designated Officer an appeal had just been placed with was never
+     * told it existed.
+     */
+    APPEAL_FILED(null, "aa.notify.officer.appeal_filed"),
     APPEAL_ACCEPTED("aa.notify.appeal_accepted", "aa.notify.officer.appeal_accepted"),
     APPEAL_REJECTED("aa.notify.appeal_rejected", "aa.notify.officer.appeal_rejected"),
     ASSIGNED_TO_BENCH(null, "aa.notify.officer.assigned_to_bench"),

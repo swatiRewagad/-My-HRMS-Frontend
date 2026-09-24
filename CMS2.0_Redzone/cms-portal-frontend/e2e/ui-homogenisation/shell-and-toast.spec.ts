@@ -55,7 +55,10 @@ test.describe('Shared shell and notifications', () => {
     // API_BASE_URL can differ, and a relative in-page fetch would hit the dev server, not the backend.
     const res = await request.get(`${process.env['API_BASE_URL'] || 'http://localhost:8092'}/api/v1/config/upload-limits`);
     expect(res.ok(), 'the anonymous upload-limits endpoint must answer').toBeTruthy();
-    expect((await res.json()).maxFileSizeMb).toBe(5);
+    // A usable figure, not a particular one: configuration owns the number (see localisation.spec).
+    const limits = await res.json();
+    expect(limits.maxFileSizeMb).toBe(Math.floor(limits.maxFileSizeBytes / (1024 * 1024)));
+    expect(limits.maxFileSizeBytes).toBeGreaterThan(0);
   });
 
   test('no route renders a raw translation key to the user', async ({ page }) => {

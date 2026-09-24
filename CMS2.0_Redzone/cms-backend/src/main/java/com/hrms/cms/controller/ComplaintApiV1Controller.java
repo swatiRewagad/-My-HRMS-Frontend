@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/v1/complaints")
 @RequiredArgsConstructor
+@Slf4j
 public class ComplaintApiV1Controller {
 
     private final ComplaintService complaintService;
@@ -56,6 +58,28 @@ public class ComplaintApiV1Controller {
 
     private static final String CITIZEN_TOKEN_HEADER = "X-Citizen-Token";
 
+    /** The pseudo-status the citizen tracking filter sends for "everything still outstanding". */
+    private static final String STATUS_FILTER_OPEN = "OPEN";
+
+    /**
+     * The statuses that END a citizen's wait, and so are NOT Open.
+     *
+     * Business ruling: a complaint is Open until it is resolved. Deliberately separate from
+     * cms.duplicate-check.terminal-statuses — that list governs whether a citizen may RE-FILE, which is
+     * a different question: a resolved complaint is no longer Open but re-filing on it is still barred.
+     */
+    @org.springframework.beans.factory.annotation.Value(
+            "${cms.citizen-tracking.settled-statuses:resolved,closed,rejected,withdrawn}")
+    private List<String> settledStatuses;
+
+    /** Days from the RE COMPLAINT date, when the RE never replied. Same property the wizard is served. */
+    @org.springframework.beans.factory.annotation.Value("${cms.eligibility.grievance-filing-window-days:310}")
+    private int grievanceFilingWindowDays;
+
+    /** Days from the RE REPLY date, when the RE did reply. Same property the wizard is served. */
+    @org.springframework.beans.factory.annotation.Value("${cms.mre.filing-deadline-days:90}")
+    private int postReplyFilingWindowDays;
+
     /** Resolves the citizen session token from header or bearer, then maps it to the owning mobile. */
     private String resolveCitizenMobile(HttpServletRequest request) {
         String token = request.getHeader(CITIZEN_TOKEN_HEADER);
@@ -66,16 +90,6 @@ public class ComplaintApiV1Controller {
             }
         }
         return citizenSessionService.resolveMobile(token);
-    }
-
-    private String maskPhone(String phone) {
-        if (phone == null || phone.length() < 4) return null;
-        return "******" + phone.substring(phone.length() - 4);
-    }
-
-    private String maskName(String name) {
-        if (name == null || name.isBlank()) return null;
-        return name.charAt(0) + "*****";
     }
 
     private Map<String, Object> errorBody(String error, String message) {
@@ -124,6 +138,9 @@ public class ComplaintApiV1Controller {
         if (request.get("reRepliedAndDissatisfied") != null) {
             req.setReRepliedAndDissatisfied(Boolean.valueOf(request.get("reRepliedAndDissatisfied").toString()));
         }
+        if (request.get("reReplyDate") != null && !request.get("reReplyDate").toString().isBlank()) {
+            req.setReReplyDate(java.time.LocalDate.parse(request.get("reReplyDate").toString()));
+        }
         if (request.get("declarationAccepted") != null) {
             req.setDeclarationAccepted(Boolean.valueOf(request.get("declarationAccepted").toString()));
         }
@@ -164,12 +181,23 @@ public class ComplaintApiV1Controller {
                     "success", false, "message", "Validation failed: " + errors));
         }
 
+        String timeBar = filingWindowRefusal(req);
+        if (timeBar != null) {
+            return ResponseEntity.badRequest().body(
+                    errorBody("FILING_PERIOD_EXPIRED", timeBar));
+        }
+
         Complaint c = complaintService.fileComplaint(req);
 
         try {
             triageService.triageOnRegistration(c);
         } catch (Exception e) {
-            // Triage failure must not block complaint registration
+            // DELIBERATELY SWALLOWED, and logged rather than silent. A triage failure must not lose a
+            // citizen's complaint: the complaint is already persisted by this point, and triage only
+            // assigns priority/category hints that staff can set by hand. Rethrowing would fail the
+            // registration and discard a filing the citizen believes succeeded.
+            log.warn("Triage failed for {} after registration; complaint stands untriaged: {}",
+                    c.getComplaintNumber(), e.toString());
         }
 
         Map<String, Object> ack = new LinkedHashMap<>();
@@ -187,6 +215,52 @@ public class ComplaintApiV1Controller {
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * The statutory filing window, enforced on the SERVER because the browser check is bypassable.
+     *
+     * Business ruling, and the two limbs are genuinely different rules:
+     *
+     *   RE never replied  → the window runs from the RE complaint date and is
+     *                       cms.eligibility.grievance-filing-window-days (310). Past it, the complaint is
+     *                       REFUSED; the citizen's recourse is the system's own auto-closure of the
+     *                       unanswered RE complaint, not a fresh filing here.
+     *   RE did reply      → the window runs from the REPLY date and is cms.mre.filing-deadline-days (90).
+     *                       The RE complaint date is then irrelevant: a reply on day 300 still leaves a
+     *                       full 90 days, which is why this cannot be expressed as one window.
+     *
+     * Both bounds are INCLUSIVE — filing on the last day is timely — matching the browser-side check so
+     * the two layers cannot disagree about the boundary.
+     *
+     * Returns the citizen-facing refusal, or null when the filing is timely.
+     */
+    private String filingWindowRefusal(FileComplaintRequest req) {
+        if (!Boolean.TRUE.equals(req.getPriorReComplaint())) {
+            // No prior RE complaint means no window has started running.
+            return null;
+        }
+
+        if (Boolean.TRUE.equals(req.getReRepliedAndDissatisfied()) && req.getReReplyDate() != null) {
+            long since = java.time.temporal.ChronoUnit.DAYS.between(req.getReReplyDate(), java.time.LocalDate.now());
+            if (since > postReplyFilingWindowDays) {
+                return "Complaint filing period has expired. A complaint must be filed within "
+                        + postReplyFilingWindowDays + " days of the Regulated Entity's reply, and "
+                        + since + " days have elapsed.";
+            }
+            return null;
+        }
+
+        if (req.getReComplaintDate() == null) {
+            return null;
+        }
+        long since = java.time.temporal.ChronoUnit.DAYS.between(req.getReComplaintDate(), java.time.LocalDate.now());
+        if (since > grievanceFilingWindowDays) {
+            return "Complaint filing period has expired. A complaint must be filed within "
+                    + grievanceFilingWindowDays + " days of your complaint to the Regulated Entity, and "
+                    + since + " days have elapsed.";
+        }
+        return null;
     }
 
     /**
@@ -303,7 +377,14 @@ public class ComplaintApiV1Controller {
         PageRequest pageable = PageRequest.of(page, size, sort);
 
         Page<Complaint> complaintPage;
-        if (status != null && !status.isBlank()) {
+        if (STATUS_FILTER_OPEN.equalsIgnoreCase(status)) {
+            // "Open" is a SET, not a stored status. Filtering on it as an exact value returned zero rows
+            // for every citizen, because no complaint is ever stored with status 'open'.
+            complaintPage = complaintRepository.findByComplainantPhoneAndStatusNotIn(
+                    phone,
+                    settledStatuses.stream().map(String::toLowerCase).toList(),
+                    pageable);
+        } else if (status != null && !status.isBlank()) {
             complaintPage = complaintRepository.findByComplainantPhoneAndStatus(phone, status.toLowerCase(), pageable);
         } else {
             complaintPage = complaintRepository.findByComplainantPhone(phone, pageable);
@@ -436,6 +517,34 @@ public class ComplaintApiV1Controller {
         // New closure/stage fields
         detail.put("closureClause", c.getClosureClause());
         detail.put("closedAt", c.getClosedAt() != null ? c.getClosedAt().toString() : null);
+
+        // ═══ Whether this complaint has been appealed, and under which appeal number (UST111) ═══
+        //
+        // This response carried nothing about appeals at all, so the citizen tracker could not tell a
+        // complaint that had been appealed from one that had not: it went on offering "File Appeal" after
+        // a successful filing, and a citizen who took the offer travelled to the appeal screen only to be
+        // refused there. The refusal was correct; continuing to offer the action was not.
+        //
+        // Read from the parent's OWN timeline rather than by querying APPEALS, on purpose. The appeal
+        // record is AA-module state behind a role guard, and this endpoint also serves anonymous
+        // track-by-reference — joining to it here would put appellant-side data on a public read. The
+        // APPEAL_FILED timeline row (written by AppealWorkflowService.fileAppeal) is the complaint's own
+        // history and carries the appeal number as its newValue, which is all the tracker needs.
+        //
+        // Deliberately NOT gated on isStaff: this is the citizen's own escalation, and telling the person
+        // who filed an appeal that they filed one is the entire point.
+        Optional<ComplaintTimeline> appealEvent = timeline.stream()
+                .filter(t -> "APPEAL_FILED".equals(t.getAction()))
+                // Latest wins: a complaint remanded and re-closed can be appealed again, and the CURRENT
+                // appeal is the one the tracker must name.
+                .max(Comparator.comparing(ComplaintTimeline::getPerformedAt,
+                        Comparator.nullsFirst(Comparator.naturalOrder())));
+        detail.put("appealFiled", appealEvent.isPresent());
+        detail.put("appealNumber", appealEvent.map(ComplaintTimeline::getNewValue).orElse(null));
+        detail.put("appealFiledAt", appealEvent
+                .map(t -> t.getPerformedAt() != null ? t.getPerformedAt().toString() : null)
+                .orElse(null));
+
         detail.put("currentStage", stageData.get("currentStage"));
         detail.put("stages", stageData.get("stages"));
         detail.put("timeline", timeline.stream().map(t -> {
@@ -445,6 +554,10 @@ public class ComplaintApiV1Controller {
             tm.put("action", t.getAction());
             tm.put("timestamp", t.getPerformedAt() != null ? t.getPerformedAt().toString() : "");
             tm.put("remarks", t.getRemarks());
+            // The History panel consumes this embedded array, so omitting the actor left the audit
+            // trail unattributable in the only place staff actually read it.
+            tm.put("performedBy", t.getPerformedBy());
+            tm.put("performedByRole", t.getPerformedByRole());
             // UST848: lets the UI separate what a person did from what the system derived, instead
             // of inferring it from the three different casings of "SYSTEM" in performedBy.
             tm.put("eventSource", t.getEventSource() != null ? t.getEventSource().name() : "MANUAL");

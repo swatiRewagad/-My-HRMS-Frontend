@@ -94,6 +94,21 @@
   </div>
 }
 
+<!-- Shown only after an INACTIVITY logout: the citizen who pressed Logout needs no explanation, but one
+     who was signed out by the timer is otherwise left guessing why their work disappeared. -->
+@if (authService.timedOut() && !authService.isAuthenticated()) {
+  <div class="session-timeout-banner" role="alert" aria-live="assertive">
+    <div class="container session-timeout-inner">
+      <i class="pi pi-lock"></i>
+      <span class="session-timeout-message">Your session has timed out. Please log in again.</span>
+      <a class="session-timeout-login" routerLink="/public/login">Log in again</a>
+      <button class="session-timeout-close" (click)="authService.dismissTimedOut()" aria-label="Dismiss session timeout notice">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+  </div>
+}
+
 <main class="main-content" id="main-content" role="main" aria-label="Main content">
   <router-outlet />
 </main>

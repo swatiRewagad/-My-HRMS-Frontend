@@ -3,7 +3,10 @@ package com.hrms.cms.service;
 import com.hrms.cms.dto.*;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
+import com.hrms.cms.exception.ComplaintNotEditableException;
+import com.hrms.cms.exception.MandatoryFieldBlankException;
 import com.hrms.cms.repository.*;
+import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.service.mre.MreEntityCoverageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -149,6 +153,7 @@ public class ComplaintService {
                 .reComplaintDate(req.getReComplaintDate())
                 .reComplaintReference(req.getReComplaintReference())
                 .reRepliedAndDissatisfied(req.getReRepliedAndDissatisfied())
+                .reReplyDate(req.getReReplyDate())
                 .declarationAccepted(req.getDeclarationAccepted())
                 .hasAuthRep(req.getHasAuthRep())
                 .throughAdvocate(req.getThroughAdvocate())
@@ -268,11 +273,27 @@ public class ComplaintService {
         return saved;
     }
 
+    /**
+     * Statuses that settle a complaint. Once a record reaches one of these it is a closed matter, and
+     * amending it in place would rewrite history rather than append to it: a reopen is a workflow
+     * action with its own audit entry, not a field edit.
+     */
+    private static final Set<String> TERMINAL_STATUSES = Set.of("closed", "withdrawn", "rejected");
+
     @CacheEvict(value = "dashboard", allEntries = true)
     @Transactional
-    public Complaint updateComplaint(Long id, UpdateComplaintRequest req) {
+    public Complaint updateComplaint(Long id, UpdateComplaintRequest req, RequestIdentity editor) {
         Complaint complaint = getComplaint(id);
         String oldStatus = complaint.getStatus();
+
+        if (oldStatus != null && TERMINAL_STATUSES.contains(oldStatus.toLowerCase())) {
+            throw new ComplaintNotEditableException(complaint.getComplaintNumber(), oldStatus);
+        }
+
+        // A present-but-blank field is an attempt to clear a mandatory value, which is different from
+        // omitting it. Only the latter means "leave this alone".
+        rejectBlank(req.getStatus(), "status");
+        rejectBlank(req.getPriority(), "priority");
 
         if (req.getStatus() != null) {
             complaint.setStatus(req.getStatus());
@@ -286,10 +307,16 @@ public class ComplaintService {
         Complaint saved = complaintRepository.save(complaint);
 
         String action = req.getStatus() != null ? "status_change" : "update";
-        addTimelineAsync(id, action, req.getAssignedOfficer() != null ? req.getAssignedOfficer() : "System",
+        addTimelineAsync(id, action, editor.getUserId(), editor.getPrimaryRole(),
                 req.getRemarks(), oldStatus, complaint.getStatus());
 
         return saved;
+    }
+
+    private void rejectBlank(String value, String field) {
+        if (value != null && value.isBlank()) {
+            throw new MandatoryFieldBlankException(field);
+        }
     }
 
     @Transactional
@@ -305,10 +332,18 @@ public class ComplaintService {
     @Async("taskExecutor")
     @Transactional
     public void addTimelineAsync(Long complaintId, String action, String performedBy, String remarks, String fromStatus, String toStatus) {
+        addTimelineAsync(complaintId, action, performedBy, null, remarks, fromStatus, toStatus);
+    }
+
+    @Async("taskExecutor")
+    @Transactional
+    public void addTimelineAsync(Long complaintId, String action, String performedBy, String performedByRole,
+                                 String remarks, String fromStatus, String toStatus) {
         ComplaintTimeline entry = ComplaintTimeline.builder()
                 .complaintId(complaintId)
                 .action(action)
                 .performedBy(performedBy)
+                .performedByRole(performedByRole)
                 .remarks(remarks)
                 .fromStatus(fromStatus)
                 .toStatus(toStatus)
@@ -317,10 +352,20 @@ public class ComplaintService {
     }
 
     public void addTimeline(Long complaintId, String action, String performedBy, String remarks, String fromStatus, String toStatus) {
+        addTimeline(complaintId, action, performedBy, null, remarks, fromStatus, toStatus);
+    }
+
+    /**
+     * The role-carrying form. An audit entry that names the user but not the role they acted in cannot
+     * answer "who was allowed to do this", which is the question a role-wise audit is read for.
+     */
+    public void addTimeline(Long complaintId, String action, String performedBy, String performedByRole,
+                            String remarks, String fromStatus, String toStatus) {
         ComplaintTimeline entry = ComplaintTimeline.builder()
                 .complaintId(complaintId)
                 .action(action)
                 .performedBy(performedBy)
+                .performedByRole(performedByRole == null || performedByRole.isBlank() ? null : performedByRole)
                 .remarks(remarks)
                 .fromStatus(fromStatus)
                 .toStatus(toStatus)

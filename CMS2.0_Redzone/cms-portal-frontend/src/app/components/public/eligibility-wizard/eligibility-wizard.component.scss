@@ -572,6 +572,31 @@
   }
 }
 
+// Fail-closed notice when /wizard-check is unreachable
+.unavailable-card {
+  text-align: center;
+  padding: 40px 32px;
+}
+
+.unavailable-notice {
+  padding: 14px 18px;
+  background: var(--state-warning-bg);
+  border: 1px solid #ffe082;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #795548;
+  text-align: left;
+
+  i {
+    font-size: 18px;
+    color: #f9a825;
+    flex-shrink: 0;
+  }
+}
+
 // Today getter for date max
 :host {
   display: block;

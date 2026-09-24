@@ -19,6 +19,17 @@ public class ComplaintCategory {
     @Column(nullable = false, length = 200)
     private String name;
 
+    /**
+     * Translation key for the citizen-facing label, e.g. {@code category.atm_debit_card}.
+     *
+     * <p>{@link #name} stays ENGLISH and is the value submitted on a complaint and matched by routing,
+     * so it cannot be localised without changing what is stored. This column localises only what is
+     * DISPLAYED. Null means the caller falls back to {@code name}, so a category added by an operator
+     * who has no key for it still renders rather than showing a raw key.
+     */
+    @Column(name = "LABEL_KEY", length = 100)
+    private String labelKey;
+
     @Column(length = 500)
     private String description;
 

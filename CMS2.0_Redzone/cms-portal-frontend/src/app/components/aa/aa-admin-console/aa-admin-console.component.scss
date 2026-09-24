@@ -1,19 +1,5 @@
 .aa-admin-console {
-  min-height: 100vh;
-  background: var(--surface-sunken);
-  padding: 24px 20px;
-
-  h2 { margin: 0 0 8px; font-size: 18px; color: var(--brand-primary-strong); }
   h3 { margin: 0 0 12px; font-size: 15px; color: var(--brand-primary-strong); }
-}
-
-.console-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
 }
 
 .role-group-tabs {

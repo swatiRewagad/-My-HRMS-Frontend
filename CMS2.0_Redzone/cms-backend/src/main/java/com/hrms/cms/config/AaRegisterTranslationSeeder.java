@@ -134,9 +134,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.others", "Others");
 
         // ═══ Attachment limits (NFR-006) ═══
-        m.put("aa.upload.error_file_too_large", "Each file must be 2 MB or smaller.");
-        m.put("aa.upload.error_total_too_large", "All attachments together must be 25 MB or smaller.");
-        m.put("aa.upload.error_too_many_files", "You may attach at most 10 files.");
+        m.put("aa.upload.error_file_too_large", "Each file must be {{size}} MB or smaller.");
+        m.put("aa.upload.error_total_too_large", "All attachments together must be {{total}} MB or smaller.");
+        m.put("aa.upload.error_too_many_files", "You may attach at most {{count}} files.");
         m.put("aa.register.button_retry", "Retry");
 
         // ═══ Field labels that had no key of their own ═══
@@ -234,9 +234,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "प्रेषण / अंतरण");
         m.put("aa.ground.insurance", "बीमा");
         m.put("aa.ground.others", "अन्य");
-        m.put("aa.upload.error_file_too_large", "प्रत्येक फ़ाइल 2 एमबी या उससे कम होनी चाहिए।");
-        m.put("aa.upload.error_total_too_large", "सभी अनुलग्नक मिलाकर 25 एमबी या उससे कम होने चाहिए।");
-        m.put("aa.upload.error_too_many_files", "आप अधिकतम 10 फ़ाइलें संलग्न कर सकते हैं।");
+        m.put("aa.upload.error_file_too_large", "प्रत्येक फ़ाइल {{size}} एमबी या उससे कम होनी चाहिए।");
+        m.put("aa.upload.error_total_too_large", "सभी अनुलग्नक मिलाकर {{total}} एमबी या उससे कम होने चाहिए।");
+        m.put("aa.upload.error_too_many_files", "आप अधिकतम {{count}} फ़ाइलें संलग्न कर सकते हैं।");
         m.put("aa.register.button_retry", "पुनः प्रयास करें");
         m.put("aa.register.appellant_city", "शहर");
         m.put("aa.register.appellant_country", "देश");
@@ -328,9 +328,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "पैसे पाठवणे / हस्तांतरण");
         m.put("aa.ground.insurance", "विमा");
         m.put("aa.ground.others", "इतर");
-        m.put("aa.upload.error_file_too_large", "प्रत्येक फाइल 2 एमबी किंवा त्यापेक्षा कमी असावी.");
-        m.put("aa.upload.error_total_too_large", "सर्व संलग्नके मिळून 25 एमबी किंवा त्यापेक्षा कमी असावीत.");
-        m.put("aa.upload.error_too_many_files", "तुम्ही जास्तीत जास्त 10 फाइल्स जोडू शकता.");
+        m.put("aa.upload.error_file_too_large", "प्रत्येक फाइल {{size}} एमबी किंवा त्यापेक्षा कमी असावी.");
+        m.put("aa.upload.error_total_too_large", "सर्व संलग्नके मिळून {{total}} एमबी किंवा त्यापेक्षा कमी असावीत.");
+        m.put("aa.upload.error_too_many_files", "तुम्ही जास्तीत जास्त {{count}} फाइल्स जोडू शकता.");
         m.put("aa.register.button_retry", "पुन्हा प्रयत्न करा");
         m.put("aa.register.appellant_city", "शहर");
         m.put("aa.register.appellant_country", "देश");
@@ -423,9 +423,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.insurance", "বিমা");
         m.put("aa.ground.others", "অন্যান্য");
         // Bengali stores digits in Bengali numerals: ২ = 2, ২৫ = 25, ১০ = 10.
-        m.put("aa.upload.error_file_too_large", "প্রতিটি ফাইল ২ এমবি বা তার কম হতে হবে।");
-        m.put("aa.upload.error_total_too_large", "সব সংযুক্তি একসঙ্গে ২৫ এমবি বা তার কম হতে হবে।");
-        m.put("aa.upload.error_too_many_files", "আপনি সর্বাধিক ১০টি ফাইল সংযুক্ত করতে পারেন।");
+        m.put("aa.upload.error_file_too_large", "প্রতিটি ফাইল {{size}} এমবি বা তার কম হতে হবে।");
+        m.put("aa.upload.error_total_too_large", "সব সংযুক্তি একসঙ্গে {{total}} এমবি বা তার কম হতে হবে।");
+        m.put("aa.upload.error_too_many_files", "আপনি সর্বাধিক {{count}}টি ফাইল সংযুক্ত করতে পারেন।");
         m.put("aa.register.button_retry", "আবার চেষ্টা করুন");
         m.put("aa.register.appellant_city", "শহর");
         m.put("aa.register.appellant_country", "দেশ");
@@ -517,9 +517,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "చెల్లింపు / బదిలీ");
         m.put("aa.ground.insurance", "బీమా");
         m.put("aa.ground.others", "ఇతరాలు");
-        m.put("aa.upload.error_file_too_large", "ప్రతి ఫైల్ 2 ఎంబీ లోపు ఉండాలి.");
-        m.put("aa.upload.error_total_too_large", "అన్ని జోడింపులు కలిపి 25 ఎంబీ లోపు ఉండాలి.");
-        m.put("aa.upload.error_too_many_files", "మీరు గరిష్ఠంగా 10 ఫైల్‌లను జోడించగలరు.");
+        m.put("aa.upload.error_file_too_large", "ప్రతి ఫైల్ {{size}} ఎంబీ లోపు ఉండాలి.");
+        m.put("aa.upload.error_total_too_large", "అన్ని జోడింపులు కలిపి {{total}} ఎంబీ లోపు ఉండాలి.");
+        m.put("aa.upload.error_too_many_files", "మీరు గరిష్ఠంగా {{count}} ఫైల్‌లను జోడించగలరు.");
         m.put("aa.register.button_retry", "మళ్లీ ప్రయత్నించండి");
         m.put("aa.register.appellant_city", "నగరం");
         m.put("aa.register.appellant_country", "దేశం");
@@ -611,9 +611,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "பணப் பரிமாற்றம்");
         m.put("aa.ground.insurance", "காப்பீடு");
         m.put("aa.ground.others", "மற்றவை");
-        m.put("aa.upload.error_file_too_large", "ஒவ்வொரு கோப்பும் 2 எம்பி அல்லது குறைவாக இருக்க வேண்டும்.");
-        m.put("aa.upload.error_total_too_large", "அனைத்து இணைப்புகளும் சேர்ந்து 25 எம்பி அல்லது குறைவாக இருக்க வேண்டும்.");
-        m.put("aa.upload.error_too_many_files", "நீங்கள் அதிகபட்சம் 10 கோப்புகளை இணைக்கலாம்.");
+        m.put("aa.upload.error_file_too_large", "ஒவ்வொரு கோப்பும் {{size}} எம்பி அல்லது குறைவாக இருக்க வேண்டும்.");
+        m.put("aa.upload.error_total_too_large", "அனைத்து இணைப்புகளும் சேர்ந்து {{total}} எம்பி அல்லது குறைவாக இருக்க வேண்டும்.");
+        m.put("aa.upload.error_too_many_files", "நீங்கள் அதிகபட்சம் {{count}} கோப்புகளை இணைக்கலாம்.");
         m.put("aa.register.button_retry", "மீண்டும் முயற்சி");
         m.put("aa.register.appellant_city", "நகரம்");
         m.put("aa.register.appellant_country", "நாடு");
@@ -705,9 +705,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "રકમ મોકલવી / તબદીલી");
         m.put("aa.ground.insurance", "વીમો");
         m.put("aa.ground.others", "અન્ય");
-        m.put("aa.upload.error_file_too_large", "દરેક ફાઇલ 2 એમબી અથવા તેથી નાની હોવી જોઈએ.");
-        m.put("aa.upload.error_total_too_large", "તમામ જોડાણો મળીને 25 એમબી અથવા તેથી નાનાં હોવાં જોઈએ.");
-        m.put("aa.upload.error_too_many_files", "તમે વધુમાં વધુ 10 ફાઇલો જોડી શકો છો.");
+        m.put("aa.upload.error_file_too_large", "દરેક ફાઇલ {{size}} એમબી અથવા તેથી નાની હોવી જોઈએ.");
+        m.put("aa.upload.error_total_too_large", "તમામ જોડાણો મળીને {{total}} એમબી અથવા તેથી નાનાં હોવાં જોઈએ.");
+        m.put("aa.upload.error_too_many_files", "તમે વધુમાં વધુ {{count}} ફાઇલો જોડી શકો છો.");
         m.put("aa.register.button_retry", "ફરી પ્રયાસ કરો");
         m.put("aa.register.appellant_city", "શહેર");
         m.put("aa.register.appellant_country", "દેશ");
@@ -799,9 +799,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "رقم کی منتقلی");
         m.put("aa.ground.insurance", "بیمہ");
         m.put("aa.ground.others", "دیگر");
-        m.put("aa.upload.error_file_too_large", "ہر فائل 2 ایم بی یا اس سے کم ہونی چاہیے۔");
-        m.put("aa.upload.error_total_too_large", "تمام منسلکات مل کر 25 ایم بی یا اس سے کم ہونے چاہیے۔");
-        m.put("aa.upload.error_too_many_files", "آپ زیادہ سے زیادہ 10 فائلیں منسلک کر سکتے ہیں۔");
+        m.put("aa.upload.error_file_too_large", "ہر فائل {{size}} ایم بی یا اس سے کم ہونی چاہیے۔");
+        m.put("aa.upload.error_total_too_large", "تمام منسلکات مل کر {{total}} ایم بی یا اس سے کم ہونے چاہیے۔");
+        m.put("aa.upload.error_too_many_files", "آپ زیادہ سے زیادہ {{count}} فائلیں منسلک کر سکتے ہیں۔");
         m.put("aa.register.button_retry", "دوبارہ کوشش کریں");
         m.put("aa.register.appellant_city", "شہر");
         m.put("aa.register.appellant_country", "ملک");
@@ -893,9 +893,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "ಹಣ ರವಾನೆ / ವರ್ಗಾವಣೆ");
         m.put("aa.ground.insurance", "ವಿಮೆ");
         m.put("aa.ground.others", "ಇತರೆ");
-        m.put("aa.upload.error_file_too_large", "ಪ್ರತಿ ಕಡತವು 2 ಎಂಬಿ ಅಥವಾ ಕಡಿಮೆ ಇರಬೇಕು.");
-        m.put("aa.upload.error_total_too_large", "ಎಲ್ಲ ಲಗತ್ತುಗಳು ಒಟ್ಟಾಗಿ 25 ಎಂಬಿ ಅಥವಾ ಕಡಿಮೆ ಇರಬೇಕು.");
-        m.put("aa.upload.error_too_many_files", "ನೀವು ಗರಿಷ್ಠ 10 ಕಡತಗಳನ್ನು ಲಗತ್ತಿಸಬಹುದು.");
+        m.put("aa.upload.error_file_too_large", "ಪ್ರತಿ ಕಡತವು {{size}} ಎಂಬಿ ಅಥವಾ ಕಡಿಮೆ ಇರಬೇಕು.");
+        m.put("aa.upload.error_total_too_large", "ಎಲ್ಲ ಲಗತ್ತುಗಳು ಒಟ್ಟಾಗಿ {{total}} ಎಂಬಿ ಅಥವಾ ಕಡಿಮೆ ಇರಬೇಕು.");
+        m.put("aa.upload.error_too_many_files", "ನೀವು ಗರಿಷ್ಠ {{count}} ಕಡತಗಳನ್ನು ಲಗತ್ತಿಸಬಹುದು.");
         m.put("aa.register.button_retry", "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ");
         m.put("aa.register.appellant_city", "ನಗರ");
         m.put("aa.register.appellant_country", "ದೇಶ");
@@ -987,9 +987,9 @@ public class AaRegisterTranslationSeeder implements CommandLineRunner {
         m.put("aa.ground.remittance_transfer", "പണമടയ്ക്കൽ / കൈമാറ്റം");
         m.put("aa.ground.insurance", "ഇൻഷുറൻസ്");
         m.put("aa.ground.others", "മറ്റുള്ളവ");
-        m.put("aa.upload.error_file_too_large", "ഓരോ ഫയലും 2 എംബി അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
-        m.put("aa.upload.error_total_too_large", "എല്ലാ അറ്റാച്ച്‌മെന്റുകളും ചേർന്ന് 25 എംബി അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
-        m.put("aa.upload.error_too_many_files", "നിങ്ങൾക്ക് പരമാവധി 10 ഫയലുകൾ അറ്റാച്ച് ചെയ്യാം.");
+        m.put("aa.upload.error_file_too_large", "ഓരോ ഫയലും {{size}} എംബി അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
+        m.put("aa.upload.error_total_too_large", "എല്ലാ അറ്റാച്ച്‌മെന്റുകളും ചേർന്ന് {{total}} എംബി അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
+        m.put("aa.upload.error_too_many_files", "നിങ്ങൾക്ക് പരമാവധി {{count}} ഫയലുകൾ അറ്റാച്ച് ചെയ്യാം.");
         m.put("aa.register.button_retry", "വീണ്ടും ശ്രമിക്കുക");
         m.put("aa.register.appellant_city", "നഗരം");
         m.put("aa.register.appellant_country", "രാജ്യം");

@@ -31,7 +31,7 @@
 
   <!-- UST587: the limit shown comes from configuration, not a literal. -->
   <div class="limit-note">
-    {{ 'attachment.limit_note' | translate:limitParams }}
+    {{ 'attachment.limit_note' | translate:limitParams() }}
   </div>
 
   @if (uploadError()) {

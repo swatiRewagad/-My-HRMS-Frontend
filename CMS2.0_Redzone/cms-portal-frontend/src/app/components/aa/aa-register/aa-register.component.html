@@ -1,20 +1,10 @@
-<div class="aa-register">
-  <header class="topbar">
-    <div class="topbar-left">
-      <button class="back-btn" type="button" (click)="goBack()">&larr;</button>
-      <div class="title-block">
-        <h2>{{ 'aa.register.heading' | translate }}</h2>
-        <span class="subtitle">{{ complaintNumber() }}</span>
-      </div>
-    </div>
-    <div class="topbar-right">
-      @if (auth.currentUser(); as user) {
-        <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
-      }
-    </div>
-  </header>
+<app-shell [titleKey]="'aa.register.heading'">
+  <div shell-actions>
+    <span class="subtitle">{{ complaintNumber() }}</span>
+    <button class="back-btn" type="button" (click)="goBack()">&larr;</button>
+  </div>
 
-  <main class="content">
+  <div class="aa-register">
     @if (loading()) {
       <div class="loading-state">
         <div class="spinner"></div>
@@ -590,8 +580,10 @@
                   </ul>
                 }
                 @if (uploadErrorKey(); as key) {
-                  <!-- Mirrors the server's limits as an early hint; the server still enforces them. -->
-                  <span class="field-error">{{ key | translate }}</span>
+                  <!-- Mirrors the server's limits as an early hint; the server still enforces them.
+                       The params are NOT optional: these keys carry size/total/count placeholders and
+                       without them the placeholder itself reached the registrar in all ten locales. -->
+                  <span class="field-error">{{ key | translate:uploadErrorParams() }}</span>
                 }
               </div>
             </div>
@@ -610,5 +602,5 @@
         </div>
       </form>
     }
-  </main>
-</div>
+  </div>
+</app-shell>

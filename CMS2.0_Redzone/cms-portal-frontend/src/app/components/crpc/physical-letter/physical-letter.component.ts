@@ -10,6 +10,7 @@ import { ReviewerUser } from '../../../models/crpc.model';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { OcrProvenance } from '../../../shared/ocr-provenance';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 interface Suggestion {
   id: string;
   field: string;
@@ -37,6 +38,7 @@ export class PhysicalLetterComponent implements OnInit {
   private sanitizer = inject(DomSanitizer);
   private auth = inject(KeycloakAuthService);
   private crpcService = inject(CrpcService);
+  uploadLimits = inject(UploadLimitsService);
 
   // Header
   complaintNumber = '';
@@ -307,8 +309,10 @@ export class PhysicalLetterComponent implements OnInit {
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      this.scanError = 'File size must not exceed 2 MB.';
+    // The limit is CONFIGURED (cms.upload.max_file_size), not compiled in: a hardcoded 2 MB here
+    // rejected files the server accepts, and hardcoding 5 would drift the next time it is retuned.
+    if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+      this.scanError = `File size must not exceed ${this.uploadLimits.maxFileSizeMb()} MB.`;
       return;
     }
 
@@ -330,8 +334,10 @@ export class PhysicalLetterComponent implements OnInit {
       this.scanError = 'Only PDF, JPEG, PNG, or TIFF files are accepted.';
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      this.scanError = 'File size must not exceed 2 MB.';
+    // The limit is CONFIGURED (cms.upload.max_file_size), not compiled in: a hardcoded 2 MB here
+    // rejected files the server accepts, and hardcoding 5 would drift the next time it is retuned.
+    if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+      this.scanError = `File size must not exceed ${this.uploadLimits.maxFileSizeMb()} MB.`;
       return;
     }
     this.scannedFile = file;

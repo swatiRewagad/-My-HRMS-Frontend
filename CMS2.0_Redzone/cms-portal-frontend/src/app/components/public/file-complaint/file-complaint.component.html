@@ -52,6 +52,56 @@
         @if (currentQuestion?.type === 'select') {
           <h3 class="select-heading">{{ currentQuestionText }}</h3>
           <p class="select-desc">Any financial institution—such as a bank, Non-Banking Financial Company (NBFC), or payment processor—licensed and supervised by the Reserve Bank of India</p>
+          <!-- UST13: the entity list is master data. If it cannot be loaded the citizen must be told,
+               because an empty dropdown is indistinguishable from "RBI regulates nothing" and there is
+               no way to file without naming an entity. -->
+          @if (entitiesLoadFailed()) {
+            <div class="entities-load-error" role="alert">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>{{ 'eligibility.entities_unavailable' | translate }}</span>
+              <button class="btn-retry-entities" (click)="retryLoadEntities()">{{ 'form.retry' | translate }}</button>
+            </div>
+          }
+
+          <!-- UST13 S3: search by entity NAME or entity TYPE. Filtering is client-side over the list
+               already fetched from /routing/entities/list, so the term never reaches a query. -->
+          <div class="entity-search-wrapper">
+            <input type="text" class="form-input entity-search-input"
+                   name="entitySearch"
+                   autocomplete="off"
+                   [attr.aria-expanded]="entityDropdownOpen"
+                   aria-controls="entity-search-results"
+                   [attr.aria-label]="'eligibility.entity_search_label' | translate"
+                   [placeholder]="'eligibility.entity_search_placeholder' | translate"
+                   [ngModel]="entitySearchText"
+                   (ngModelChange)="onEntitySearchInput($event)"
+                   (focus)="openEntityDropdown()"
+                   (blur)="closeEntityDropdown()">
+            @if (entitySearchText) {
+              <button type="button" class="entity-search-clear"
+                      [attr.aria-label]="'eligibility.entity_search_clear' | translate"
+                      (click)="clearEntitySelection()"><i class="pi pi-times"></i></button>
+            }
+            @if (entityDropdownOpen && filteredEntityOptions.length > 0) {
+              <ul class="entity-search-results" id="entity-search-results" role="listbox">
+                @for (opt of filteredEntityOptions; track opt.value) {
+                  <li class="entity-search-option" role="option"
+                      [attr.aria-selected]="eligibilityAnswers[currentQuestionKey] === opt.value"
+                      [attr.data-entity-type]="opt.entityType || ''"
+                      (mousedown)="selectEntityFromSearch(opt)">
+                    <span class="es-name">{{ opt.label }}</span>
+                    @if (opt.entityType) { <span class="es-type">{{ opt.entityType }}</span> }
+                  </li>
+                }
+              </ul>
+            }
+            <!-- Interpolated, not concatenated: TranslationService.translate takes params optionally,
+                 so rendering this key without them would print a literal {{term}} to the citizen. -->
+            @if (entitySearchHasNoResults) {
+              <p class="entity-search-empty" role="status">{{ entitySearchNoResultsText }}</p>
+            }
+          </div>
+
           <div class="entity-select-wrapper">
             <select class="form-input entity-select-dropdown"
                     [ngModel]="eligibilityAnswers[currentQuestionKey]"
@@ -79,7 +129,12 @@
           <div class="radio-list">
             @for (opt of currentQuestion?.options || []; track opt.value) {
               <label class="radio-option" [class.selected]="eligibilityAnswers[currentQuestionKey] === opt.value">
+                <!-- [name]/[value] bind the NgModel and RadioControlValueAccessor DIRECTIVE inputs, which
+                     Angular never reflects to the DOM. Without the attributes the two inputs were not a
+                     native radio group: keyboard users tabbed through each option separately instead of
+                     arrowing within one group, and assistive tech saw two unrelated radios. -->
                 <input type="radio" [name]="currentQuestionKey" [value]="opt.value"
+                       [attr.name]="currentQuestionKey" [attr.value]="opt.value"
                        [ngModel]="eligibilityAnswers[currentQuestionKey]" (ngModelChange)="selectEligibilityAnswer($event)">
                 <span>{{ opt.translationKey ? (opt.translationKey | translate) : opt.label }}</span>
               </label>
@@ -127,7 +182,7 @@
               }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 2MB</span>
+                <span class="upload-size">Maximum size: {{ uploadLimits.maxFileSizeMb() }}MB</span>
               </div>
               @if (eligibilityFileError) {
                 <span class="field-error">{{ eligibilityFileError }}</span>
@@ -216,7 +271,7 @@
               }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 2MB</span>
+                <span class="upload-size">Maximum size: {{ uploadLimits.maxFileSizeMb() }}MB</span>
               </div>
               @if (reminderFileError) {
                 <span class="field-error">{{ reminderFileError }}</span>
@@ -257,19 +312,13 @@
               }
               <div class="upload-hint">
                 <span>Support formats: PDF, JPG, PNG</span>
-                <span class="upload-size">Maximum size: 2MB</span>
+                <span class="upload-size">Maximum size: {{ uploadLimits.maxFileSizeMb() }}MB</span>
               </div>
               @if (replyFileError) {
                 <span class="field-error">{{ replyFileError }}</span>
               }
             </div>
           </div>
-        }
-
-        @if (timeBarredWarning()) {
-          <p class="time-barred-warning" role="alert">
-            <i class="pi pi-exclamation-triangle"></i> {{ timeBarredWarning() }}
-          </p>
         }
 
         @if (mandatoryResponseError()) {
@@ -290,6 +339,9 @@
             {{ resolvedBlockMessage() }}
             <strong>{{ 'eligibility.block_written_required' | translate }}</strong>
           </p>
+          @if (reWindowOpensNotice()) {
+            <p class="re-window-opens">{{ reWindowOpensNotice() }}</p>
+          }
           <p>
             {{ 'eligibility.block_regret' | translate }}
             <strong>{{ selectedEntityName }}</strong>
@@ -628,7 +680,7 @@
                       (ngModelChange)="onCategoryChange()">
                 <option value="">{{ 'ui.common.select_value' | translate }}</option>
                 @for (c of categories; track c.value) {
-                  <option [value]="c.value">{{ c.label }}</option>
+                  <option [value]="c.value">{{ categoryLabel(c) }}</option>
                 }
               </select>
             }
@@ -816,7 +868,7 @@
             </div>
             <div class="file-upload-meta">
               <span class="upload-hint">Support formats: PDF, DOC, JPG, PNG</span>
-              <span class="upload-size">Maximum Size of All Files: 2MB</span>
+              <span class="upload-size">Maximum Size of All Files: {{ uploadLimits.maxTotalSizeMb() }}MB</span>
             </div>
             @if (fileUploadError) {
               <div class="error-msg"><i class="pi pi-exclamation-circle"></i> {{ fileUploadError }}</div>
@@ -949,7 +1001,7 @@
               </div>
               <div class="file-upload-meta">
                 <span class="upload-hint">Support formats: PDF, DOC, JPG, PNG</span>
-                <span class="upload-size">Maximum Size of All Files: 2MB</span>
+                <span class="upload-size">Maximum Size of All Files: {{ uploadLimits.maxTotalSizeMb() }}MB</span>
               </div>
               @if (repFileName) {
                 <div class="uploaded-file-info">
@@ -1252,6 +1304,9 @@
       <div class="nm-reason">
         <h4>{{ 'nm.reason' | translate }}</h4>
         <p>{{ resolvedBlockMessage() }}</p>
+        @if (reWindowOpensNotice()) {
+          <p class="re-window-opens">{{ reWindowOpensNotice() }}</p>
+        }
       </div>
       <div class="nm-actions">
         <button class="btn-primary" (click)="downloadClosureLetter()">

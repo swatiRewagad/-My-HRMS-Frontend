@@ -20,7 +20,7 @@
           <div class="user-details">
             <span class="user-name" data-testid="shell-user-name">{{ displayName() }}</span>
             @if (roleKey()) {
-              <span class="user-role">{{ roleKey()! | translate }}</span>
+              <span class="user-role" data-testid="shell-user-role">{{ roleKey()! | translate }}</span>
             }
           </div>
           <button type="button"

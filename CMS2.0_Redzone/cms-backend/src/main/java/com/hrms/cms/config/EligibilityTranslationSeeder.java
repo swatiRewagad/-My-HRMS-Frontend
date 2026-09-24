@@ -45,6 +45,26 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         seedIfAbsent("eligibility.response_mandatory", "eligibility",
                 "Error when an eligibility question is unanswered", "Response is mandatory.");
 
+        // UST13: the entity select is a NAMED field, so its mandatory error names the field rather than
+        // demanding a generic "response" on a screen with nothing to respond to.
+        seedIfAbsent("eligibility.entity_mandatory", "eligibility",
+                "Error when no Regulated Entity is selected", "Regulated Entity Name is mandatory.");
+
+        // UST13 S3: search the entity list by name or entity type.
+        seedIfAbsent("eligibility.entity_search_label", "eligibility",
+                "Accessible label for the RE search box", "Search Regulated Entity by name or type");
+        seedIfAbsent("eligibility.entity_search_placeholder", "eligibility",
+                "Placeholder for the RE search box", "Search by entity name or entity type");
+        seedIfAbsent("eligibility.entity_search_clear", "eligibility",
+                "Accessible label for the clear-search button", "Clear search");
+        // {{term}} is interpolated by the COMPONENT, not by the pipe: translate(key, params?) takes
+        // params optionally, so `| translate` on this key alone would print a literal {{term}}.
+        seedIfAbsent("eligibility.entity_search_no_results", "eligibility",
+                "Shown when the RE search matches nothing", "No results found for \"{{term}}\".");
+        seedIfAbsent("eligibility.entities_unavailable", "eligibility",
+                "Shown when the Regulated Entity master cannot be loaded",
+                "The list of Regulated Entities could not be loaded. Please retry — a complaint cannot be filed without naming an entity.");
+
         // Questions
         seedIfAbsent("eligibility.q_select_re", "eligibility", "Q: Select RE", "Select Regulated Entity Name");
         seedIfAbsent("eligibility.q_filed_with_re", "eligibility", "Q: Filed with RE", "Have you filed a written / electronic complaint with the {{reName}}?");
@@ -118,8 +138,13 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         seedIfAbsent("validation.file_type_not_allowed", "validation", "Disallowed upload type", "Only PDF, JPG and PNG files are allowed");
         seedIfAbsent("validation.ref_too_long", "validation", "Reference number too long", "Reference number must not exceed 100 characters");
         seedIfAbsent("validation.ref_invalid_chars", "validation", "Reference number bad characters", "Reference number may contain only letters, digits, hyphen, underscore and slash");
-        seedIfAbsent("eligibility.block_less_than_30_days", "eligibility", "Block: RE response window not elapsed", "As the Regulated Entity has not yet been given 30 days to respond to your complaint, your complaint cannot be registered at this time. Please wait until 30 days have elapsed from the date of filing your complaint with the Regulated Entity.");
-        seedIfAbsent("eligibility.time_barred_warning", "eligibility", "Warning: filing window elapsed", "Your complaint to the Regulated Entity was filed more than 310 days ago. The filing window under the Scheme has elapsed, so your complaint may be closed as time-barred. You may still proceed.");
+        seedIfAbsent("eligibility.block_less_than_30_days", "eligibility", "Block: RE response window not elapsed", "As the Regulated Entity has not yet been given {{days}} days to respond to your complaint, your complaint cannot be registered at this time. Please wait until {{days}} days have elapsed from the date of filing your complaint with the Regulated Entity.");
+        seedIfAbsent("eligibility.time_barred_warning", "eligibility", "Warning: filing window elapsed", "Your complaint to the Regulated Entity was filed more than {{days}} days ago. The filing window under the Scheme has elapsed, so your complaint may be closed as time-barred. You may still proceed.");
+        seedIfAbsent("eligibility.re_window_opens_on", "eligibility", "Notice: date the RE window opens", "You may file your complaint with the RBI Ombudsman on or after {{date}}.");
+        // The filing window now REFUSES rather than warns (business ruling), and which window applies
+        // depends on whether the RE replied — hence two keys, not one.
+        seedIfAbsent("eligibility.block_filing_window", "eligibility", "Block: filing window elapsed (RE never replied)", "Complaint filing period has expired. A complaint must be filed within {{days}} days of your complaint to the Regulated Entity.");
+        seedIfAbsent("eligibility.block_post_reply_window", "eligibility", "Block: filing window elapsed (after RE reply)", "Complaint filing period has expired. A complaint must be filed within {{days}} days of the Regulated Entity's reply.");
 
         // UST5: DPDP consent notice. The wording is snapshotted onto each CITIZEN_CONSENTS row, so any
         // revision here must be accompanied by a bump of cms.auth.consent.version.
@@ -167,6 +192,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         hi.put("eligibility.opt_yes", "हाँ");
         hi.put("eligibility.opt_no", "नहीं");
         hi.put("eligibility.response_mandatory", "उत्तर देना अनिवार्य है।");
+        hi.put("eligibility.entity_mandatory", "विनियमित संस्था का नाम अनिवार्य है।");
+        hi.put("eligibility.entity_search_label", "नाम या प्रकार से विनियमित संस्था खोजें");
+        hi.put("eligibility.entity_search_placeholder", "संस्था का नाम या संस्था का प्रकार खोजें");
+        hi.put("eligibility.entity_search_clear", "खोज साफ़ करें");
+        hi.put("eligibility.entity_search_no_results", "\"{{term}}\" के लिए कोई परिणाम नहीं मिला।");
+        hi.put("eligibility.entities_unavailable", "विनियमित संस्थाओं की सूची लोड नहीं हो सकी। कृपया पुनः प्रयास करें — संस्था का नाम बताए बिना शिकायत दर्ज नहीं की जा सकती।");
 
         hi.put("eligibility.q_select_re", "विनियमित संस्था का नाम चुनें");
         hi.put("eligibility.q_filed_with_re", "क्या आपने {{reName}} के पास लिखित/इलेक्ट्रॉनिक शिकायत दर्ज की है?");
@@ -227,8 +258,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         hi.put("validation.file_type_not_allowed", "केवल PDF, JPG और PNG फ़ाइलें ही स्वीकार्य हैं");
         hi.put("validation.ref_too_long", "संदर्भ संख्या 100 वर्णों से अधिक नहीं हो सकती");
         hi.put("validation.ref_invalid_chars", "संदर्भ संख्या में केवल अक्षर, अंक, हाइफ़न, अंडरस्कोर और स्लैश हो सकते हैं");
-        hi.put("eligibility.block_less_than_30_days", "चूंकि विनियमित संस्था को आपकी शिकायत का उत्तर देने के लिए अभी 30 दिन नहीं दिए गए हैं, इस समय आपकी शिकायत पंजीकृत नहीं की जा सकती। कृपया विनियमित संस्था के पास शिकायत दर्ज करने की तारीख से 30 दिन पूरे होने तक प्रतीक्षा करें।");
-        hi.put("eligibility.time_barred_warning", "विनियमित संस्था के पास आपकी शिकायत 310 दिन से अधिक पहले दर्ज की गई थी। योजना के तहत दाखिल करने की अवधि समाप्त हो गई है, इसलिए आपकी शिकायत समय-बाधित के रूप में बंद की जा सकती है। आप फिर भी आगे बढ़ सकते हैं।");
+        hi.put("eligibility.block_less_than_30_days", "चूंकि विनियमित संस्था को आपकी शिकायत का उत्तर देने के लिए अभी {{days}} दिन नहीं दिए गए हैं, इस समय आपकी शिकायत पंजीकृत नहीं की जा सकती। कृपया विनियमित संस्था के पास शिकायत दर्ज करने की तारीख से {{days}} दिन पूरे होने तक प्रतीक्षा करें।");
+        hi.put("eligibility.time_barred_warning", "विनियमित संस्था के पास आपकी शिकायत {{days}} दिन से अधिक पहले दर्ज की गई थी। योजना के तहत दाखिल करने की अवधि समाप्त हो गई है, इसलिए आपकी शिकायत समय-बाधित के रूप में बंद की जा सकती है। आप फिर भी आगे बढ़ सकते हैं।");
+        hi.put("eligibility.block_filing_window", "शिकायत दाखिल करने की अवधि समाप्त हो गई है। शिकायत विनियमित संस्था के पास आपकी शिकायत के {{days}} दिनों के भीतर दाखिल की जानी चाहिए।");
+        hi.put("eligibility.block_post_reply_window", "शिकायत दाखिल करने की अवधि समाप्त हो गई है। शिकायत विनियमित संस्था के उत्तर के {{days}} दिनों के भीतर दाखिल की जानी चाहिए।");
         hi.put("consent.dpdp_notice", "मैं सहमति देता/देती हूँ कि RBI लागू कानूनों और डिजिटल पर्सनल डेटा प्रोटेक्शन अधिनियम, 2023 के अनुरूप मेरी शिकायत दर्ज करने और उसका समाधान करने के लिए मेरे व्यक्तिगत डेटा का उपयोग करे।");
         hi.put("consent.required", "जारी रखने के लिए आपको डेटा प्रोसेसिंग घोषणा स्वीकार करनी होगी।");
         hi.put("layout.assistance_desc", "संपर्क केंद्र (#14448) इंटरैक्टिव वॉइस रिस्पांस सिस्टम (IVRS) के साथ 24x7 उपलब्ध है, जबकि संपर्क केंद्र कर्मियों से जुड़ने की सुविधा सोमवार से शनिवार (राष्ट्रीय अवकाश को छोड़कर) सुबह 8:00 बजे से रात 10:00 बजे तक अंग्रेजी, हिंदी और दस क्षेत्रीय भाषाओं में उपलब्ध है।");
@@ -259,6 +292,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         mr.put("eligibility.opt_yes", "होय");
         mr.put("eligibility.opt_no", "नाही");
         mr.put("eligibility.response_mandatory", "उत्तर देणे अनिवार्य आहे.");
+        mr.put("eligibility.entity_mandatory", "नियमित संस्थेचे नाव अनिवार्य आहे.");
+        mr.put("eligibility.entity_search_label", "नाव किंवा प्रकारानुसार नियमित संस्था शोधा");
+        mr.put("eligibility.entity_search_placeholder", "संस्थेचे नाव किंवा संस्थेचा प्रकार शोधा");
+        mr.put("eligibility.entity_search_clear", "शोध साफ करा");
+        mr.put("eligibility.entity_search_no_results", "\"{{term}}\" साठी कोणतेही परिणाम आढळले नाहीत.");
+        mr.put("eligibility.entities_unavailable", "नियमित संस्थांची यादी लोड होऊ शकली नाही. कृपया पुन्हा प्रयत्न करा — संस्थेचे नाव न देता तक्रार दाखल करता येत नाही.");
 
         mr.put("eligibility.q_select_re", "नियमित संस्थेचे नाव निवडा");
         mr.put("eligibility.q_filed_with_re", "तुम्ही {{reName}} कडे लिखित/इलेक्ट्रॉनिक तक्रार दाखल केली आहे का?");
@@ -319,8 +358,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         mr.put("validation.file_type_not_allowed", "केवळ PDF, JPG आणि PNG फाइल्सना परवानगी आहे");
         mr.put("validation.ref_too_long", "संदर्भ क्रमांक 100 अक्षरांपेक्षा जास्त असू शकत नाही");
         mr.put("validation.ref_invalid_chars", "संदर्भ क्रमांकात केवळ अक्षरे, अंक, हायफन, अंडरस्कोर आणि स्लॅश असू शकतात");
-        mr.put("eligibility.block_less_than_30_days", "नियमित संस्थेला तुमच्या तक्रारीला उत्तर देण्यासाठी अद्याप 30 दिवस दिले गेले नसल्याने, यावेळी तुमची तक्रार नोंदवली जाऊ शकत नाही. नियमित संस्थेकडे तक्रार दाखल केल्याच्या तारखेपासून 30 दिवस पूर्ण होईपर्यंत कृपया प्रतीक्षा करा.");
-        mr.put("eligibility.time_barred_warning", "नियमित संस्थेकडे तुमची तक्रार 310 दिवसांपेक्षा अधिक काळापूर्वी दाखल केली गेली होती. योजनेअंतर्गत दाखल करण्याची मुदत संपली आहे, म्हणून तुमची तक्रार कालबाधित म्हणून बंद केली जाऊ शकते. तुम्ही तरीही पुढे जाऊ शकता.");
+        mr.put("eligibility.block_less_than_30_days", "नियमित संस्थेला तुमच्या तक्रारीला उत्तर देण्यासाठी अद्याप {{days}} दिवस दिले गेले नसल्याने, यावेळी तुमची तक्रार नोंदवली जाऊ शकत नाही. नियमित संस्थेकडे तक्रार दाखल केल्याच्या तारखेपासून {{days}} दिवस पूर्ण होईपर्यंत कृपया प्रतीक्षा करा.");
+        mr.put("eligibility.time_barred_warning", "नियमित संस्थेकडे तुमची तक्रार {{days}} दिवसांपेक्षा अधिक काळापूर्वी दाखल केली गेली होती. योजनेअंतर्गत दाखल करण्याची मुदत संपली आहे, म्हणून तुमची तक्रार कालबाधित म्हणून बंद केली जाऊ शकते. तुम्ही तरीही पुढे जाऊ शकता.");
+        mr.put("eligibility.block_filing_window", "तक्रार दाखल करण्याची मुदत संपली आहे. तक्रार नियमित संस्थेकडे तुमच्या तक्रारीच्या {{days}} दिवसांच्या आत दाखल केली जाणे आवश्यक आहे.");
+        mr.put("eligibility.block_post_reply_window", "तक्रार दाखल करण्याची मुदत संपली आहे. तक्रार नियमित संस्थेच्या उत्तराच्या {{days}} दिवसांच्या आत दाखल केली जाणे आवश्यक आहे.");
         mr.put("consent.dpdp_notice", "मी संमती देतो/देते की RBI लागू कायदे आणि डिजिटल पर्सनल डेटा प्रोटेक्शन कायदा, 2023 नुसार माझी तक्रार नोंदविण्यासाठी व सोडविण्यासाठी माझा वैयक्तिक डेटा वापरेल.");
         mr.put("consent.required", "पुढे जाण्यासाठी तुम्हाला डेटा प्रक्रिया घोषणा स्वीकारणे आवश्यक आहे.");
         mr.put("layout.assistance_desc", "संपर्क केंद्र (#14448) इंटरॅक्टिव्ह व्हॉइस रिस्पॉन्स सिस्टम (IVRS) सह 24x7 उपलब्ध आहे, तर संपर्क केंद्र कर्मचाऱ्यांशी जोडण्याची सुविधा सोमवार ते शनिवार (राष्ट्रीय सुट्ट्या वगळता) सकाळी 8:00 ते रात्री 10:00 दरम्यान इंग्रजी, हिंदी आणि दहा प्रादेशिक भाषांमध्ये उपलब्ध आहे.");
@@ -351,6 +392,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "হ্যাঁ");
         m.put("eligibility.opt_no", "না");
         m.put("eligibility.response_mandatory", "উত্তর দেওয়া বাধ্যতামূলক।");
+        m.put("eligibility.entity_mandatory", "নিয়ন্ত্রিত সংস্থার নাম বাধ্যতামূলক।");
+        m.put("eligibility.entity_search_label", "নাম বা ধরন অনুসারে নিয়ন্ত্রিত সংস্থা খুঁজুন");
+        m.put("eligibility.entity_search_placeholder", "সংস্থার নাম বা সংস্থার ধরন খুঁজুন");
+        m.put("eligibility.entity_search_clear", "অনুসন্ধান মুছুন");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\"-এর জন্য কোনো ফলাফল পাওয়া যায়নি।");
+        m.put("eligibility.entities_unavailable", "নিয়ন্ত্রিত সংস্থার তালিকা লোড করা যায়নি। আবার চেষ্টা করুন — সংস্থার নাম না দিয়ে অভিযোগ দায়ের করা যায় না।");
         m.put("eligibility.q_select_re", "নিয়ন্ত্রিত সংস্থার নাম নির্বাচন করুন");
         m.put("eligibility.q_filed_with_re", "আপনি কি {{reName}}-এ লিখিত/ইলেকট্রনিক অভিযোগ দায়ের করেছেন?");
         m.put("eligibility.q_received_reply", "আপনি কি সংস্থা থেকে কোনো উত্তর পেয়েছেন?");
@@ -401,8 +448,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "শুধুমাত্র PDF, JPG এবং PNG ফাইল অনুমোদিত");
         m.put("validation.ref_too_long", "রেফারেন্স নম্বর ১০০ অক্ষরের বেশি হতে পারে না");
         m.put("validation.ref_invalid_chars", "রেফারেন্স নম্বরে শুধুমাত্র অক্ষর, সংখ্যা, হাইফেন, আন্ডারস্কোর এবং স্ল্যাশ থাকতে পারে");
-        m.put("eligibility.block_less_than_30_days", "নিয়ন্ত্রিত সংস্থাকে আপনার অভিযোগের উত্তর দেওয়ার জন্য এখনও ৩০ দিন দেওয়া হয়নি, তাই এই মুহূর্তে আপনার অভিযোগ নিবন্ধিত করা যাবে না। নিয়ন্ত্রিত সংস্থার কাছে অভিযোগ দায়েরের তারিখ থেকে ৩০ দিন পূর্ণ হওয়া পর্যন্ত অপেক্ষা করুন।");
-        m.put("eligibility.time_barred_warning", "নিয়ন্ত্রিত সংস্থার কাছে আপনার অভিযোগ ৩১০ দিনের বেশি আগে দায়ের করা হয়েছিল। স্কিমের অধীনে দায়েরের সময়সীমা শেষ হয়ে গেছে, তাই আপনার অভিযোগ সময়-বারিত হিসেবে বন্ধ করা হতে পারে। আপনি তবুও এগিয়ে যেতে পারেন।");
+        m.put("eligibility.block_less_than_30_days", "নিয়ন্ত্রিত সংস্থাকে আপনার অভিযোগের উত্তর দেওয়ার জন্য এখনও {{days}} দিন দেওয়া হয়নি, তাই এই মুহূর্তে আপনার অভিযোগ নিবন্ধিত করা যাবে না। নিয়ন্ত্রিত সংস্থার কাছে অভিযোগ দায়েরের তারিখ থেকে {{days}} দিন পূর্ণ হওয়া পর্যন্ত অপেক্ষা করুন।");
+        m.put("eligibility.time_barred_warning", "নিয়ন্ত্রিত সংস্থার কাছে আপনার অভিযোগ {{days}} দিনের বেশি আগে দায়ের করা হয়েছিল। স্কিমের অধীনে দায়েরের সময়সীমা শেষ হয়ে গেছে, তাই আপনার অভিযোগ সময়-বারিত হিসেবে বন্ধ করা হতে পারে। আপনি তবুও এগিয়ে যেতে পারেন।");
+        m.put("eligibility.block_filing_window", "অভিযোগ দায়ের করার সময়সীমা শেষ হয়ে গেছে। নিয়ন্ত্রিত সংস্থার কাছে আপনার অভিযোগের {{days}} দিনের মধ্যে অভিযোগ দায়ের করতে হবে।");
+        m.put("eligibility.block_post_reply_window", "অভিযোগ দায়ের করার সময়সীমা শেষ হয়ে গেছে। নিয়ন্ত্রিত সংস্থার উত্তরের {{days}} দিনের মধ্যে অভিযোগ দায়ের করতে হবে।");
         saveLocaleTranslations(m, "bn");
     }
 
@@ -419,6 +468,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "అవును");
         m.put("eligibility.opt_no", "కాదు");
         m.put("eligibility.response_mandatory", "సమాధానం ఇవ్వడం తప్పనిసరి.");
+        m.put("eligibility.entity_mandatory", "నియంత్రిత సంస్థ పేరు తప్పనిసరి.");
+        m.put("eligibility.entity_search_label", "పేరు లేదా రకం ఆధారంగా నియంత్రిత సంస్థను వెతకండి");
+        m.put("eligibility.entity_search_placeholder", "సంస్థ పేరు లేదా సంస్థ రకాన్ని వెతకండి");
+        m.put("eligibility.entity_search_clear", "వెతుకులాటను తొలగించండి");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\" కోసం ఫలితాలు కనుగొనబడలేదు.");
+        m.put("eligibility.entities_unavailable", "నియంత్రిత సంస్థల జాబితా లోడ్ కాలేదు. మళ్లీ ప్రయత్నించండి — సంస్థ పేరు చెప్పకుండా ఫిర్యాదు దాఖలు చేయలేరు.");
         m.put("eligibility.q_select_re", "నియంత్రిత సంస్థ పేరు ఎంచుకోండి");
         m.put("eligibility.q_filed_with_re", "మీరు {{reName}} వద్ద వ్రాతపూర్వక/ఎలక్ట్రానిక్ ఫిర్యాదు దాఖలు చేశారా?");
         m.put("eligibility.q_received_reply", "మీకు సంస్థ నుండి ఏదైనా సమాధానం వచ్చిందా?");
@@ -469,8 +524,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "PDF, JPG మరియు PNG ఫైల్‌లు మాత్రమే అనుమతించబడతాయి");
         m.put("validation.ref_too_long", "రిఫరెన్స్ నంబర్ 100 అక్షరాలకు మించకూడదు");
         m.put("validation.ref_invalid_chars", "రిఫరెన్స్ నంబర్‌లో అక్షరాలు, అంకెలు, హైఫన్, అండర్‌స్కోర్ మరియు స్లాష్ మాత్రమే ఉండాలి");
-        m.put("eligibility.block_less_than_30_days", "మీ ఫిర్యాదుకు సమాధానం ఇవ్వడానికి నియంత్రిత సంస్థకు ఇంకా 30 రోజులు ఇవ్వబడలేదు, కాబట్టి ఈ సమయంలో మీ ఫిర్యాదును నమోదు చేయలేము. నియంత్రిత సంస్థ వద్ద ఫిర్యాదు దాఖలు చేసిన తేదీ నుండి 30 రోజులు పూర్తయ్యే వరకు వేచి ఉండండి.");
-        m.put("eligibility.time_barred_warning", "నియంత్రిత సంస్థ వద్ద మీ ఫిర్యాదు 310 రోజుల కంటే ముందు దాఖలు చేయబడింది. పథకం కింద దాఖలు చేసే గడువు ముగిసింది, కాబట్టి మీ ఫిర్యాదు కాలపరిమితి ముగిసినదిగా మూసివేయబడవచ్చు. మీరు ఇంకా కొనసాగవచ్చు.");
+        m.put("eligibility.block_less_than_30_days", "మీ ఫిర్యాదుకు సమాధానం ఇవ్వడానికి నియంత్రిత సంస్థకు ఇంకా {{days}} రోజులు ఇవ్వబడలేదు, కాబట్టి ఈ సమయంలో మీ ఫిర్యాదును నమోదు చేయలేము. నియంత్రిత సంస్థ వద్ద ఫిర్యాదు దాఖలు చేసిన తేదీ నుండి {{days}} రోజులు పూర్తయ్యే వరకు వేచి ఉండండి.");
+        m.put("eligibility.time_barred_warning", "నియంత్రిత సంస్థ వద్ద మీ ఫిర్యాదు {{days}} రోజుల కంటే ముందు దాఖలు చేయబడింది. పథకం కింద దాఖలు చేసే గడువు ముగిసింది, కాబట్టి మీ ఫిర్యాదు కాలపరిమితి ముగిసినదిగా మూసివేయబడవచ్చు. మీరు ఇంకా కొనసాగవచ్చు.");
+        m.put("eligibility.block_filing_window", "ఫిర్యాదు దాఖలు చేసే గడువు ముగిసింది. నియంత్రిత సంస్థ వద్ద మీ ఫిర్యాదు చేసిన {{days}} రోజులలోపు ఫిర్యాదు దాఖలు చేయాలి.");
+        m.put("eligibility.block_post_reply_window", "ఫిర్యాదు దాఖలు చేసే గడువు ముగిసింది. నియంత్రిత సంస్థ సమాధానం ఇచ్చిన {{days}} రోజులలోపు ఫిర్యాదు దాఖలు చేయాలి.");
         saveLocaleTranslations(m, "te");
     }
 
@@ -487,6 +544,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "ஆம்");
         m.put("eligibility.opt_no", "இல்லை");
         m.put("eligibility.response_mandatory", "பதில் அளிப்பது கட்டாயமாகும்.");
+        m.put("eligibility.entity_mandatory", "ஒழுங்குமுறை நிறுவனத்தின் பெயர் கட்டாயமாகும்.");
+        m.put("eligibility.entity_search_label", "பெயர் அல்லது வகை மூலம் ஒழுங்குமுறை நிறுவனத்தைத் தேடுங்கள்");
+        m.put("eligibility.entity_search_placeholder", "நிறுவனப் பெயர் அல்லது நிறுவன வகையைத் தேடுங்கள்");
+        m.put("eligibility.entity_search_clear", "தேடலை அழிக்கவும்");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\" க்கான முடிவுகள் எதுவும் இல்லை.");
+        m.put("eligibility.entities_unavailable", "ஒழுங்குமுறை நிறுவனங்களின் பட்டியலை ஏற்ற முடியவில்லை. மீண்டும் முயலுங்கள் — நிறுவனத்தைக் குறிப்பிடாமல் புகார் அளிக்க முடியாது.");
         m.put("eligibility.q_select_re", "ஒழுங்குமுறை நிறுவனத்தின் பெயரைத் தேர்ந்தெடுக்கவும்");
         m.put("eligibility.q_filed_with_re", "நீங்கள் {{reName}} இல் எழுத்துப்பூர்வ/மின்னணு புகார் அளித்துள்ளீர்களா?");
         m.put("eligibility.q_received_reply", "நிறுவனத்திடம் இருந்து ஏதேனும் பதில் கிடைத்ததா?");
@@ -537,8 +600,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "PDF, JPG மற்றும் PNG கோப்புகள் மட்டுமே அனுமதிக்கப்படும்");
         m.put("validation.ref_too_long", "குறிப்பு எண் 100 எழுத்துகளுக்கு மேல் இருக்கக்கூடாது");
         m.put("validation.ref_invalid_chars", "குறிப்பு எண்ணில் எழுத்துகள், இலக்கங்கள், இணைப்புக்குறி, அடிக்கோடு மற்றும் சாய்வுக்கோடு மட்டுமே இருக்க வேண்டும்");
-        m.put("eligibility.block_less_than_30_days", "உங்கள் புகாருக்கு பதிலளிக்க ஒழுங்குமுறை நிறுவனத்திற்கு இன்னும் 30 நாட்கள் வழங்கப்படவில்லை, எனவே இந்த நேரத்தில் உங்கள் புகாரைப் பதிவு செய்ய முடியாது. ஒழுங்குமுறை நிறுவனத்தில் புகார் அளித்த தேதியிலிருந்து 30 நாட்கள் நிறைவடையும் வரை காத்திருக்கவும்.");
-        m.put("eligibility.time_barred_warning", "ஒழுங்குமுறை நிறுவனத்தில் உங்கள் புகார் 310 நாட்களுக்கு முன்பே அளிக்கப்பட்டது. திட்டத்தின் கீழ் தாக்கல் செய்யும் காலம் முடிந்துவிட்டது, எனவே உங்கள் புகார் காலவரம்பு கடந்ததாக முடிக்கப்படலாம். நீங்கள் இன்னும் தொடரலாம்.");
+        m.put("eligibility.block_less_than_30_days", "உங்கள் புகாருக்கு பதிலளிக்க ஒழுங்குமுறை நிறுவனத்திற்கு இன்னும் {{days}} நாட்கள் வழங்கப்படவில்லை, எனவே இந்த நேரத்தில் உங்கள் புகாரைப் பதிவு செய்ய முடியாது. ஒழுங்குமுறை நிறுவனத்தில் புகார் அளித்த தேதியிலிருந்து {{days}} நாட்கள் நிறைவடையும் வரை காத்திருக்கவும்.");
+        m.put("eligibility.time_barred_warning", "ஒழுங்குமுறை நிறுவனத்தில் உங்கள் புகார் {{days}} நாட்களுக்கு முன்பே அளிக்கப்பட்டது. திட்டத்தின் கீழ் தாக்கல் செய்யும் காலம் முடிந்துவிட்டது, எனவே உங்கள் புகார் காலவரம்பு கடந்ததாக முடிக்கப்படலாம். நீங்கள் இன்னும் தொடரலாம்.");
+        m.put("eligibility.block_filing_window", "புகார் அளிக்கும் காலம் முடிந்துவிட்டது. ஒழுங்குமுறை நிறுவனத்தில் உங்கள் புகார் அளித்த {{days}} நாட்களுக்குள் புகார் அளிக்கப்பட வேண்டும்.");
+        m.put("eligibility.block_post_reply_window", "புகார் அளிக்கும் காலம் முடிந்துவிட்டது. ஒழுங்குமுறை நிறுவனத்தின் பதிலுக்குப் பிறகு {{days}} நாட்களுக்குள் புகார் அளிக்கப்பட வேண்டும்.");
         saveLocaleTranslations(m, "ta");
     }
 
@@ -555,6 +620,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "હા");
         m.put("eligibility.opt_no", "ના");
         m.put("eligibility.response_mandatory", "જવાબ આપવો ફરજિયાત છે.");
+        m.put("eligibility.entity_mandatory", "નિયમન કરાયેલ સંસ્થાનું નામ ફરજિયાત છે.");
+        m.put("eligibility.entity_search_label", "નામ અથવા પ્રકાર દ્વારા નિયમન કરાયેલ સંસ્થા શોધો");
+        m.put("eligibility.entity_search_placeholder", "સંસ્થાનું નામ અથવા સંસ્થાનો પ્રકાર શોધો");
+        m.put("eligibility.entity_search_clear", "શોધ સાફ કરો");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\" માટે કોઈ પરિણામ મળ્યું નથી.");
+        m.put("eligibility.entities_unavailable", "નિયમન કરાયેલ સંસ્થાઓની સૂચિ લોડ થઈ શકી નથી. કૃપા કરીને ફરી પ્રયાસ કરો — સંસ્થાનું નામ આપ્યા વિના ફરિયાદ દાખલ કરી શકાતી નથી.");
         m.put("eligibility.q_select_re", "નિયંત્રિત સંસ્થાનું નામ પસંદ કરો");
         m.put("eligibility.q_filed_with_re", "શું તમે {{reName}} પાસે લેખિત/ઈલેક્ટ્રોનિક ફરિયાદ દાખલ કરી છે?");
         m.put("eligibility.q_received_reply", "શું તમને સંસ્થા તરફથી કોઈ જવાબ મળ્યો છે?");
@@ -605,8 +676,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "ફક્ત PDF, JPG અને PNG ફાઇલોની પરવાનગી છે");
         m.put("validation.ref_too_long", "સંદર્ભ નંબર 100 અક્ષરોથી વધુ હોઈ શકતો નથી");
         m.put("validation.ref_invalid_chars", "સંદર્ભ નંબરમાં ફક્ત અક્ષરો, અંકો, હાઇફન, અંડરસ્કોર અને સ્લેશ હોઈ શકે છે");
-        m.put("eligibility.block_less_than_30_days", "નિયંત્રિત સંસ્થાને તમારી ફરિયાદનો જવાબ આપવા માટે હજુ 30 દિવસ આપવામાં આવ્યા નથી, તેથી આ સમયે તમારી ફરિયાદ નોંધી શકાતી નથી. નિયંત્રિત સંસ્થા પાસે ફરિયાદ દાખલ કર્યાની તારીખથી 30 દિવસ પૂરા થાય ત્યાં સુધી કૃપા કરીને પ્રતીક્ષા કરો.");
-        m.put("eligibility.time_barred_warning", "નિયંત્રિત સંસ્થા પાસે તમારી ફરિયાદ 310 દિવસ પહેલાં દાખલ કરવામાં આવી હતી. યોજના હેઠળ દાખલ કરવાની મુદત પૂરી થઈ ગઈ છે, તેથી તમારી ફરિયાદ સમય-બાધિત તરીકે બંધ થઈ શકે છે. તમે હજુ પણ આગળ વધી શકો છો.");
+        m.put("eligibility.block_less_than_30_days", "નિયંત્રિત સંસ્થાને તમારી ફરિયાદનો જવાબ આપવા માટે હજુ {{days}} દિવસ આપવામાં આવ્યા નથી, તેથી આ સમયે તમારી ફરિયાદ નોંધી શકાતી નથી. નિયંત્રિત સંસ્થા પાસે ફરિયાદ દાખલ કર્યાની તારીખથી {{days}} દિવસ પૂરા થાય ત્યાં સુધી કૃપા કરીને પ્રતીક્ષા કરો.");
+        m.put("eligibility.time_barred_warning", "નિયંત્રિત સંસ્થા પાસે તમારી ફરિયાદ {{days}} દિવસ પહેલાં દાખલ કરવામાં આવી હતી. યોજના હેઠળ દાખલ કરવાની મુદત પૂરી થઈ ગઈ છે, તેથી તમારી ફરિયાદ સમય-બાધિત તરીકે બંધ થઈ શકે છે. તમે હજુ પણ આગળ વધી શકો છો.");
+        m.put("eligibility.block_filing_window", "ફરિયાદ દાખલ કરવાની મુદત પૂરી થઈ ગઈ છે. નિયંત્રિત સંસ્થા પાસે તમારી ફરિયાદના {{days}} દિવસમાં ફરિયાદ દાખલ કરવી આવશ્યક છે.");
+        m.put("eligibility.block_post_reply_window", "ફરિયાદ દાખલ કરવાની મુદત પૂરી થઈ ગઈ છે. નિયંત્રિત સંસ્થાના જવાબના {{days}} દિવસમાં ફરિયાદ દાખલ કરવી આવશ્યક છે.");
         saveLocaleTranslations(m, "gu");
     }
 
@@ -623,6 +696,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "ہاں");
         m.put("eligibility.opt_no", "نہیں");
         m.put("eligibility.response_mandatory", "جواب دینا لازمی ہے۔");
+        m.put("eligibility.entity_mandatory", "ریگولیٹڈ ادارے کا نام لازمی ہے۔");
+        m.put("eligibility.entity_search_label", "نام یا قسم کے ذریعے ریگولیٹڈ ادارہ تلاش کریں");
+        m.put("eligibility.entity_search_placeholder", "ادارے کا نام یا ادارے کی قسم تلاش کریں");
+        m.put("eligibility.entity_search_clear", "تلاش صاف کریں");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\" کے لیے کوئی نتیجہ نہیں ملا۔");
+        m.put("eligibility.entities_unavailable", "ریگولیٹڈ اداروں کی فہرست لوڈ نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں — ادارے کا نام بتائے بغیر شکایت درج نہیں کی جا سکتی۔");
         m.put("eligibility.q_select_re", "ریگولیٹڈ ادارے کا نام منتخب کریں");
         m.put("eligibility.q_filed_with_re", "کیا آپ نے {{reName}} میں تحریری/الیکٹرانک شکایت درج کی ہے؟");
         m.put("eligibility.q_received_reply", "کیا آپ کو ادارے سے کوئی جواب ملا ہے؟");
@@ -673,8 +752,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "صرف PDF، JPG اور PNG فائلوں کی اجازت ہے");
         m.put("validation.ref_too_long", "حوالہ نمبر 100 حروف سے زیادہ نہیں ہو سکتا");
         m.put("validation.ref_invalid_chars", "حوالہ نمبر میں صرف حروف، اعداد، ہائفن، انڈر سکور اور سلیش ہو سکتے ہیں");
-        m.put("eligibility.block_less_than_30_days", "چونکہ ریگولیٹڈ ادارے کو آپ کی شکایت کا جواب دینے کے لیے ابھی 30 دن نہیں دیے گئے، اس وقت آپ کی شکایت درج نہیں کی جا سکتی۔ براہ کرم ریگولیٹڈ ادارے میں شکایت درج کرنے کی تاریخ سے 30 دن مکمل ہونے تک انتظار کریں۔");
-        m.put("eligibility.time_barred_warning", "ریگولیٹڈ ادارے میں آپ کی شکایت 310 دن سے زیادہ عرصہ پہلے درج کی گئی تھی۔ اسکیم کے تحت درج کرانے کی مدت گزر چکی ہے، لہٰذا آپ کی شکایت میعاد گزر جانے کی بنیاد پر بند کی جا سکتی ہے۔ آپ پھر بھی آگے بڑھ سکتے ہیں۔");
+        m.put("eligibility.block_less_than_30_days", "چونکہ ریگولیٹڈ ادارے کو آپ کی شکایت کا جواب دینے کے لیے ابھی {{days}} دن نہیں دیے گئے، اس وقت آپ کی شکایت درج نہیں کی جا سکتی۔ براہ کرم ریگولیٹڈ ادارے میں شکایت درج کرنے کی تاریخ سے {{days}} دن مکمل ہونے تک انتظار کریں۔");
+        m.put("eligibility.time_barred_warning", "ریگولیٹڈ ادارے میں آپ کی شکایت {{days}} دن سے زیادہ عرصہ پہلے درج کی گئی تھی۔ اسکیم کے تحت درج کرانے کی مدت گزر چکی ہے، لہٰذا آپ کی شکایت میعاد گزر جانے کی بنیاد پر بند کی جا سکتی ہے۔ آپ پھر بھی آگے بڑھ سکتے ہیں۔");
+        m.put("eligibility.block_filing_window", "شکایت درج کرانے کی مدت گزر چکی ہے۔ شکایت ریگولیٹڈ ادارے میں آپ کی شکایت کے {{days}} دن کے اندر درج کرانی ضروری ہے۔");
+        m.put("eligibility.block_post_reply_window", "شکایت درج کرانے کی مدت گزر چکی ہے۔ شکایت ریگولیٹڈ ادارے کے جواب کے {{days}} دن کے اندر درج کرانی ضروری ہے۔");
         saveLocaleTranslations(m, "ur");
     }
 
@@ -691,6 +772,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "ಹೌದು");
         m.put("eligibility.opt_no", "ಇಲ್ಲ");
         m.put("eligibility.response_mandatory", "ಉತ್ತರ ನೀಡುವುದು ಕಡ್ಡಾಯವಾಗಿದೆ.");
+        m.put("eligibility.entity_mandatory", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯ ಹೆಸರು ಕಡ್ಡಾಯವಾಗಿದೆ.");
+        m.put("eligibility.entity_search_label", "ಹೆಸರು ಅಥವಾ ಪ್ರಕಾರದ ಮೂಲಕ ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯನ್ನು ಹುಡುಕಿ");
+        m.put("eligibility.entity_search_placeholder", "ಸಂಸ್ಥೆಯ ಹೆಸರು ಅಥವಾ ಸಂಸ್ಥೆಯ ಪ್ರಕಾರವನ್ನು ಹುಡುಕಿ");
+        m.put("eligibility.entity_search_clear", "ಹುಡುಕಾಟವನ್ನು ಅಳಿಸಿ");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\" ಗಾಗಿ ಯಾವುದೇ ಫಲಿತಾಂಶ ಸಿಗಲಿಲ್ಲ.");
+        m.put("eligibility.entities_unavailable", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಗಳ ಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ — ಸಂಸ್ಥೆಯ ಹೆಸರು ಇಲ್ಲದೆ ದೂರು ದಾಖಲಿಸಲಾಗದು.");
         m.put("eligibility.q_select_re", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯ ಹೆಸರು ಆಯ್ಕೆಮಾಡಿ");
         m.put("eligibility.q_filed_with_re", "ನೀವು {{reName}} ಬಳಿ ಲಿಖಿತ/ಎಲೆಕ್ಟ್ರಾನಿಕ್ ದೂರು ಸಲ್ಲಿಸಿದ್ದೀರಾ?");
         m.put("eligibility.q_received_reply", "ನಿಮಗೆ ಸಂಸ್ಥೆಯಿಂದ ಯಾವುದೇ ಉತ್ತರ ಸಿಕ್ಕಿದೆಯೇ?");
@@ -741,8 +828,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "PDF, JPG ಮತ್ತು PNG ಫೈಲ್‌ಗಳಿಗೆ ಮಾತ್ರ ಅನುಮತಿ ಇದೆ");
         m.put("validation.ref_too_long", "ಉಲ್ಲೇಖ ಸಂಖ್ಯೆ 100 ಅಕ್ಷರಗಳನ್ನು ಮೀರಬಾರದು");
         m.put("validation.ref_invalid_chars", "ಉಲ್ಲೇಖ ಸಂಖ್ಯೆಯಲ್ಲಿ ಅಕ್ಷರಗಳು, ಅಂಕಿಗಳು, ಹೈಫನ್, ಅಂಡರ್‌ಸ್ಕೋರ್ ಮತ್ತು ಸ್ಲ್ಯಾಶ್ ಮಾತ್ರ ಇರಬಹುದು");
-        m.put("eligibility.block_less_than_30_days", "ನಿಮ್ಮ ದೂರಿಗೆ ಉತ್ತರಿಸಲು ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಗೆ ಇನ್ನೂ 30 ದಿನಗಳನ್ನು ನೀಡಲಾಗಿಲ್ಲ, ಆದ್ದರಿಂದ ಈ ಸಮಯದಲ್ಲಿ ನಿಮ್ಮ ದೂರನ್ನು ನೋಂದಾಯಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯಲ್ಲಿ ದೂರು ಸಲ್ಲಿಸಿದ ದಿನಾಂಕದಿಂದ 30 ದಿನಗಳು ಪೂರ್ಣಗೊಳ್ಳುವವರೆಗೆ ದಯವಿಟ್ಟು ನಿರೀಕ್ಷಿಸಿ.");
-        m.put("eligibility.time_barred_warning", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯಲ್ಲಿ ನಿಮ್ಮ ದೂರನ್ನು 310 ದಿನಗಳಿಗಿಂತ ಹಿಂದೆ ಸಲ್ಲಿಸಲಾಗಿತ್ತು. ಯೋಜನೆಯಡಿ ಸಲ್ಲಿಸುವ ಅವಧಿ ಮುಗಿದಿದೆ, ಆದ್ದರಿಂದ ನಿಮ್ಮ ದೂರನ್ನು ಕಾಲಮಿತಿ ಮುಗಿದಿದೆ ಎಂದು ಮುಚ್ಚಬಹುದು. ನೀವು ಇನ್ನೂ ಮುಂದುವರಿಯಬಹುದು.");
+        m.put("eligibility.block_less_than_30_days", "ನಿಮ್ಮ ದೂರಿಗೆ ಉತ್ತರಿಸಲು ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಗೆ ಇನ್ನೂ {{days}} ದಿನಗಳನ್ನು ನೀಡಲಾಗಿಲ್ಲ, ಆದ್ದರಿಂದ ಈ ಸಮಯದಲ್ಲಿ ನಿಮ್ಮ ದೂರನ್ನು ನೋಂದಾಯಿಸಲು ಸಾಧ್ಯವಿಲ್ಲ. ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯಲ್ಲಿ ದೂರು ಸಲ್ಲಿಸಿದ ದಿನಾಂಕದಿಂದ {{days}} ದಿನಗಳು ಪೂರ್ಣಗೊಳ್ಳುವವರೆಗೆ ದಯವಿಟ್ಟು ನಿರೀಕ್ಷಿಸಿ.");
+        m.put("eligibility.time_barred_warning", "ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯಲ್ಲಿ ನಿಮ್ಮ ದೂರನ್ನು {{days}} ದಿನಗಳಿಗಿಂತ ಹಿಂದೆ ಸಲ್ಲಿಸಲಾಗಿತ್ತು. ಯೋಜನೆಯಡಿ ಸಲ್ಲಿಸುವ ಅವಧಿ ಮುಗಿದಿದೆ, ಆದ್ದರಿಂದ ನಿಮ್ಮ ದೂರನ್ನು ಕಾಲಮಿತಿ ಮುಗಿದಿದೆ ಎಂದು ಮುಚ್ಚಬಹುದು. ನೀವು ಇನ್ನೂ ಮುಂದುವರಿಯಬಹುದು.");
+        m.put("eligibility.block_filing_window", "ದೂರು ಸಲ್ಲಿಸುವ ಅವಧಿ ಮುಗಿದಿದೆ. ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯಲ್ಲಿ ನಿಮ್ಮ ದೂರಿನ {{days}} ದಿನಗಳೊಳಗೆ ದೂರು ಸಲ್ಲಿಸಬೇಕು.");
+        m.put("eligibility.block_post_reply_window", "ದೂರು ಸಲ್ಲಿಸುವ ಅವಧಿ ಮುಗಿದಿದೆ. ನಿಯಂತ್ರಿತ ಸಂಸ್ಥೆಯ ಉತ್ತರದ {{days}} ದಿನಗಳೊಳಗೆ ದೂರು ಸಲ್ಲಿಸಬೇಕು.");
         saveLocaleTranslations(m, "kn");
     }
 
@@ -759,6 +848,12 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("eligibility.opt_yes", "അതെ");
         m.put("eligibility.opt_no", "ഇല്ല");
         m.put("eligibility.response_mandatory", "ഉത്തരം നൽകേണ്ടത് നിർബന്ധമാണ്.");
+        m.put("eligibility.entity_mandatory", "നിയന്ത്രിത സ്ഥാപനത്തിന്റെ പേര് നിർബന്ധമാണ്.");
+        m.put("eligibility.entity_search_label", "പേര് അല്ലെങ്കിൽ തരം അനുസരിച്ച് നിയന്ത്രിത സ്ഥാപനം തിരയുക");
+        m.put("eligibility.entity_search_placeholder", "സ്ഥാപനത്തിന്റെ പേരോ സ്ഥാപനത്തിന്റെ തരമോ തിരയുക");
+        m.put("eligibility.entity_search_clear", "തിരയൽ മായ്ക്കുക");
+        m.put("eligibility.entity_search_no_results", "\"{{term}}\" എന്നതിന് ഫലങ്ങൾ ഒന്നും കണ്ടെത്തിയില്ല.");
+        m.put("eligibility.entities_unavailable", "നിയന്ത്രിത സ്ഥാപനങ്ങളുടെ പട്ടിക ലോഡ് ചെയ്യാനായില്ല. വീണ്ടും ശ്രമിക്കുക — സ്ഥാപനത്തിന്റെ പേര് നൽകാതെ പരാതി നൽകാനാവില്ല.");
         m.put("eligibility.q_select_re", "നിയന്ത്രിത സ്ഥാപനത്തിന്റെ പേര് തിരഞ്ഞെടുക്കുക");
         m.put("eligibility.q_filed_with_re", "നിങ്ങൾ {{reName}}-ൽ രേഖാമൂലം/ഇലക്ട്രോണിക് പരാതി സമർപ്പിച്ചിട്ടുണ്ടോ?");
         m.put("eligibility.q_received_reply", "സ്ഥാപനത്തിൽ നിന്ന് എന്തെങ്കിലും മറുപടി ലഭിച്ചോ?");
@@ -809,8 +904,10 @@ public class EligibilityTranslationSeeder implements CommandLineRunner {
         m.put("validation.file_type_not_allowed", "PDF, JPG, PNG ഫയലുകൾ മാത്രമേ അനുവദനീയമാണ്");
         m.put("validation.ref_too_long", "റഫറൻസ് നമ്പർ 100 അക്ഷരങ്ങളിൽ കൂടരുത്");
         m.put("validation.ref_invalid_chars", "റഫറൻസ് നമ്പറിൽ അക്ഷരങ്ങൾ, അങ്കങ്ങൾ, ഹൈഫൻ, അണ്ടർസ്കോർ, സ്ലാഷ് എന്നിവ മാത്രമേ ഉണ്ടാകാം");
-        m.put("eligibility.block_less_than_30_days", "നിങ്ങളുടെ പരാതിക്ക് മറുപടി നൽകാൻ നിയന്ത്രിത സ്ഥാപനത്തിന് ഇനിയും 30 ദിവസം നൽകിയിട്ടില്ല, അതിനാൽ ഈ സമയത്ത് നിങ്ങളുടെ പരാതി രജിസ്റ്റർ ചെയ്യാൻ കഴിയില്ല. നിയന്ത്രിത സ്ഥാപനത്തിൽ പരാതി സമർപ്പിച്ച തീയതിയിൽ നിന്ന് 30 ദിവസം പൂർത്തിയാകുന്നതുവരെ കാത്തിരിക്കുക.");
-        m.put("eligibility.time_barred_warning", "നിയന്ത്രിത സ്ഥാപനത്തിൽ നിങ്ങളുടെ പരാതി 310 ദിവസത്തിന് മുമ്പ് സമർപ്പിച്ചതാണ്. പദ്ധതിക്ക് കീഴിലുള്ള സമർപ്പണ കാലാവധി കഴിഞ്ഞു, അതിനാൽ നിങ്ങളുടെ പരാതി കാലാവധി കഴിഞ്ഞതായി അടച്ചേക്കാം. നിങ്ങൾക്ക് ഇനിയും തുടരാം.");
+        m.put("eligibility.block_less_than_30_days", "നിങ്ങളുടെ പരാതിക്ക് മറുപടി നൽകാൻ നിയന്ത്രിത സ്ഥാപനത്തിന് ഇനിയും {{days}} ദിവസം നൽകിയിട്ടില്ല, അതിനാൽ ഈ സമയത്ത് നിങ്ങളുടെ പരാതി രജിസ്റ്റർ ചെയ്യാൻ കഴിയില്ല. നിയന്ത്രിത സ്ഥാപനത്തിൽ പരാതി സമർപ്പിച്ച തീയതിയിൽ നിന്ന് {{days}} ദിവസം പൂർത്തിയാകുന്നതുവരെ കാത്തിരിക്കുക.");
+        m.put("eligibility.time_barred_warning", "നിയന്ത്രിത സ്ഥാപനത്തിൽ നിങ്ങളുടെ പരാതി {{days}} ദിവസത്തിന് മുമ്പ് സമർപ്പിച്ചതാണ്. പദ്ധതിക്ക് കീഴിലുള്ള സമർപ്പണ കാലാവധി കഴിഞ്ഞു, അതിനാൽ നിങ്ങളുടെ പരാതി കാലാവധി കഴിഞ്ഞതായി അടച്ചേക്കാം. നിങ്ങൾക്ക് ഇനിയും തുടരാം.");
+        m.put("eligibility.block_filing_window", "പരാതി സമർപ്പിക്കാനുള്ള കാലാവധി കഴിഞ്ഞു. നിയന്ത്രിത സ്ഥാപനത്തിൽ നിങ്ങളുടെ പരാതി നൽകി {{days}} ദിവസത്തിനുള്ളിൽ പരാതി സമർപ്പിക്കണം.");
+        m.put("eligibility.block_post_reply_window", "പരാതി സമർപ്പിക്കാനുള്ള കാലാവധി കഴിഞ്ഞു. നിയന്ത്രിത സ്ഥാപനത്തിന്റെ മറുപടിക്ക് ശേഷം {{days}} ദിവസത്തിനുള്ളിൽ പരാതി സമർപ്പിക്കണം.");
         saveLocaleTranslations(m, "ml");
     }
 

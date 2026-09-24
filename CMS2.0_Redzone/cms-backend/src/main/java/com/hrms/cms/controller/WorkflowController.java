@@ -9,6 +9,8 @@ import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.security.CepcRoleGuard;
 import com.hrms.cms.security.RbioRoleGuard;
+import com.hrms.cms.security.RequestIdentity;
+import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.CepcSlaService;
 import com.hrms.cms.service.CepcWorkflowService;
 import com.hrms.cms.service.ClosureClauseAccessService;
@@ -21,6 +23,7 @@ import com.hrms.cms.service.RbioCompensationService;
 import com.hrms.cms.service.RbioSlaService;
 import com.hrms.cms.service.RbioStatusVocabulary;
 import com.hrms.cms.service.RbioWorkflowService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -54,6 +57,7 @@ public class WorkflowController {
     private final ComplaintEventPublisher complaintEventPublisher;
     private final ClosureLetterService closureLetterService;
     private final CommunicationTemplateService communicationTemplateService;
+    private final RequestIdentityResolver requestIdentityResolver;
 
     private final Map<String, Integer> roundRobinCounters = new ConcurrentHashMap<>();
 
@@ -170,8 +174,27 @@ public class WorkflowController {
     @CepcRoleGuard(roles = {"CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN", "CEPC_CONTACT_PERSON"})
     public ResponseEntity<Map<String, Object>> cepcAction(
             @PathVariable String complaintNumber,
-            @RequestBody Map<String, String> request) {
-        return performAction(complaintNumber, "CEPC", request);
+            @RequestBody Map<String, String> request,
+            HttpServletRequest httpRequest) {
+        return performAction(complaintNumber, "CEPC", withResolvedRole(request, httpRequest));
+    }
+
+    // The acting role arrives as an identity header, not a body field, so the timeline recorded a
+    // blank role. A userRole the caller passed deliberately is left alone (RBIO and admin callers do
+    // pass it), but it is never taken from the body when absent, since that would let any caller
+    // attribute an action to authority they do not hold.
+    private Map<String, String> withResolvedRole(Map<String, String> request, HttpServletRequest httpRequest) {
+        String supplied = request.get("userRole");
+        if (supplied != null && !supplied.isBlank()) {
+            return request;
+        }
+        RequestIdentity identity = requestIdentityResolver.resolve(httpRequest);
+        if (identity == null || identity.getPrimaryRole() == null) {
+            return request;
+        }
+        Map<String, String> enriched = new LinkedHashMap<>(request);
+        enriched.put("userRole", identity.getPrimaryRole());
+        return enriched;
     }
 
     @GetMapping("/rbio/completed")

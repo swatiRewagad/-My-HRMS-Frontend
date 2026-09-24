@@ -99,6 +99,32 @@
     </div>
   }
 
+  <!-- UNAVAILABLE PHASE -->
+  <!-- The wizard used to fall back to a locally computed verdict when /wizard-check failed, so the
+       citizen was handed an eligibility determination — including "you are eligible" — that no server
+       ever issued, computed against a 30-day window compiled into the browser bundle. Fail closed:
+       a maintainability determination is a statement about the Scheme, so when its authority is
+       unreachable the wizard says so and offers a retry. Filing is never blocked by this screen. -->
+  @if (phase() === 'unavailable') {
+    <div class="wizard-card unavailable-card">
+      <div class="unavailable-notice" role="alert">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+        <span>{{ 'wizard.check_unavailable' | translate }}</span>
+      </div>
+      <div class="result-actions">
+        <button class="btn-wizard-primary" (click)="retryCheck()">
+          <i class="pi pi-refresh"></i> {{ 'form.retry' | translate }}
+        </button>
+        <button class="btn-wizard-secondary" (click)="proceedToFile()">
+          <i class="pi pi-file-edit"></i> {{ 'wizard.proceed_to_file' | translate }}
+        </button>
+        <button class="btn-wizard-link" (click)="goHome()">
+          {{ 'wizard.go_home' | translate }}
+        </button>
+      </div>
+    </div>
+  }
+
   <!-- RESULT PHASE -->
   @if (phase() === 'result' && result(); as r) {
     <div class="wizard-card result-card" [class]="getOutcomeClass()">
@@ -127,8 +153,11 @@
             <div class="timeline-item" [class.completed]="r.outcome === 'READY'" [class.current]="r.outcome === 'TOO_EARLY'">
               <div class="timeline-dot"></div>
               <div class="timeline-content">
-                <strong>{{ 'wizard.timeline_step2' | translate }}</strong>
-                <span>{{ 'wizard.timeline_step2_desc' | translate }}</span>
+                <!-- The window is cms.mre.re-window-days, served as reWindowDays; it is interpolated
+                     rather than baked into the prose so raising the property cannot leave the citizen
+                     promised a different number from the one the server enforces. -->
+                <strong>{{ 'wizard.timeline_step2' | translate: { days: reWindowDaysText() } }}</strong>
+                <span>{{ 'wizard.timeline_step2_desc' | translate: { days: reWindowDaysText() } }}</span>
                 @if (r.daysRemaining) {
                   <span class="days-badge">{{ r.daysRemaining }} {{ 'wizard.days_remaining' | translate }}</span>
                 }

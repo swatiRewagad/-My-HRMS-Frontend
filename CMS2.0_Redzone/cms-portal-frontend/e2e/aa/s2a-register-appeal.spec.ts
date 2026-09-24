@@ -358,12 +358,25 @@ test.describe.serial('S2A — appeal registration, masking and upload caps', () 
 
   // ── NFR-006 upload caps, enforced on the server ──────────────────────────────
 
-  test('NFR-006 — the per-file cap is 2MB, enforced server-side', async ({ request }) => {
+  /**
+   * THIS TEST DELIBERATELY NAMES NO SIZE. It has been rewritten twice already by the figure moving —
+   * first pinned to 2MB, then to 5MB, and the standing ruling is 2MB again, held in {@code system_config}
+   * and served by GET /api/v1/config/upload-limits. Each rewrite was a test failing against correct
+   * behaviour, which is why no literal appears here any more.
+   *
+   * <p>The boundary is DERIVED from the configured limit at run time, so the next retune cannot leave
+   * this asserting a figure the product no longer enforces.
+   */
+  test('the per-file cap is the CONFIGURED limit, enforced server-side', async ({ request }) => {
     const target = `${PREFIX}UPLOAD`;
     seedClosedComplaint(target, CLAUSE.complainantOnly, RE_OWN_ENTITY);
 
-    // 3MB of PDF: a valid signature, so only the SIZE can reject it.
-    const oversized = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(3 * 1024 * 1024, 0x20)]);
+    const limits = await (await request.get(`${API_BASE}/api/v1/config/upload-limits`)).json();
+    const maxBytes: number = limits.maxFileSizeBytes;
+    expect(maxBytes, 'the server must advertise a per-file limit').toBeGreaterThan(0);
+
+    // One byte over the configured cap, with a valid PDF signature so only the SIZE can reject it.
+    const oversized = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(maxBytes, 0x20)]);
 
     const res = await request.post(`${API_BASE}/api/files/upload`, {
       headers: AA_DO,
@@ -377,10 +390,12 @@ test.describe.serial('S2A — appeal registration, masking and upload caps', () 
 
     // Rejected, not accepted. 413 comes from Spring's own multipart limit, 4xx from the validator —
     // either is a rejection; a 2xx is the failure this guards against.
-    expect(res.status(), 'a 3MB file must be rejected under a 2MB cap').toBeGreaterThanOrEqual(400);
+    expect(res.status(),
+      `a file above the configured ${Math.round(maxBytes / 1048576)}MB cap must be rejected`)
+      .toBeGreaterThanOrEqual(400);
   });
 
-  test('NFR-006 — a file just under 2MB is ACCEPTED, so the cap is a boundary and not a blanket reject', async ({ request }) => {
+  test('a file under the configured cap is ACCEPTED, so the cap is a boundary not a blanket reject', async ({ request }) => {
     const target = `${PREFIX}UPLOAD-OK`;
     seedClosedComplaint(target, CLAUSE.complainantOnly, RE_OWN_ENTITY);
 
@@ -398,6 +413,7 @@ test.describe.serial('S2A — appeal registration, masking and upload caps', () 
       failOnStatusCode: false,
     });
 
-    expect(res.status(), 'a 1MB PDF must be accepted under a 2MB cap').toBeLessThan(400);
+    // 1MB is below every limit the product has ever had, so this control holds across retunes.
+    expect(res.status(), 'a 1MB PDF must be accepted under any configured cap').toBeLessThan(400);
   });
 });

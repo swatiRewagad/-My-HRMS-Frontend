@@ -85,13 +85,17 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   // Sliding panels
   showSimilarPanel = signal(false);
   showHistoryPanel = signal(false);
+  /** Comments start hidden: the trail is read for the sequence of actions, not the prose. */
+  hideHistoryComments = signal(true);
   loadingSimilarCases = signal(false);
   similarCases = signal<any[]>([]);
 
   // Right sidebar - Past Complaints
   pastComplaints = signal<any[]>([]);
   loadingPastComplaints = signal(false);
-  pastComplaintSearch = '';
+  // Signal-backed: `filteredPastComplaints` is a computed() and a plain field read inside one
+  // registers no dependency, so searching past complaints did nothing.
+  pastComplaintSearch = signal('');
 
   // ═══ Closure Features (UST504-509, UST576, UST577, UST580, UST581-584) ═══
   showClosureConfirmPopup = signal(false);
@@ -148,7 +152,7 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   }
 
   filteredPastComplaints = computed(() => {
-    const search = this.pastComplaintSearch.toLowerCase().trim();
+    const search = this.pastComplaintSearch().toLowerCase().trim();
     const list = this.pastComplaints();
     if (!search) return list;
     return list.filter((pc: any) =>
@@ -278,6 +282,10 @@ export class TaskActionComponent implements OnInit, OnDestroy {
 
   toggleHistoryPanel() {
     this.showHistoryPanel.set(!this.showHistoryPanel());
+  }
+
+  toggleHistoryComments() {
+    this.hideHistoryComments.set(!this.hideHistoryComments());
   }
 
   loadSimilarCases() {
@@ -1051,8 +1059,14 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   }
 
   // ═══ Feature: Legal Case Tab (UST553-555) ═══
+  // Not RBIO-only: a complaint can be sub judice while it still sits with CEPC, and the officer
+  // handling it then needs the court reference visible and recordable. The server admits the CEPC
+  // case-handling roles on /legal-case for the same reason.
   showLegalCase(): boolean {
-    return this.isRbioComplaint();
+    if (this.isRbioComplaint()) return true;
+    return this.auth.getRoles().some(r =>
+      ['CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY', 'CEPC_ADMIN',
+        'CEPC_CONTACT_PERSON'].includes(r));
   }
 
   // ═══ Feature: Forward to Regulatory Body (UST766) ═══

@@ -88,6 +88,10 @@ public class FileComplaintRequest {
 
     private Boolean reRepliedAndDissatisfied;
 
+    /** The date the RE's reply reached the complainant. Starts the post-reply filing window. */
+    @PastOrPresent
+    private LocalDate reReplyDate;
+
     /**
      * UST5: the wizard's step-5 declarations. Only ONLINE filings carry them — a complaint arriving by
      * email or physical letter was never shown a checkbox, and rejecting those would drop legitimate

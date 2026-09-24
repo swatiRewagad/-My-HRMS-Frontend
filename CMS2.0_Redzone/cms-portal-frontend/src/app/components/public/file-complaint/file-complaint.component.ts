@@ -7,10 +7,11 @@ import { ComplaintService } from '../../../services/complaint.service';
 import { PublicAuthService } from '../../../services/public-auth.service';
 import { TranslationService } from '../../../services/translation.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { validateFile, validateFileSet, MAX_FILE_COUNT } from '../../../utils/file-validator';
+import { validateFile, validateFileSet } from '../../../utils/file-validator';
 import { announceToScreenReader, setPageTitle } from '../../../utils/accessibility';
 import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 interface EligibilityQuestion {
   key: string;
@@ -62,6 +63,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   @ViewChild('formCard') formCard!: ElementRef<HTMLElement>;
 
   private complaintService = inject(ComplaintService);
+  // Public: the template renders the configured limit in its upload hint.
+  uploadLimits = inject(UploadLimitsService);
+
+  /** The configured limits in the shape file-validator expects, so no size is compiled in. */
+  private fileLimits() {
+    return {
+      maxFileSizeMb: this.uploadLimits.maxFileSizeMb(),
+      maxTotalSizeMb: this.uploadLimits.maxTotalSizeMb(),
+      maxFileCount: this.uploadLimits.maxFileCount(),
+    };
+  }
   private http = inject(HttpClient);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -85,6 +97,15 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
    * so correcting a citation is one DB UPDATE instead of an edit in each of the ten locales.
    */
   eligibilityBlockClause = signal('');
+  /**
+   * RE response window for the active block, interpolated into the message as {{days}}. The number
+   * used to be baked into the translated prose in all ten locales, so raising
+   * cms.mre.re-window-days changed the rule the wizard enforced while still telling the citizen
+   * "30 days" — the same defect the clause citations had before V15.
+   */
+  eligibilityBlockDays = signal('');
+  /** dd/mm/yyyy on which the RE window opens, so a citizen told to wait knows when to come back. */
+  reWindowOpenDate = signal('');
   nonMaintainableCaseId = '';
   showSimplified = signal(false);
 
@@ -209,7 +230,15 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   attachmentPreviews: { name: string; url: string; type: string; size: number }[] = [];
 
 
-  categories: { label: string; value: string }[] = [];
+  /**
+   * `label` is the English name, `labelKey` the translation key for display.
+   *
+   * <p>Both are kept because the label CANNOT be resolved when the list is fetched: the category
+   * request and the locale bundle load concurrently, so resolving once at fetch time renders English
+   * whenever the categories win that race, and nothing re-renders when the bundle later arrives or the
+   * user switches language. The key is therefore resolved in the template on every change detection.
+   */
+  categories: { label: string; value: string; labelKey?: string }[] = [];
 
   accountTypes: { label: string; value: string; checked: boolean }[] = [];
   accountTypeDropdownOpen = false;
@@ -246,6 +275,18 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
     return `${d}/${m}/${y}`;
+  }
+
+  /**
+   * A LOCAL calendar date as yyyy-MM-dd. Date.toISOString() converts to UTC first, so in IST
+   * (UTC+5:30) a local midnight becomes 18:30 the PREVIOUS day and slicing the string yields
+   * yesterday. That is a one-day error in every date this component shows or bounds, and here it is
+   * a one-day error in a statutory window: the RE-window-opens notice told the citizen the window
+   * opened a day before it actually did.
+   */
+  private toLocalIso(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
   /** Rejects 31/02, 30/02 and 29/02 in non-leap years, which a range check on d/m/y lets through. */
@@ -328,7 +369,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     const key = this.eligibilityBlockMessageKey();
     const translated = key ? this.translationService.translate(key) : '';
     const text = (translated && translated !== key) ? translated : this.eligibilityBlockMessage();
-    return this.interpolateClause(text, this.eligibilityBlockClause());
+    return this.interpolateDays(this.interpolateClause(text, this.eligibilityBlockClause()));
   }
 
   private interpolateClause(text: string, clause: string): string {
@@ -336,6 +377,29 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (clause) return text.replace(/\{\{clause\}\}/g, clause);
     // Collapse "under clause  of the Scheme" style gaps left by removing the placeholder.
     return text.replace(/\s*\{\{clause\}\}/g, '').replace(/\s{2,}/g, ' ');
+  }
+
+  /**
+   * Fills {{days}} from the configured RE window and {{windowOpenDate}} from the filing date.
+   * Global regex for the same reason interpolateClause uses one: the prose mentions the window
+   * twice, and TranslationService.translate() substitutes only the first occurrence.
+   */
+  private interpolateDays(text: string): string {
+    const days = this.eligibilityBlockDays();
+    return days ? text.replace(/\{\{days\}\}/g, days) : text;
+  }
+
+  /**
+   * UST11 scenario 3: a citizen told to wait must be told until WHEN. Rendered as its own translated
+   * line rather than spliced into the block prose, so adding it did not require re-translating the
+   * block message in all ten locales.
+   */
+  reWindowOpensNotice(): string {
+    const date = this.reWindowOpenDate();
+    if (!date) return '';
+    const template = this.t('eligibility.re_window_opens_on',
+      'You may file your complaint with the RBI Ombudsman on or after {{date}}.');
+    return template.replace(/\{\{date\}\}/g, date);
   }
 
   /** Raises a block from a master row, carrying its clause so the message can cite it. */
@@ -351,6 +415,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.eligibilityBlockMessage.set('');
     this.eligibilityBlockMessageKey.set('');
     this.eligibilityBlockClause.set('');
+    this.eligibilityBlockDays.set('');
+    this.reWindowOpenDate.set('');
   }
 
   initDateDisplays() {
@@ -623,7 +689,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   private acceptEligibilityFile(input: HTMLInputElement): File | string {
     const file = input.files![0];
-    const result = validateFile(file);
+    const result = validateFile(file, this.fileLimits());
     if (!result.valid) {
       input.value = '';
       return result.error!;
@@ -694,7 +760,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
     const file = input.files[0];
-    const result = validateFile(file);
+    const result = validateFile(file, this.fileLimits());
     if (!result.valid) {
       input.value = '';
       this.repFileError = result.error!;
@@ -709,7 +775,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     event.preventDefault();
     if (!event.dataTransfer?.files?.length) return;
     const file = event.dataTransfer.files[0];
-    const result = validateFile(file);
+    const result = validateFile(file, this.fileLimits());
     if (!result.valid) { this.repFileError = result.error!; return; }
     this.repFile = file;
     this.repFileName = file.name;
@@ -771,21 +837,22 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       next: (res) => {
         const data = res?.data ?? res ?? [];
         const categoryMap: Record<string, { label: string; value: string }[]> = {};
-        const categorySet = new Map<string, string>();
+        const categorySet = new Map<string, { label: string; labelKey?: string }>();
         data.forEach((item: any) => {
           // COMPLAINT_CATEGORIES exposes `name`; CATEGORY_MASTER used `categoryName`.
           const catValue = item.name || item.categoryName || item.value;
           const catLabel = item.name || item.categoryLabel || item.label || catValue;
           if (!catValue) return;
           if (!categorySet.has(catValue)) {
-            categorySet.set(catValue, catLabel);
+            categorySet.set(catValue, { label: catLabel, labelKey: item.labelKey });
           }
           if (item.subCategory) {
             if (!categoryMap[catValue]) categoryMap[catValue] = [];
             categoryMap[catValue].push({ label: item.subCategory, value: item.subCategoryValue || item.subCategory });
           }
         });
-        this.categories = Array.from(categorySet.entries()).map(([value, label]) => ({ label, value }));
+        this.categories = Array.from(categorySet.entries())
+          .map(([value, meta]) => ({ label: meta.label, value, labelKey: meta.labelKey }));
         this.categoriesUnavailable = this.categories.length === 0;
         this.subCategories = categoryMap;
       },
@@ -812,6 +879,27 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       },
       error: () => this.loadAccountTypesFromLocal()
     });
+  }
+
+  /**
+   * Localises a category for DISPLAY while the submitted value stays the English name.
+   *
+   * <p>`value` is what the payload sends, what `subject` is derived from and what routing matches, so it
+   * cannot be translated. Only the label can be.
+   *
+   * <p>Called from the template rather than computed when the list is fetched, because the categories
+   * and the locale bundle load concurrently: resolving once at fetch time rendered English whenever the
+   * categories arrived first, and never corrected itself when the user switched language.
+   *
+   * <p>The `!== labelKey` check matters: TranslationService.translate returns the KEY ITSELF on a miss,
+   * so without it a locale lacking the key would show a citizen `category.atm_debit_card` in a
+   * dropdown. Falling back to the English name is the right failure mode for a legally significant
+   * choice.
+   */
+  categoryLabel(category: { label: string; value: string; labelKey?: string }): string {
+    if (!category.labelKey) return category.label;
+    const localised = this.translationService.translate(category.labelKey);
+    return localised && localised !== category.labelKey ? localised : category.label;
   }
 
   private loadDraftFromServer(draftId: string) {
@@ -894,10 +982,24 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.loadEligibilityQuestions();
   }
 
+  /**
+   * The entity list is real master data served by GET /api/v1/routing/entities/list. A failed fetch
+   * used to be swallowed into setEntityOptions([]) — the citizen got a dropdown containing only the
+   * disabled "Select Regulated Entity Name" placeholder and nothing saying anything had gone wrong,
+   * so the screen looked like "RBI regulates no entities". Now the failure is shown and retryable.
+   */
+  entitiesLoadFailed = signal(false);
+
+  retryLoadEntities() {
+    this.entitiesLoadFailed.set(false);
+    this.loadRegulatedEntities();
+  }
+
   private loadRegulatedEntities() {
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/entities/list`).subscribe({
       next: (res) => {
         const entities = res?.data ?? res ?? [];
+        this.entitiesLoadFailed.set(!Array.isArray(entities) || entities.length === 0);
         this.banks = entities.map((e: any) => ({
           id: e.id,
           name: e.name,
@@ -910,9 +1012,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         const notCovered = this.banks.filter(b => b.department === 'CEPC');
         this.entitySelectOptions = covered.map(b => ({ label: b.name, value: String(b.id) }));
         this.nonCoveredEntityOptions = notCovered.map(b => ({ label: b.name, value: String(b.id) }));
+        this.filterEntities();
       },
       error: () => {
         this.setEntityOptions([]);
+        this.filteredEntityOptions = [];
+        this.entitiesLoadFailed.set(true);
       }
     });
   }
@@ -1058,11 +1163,17 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (!filedDate) return false;
     if (this.daysSince(filedDate) >= this.reWindowDays) return false;
 
+    const opens = new Date(filedDate);
+    opens.setHours(0, 0, 0, 0);
+    opens.setDate(opens.getDate() + this.reWindowDays);
+    this.reWindowOpenDate.set(this.isoToDisplay(this.toLocalIso(opens)));
+    this.eligibilityBlockDays.set(String(this.reWindowDays));
+
     this.eligibilityBlocked.set(true);
     this.eligibilityBlockMessage.set(
-      `As the Regulated Entity has not yet been given ${this.reWindowDays} days to respond to your ` +
+      `As the Regulated Entity has not yet been given {{days}} days to respond to your ` +
       `complaint, your complaint cannot be registered at this time. Please wait until ` +
-      `${this.reWindowDays} days have elapsed from the date of filing your complaint with the ` +
+      `{{days}} days have elapsed from the date of filing your complaint with the ` +
       `Regulated Entity.`
     );
     this.eligibilityBlockMessageKey.set('eligibility.block_less_than_30_days');
@@ -1074,51 +1185,117 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * UST12: a grievance brought more than grievanceFilingWindowDays after the RE complaint is
-   * time-barred under the Scheme. Warned rather than blocked, because the Ombudsman may still
-   * condone the delay — the decision is not the wizard's to make.
+   * UST12: the statutory filing window. Returns true when the citizen is BLOCKED.
+   *
+   * Business ruling — the window REFUSES the filing rather than merely warning about it, and which
+   * window applies depends on whether the RE replied:
+   *
+   *   RE replied      → grievanceFilingWindowDays from the RE COMPLAINT date. Past it the complaint is
+   *                     refused; the unanswered RE complaint is auto-closed by the system instead.
+   *   RE did not reply→ filingDeadlineDays from the REPLY date. The RE complaint date stops mattering
+   *                     once a reply exists — a reply on day 300 still leaves a full 90 days — which is
+   *                     why this cannot be collapsed into a single window.
+   *
+   * Both bounds are INCLUSIVE, matching the server guard in ComplaintApiV1Controller.filingWindowRefusal
+   * so the two layers cannot disagree about the boundary day. The server repeats this check because a
+   * browser-only block is bypassable.
    */
-  timeBarredWarning = signal('');
-
   private applyFilingWindowBlock(): boolean {
-    this.timeBarredWarning.set('');
+    const replied = this.eligibilityAnswers['receivedReply'] === 'yes';
+    const replyDate = this.formData['replyDate'];
     const filedDate = this.formData['bankComplaintDate'];
-    if (!filedDate) return false;
-    if (this.daysSince(filedDate) <= this.grievanceFilingWindowDays) return false;
 
-    this.timeBarredWarning.set(this.t('eligibility.time_barred_warning',
-      `Your complaint to the Regulated Entity was filed more than ${this.grievanceFilingWindowDays} ` +
-      `days ago. The filing window under the Scheme has elapsed, so your complaint may be closed as ` +
-      `time-barred. You may still proceed.`));
-    announceToScreenReader(this.timeBarredWarning(), 'assertive');
-    return false;
+    const from = replied && replyDate ? replyDate : filedDate;
+    if (!from) return false;
+    const limit = replied && replyDate ? this.filingDeadlineDays : this.grievanceFilingWindowDays;
+    if (this.daysSince(from) <= limit) return false;
+
+    // {{days}} is interpolated from the SERVED window, never from a literal in the prose. The same
+    // defect V102 fixed for the RE window was present here: the translated message baked "310" into all
+    // ten locales (Bengali in Bengali numerals, ৩১০), so raising the configured window changed the rule
+    // the wizard ENFORCED while the citizen was still told it was 310 days. V107 rewrites those rows to
+    // carry {{days}}.
+    this.eligibilityBlockDays.set(String(limit));
+    this.eligibilityBlocked.set(true);
+    this.eligibilityBlockMessage.set(
+      replied && replyDate
+        ? `Complaint filing period has expired. A complaint must be filed within {{days}} days of ` +
+          `the Regulated Entity's reply.`
+        : `Complaint filing period has expired. A complaint must be filed within {{days}} days of ` +
+          `your complaint to the Regulated Entity.`
+    );
+    this.eligibilityBlockMessageKey.set(
+      replied && replyDate ? 'eligibility.block_post_reply_window' : 'eligibility.block_filing_window');
+    this.eligibilityBlockClause.set(
+      this.eligibilityQuestions.find(q => q.key === 'receivedReply')?.clauseReference || '');
+    this.nonMaintainableCaseId = 'NM-' + Date.now().toString().slice(-8);
+    return true;
   }
 
+  /**
+   * UST13 S3: filter the entity list by NAME or by ENTITY TYPE.
+   *
+   * Deliberately client-side over the already-loaded list. The whole master is ~145 rows and is
+   * fetched once by loadRegulatedEntities(), so a per-keystroke round trip would buy nothing and
+   * would make the citizen's typing depend on the network. It also means the search term never
+   * reaches a query: there is no injection surface here at all. (The server-side
+   * /routing/entities/list?search= is parameterised via Spring Data @Param, so the other caller is
+   * safe too.)
+   *
+   * Case-insensitive on both sides, and the type is matched as well as the name so that typing
+   * "NBFC" narrows to NBFCs. No slice(): a 50-row cap silently hid matches, so a citizen whose bank
+   * sorted 51st was shown "no results" for a name that IS on the list.
+   */
   filterEntities() {
     const term = this.entitySearchText.toLowerCase().trim();
-    if (!term) {
-      this.filteredEntityOptions = this.entityOptions.slice(0, 50).map(o => ({
-        ...o,
-        entityType: this.banks.find(b => String(b.id) === o.value)?.entityType
-      }));
-      return;
-    }
-    this.filteredEntityOptions = this.entityOptions
-      .filter(o => {
-        const bank = this.banks.find(b => String(b.id) === o.value);
-        return o.label.toLowerCase().includes(term) ||
-               (bank?.entityType?.toLowerCase().includes(term));
-      })
-      .slice(0, 50)
-      .map(o => ({
-        ...o,
-        entityType: this.banks.find(b => String(b.id) === o.value)?.entityType
-      }));
+    const all = this.entityOptions.map(o => ({
+      ...o,
+      entityType: this.banks.find(b => String(b.id) === o.value)?.entityType,
+    }));
+    this.filteredEntityOptions = term
+      ? all.filter(o => o.label.toLowerCase().includes(term) ||
+                        !!o.entityType?.toLowerCase().includes(term))
+      : all;
+    this.entityDropdownOpen = true;
+  }
+
+  /** True only once the citizen has typed something that matches nothing — never on an empty box. */
+  get entitySearchHasNoResults(): boolean {
+    return this.entityDropdownOpen &&
+           this.entitySearchText.trim().length > 0 &&
+           this.filteredEntityOptions.length === 0;
+  }
+
+  /**
+   * The "No results found" line, with the citizen's term interpolated HERE rather than in the
+   * template. translate(key, params?) takes params optionally, so `{{ key | translate }}` on a key
+   * carrying a placeholder prints a literal `{{term}}`; the pipe cannot pass params. Interpolating in
+   * the component is the only way this key can render correctly.
+   *
+   * The term is bound as text (an Angular interpolation), never as HTML, so a term such as
+   * `<img src=x onerror=alert(1)>` is escaped and displayed, not executed.
+   */
+  get entitySearchNoResultsText(): string {
+    const term = this.entitySearchText.trim();
+    const key = 'eligibility.entity_search_no_results';
+    const raw = this.translationService.translate(key, { term });
+    return raw === key ? `No results found for "${term}".` : raw;
+  }
+
+  onEntitySearchInput(value: string) {
+    this.entitySearchText = value;
+    this.filterEntities();
+  }
+
+  openEntityDropdown() {
+    this.filterEntities();
   }
 
   selectEntityFromSearch(opt: { label: string; value: string }) {
     this.selectEligibilityAnswer(opt.value);
-    this.entitySearchText = '';
+    // The chosen name stays in the box so the citizen can see what they picked; clearing it made the
+    // control look unanswered even though an answer had been recorded.
+    this.entitySearchText = opt.label;
     this.entityDropdownOpen = false;
     this.filteredEntityOptions = [];
   }
@@ -1129,10 +1306,16 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return opt?.label ?? '';
   }
 
+  /**
+   * UST13 QA10: clearing the box restores the FULL list, and also drops the selection — leaving the
+   * answer behind while the box reads empty would let a citizen proceed against an entity the screen
+   * no longer names.
+   */
   clearEntitySelection() {
     this.eligibilityAnswers['regulatedEntity'] = '';
     this.entitySearchText = '';
     this.eligibilityBlocked.set(false);
+    this.filterEntities();
   }
 
   closeEntityDropdown() {
@@ -1142,6 +1325,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   selectEntityFromDropdown(value: string) {
     if (value) {
       this.selectEligibilityAnswer(value);
+      this.entitySearchText = this.getSelectedEntityLabel();
     }
   }
 
@@ -1150,8 +1334,20 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   eligibilityRefError = '';
   mandatoryResponseError = signal('');
 
+  /**
+   * UST13 S2 vs UST14/18 S3 — the two mandatory messages are DIFFERENT by design.
+   *
+   * The entity question is a named field, and QA's expected result for it is "Regulated Entity Name is
+   * mandatory."; the Yes/No maintainability questions expect the generic "Response is mandatory.".
+   * Emitting the generic line for the entity select told the citizen to answer a "response" on a
+   * screen with nothing to respond to. Keyed off the question TYPE, not its key, so an operator
+   * renaming the master row cannot silently revert this.
+   */
   private failMandatory() {
-    this.mandatoryResponseError.set(this.t('eligibility.response_mandatory', 'Response is mandatory.'));
+    const isEntitySelect = this.currentQuestion?.type === 'select';
+    this.mandatoryResponseError.set(isEntitySelect
+      ? this.t('eligibility.entity_mandatory', 'Regulated Entity Name is mandatory.')
+      : this.t('eligibility.response_mandatory', 'Response is mandatory.'));
     announceToScreenReader(this.mandatoryResponseError(), 'assertive');
   }
 
@@ -1215,6 +1411,12 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
           'Please upload a copy of the reply received from the Regulated Entity');
         return;
       }
+      // Where the RE HAS replied the window runs from the reply date, so it is assessed here. The
+      // 'no' branch below assesses the other limb, which runs from the RE complaint date.
+      if (this.applyFilingWindowBlock()) {
+        this.phase.set('non-maintainable');
+        return;
+      }
     }
 
     if (q.key === 'sentReminder' && this.eligibilityAnswers['sentReminder'] === 'yes') {
@@ -1264,7 +1466,10 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         this.phase.set('non-maintainable');
         return;
       }
-      if (this.applyFilingWindowBlock()) return;
+      if (this.applyFilingWindowBlock()) {
+        this.phase.set('non-maintainable');
+        return;
+      }
     }
 
     if (this.eligibilityStep() < this.totalEligibilitySteps) {
@@ -1335,6 +1540,14 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       doc.text(reasonLines, 20, y);
       y += reasonLines.length * 6 + 14;
 
+      // The letter is the citizen's record of the refusal, so it must carry the date the window opens.
+      const opensNotice = this.reWindowOpensNotice();
+      if (opensNotice) {
+        const opensLines = doc.splitTextToSize(opensNotice, pw - 40);
+        doc.text(opensLines, 20, y);
+        y += opensLines.length * 6 + 8;
+      }
+
       doc.text('This is a system-generated letter and does not require a signature.', 20, y);
       y += 14;
 
@@ -1365,15 +1578,16 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   validationErrors: Record<string, string> = {};
 
   onAmountInput(field: string, value: string) {
-    const raw = value.replace(/,/g, '');
-    if (raw && !/^\d*$/.test(raw)) {
-      this.formData[field] = this.formData[field];
-      return;
-    }
-    this.formData[field] = raw ? this.formatIndianNumber(raw) : '';
+    // Non-digits are STRIPPED, not merely rejected. This previously self-assigned
+    // (`formData[field] = formData[field]`) intending to revert the field, but the input binding is
+    // one-way `[ngModel]`, so reassigning the same value changed nothing Angular could detect and the
+    // rejected characters stayed on screen. A complainant typing "12a" in an amount kept the "a".
+    const digitsOnly = value.replace(/[^\d]/g, '');
+    this.formData[field] = digitsOnly ? this.formatIndianNumber(digitsOnly) : '';
     if (field === 'compensationSought') this.validateCompensationSought();
     if (field === 'reliefSought') this.validateReliefSought();
   }
+
 
   private formatIndianNumber(value: string): string {
     const num = value.replace(/^0+(?=\d)/, '');
@@ -1773,7 +1987,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.fileUploadError = '';
 
     const newFiles = Array.from(input.files);
-    const setResult = validateFileSet(newFiles, this.attachments.length);
+    const setResult = validateFileSet(newFiles, this.attachments.length, this.fileLimits());
     if (!setResult.valid) {
       this.fileUploadError = setResult.error!;
       announceToScreenReader(setResult.error!, 'assertive');
@@ -1782,7 +1996,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     }
 
     for (const file of newFiles) {
-      const result = validateFile(file);
+      const result = validateFile(file, this.fileLimits());
       if (!result.valid) {
         this.fileUploadError = result.error!;
         announceToScreenReader(result.error!, 'assertive');
@@ -1801,14 +2015,14 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     if (!event.dataTransfer?.files?.length) return;
     this.fileUploadError = '';
     const newFiles = Array.from(event.dataTransfer.files);
-    const setResult = validateFileSet(newFiles, this.attachments.length);
+    const setResult = validateFileSet(newFiles, this.attachments.length, this.fileLimits());
     if (!setResult.valid) {
       this.fileUploadError = setResult.error!;
       announceToScreenReader(setResult.error!, 'assertive');
       return;
     }
     for (const file of newFiles) {
-      const result = validateFile(file);
+      const result = validateFile(file, this.fileLimits());
       if (!result.valid) {
         this.fileUploadError = result.error!;
         announceToScreenReader(result.error!, 'assertive');
@@ -1961,6 +2175,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       reComplaintDate: this.formData['bankComplaintDate'] || undefined,
       reComplaintReference: this.formData['bankComplaintRef'] || undefined,
       reRepliedAndDissatisfied: this.eligibilityAnswers['receivedReply'] === 'yes',
+      // The post-reply filing window runs from this date, so the server cannot enforce the window
+      // without it. Collected and validated in step 2, then previously dropped here.
+      reReplyDate: this.formData['replyDate'] || undefined,
       // UST5: the server re-checks this, so it has to travel with the payload rather than living
       // only in the disabled state of the Submit button.
       declarationAccepted: this.declarationChecked && this.declaration2Checked,
@@ -1997,7 +2214,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   }
 
   get todayISO(): string {
-    return new Date().toISOString().split('T')[0];
+    // Local, not UTC: this is the [max] of the RE-complaint-date pickers, and east of Greenwich the
+    // UTC form is yesterday — so the citizen could not pick today's date at all.
+    return this.toLocalIso(new Date());
   }
 
   // CEPC vs RBIO entity type detection
@@ -2036,7 +2255,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   getComplaintCategoryLabel(): string {
     const cat = this.categories.find(c => c.value === this.formData['complaintCategory']);
-    return cat?.label || this.formData['complaintCategory'] || '—';
+    // Localised for the review step too: a citizen must not pick a Punjabi label on step 3 and then be
+    // shown the English name when confirming what they are about to file.
+    return (cat ? this.categoryLabel(cat) : '') || this.formData['complaintCategory'] || '—';
   }
 
   validateAge() {

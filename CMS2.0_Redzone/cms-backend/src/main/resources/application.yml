@@ -122,11 +122,11 @@ cms:
     azure-model: ${AZURE_DOC_MODEL:prebuilt-read}
   attachments:
     root-path: ${CMS_ATTACHMENTS_PATH:C:/cms-attachments}
-    # NFR-006: 5MB per file, 25MB total, 10 files.
+    # NFR-006: 2MB per file, 25MB total, 10 files.
     # These are FALLBACKS ONLY. The live limits are SYSTEM_CONFIG rows read by UploadLimitsService
     # (cms.attachments.max_file_size_bytes / max_total_size_bytes), so the limit is changeable at
     # runtime and the frontend reads it from /api/v1/config/upload-limits rather than compiling a copy.
-    max-file-size: ${CMS_MAX_FILE_SIZE:5242880}
+    max-file-size: ${CMS_MAX_FILE_SIZE:2097152}
     max-total-size: ${CMS_MAX_TOTAL_SIZE:26214400}
     chunk-size: ${CMS_CHUNK_SIZE:5242880}
     allowed-types: ${CMS_ALLOWED_TYPES:pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip}
@@ -183,7 +183,17 @@ cms:
       max-verify-attempts-per-otp: ${OTP_MAX_VERIFY_ATTEMPTS:3}
       # UST8: minimum gap between OTP requests for the same mobile, enforced server-side.
       resend-cooldown-seconds: ${OTP_RESEND_COOLDOWN_SECONDS:120}
-      dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:true}
+      # Returns the generated OTP in the send-otp RESPONSE BODY. Anyone who can reach the endpoint can
+      # then authenticate as any mobile number, so this is an authentication bypass wherever it is on.
+      #
+      # THE DEFAULT IS false AND MUST STAY false. It previously defaulted to TRUE here and the only
+      # override lived in the `prod` profile -- but the OpenShift ConfigMap sets SPRING_PROFILES_ACTIVE
+      # to "openshift", a profile that did not exist, so every deployed environment silently took this
+      # default and exposed the OTP. A safe default is the control; a profile override was not.
+      #
+      # dev-local turns it on explicitly (application-dev-local.yml) because the E2E suite reads devOtp
+      # to authenticate. OtpExposureGuard refuses to start if it is ever true outside dev-local.
+      dev-auto-populate: ${OTP_DEV_AUTO_POPULATE:false}
     captcha:
       length: ${CAPTCHA_LENGTH:6}
       expiry-minutes: ${CAPTCHA_EXPIRY_MINUTES:5}
@@ -266,6 +276,69 @@ server:
 cms:
   auth:
     otp:
+      dev-auto-populate: false
+
+logging:
+  level:
+    com.hrms.cms: WARN
+    org.hibernate.SQL: ERROR
+
+---
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+# openshift — THE PROFILE THE CLUSTER ACTUALLY RUNS
+#
+# cms-infrastructure/openshift/configmaps.yaml sets SPRING_PROFILES_ACTIVE: "openshift", and until now
+# NO SUCH PROFILE EXISTED. Spring does not warn about an unknown profile, so every `prod`-only override
+# above was dead code in the one environment it was written for, and the deployed service silently ran
+# on the base defaults. This block exists so that the profile the cluster names is the profile that
+# carries the safety settings.
+#
+# WHY NOT JUST SWITCH THE DEPLOYMENT TO `prod`? That would work, but it leaves the trap in place: the
+# next ConfigMap edit can point at a non-existent profile again and fail silently in exactly the same
+# way. Defining `openshift` fixes the environment that exists rather than renaming it.
+#
+# ⚠️ ddl-auto IS DELIBERATELY NOT SET TO `validate` HERE, unlike `prod`.
+# It is coupled to the migrations and they are not yet replayable: a clean-DB replay applies only 15 of
+# 60 migrations and creates 55 of 113 tables, because V1/V3 contain Oracle `CREATE SEQUENCE ... NOCACHE`
+# that is invalid in MySQL and V5/V6 are not re-runnable. 58 tables exist ONLY because Hibernate created
+# them. Setting `validate` today therefore means the service FAILS TO BOOT.
+#
+# That schema work is a separate, larger task and is escalated, not silently attempted here. The OTP
+# exposure is independent of it and is fixed. Inheriting the base `update` is NOT an endorsement --
+# Hibernate mutating a production schema at boot remains a real go-live risk that needs the migrations
+# repaired first. Do not "tidy" this to `validate` without replaying the migrations on a clean database.
+# ═══════════════════════════════════════════════════════════════════════════════════════════════
+spring:
+  config:
+    activate:
+      on-profile: openshift
+  datasource:
+    hikari:
+      maximum-pool-size: 100
+      minimum-idle: 20
+      pool-name: CMS-HikariPool-OpenShift
+      leak-detection-threshold: 60000
+  jpa:
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+  cache:
+    type: hazelcast
+
+server:
+  tomcat:
+    threads:
+      max: 800
+      min-spare: 100
+    max-connections: 20000
+    accept-count: 1000
+
+cms:
+  auth:
+    otp:
+      # Belt and braces: the base default is already false, and OtpExposureGuard refuses to start if
+      # this is true outside dev-local. Stated explicitly so a reader of this profile can see it.
       dev-auto-populate: false
 
 logging:

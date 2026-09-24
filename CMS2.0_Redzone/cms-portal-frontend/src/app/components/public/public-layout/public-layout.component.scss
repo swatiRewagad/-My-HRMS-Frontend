@@ -167,6 +167,36 @@
   i { font-size: 18px; }
 }
 
+.session-timeout-banner {
+  background: var(--state-error-bg, #fdecea);
+  border-bottom: 2px solid #d32f2f;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--state-error-fg, #611a15);
+  font-weight: 600;
+}
+
+.session-timeout-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  i { font-size: 18px; }
+
+  .session-timeout-login {
+    color: #b71c1c;
+    text-decoration: underline;
+    font-weight: 700;
+  }
+
+  .session-timeout-close {
+    margin-inline-start: auto;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: inherit;
+  }
+}
+
 .session-bar {
   background: var(--state-success-bg);
   border-bottom: 1px solid #c8e6c9;

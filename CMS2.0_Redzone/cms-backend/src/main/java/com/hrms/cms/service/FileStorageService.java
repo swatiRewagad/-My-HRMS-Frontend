@@ -28,6 +28,9 @@ public class FileStorageService {
     private final ComplaintAttachmentRepository attachmentRepository;
     private final FileUploadValidator uploadValidator;
 
+    /** Size and count limits are runtime configuration; see {@link FileUploadValidator}. */
+    private final UploadLimitsService uploadLimits;
+
     public ChunkUploadResponse handleChunkUpload(
             MultipartFile chunk,
             String uploadId,
@@ -48,9 +51,10 @@ public class FileStorageService {
                     .build();
         }
 
-        if (totalFileSize > config.getMaxFileSize()) {
+        long maxFileSize = uploadLimits.maxFileSizeBytes();
+        if (totalFileSize > maxFileSize) {
             return ChunkUploadResponse.builder()
-                    .message("File exceeds maximum size of " + (config.getMaxFileSize() / 1048576) + "MB")
+                    .message("File exceeds maximum size of " + (maxFileSize / 1048576) + "MB")
                     .complete(false)
                     .build();
         }
@@ -161,8 +165,9 @@ public class FileStorageService {
         uploadValidator.validate(file);
 
         List<ComplaintAttachment> existing = attachmentRepository.findByComplaintId(complaintId);
-        if (existing.size() >= config.getMaxFilesPerComplaint()) {
-            throw new IllegalArgumentException("Max files per complaint reached (" + config.getMaxFilesPerComplaint() + ")");
+        int maxFileCount = uploadLimits.maxFileCount();
+        if (existing.size() >= maxFileCount) {
+            throw new IllegalArgumentException("Max files per complaint reached (" + maxFileCount + ")");
         }
 
         // The AGGREGATE cap, which handleSingleUpload previously did not apply at all: ten separate

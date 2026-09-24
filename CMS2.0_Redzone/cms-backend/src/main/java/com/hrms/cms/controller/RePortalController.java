@@ -1,12 +1,12 @@
 package com.hrms.cms.controller;
 
-import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.security.ReRoleGuard;
 import com.hrms.cms.service.FileStorageService;
 import com.hrms.cms.service.FileUploadValidator;
 import com.hrms.cms.service.ReNotificationService;
 import com.hrms.cms.service.RePortalService;
+import com.hrms.cms.service.UploadLimitsService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +41,7 @@ public class RePortalController {
     private final ReNotificationService reNotificationService;
     private final FileStorageService fileStorageService;
     private final FileUploadValidator fileUploadValidator;
-    private final FileStorageConfig fileStorageConfig;
+    private final UploadLimitsService uploadLimits;
 
     /** True only under dev-local; the enforcing profile ignores X-Entity-Code entirely. */
     @Value("${cms.security.allow-dev-identity-headers:false}")
@@ -214,7 +214,7 @@ public class RePortalController {
             // Every file is validated before anything is written, so a rejected attachment
             // cannot leave earlier ones persisted against an unrecorded response.
             if (!files.isEmpty()) {
-                int maxFiles = fileStorageConfig.getMaxFilesPerComplaint();
+                int maxFiles = uploadLimits.maxFileCount();
                 int existing = fileStorageService.getAttachments(complaint.getId()).size();
                 if (existing + files.size() > maxFiles) {
                     return ResponseEntity.badRequest().body(Map.of("success", false,

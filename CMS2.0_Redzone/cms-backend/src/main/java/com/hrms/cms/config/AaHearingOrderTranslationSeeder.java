@@ -85,6 +85,11 @@ public class AaHearingOrderTranslationSeeder implements CommandLineRunner {
               "Reminder: the hearing on your appeal {appealNumber} is on {hearingDate} at {hearingVenue}.");
 
         // ═══ Officer / staff bell notifications ═══
+        // Seeded in English ONLY, unlike its neighbours. TranslationService falls back to defaultValue
+        // for a locale with no row, so an untranslated key degrades to readable English rather than to the
+        // raw code. Inventing nine Indic translations that nobody has reviewed would be worse: this is the
+        // vocabulary of a statutory notice. Flagged for the translation team.
+        m.put("aa.notify.officer.appeal_filed", "Appeal {appealNumber} has been filed and assigned to you");
         m.put("aa.notify.officer.appeal_accepted", "Appeal {appealNumber} was accepted for consideration");
         m.put("aa.notify.officer.appeal_rejected", "Appeal {appealNumber} was not accepted for consideration");
         m.put("aa.notify.officer.assigned_to_bench", "Appeal {appealNumber} was assigned to a bench");

@@ -5,7 +5,10 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
+import com.hrms.cms.exception.ComplaintNotEditableException;
+import com.hrms.cms.exception.MandatoryFieldBlankException;
 import com.hrms.cms.repository.*;
+import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.service.mre.MreEntityCoverageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -537,6 +540,15 @@ class ComplaintServiceTest {
     @Nested
     class UpdateComplaint {
 
+        /** Attribution is server-resolved, so every edit test has to supply an editor. */
+        private static final RequestIdentity EDITOR = RequestIdentity.builder()
+                .userId("cepc_do_001")
+                .displayName("CEPC Dealing Officer")
+                .primaryRole("CEPC_DO")
+                .roles(java.util.Set.of("CEPC_DO"))
+                .side("RBI")
+                .build();
+
         @Test
         void shouldUpdateStatus() {
             when(complaintRepository.findById(1L)).thenReturn(Optional.of(sampleComplaint));
@@ -546,7 +558,7 @@ class ComplaintServiceTest {
             request.setStatus("in_progress");
             request.setRemarks("Assigned for review");
 
-            Complaint result = complaintService.updateComplaint(1L, request);
+            Complaint result = complaintService.updateComplaint(1L, request, EDITOR);
 
             assertThat(result.getStatus()).isEqualTo("in_progress");
         }
@@ -559,7 +571,7 @@ class ComplaintServiceTest {
             UpdateComplaintRequest request = new UpdateComplaintRequest();
             request.setStatus("resolved");
 
-            Complaint result = complaintService.updateComplaint(1L, request);
+            Complaint result = complaintService.updateComplaint(1L, request, EDITOR);
 
             assertThat(result.getResolvedAt()).isNotNull();
         }
@@ -572,7 +584,7 @@ class ComplaintServiceTest {
             UpdateComplaintRequest request = new UpdateComplaintRequest();
             request.setStatus("closed");
 
-            Complaint result = complaintService.updateComplaint(1L, request);
+            Complaint result = complaintService.updateComplaint(1L, request, EDITOR);
 
             assertThat(result.getClosedAt()).isNotNull();
         }
@@ -585,7 +597,7 @@ class ComplaintServiceTest {
             UpdateComplaintRequest request = new UpdateComplaintRequest();
             request.setStatus("escalated");
 
-            Complaint result = complaintService.updateComplaint(1L, request);
+            Complaint result = complaintService.updateComplaint(1L, request, EDITOR);
 
             assertThat(result.getEscalatedAt()).isNotNull();
         }
@@ -598,7 +610,7 @@ class ComplaintServiceTest {
             UpdateComplaintRequest request = new UpdateComplaintRequest();
             request.setPriority("high");
 
-            Complaint result = complaintService.updateComplaint(1L, request);
+            Complaint result = complaintService.updateComplaint(1L, request, EDITOR);
 
             assertThat(result.getPriority()).isEqualTo("high");
         }
@@ -612,7 +624,7 @@ class ComplaintServiceTest {
             request.setAssignedOfficer("Officer Smith");
             request.setRemarks("Assigned");
 
-            Complaint result = complaintService.updateComplaint(1L, request);
+            Complaint result = complaintService.updateComplaint(1L, request, EDITOR);
 
             assertThat(result.getAssignedOfficer()).isEqualTo("Officer Smith");
         }
@@ -626,13 +638,64 @@ class ComplaintServiceTest {
             request.setStatus("resolved");
             request.setRemarks("Issue fixed");
 
-            complaintService.updateComplaint(1L, request);
+            complaintService.updateComplaint(1L, request, EDITOR);
 
             verify(timelineRepository).save(argThat(timeline ->
                     "status_change".equals(timeline.getAction()) &&
                     "pending".equals(timeline.getFromStatus()) &&
-                    "resolved".equals(timeline.getToStatus())
+                    "resolved".equals(timeline.getToStatus()) &&
+                    // The audit row used to be stamped "System" for every edit, so it could not say who.
+                    "cepc_do_001".equals(timeline.getPerformedBy()) &&
+                    "CEPC_DO".equals(timeline.getPerformedByRole())
             ));
+        }
+
+        @Test
+        void shouldRefuseEditingAClosedComplaint() {
+            sampleComplaint.setStatus("closed");
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(sampleComplaint));
+
+            UpdateComplaintRequest request = new UpdateComplaintRequest();
+            request.setPriority("high");
+
+            assertThatThrownBy(() -> complaintService.updateComplaint(1L, request, EDITOR))
+                    .isInstanceOf(ComplaintNotEditableException.class);
+
+            verify(complaintRepository, never()).save(any(Complaint.class));
+        }
+
+        @Test
+        void shouldRefuseEditingAWithdrawnComplaint() {
+            sampleComplaint.setStatus("withdrawn");
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(sampleComplaint));
+
+            assertThatThrownBy(() -> complaintService.updateComplaint(1L, new UpdateComplaintRequest(), EDITOR))
+                    .isInstanceOf(ComplaintNotEditableException.class);
+        }
+
+        @Test
+        void shouldRejectBlankMandatoryFields() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(sampleComplaint));
+
+            UpdateComplaintRequest request = new UpdateComplaintRequest();
+            request.setStatus("");
+
+            assertThatThrownBy(() -> complaintService.updateComplaint(1L, request, EDITOR))
+                    .isInstanceOf(MandatoryFieldBlankException.class)
+                    .hasMessage("Please fill mandatory fields");
+
+            verify(complaintRepository, never()).save(any(Complaint.class));
+        }
+
+        @Test
+        void shouldRejectBlankPriority() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(sampleComplaint));
+
+            UpdateComplaintRequest request = new UpdateComplaintRequest();
+            request.setPriority("   ");
+
+            assertThatThrownBy(() -> complaintService.updateComplaint(1L, request, EDITOR))
+                    .isInstanceOf(MandatoryFieldBlankException.class);
         }
 
         @Test
@@ -644,10 +707,12 @@ class ComplaintServiceTest {
             request.setPriority("high");
             request.setRemarks("Priority escalated");
 
-            complaintService.updateComplaint(1L, request);
+            complaintService.updateComplaint(1L, request, EDITOR);
 
             verify(timelineRepository).save(argThat(timeline ->
-                    "update".equals(timeline.getAction())
+                    "update".equals(timeline.getAction()) &&
+                    "cepc_do_001".equals(timeline.getPerformedBy()) &&
+                    "CEPC_DO".equals(timeline.getPerformedByRole())
             ));
         }
     }

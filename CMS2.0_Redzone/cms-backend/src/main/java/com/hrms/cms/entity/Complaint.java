@@ -163,6 +163,16 @@ public class Complaint {
     private Boolean reRepliedAndDissatisfied;
 
     /**
+     * The date the RE's reply reached the complainant (RB-IOS Q18 follow-up).
+     *
+     * The filing window runs from THIS date once the RE has replied, so it has to be stored: the wizard
+     * collected it, validated it, and then dropped it, leaving the server unable to tell a timely filing
+     * from a stale one. Null where the RE never replied — that case is governed by reComplaintDate and
+     * the grievance filing window instead.
+     */
+    private LocalDate reReplyDate;
+
+    /**
      * UST5: the step-5 declaration accepted at filing time. Null for intake channels that never
      * showed a checkbox (email, physical letter, walk-in), so absence is not a compliance gap.
      */

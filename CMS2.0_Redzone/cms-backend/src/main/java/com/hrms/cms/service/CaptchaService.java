@@ -89,8 +89,18 @@ public class CaptchaService {
         cs.setUsed(true);
         captchaSessionRepository.save(cs);
 
+        // Constant-time: String.equals leaks the shared-prefix length through its timing, which turns
+        // a CAPTCHA check into an oracle for recovering the expected answer hash character by character.
         String inputHash = hashValue(userAnswer.trim().toLowerCase());
-        return inputHash.equals(cs.getAnswerHash());
+        return constantTimeEquals(inputHash, cs.getAnswerHash());
+    }
+
+    /** Null-safe constant-time hash comparison, so a missing stored hash fails closed. */
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        return MessageDigest.isEqual(
+                a.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private void saveCaptchaSession(String token, String answer, String type) {

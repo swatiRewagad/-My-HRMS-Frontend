@@ -6,6 +6,7 @@ import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 interface AppealSummary {
@@ -33,7 +34,7 @@ type AaRole = 'AA_DO' | 'AA_REVIEWER' | 'AA_SECRETARIAT' | 'AA_ADMIN';
 @Component({
   selector: 'app-aa-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, StatusBadgeComponent, AppShellComponent, TranslatePipe],
   templateUrl: './aa-dashboard.component.html',
   styleUrl: './aa-dashboard.component.scss'
 })
@@ -220,11 +221,4 @@ export class AaDashboardComponent implements OnInit {
     this.currentPage.set(1);
   }
 
-  async logout() {
-    await this.auth.logout();
-  }
-
-  goBack() {
-    this.router.navigate(['/staff/dashboard']);
-  }
 }

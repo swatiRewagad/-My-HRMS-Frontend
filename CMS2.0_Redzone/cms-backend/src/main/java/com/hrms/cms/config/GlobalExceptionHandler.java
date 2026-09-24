@@ -2,6 +2,8 @@ package com.hrms.cms.config;
 
 import com.hrms.cms.exception.ClosureCommunicationIncompleteException;
 import com.hrms.cms.exception.ImpleadedPartyIncompleteException;
+import com.hrms.cms.exception.ComplaintNotEditableException;
+import com.hrms.cms.exception.MandatoryFieldBlankException;
 import com.hrms.cms.exception.UploadLinkActiveException;
 import com.hrms.cms.service.AppealClassificationService;
 import com.hrms.cms.service.ClauseConfigurationAlertService;
@@ -135,6 +137,44 @@ public class GlobalExceptionHandler {
         response.put("linkExpiresAt", ex.getLinkExpiresAt());
         response.put("timestamp", LocalDateTime.now().toString());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * An edit was refused because the complaint's status has settled.
+     *
+     * <p>409 CONFLICT for the same reason as the refusals around it: the payload is valid and the caller
+     * authorised, but the record is a closed matter. The status is echoed so the screen can say which one
+     * rather than making the officer re-read the complaint.
+     */
+    @ExceptionHandler(ComplaintNotEditableException.class)
+    public ResponseEntity<Map<String, Object>> handleComplaintNotEditable(ComplaintNotEditableException ex) {
+        log.warn("Edit refused for complaint {} — status is {}", ex.getComplaintNumber(), ex.getStatus());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", "complaint.error_not_editable");
+        response.put("complaintNumber", ex.getComplaintNumber());
+        response.put("status", ex.getStatus());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    /**
+     * A mandatory field was submitted blank. 400 BAD REQUEST: unlike the state conflicts around it, this
+     * one really is a malformed payload, and the message is the wording the edit screen must display.
+     */
+    @ExceptionHandler(MandatoryFieldBlankException.class)
+    public ResponseEntity<Map<String, Object>> handleMandatoryFieldBlank(MandatoryFieldBlankException ex) {
+        log.warn("Edit rejected — mandatory field '{}' was blank", ex.getField());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", "complaint.error_mandatory_fields");
+        response.put("field", ex.getField());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     /**

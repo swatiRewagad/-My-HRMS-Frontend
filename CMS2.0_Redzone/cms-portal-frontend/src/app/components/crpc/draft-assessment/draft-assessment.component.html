@@ -212,6 +212,13 @@
                 } @else {
                   <iframe [src]="blobUrl" class="doc-preview-pdf" frameborder="0"></iframe>
                 }
+              } @else if (attachmentLoadFailed().has(tabAtt.id)) {
+                <!-- The fetch failed. Reporting it beats the old behaviour, which fell back to trusting
+                     the raw server-supplied URL through bypassSecurityTrustResourceUrl. -->
+                <div class="doc-loading-state" role="alert">
+                  <i class="pi pi-exclamation-triangle"></i>
+                  <p>This document could not be loaded. Try reopening it, or download it instead.</p>
+                </div>
               } @else if (tabAtt.url) {
                 <div class="doc-loading-state">
                   <i class="pi pi-spin pi-spinner"></i>
@@ -246,6 +253,11 @@
                       } @else {
                         <iframe [src]="blobUrl" class="doc-preview-pdf" frameborder="0"></iframe>
                       }
+                    } @else if (attachmentLoadFailed().has(att.id)) {
+                      <div class="doc-loading-state" role="alert">
+                        <i class="pi pi-exclamation-triangle"></i>
+                        <p>This document could not be loaded.</p>
+                      </div>
                     } @else if (att.url) {
                       <div class="doc-loading-state">
                         <i class="pi pi-spin pi-spinner"></i>

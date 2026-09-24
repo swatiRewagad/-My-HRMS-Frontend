@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
 
@@ -54,7 +55,7 @@ interface PendingRequest {
 @Component({
   selector: 'app-aa-admin-console',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, AppShellComponent, TranslatePipe],
   templateUrl: './aa-admin-console.component.html',
   styleUrl: './aa-admin-console.component.scss'
 })

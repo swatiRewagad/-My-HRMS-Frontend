@@ -41,6 +41,43 @@ public class CitizenAuthController {
 
     private static final String FINGERPRINT_COOKIE = "cms_fp";
 
+    /**
+     * Citizen-facing refusal wording, stated once so every path that refuses for the same reason says the
+     * same thing.
+     *
+     * <p>WHY THE RESEND MESSAGE CARRIES NO FIGURE. It used to read "Please wait before requesting another
+     * OTP" with the seconds only in a sibling field, so the citizen was never actually told how long — and
+     * the portal composed its own sentence from {@code retryAfterSeconds}, giving two different wordings
+     * for one rule. The gap itself is configurable ({@code cms.auth.otp.resend_cooldown_seconds}), so the
+     * minutes are interpolated from what the server enforces rather than written into the literal.
+     * {@code retryAfterSeconds} is still returned, because a countdown needs seconds, not minutes.
+     */
+    static final String MSG_MOBILE_REQUIRED = "Mobile number is required to request OTP.";
+
+    /**
+     * The expiry refusal. QA quotes it WITHOUT the closing full stop
+     * ("OTP has expired. Please request a new one") while quoting the resend refusal WITH one. The
+     * product's sentence is kept terminated — an unterminated sentence next to a terminated one reads as
+     * a typo, and QA's own quote is satisfied as a prefix either way. The punctuation itself is raised as
+     * an open question rather than guessed at; it is the same class as the title-case-vs-seeded-lowercase
+     * question already open with the product owner.
+     */
+    static final String MSG_OTP_EXPIRED = "OTP has expired. Please request a new one.";
+
+    /** Refusal for a resend inside the cooldown. {0} is the configured gap in whole minutes. */
+    static final String MSG_RESEND_TOO_SOON_TEMPLATE = "OTP can only be regenerated after %s minutes.";
+
+    /**
+     * Renders the cooldown refusal from the CONFIGURED gap.
+     *
+     * <p>Seconds are rounded UP to whole minutes: a 90-second gap must not be described as "after 1
+     * minute", because a citizen who waits exactly that long is still refused.
+     */
+    static String resendTooSoonMessage(int cooldownSeconds) {
+        int minutes = Math.max(1, (int) Math.ceil(cooldownSeconds / 60.0));
+        return String.format(MSG_RESEND_TOO_SOON_TEMPLATE, minutes);
+    }
+
     @GetMapping("/captcha")
     public ResponseEntity<?> getCaptcha(@RequestParam(defaultValue = "VISUAL") String type) {
         CaptchaChallenge challenge;
@@ -67,7 +104,16 @@ public class CitizenAuthController {
         String captchaToken = body.get("captchaToken");
         String captchaAnswer = body.get("captchaAnswer");
 
-        if (mobile == null || !mobile.matches("^[6-9]\\d{9}$")) {
+        // An ABSENT mobile and a MALFORMED one are different problems and must not share a message.
+        // "Enter a valid 10-digit Indian mobile number starting with 6-9" tells a citizen who typed
+        // nothing that what they typed was wrong, which is both untrue and unactionable.
+        if (mobile == null || mobile.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "MOBILE_REQUIRED",
+                    "message", MSG_MOBILE_REQUIRED));
+        }
+
+        if (!mobile.matches("^[6-9]\\d{9}$")) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "INVALID_MOBILE",
                     "message", "Enter a valid 10-digit Indian mobile number starting with 6-9."));
@@ -107,7 +153,7 @@ public class CitizenAuthController {
         if (resendWait > 0) {
             return ResponseEntity.status(429).body(Map.of(
                     "error", "RESEND_COOLDOWN",
-                    "message", "Please wait before requesting another OTP.",
+                    "message", resendTooSoonMessage(otpService.resendCooldownSeconds()),
                     "retryAfterSeconds", resendWait));
         }
 
@@ -119,16 +165,106 @@ public class CitizenAuthController {
         }
 
         String sessionId = UUID.randomUUID().toString();
-        String otp = otpService.generateOtp(mobile, sessionId, "SMS", null);
-
-        // TODO: Integrate with actual SMS gateway
-        log.info("OTP sent to mobile: ****{}", mobile.substring(mobile.length() - 4));
+        // Generation now DISPATCHES the code too (OtpService.dispatchOtp). The "TODO: integrate with an
+        // actual SMS gateway" that stood here meant nothing was ever addressed to the handset.
+        String otp = otpService.generateOtp(mobile, sessionId, "SMS", null, body.get("locale"));
 
         Map<String, Object> responseBody = new HashMap<>(Map.of(
                 "success", true,
                 "message", "OTP sent to your mobile number.",
                 "sessionId", sessionId,
-                "expiresInSeconds", authProps.getOtp().getExpiryMinutes() * 60));
+                "expiresInSeconds", otpService.expiryMinutes() * 60,
+                // The portal shows the resend countdown, and it must be the server's gap rather than a
+                // number the client picked: the client used to default to 120s regardless of configuration,
+                // so under dev-local (cooldown 0) it disabled its own Resend button for two minutes for a
+                // rule the server was not applying.
+                "resendAfterSeconds", otpService.resendCooldownSeconds()));
+
+        if (authProps.getOtp().isDevAutoPopulate()) {
+            responseBody.put("devOtp", otp);
+        }
+
+        return ResponseEntity.ok(responseBody);
+    }
+
+    /**
+     * Re-sends an OTP to a mobile that already has a request in flight (QA cases 8-12).
+     *
+     * <p>WHY A SEPARATE ENDPOINT. The portal's "Resend OTP" button called nothing: it reset the component
+     * to step 1 and reloaded the CAPTCHA, so a citizen who had not received a code was sent back to
+     * re-solve a CAPTCHA and re-enter their number, and no new code was ever issued. The QA case requires
+     * the click to deliver a NEW OTP to the number already entered.
+     *
+     * <p>NO CAPTCHA, AND WHY THAT IS SAFE. A citizen who already solved one and is waiting for the code
+     * should not have to solve another. The endpoint is therefore constrained in three ways instead: it
+     * only accepts a mobile with a recent CAPTCHA-gated request ({@code hasRecentOtpRequest}), the
+     * server-side resend cooldown applies exactly as on {@code send-otp}, and the per-mobile hourly rate
+     * limit applies too. Rapid clicking therefore hits the cooldown, which is QA case 10 — the restriction
+     * and the 2-minute message are the SAME control, not a separate attempt counter.
+     */
+    @PostMapping("/resend-otp")
+    public ResponseEntity<?> resendOtp(
+            @RequestBody Map<String, String> body,
+            HttpServletRequest request,
+            HttpServletResponse response) {
+
+        String mobile = body.get("mobile");
+
+        if (mobile == null || mobile.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "MOBILE_REQUIRED",
+                    "message", MSG_MOBILE_REQUIRED));
+        }
+        if (!mobile.matches("^[6-9]\\d{9}$")) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "INVALID_MOBILE",
+                    "message", "Enter a valid 10-digit Indian mobile number starting with 6-9."));
+        }
+
+        String fingerprint = resolveFingerprint(request, response);
+        String clientIp = getClientIp(request);
+
+        CooloffStatus cooloff = cooloffService.checkCooloff(fingerprint, clientIp, mobile);
+        if (cooloff.active()) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "COOLOFF_ACTIVE",
+                    "message", "Too many attempts. Please wait.",
+                    "retryAfterSeconds", cooloff.remainingSeconds()));
+        }
+
+        // Without this a CAPTCHA-free endpoint would issue OTPs to arbitrary numbers on demand. A resend is
+        // only ever a continuation of a request that DID pass the CAPTCHA.
+        if (!otpService.hasRecentOtpRequest(mobile)) {
+            return ResponseEntity.status(409).body(Map.of(
+                    "error", "NO_ACTIVE_REQUEST",
+                    "message", "Please request an OTP first."));
+        }
+
+        // Checked BEFORE the cooldown: an exhausted hourly allowance is a different refusal from "too
+        // soon", and reporting the 2-minute wait to someone who has used up the hour would be a lie.
+        if (otpService.isRateLimitedByMobile(mobile)) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "RATE_LIMITED",
+                    "message", "OTP request limit reached. Try again later."));
+        }
+
+        int resendWait = otpService.resendCooldownRemaining(mobile);
+        if (resendWait > 0) {
+            return ResponseEntity.status(429).body(Map.of(
+                    "error", "RESEND_COOLDOWN",
+                    "message", resendTooSoonMessage(otpService.resendCooldownSeconds()),
+                    "retryAfterSeconds", resendWait));
+        }
+
+        String sessionId = UUID.randomUUID().toString();
+        String otp = otpService.generateOtp(mobile, sessionId, "SMS", null, body.get("locale"));
+
+        Map<String, Object> responseBody = new HashMap<>(Map.of(
+                "success", true,
+                "message", "A new OTP has been sent to your mobile number.",
+                "sessionId", sessionId,
+                "expiresInSeconds", otpService.expiryMinutes() * 60,
+                "resendAfterSeconds", otpService.resendCooldownSeconds()));
 
         if (authProps.getOtp().isDevAutoPopulate()) {
             responseBody.put("devOtp", otp);
@@ -197,7 +333,7 @@ public class CitizenAuthController {
         if (resendWait > 0) {
             return ResponseEntity.status(429).body(Map.of(
                     "error", "RESEND_COOLDOWN",
-                    "message", "Please wait before requesting another OTP.",
+                    "message", resendTooSoonMessage(otpService.resendCooldownSeconds()),
                     "retryAfterSeconds", resendWait));
         }
 
@@ -206,16 +342,14 @@ public class CitizenAuthController {
         }
 
         String sessionId = UUID.randomUUID().toString();
-        String otp = otpService.generateOtp(mobile, sessionId, "EMAIL", email);
-
-        // TODO: Integrate with actual SMTP service
-        log.info("OTP sent to email for mobile: ****{}", mobile.substring(mobile.length() - 4));
+        String otp = otpService.generateOtp(mobile, sessionId, "EMAIL", email, body.get("locale"));
 
         Map<String, Object> emailBody = new HashMap<>(Map.of(
                 "success", true,
                 "message", "OTP sent to your verified email address.",
                 "sessionId", sessionId,
-                "expiresInSeconds", authProps.getOtp().getExpiryMinutes() * 60));
+                "expiresInSeconds", otpService.expiryMinutes() * 60,
+                "resendAfterSeconds", otpService.resendCooldownSeconds()));
 
         if (authProps.getOtp().isDevAutoPopulate()) {
             emailBody.put("devOtp", otp);
@@ -266,7 +400,7 @@ public class CitizenAuthController {
             case EXPIRED_OR_NOT_FOUND -> {
                 return ResponseEntity.status(410).body(Map.of(
                         "error", "OTP_EXPIRED",
-                        "message", "OTP has expired. Please request a new one."));
+                        "message", MSG_OTP_EXPIRED));
             }
             case MAX_ATTEMPTS_EXCEEDED -> {
                 cooloffService.recordFailedAttempt(fingerprint, clientIp, mobile);

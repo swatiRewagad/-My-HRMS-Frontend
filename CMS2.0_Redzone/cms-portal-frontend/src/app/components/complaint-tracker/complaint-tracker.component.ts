@@ -14,11 +14,12 @@ import { environment } from '../../../environments/environment';
 import { TableModule } from 'primeng/table';
 import { ComplaintTimelineComponent } from '../../shared/complaint-timeline/complaint-timeline.component';
 import { StatusBadgeComponent } from '../shared/status-badge/status-badge.component';
+import { TranslatePipe } from '../../pipes/translate.pipe';
 
 @Component({
   selector: 'app-complaint-tracker',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TableModule, ComplaintTimelineComponent, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, RouterModule, TableModule, ComplaintTimelineComponent, StatusBadgeComponent, TranslatePipe],
   templateUrl: './complaint-tracker.component.html',
   styleUrl: './complaint-tracker.component.scss'
 })
@@ -38,6 +39,22 @@ export class ComplaintTrackerComponent implements OnInit {
   error = signal('');
   pdfLoading = signal(false);
   statusChangeNotice = signal('');
+
+  /**
+   * "The list could not be fetched", as distinct from "the citizen has filed nothing".
+   *
+   * These two used to be the SAME signal: an empty page set error() to "No complaints found for this
+   * mobile number." and a failed fetch set it to "Unable to fetch complaints.", both rendering in the
+   * same red `.error-message` block with the table hidden either way. A citizen who genuinely had no
+   * complaints was shown an ERROR for a perfectly normal state, and — worse in the other direction — a
+   * 500 or a dropped connection produced a screen that said nothing was found, which reads as "you have
+   * no complaints" when the truth is that we do not know.
+   *
+   * Split so the empty state is a neutral statement inside the table and a real failure says it failed.
+   */
+  listLoadFailed = signal(false);
+  /** True once a list fetch has completed (either way), so the empty row is not shown before the answer. */
+  listLoaded = signal(false);
 
   // UST98: Track via Mobile+OTP
   trackMode = signal<'id' | 'mobile'>('id');
@@ -61,8 +78,12 @@ export class ComplaintTrackerComponent implements OnInit {
   sortOrder = signal(-1); // -1 = desc, 1 = asc
   statusFilter = signal('');
 
+  // "Open" is a server-side SET (everything not yet resolved/closed/rejected/withdrawn), not a stored
+  // status — see ComplaintApiV1Controller.settledStatuses. It sits first because "is anything of mine
+  // still outstanding?" is the question a citizen opens this screen to answer.
   statusOptions = [
     { label: 'All Statuses', value: '' },
+    { label: 'Open', value: 'OPEN' },
     { label: 'Pending', value: 'PENDING' },
     { label: 'New', value: 'NEW' },
     { label: 'Assigned', value: 'ASSIGNED' },
@@ -268,34 +289,46 @@ export class ComplaintTrackerComponent implements OnInit {
           this.totalRecords.set(0);
         }
         this.loading.set(false);
-        if (this.mobileComplaints().length === 0) {
-          this.error.set('No complaints found for this mobile number.');
-        }
+        this.listLoadFailed.set(false);
+        this.listLoaded.set(true);
+        // An empty result is NOT an error. It used to set error(), so a citizen with nothing filed was
+        // shown a red failure banner and no table at all; the table's own empty message could never
+        // render because the table was hidden whenever the list was empty. The empty state is now stated
+        // once, inside the table, by the emptymessage template.
+        this.error.set('');
       },
       error: (err) => {
         this.loading.set(false);
         this.mobileComplaints.set([]);
         this.totalRecords.set(0);
+        this.listLoaded.set(true);
         if (err.status === 401 || err.status === 403) {
           this.mobileVerified.set(false);
           this.otpSent.set(false);
           this.authService.logout();
           this.loadCaptcha();
+          this.listLoadFailed.set(false);
           this.error.set('Your session has expired. Please verify your mobile number again.');
         } else {
-          this.error.set('Unable to fetch complaints. Please try again.');
+          // Flagged, so the table renders "could not be loaded" rather than "No complaints found." —
+          // the citizen must not be told their complaints do not exist because a fetch failed.
+          this.listLoadFailed.set(true);
+          this.error.set('');
         }
       }
     });
   }
 
-  onTablePage(event: any) {
-    this.currentPage.set(Math.floor((event.first || 0) / (event.rows || 20)));
-    this.pageSize.set(event.rows || 20);
-    this.loadComplaintsByMobile();
-  }
-
-  onTableSort(event: any) {
+  /**
+   * The ONLY table-driven load path: paging and sorting both arrive here.
+   *
+   * A lazy p-table emits onLazyLoad *and* onSort for a single header click. Handling them separately
+   * issued two requests per click — one carrying the previous sort, one the new — and because they were
+   * plain un-cancelled GETs the slower reply could land last and repaint the table in the order the
+   * citizen had just sorted away from. Sorting therefore appeared to do nothing every other click.
+   * onLazyLoad already carries sortField/sortOrder, so one handler is sufficient and the race is gone.
+   */
+  onTableLazyLoad(event: any) {
     const fieldMap: Record<string, string> = {
       'createdAt': 'createdAt',
       'createdAtFormatted': 'createdAt',
@@ -304,8 +337,12 @@ export class ComplaintTrackerComponent implements OnInit {
       'closedAt': 'closedAt',
       'closedAtFormatted': 'closedAt'
     };
-    this.sortField.set(fieldMap[event.field] || 'createdAt');
-    this.sortOrder.set(event.order || -1);
+    this.pageSize.set(event.rows || 20);
+    this.currentPage.set(Math.floor((event.first || 0) / (event.rows || 20)));
+    if (event.sortField) {
+      this.sortField.set(fieldMap[event.sortField] || 'createdAt');
+      this.sortOrder.set(event.sortOrder || -1);
+    }
     this.loadComplaintsByMobile();
   }
 
@@ -328,6 +365,25 @@ export class ComplaintTrackerComponent implements OnInit {
     return appealStatuses.includes((status || '').toUpperCase());
   }
 
+  /**
+   * Whether the "File Appeal" offer should be made at all.
+   *
+   * The status check alone is not sufficient. Filing an appeal does NOT change the complaint's
+   * status — it stays `closed`, deliberately, so that closure filters, SLA queries and the
+   * server's own terminal-status check keep working — which meant a terminal status remained
+   * terminal forever and the button was offered forever. A citizen who had already appealed was
+   * still invited to appeal, walked to /public/appeal, and only there told "An active appeal
+   * already exists for this complaint." The server would always refuse the second filing, so
+   * nothing was ever duplicated, but the offer was a dead end.
+   *
+   * `appealFiled` comes from the complaint's APPEAL_FILED timeline event, so the offer is
+   * withdrawn as soon as the appeal exists rather than after the citizen has walked into the
+   * refusal.
+   */
+  canFileAppeal(s: ComplaintStatus): boolean {
+    return this.isAppealEligibleStatus(s.status) && !s.appealFiled;
+  }
+
   /** UST111: Navigate to file-appeal page with the complaint number pre-filled. */
   fileAppeal() {
     const s = this.status();
@@ -335,6 +391,44 @@ export class ComplaintTrackerComponent implements OnInit {
     this.router.navigate(['/public/appeal'], {
       queryParams: { complaint: s.complaintId }
     });
+  }
+
+  /**
+   * Citizen-readable name for a timeline event.
+   *
+   * The Detailed Timeline was rendering `entry.action` verbatim, so the complainant who had just
+   * withdrawn their own complaint was shown the internal lowercase status token 'withdrawn'
+   * (written by ComplaintApiV1Controller.withdrawComplaint) next to 'maintainability_decision' and
+   * 'CREATED'. The event was present and dated, but not in language anyone outside the team can
+   * read — so "the timeline shows a Complaint Withdrawn event" was not satisfied.
+   *
+   * Deliberately NOT the map in CepcTimelineComponent.getActionLabel: that one is written for staff
+   * and names internal routing ('Forwarded to Reviewer', 'Sent Back to Dealing Officer'), which is
+   * not something to put in front of a complainant. Only events that legitimately belong in a
+   * citizen's view are named here; anything unmapped keeps its previous behaviour of showing the
+   * raw action, so no existing event silently disappears.
+   */
+  private static readonly CITIZEN_ACTION_LABELS: Record<string, string> = {
+    'withdrawn': 'Complaint Withdrawn',
+    'filed': 'Complaint Registered',
+    'CREATED': 'Complaint Registered',
+    'ACCEPT': 'Under Examination by RBI',
+    'REQUEST_INFO': 'Information Requested from You',
+    'INFO_RECEIVED': 'Information Received',
+    'ESCALATE': 'Escalated',
+    'RESOLVE': 'Resolved',
+    'CLOSE_COMPLAINT': 'Complaint Closed',
+    'CLOSED': 'Complaint Closed',
+    'REOPEN': 'Complaint Reopened',
+    'REJECT': 'Complaint Rejected',
+    // Written on the PARENT complaint by AppealWorkflowService.fileAppeal. Without an entry here the
+    // citizen's own timeline showed the raw token 'APPEAL_FILED'.
+    'APPEAL_FILED': 'Appeal Filed',
+  };
+
+  getTimelineActionLabel(action: string): string {
+    if (!action) return '';
+    return ComplaintTrackerComponent.CITIZEN_ACTION_LABELS[action] ?? action;
   }
 
   /** UST105: Only show Withdraw button for statuses that allow withdrawal. */
@@ -470,7 +564,9 @@ export class ComplaintTrackerComponent implements OnInit {
           doc.setFont('helvetica', 'normal');
           for (const entry of s.timeline) {
             if (y > 270) { doc.addPage(); y = 20; }
-            doc.text(`${new Date(entry.timestamp).toLocaleDateString('en-IN')} - ${entry.action} (${entry.fromStatus} -> ${entry.toStatus})`, 25, y);
+            // Same citizen-readable naming as the on-screen timeline: the PDF is the citizen's own
+            // copy of that view, so it must not be the one place the raw 'withdrawn' token survives.
+            doc.text(`${new Date(entry.timestamp).toLocaleDateString('en-IN')} - ${this.getTimelineActionLabel(entry.action)} (${entry.fromStatus} -> ${entry.toStatus})`, 25, y);
             y += 6;
           }
         }

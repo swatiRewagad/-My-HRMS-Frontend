@@ -1,25 +1,16 @@
-<div class="aa-detail">
-  <header class="topbar">
-    <div class="topbar-left">
-      <button type="button" class="back-btn" data-testid="back-to-dashboard" (click)="goBack()">
-        <span aria-hidden="true">&larr;</span>
-      </button>
-      <h2>{{ 'aa.detail.title' | translate }}</h2>
-    </div>
-    <div class="topbar-right">
-      @if (auth.currentUser(); as user) {
-        <span class="role-badge" data-testid="role-badge">{{ roleLabelKey() | translate }}</span>
-        @if (reviewerTier(); as tier) {
-          <span class="role-badge" data-testid="reviewer-tier">
-            {{ 'aa.detail.reviewer_tier' | translate }}: {{ tier }}
-          </span>
-        }
-        <span>{{ user.firstName }} {{ user.lastName }}</span>
-      }
-    </div>
-  </header>
+<app-shell [titleKey]="'aa.detail.title'" [roleKey]="roleLabelKey()">
+  <div shell-actions>
+    <button type="button" class="back-btn" data-testid="back-to-dashboard" (click)="goBack()">
+      <span aria-hidden="true">&larr;</span>
+    </button>
+    @if (reviewerTier(); as tier) {
+      <span class="tier-badge" data-testid="reviewer-tier">
+        {{ 'aa.detail.reviewer_tier' | translate }}: {{ tier }}
+      </span>
+    }
+  </div>
 
-  <main class="content">
+  <div class="aa-detail">
     @if (loading()) {
       <div class="loading" data-testid="detail-loading">{{ 'aa.detail.loading' | translate }}</div>
     } @else if (!appeal()) {
@@ -369,5 +360,5 @@
         </div>
       </div>
     }
-  </main>
-</div>
+  </div>
+</app-shell>

@@ -63,7 +63,6 @@ export class CepcDashboardComponent implements OnInit {
   filterUnread = signal(false);
   filterWithoutAttachments = signal(false);
   columnFilters: Record<string, string> = {};
-  columnSearchText = '';
 
   sortColumn = '';
   sortDirection: 'asc' | 'desc' = 'asc';
@@ -71,7 +70,6 @@ export class CepcDashboardComponent implements OnInit {
   currentPage = signal(1);
   pageSize = 10;
 
-  showColumnConfig = signal(false);
   showAdvancedSearch = signal(false);
   advSearchActive = signal(false);
   advSearch = {
@@ -80,8 +78,6 @@ export class CepcDashboardComponent implements OnInit {
     subject: '', priority: ''
   };
 
-  dragIndex = -1;
-  dragOverIndex = -1;
 
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
@@ -127,29 +123,6 @@ export class CepcDashboardComponent implements OnInit {
     { key: 'assignedOfficer', labelKey: 'ui.col.assigned_officer', visible: false },
     { key: 'createdAt', labelKey: 'ui.col.created_at', visible: false },
   ];
-
-  allColumns = signal([
-    { key: 'complaintId', label: 'Complaint Id', visible: true },
-    { key: 'complaintNumber', label: 'Complaint Number', visible: true },
-    { key: 'complainantName', label: 'Complainant', visible: true },
-    { key: 'entityName', label: 'Entity', visible: true },
-    { key: 'subject', label: 'Subject', visible: true },
-    { key: 'priority', label: 'Priority', visible: true },
-    { key: 'status', label: 'Status', visible: true },
-    { key: 'slaDueDate', label: 'SLA Due', visible: true },
-    { key: 'category', label: 'Category', visible: false },
-    { key: 'modeOfReceipt', label: 'Mode', visible: false },
-    { key: 'assignedOfficer', label: 'Assigned To', visible: false },
-    { key: 'createdAt', label: 'Created Date', visible: false },
-  ]);
-
-  visibleColumns = computed(() => this.allColumns().filter(c => c.visible));
-
-  filteredColumns = computed(() => {
-    if (!this.columnSearchText) return this.allColumns();
-    const q = this.columnSearchText.toLowerCase();
-    return this.allColumns().filter(c => c.label.toLowerCase().includes(q));
-  });
 
   stats = computed(() => {
     const all = this.complaints();
@@ -367,25 +340,6 @@ export class CepcDashboardComponent implements OnInit {
   }
 
   // ─── Column Config ───
-  toggleColumnVisibility(key: string) {
-    this.allColumns.update(cols => cols.map(c => c.key === key ? { ...c, visible: !c.visible } : c));
-  }
-
-  onColumnDragStart(index: number) { this.dragIndex = index; }
-  onColumnDragOver(event: DragEvent, index: number) { event.preventDefault(); this.dragOverIndex = index; }
-  onColumnDrop(index: number) {
-    if (this.dragIndex >= 0 && this.dragIndex !== index) {
-      this.allColumns.update(cols => {
-        const updated = [...cols];
-        const [moved] = updated.splice(this.dragIndex, 1);
-        updated.splice(index, 0, moved);
-        return updated;
-      });
-    }
-    this.dragIndex = -1;
-    this.dragOverIndex = -1;
-  }
-  onColumnDragEnd() { this.dragIndex = -1; this.dragOverIndex = -1; }
 
   // ─── Advanced Search ───
   applyAdvancedSearch() {

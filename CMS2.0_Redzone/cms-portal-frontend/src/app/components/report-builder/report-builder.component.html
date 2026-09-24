@@ -106,7 +106,7 @@
             type="text"
             class="filter-search"
             placeholder="Search filters..."
-            [(ngModel)]="filterSearch" />
+            [ngModel]="filterSearch()" (ngModelChange)="filterSearch.set($event)" />
 
           <div class="filter-categories">
             @for (cat of filterCategories(); track cat) {

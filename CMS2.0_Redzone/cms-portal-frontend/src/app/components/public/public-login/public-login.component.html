@@ -78,8 +78,13 @@
           </label>
         </div>
 
+        <!-- `!mobile` is deliberately NOT a disable condition. A disabled button explains nothing: a
+             citizen who has not filled the number in gets no message at all, just a control that will not
+             respond. sendOtp() now refuses a blank number with "Mobile number is required to request OTP."
+             The consent and CAPTCHA clauses stay: consent must be a positive act before any request is
+             made (UST5), and a request with no CAPTCHA answer would burn a lockout attempt for nothing. -->
         <button class="send-otp-btn" (click)="sendOtp()"
-                [disabled]="!mobile || !captchaInput || !consentChecked || cooloffActive() || loading()">
+                [disabled]="!captchaInput || !consentChecked || cooloffActive() || loading()">
           @if (loading()) {
             <i class="pi pi-spinner pi-spin" aria-hidden="true"></i> {{ 'login.sending' | translate }}
           } @else {

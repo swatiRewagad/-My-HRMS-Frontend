@@ -3,7 +3,9 @@ package com.hrms.cms.service;
 import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.entity.SystemConfig;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
+import com.hrms.cms.repository.SystemConfigRepository;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -15,11 +17,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,25 +35,55 @@ class FileStorageServiceTest {
     private FileStorageConfig config;
     private FileStorageService fileStorageService;
 
+    /**
+     * The SIZE and COUNT limits, backing {@link #configuredLimit}.
+     *
+     * <p>They are no longer taken from {@link FileStorageConfig}: that is an application.yml startup
+     * snapshot, so {@code /api/files/upload} ignored the configured limit entirely. A test that sets
+     * {@code config.setMaxFileSize(...)} is therefore turning a knob the product does not read, and
+     * would pass whatever the validator did. Limits are set here the way an administrator sets them.
+     */
+    private final Map<String, String> liveConfig = new HashMap<>();
+
     @TempDir
     Path tempDir;
 
     /** Uploads are now signature-checked, so .pdf fixtures must actually start like a PDF. */
     private static final byte[] PDF = "%PDF-1.7 stub content".getBytes();
 
+    private void configuredLimit(String key, long value) {
+        liveConfig.put(key, String.valueOf(value));
+    }
+
     @BeforeEach
     void setUp() throws IOException {
         config = new FileStorageConfig();
         config.setRootPath(tempDir.toString());
-        config.setMaxFileSize(52428800L);
         config.setChunkSize(5242880L);
         config.setAllowedTypes("pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip,mp4");
-        config.setMaxFilesPerComplaint(10);
         config.setTempDir("temp-chunks");
 
         Files.createDirectories(tempDir.resolve("temp-chunks"));
 
-        fileStorageService = new FileStorageService(config, attachmentRepository, new FileUploadValidator(config));
+        // Generous by default so a fixture is never rejected on size or count unless a test says so:
+        // this suite is about chunking and storage, not about the limit rule.
+        configuredLimit(UploadLimitsService.KEY_MAX_FILE_BYTES, 52428800L);
+        configuredLimit(UploadLimitsService.KEY_MAX_TOTAL_BYTES, 104857600L);
+        configuredLimit(UploadLimitsService.KEY_MAX_FILE_COUNT, 10L);
+
+        // A real SystemConfigService over a stubbed repository, rather than a mocked service: the
+        // 30-second cache and the string→long parsing are then exercised as the product uses them, and
+        // per-test limit changes need no re-stubbing.
+        // lenient(): the storage/cleanup tests never reach a limit check, so strict stubs would fail them
+        // for not consulting configuration. The stub describes the fixture, not an expected interaction.
+        SystemConfigRepository repository = mock(SystemConfigRepository.class);
+        lenient().when(repository.findByConfigKey(anyString()))
+                .thenAnswer(inv -> Optional.ofNullable(liveConfig.get(inv.getArgument(0)))
+                        .map(value -> SystemConfig.builder().configKey(inv.getArgument(0)).configValue(value).build()));
+        UploadLimitsService uploadLimits = new UploadLimitsService(new SystemConfigService(repository));
+
+        fileStorageService = new FileStorageService(config, attachmentRepository,
+                new FileUploadValidator(config, uploadLimits), uploadLimits);
     }
 
     @Nested
@@ -157,7 +192,7 @@ class FileStorageServiceTest {
 
         @Test
         void shouldRejectOversizedFile() {
-            config.setMaxFileSize(10L);
+            configuredLimit(UploadLimitsService.KEY_MAX_FILE_BYTES, 10L);
             MockMultipartFile file = new MockMultipartFile("file", "big.pdf", "application/pdf", "a".repeat(100).getBytes());
 
             assertThatThrownBy(() -> fileStorageService.handleSingleUpload(file, "CMS-001", 1L))
@@ -177,7 +212,7 @@ class FileStorageServiceTest {
 
         @Test
         void shouldRejectWhenMaxFilesReached() {
-            config.setMaxFilesPerComplaint(2);
+            configuredLimit(UploadLimitsService.KEY_MAX_FILE_COUNT, 2L);
             MockMultipartFile file = new MockMultipartFile("file", "doc.pdf", "application/pdf", PDF);
 
             ComplaintAttachment existing1 = ComplaintAttachment.builder().id(1L).build();

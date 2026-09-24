@@ -109,6 +109,15 @@ export class PublicLoginComponent implements OnDestroy {
   sendOtp() {
     this.loginError = '';
 
+    // An ABSENT number and a MALFORMED one are different problems and must not share a message: telling a
+    // citizen who typed nothing that what they typed is invalid is both untrue and unactionable. Wording
+    // is kept identical to the server's CitizenAuthController.MSG_MOBILE_REQUIRED so the same omission is
+    // described the same way whether it is caught here or there.
+    if (!this.mobile.trim()) {
+      this.loginError = 'Mobile number is required to request OTP.';
+      return;
+    }
+
     if (!/^[6-9]\d{9}$/.test(this.mobile)) {
       this.loginError = 'Enter a valid 10-digit Indian mobile number starting with 6-9.';
       return;
@@ -143,7 +152,7 @@ export class PublicLoginComponent implements OnDestroy {
           this.otpDigits = devOtp.split('').slice(0, 6);
           this.devOtpPopulated.set(true);
         }
-        this.startResendTimer();
+        this.startResendTimer(res.resendAfterSeconds);
         this.loading.set(false);
       },
       error: (err) => {
@@ -156,9 +165,11 @@ export class PublicLoginComponent implements OnDestroy {
         } else if (body?.error === 'RESEND_COOLDOWN') {
           // The server owns the cooldown, so re-show the OTP step with its remaining time rather than
           // stranding the citizen on the mobile step with no way back to the code they already have.
+          // Its own wording is shown verbatim: the gap is configurable, and a sentence composed here from
+          // retryAfterSeconds gave two different descriptions of one rule.
           this.otpSent.set(true);
           this.startResendTimer(body.retryAfterSeconds);
-          this.loginError = `Please wait ${body.retryAfterSeconds} seconds before requesting another OTP.`;
+          this.otpError = body.message;
         } else if (body?.error === 'INVALID_CAPTCHA') {
           this.loginError = 'Invalid CAPTCHA. Please try again.';
           this.loadCaptcha();
@@ -205,7 +216,7 @@ export class PublicLoginComponent implements OnDestroy {
           this.otpDigits = devOtp.split('').slice(0, 6);
           this.devOtpPopulated.set(true);
         }
-        this.startResendTimer();
+        this.startResendTimer(res.resendAfterSeconds);
         this.loading.set(false);
       },
       error: (err) => {
@@ -218,7 +229,7 @@ export class PublicLoginComponent implements OnDestroy {
         } else if (body?.error === 'RESEND_COOLDOWN') {
           this.otpSent.set(true);
           this.startResendTimer(body.retryAfterSeconds);
-          this.loginError = `Please wait ${body.retryAfterSeconds} seconds before requesting another OTP.`;
+          this.otpError = body.message;
         } else if (body?.error === 'INVALID_CAPTCHA') {
           this.loginError = 'Invalid CAPTCHA. Please try again.';
           this.loadCaptcha();
@@ -268,6 +279,7 @@ export class PublicLoginComponent implements OnDestroy {
     const code = this.otpDigits.join('');
     if (code.length < 6) { this.otpError = 'Enter all 6 digits'; return; }
     this.otpError = '';
+    this.loginError = '';
     this.loading.set(true);
 
     this.authApi.verifyOtp(this.mobile, code, this.sessionId).subscribe({
@@ -287,12 +299,27 @@ export class PublicLoginComponent implements OnDestroy {
           if (body.cooloffActive) {
             this.startCooloff(body.retryAfterSeconds);
           }
-        } else if (body?.error === 'OTP_EXPIRED') {
-          this.otpError = 'OTP has expired. Please request a new one.';
+        } else if (body?.error === 'OTP_EXPIRED' || body?.error === 'MAX_ATTEMPTS') {
+          // Both of these send the citizen back to the mobile step, and BOTH used to lose the reason for
+          // it. `.field-error` — the only element that renders otpError — lives inside the @if (otpSent())
+          // block, so flipping otpSent to false in the same tick unmounted the message being set: the
+          // screen silently reverted to "Enter Mobile Number" with nothing said about the expiry, and the
+          // citizen's only clue was that the OTP boxes had vanished. The text is therefore put on
+          // loginError, whose banner renders on BOTH steps, and the server's wording is used verbatim so
+          // the sentence cannot drift from the one the API returns.
+          this.loginError = body?.message
+            || (body?.error === 'OTP_EXPIRED'
+              ? 'OTP has expired. Please request a new one.'
+              : 'Too many incorrect attempts. Please request a new OTP.');
+          this.otpError = '';
           this.otpSent.set(false);
-        } else if (body?.error === 'MAX_ATTEMPTS') {
-          this.otpError = 'Too many incorrect attempts. Please request a new OTP.';
-          this.otpSent.set(false);
+          // The abandoned CAPTCHA belonged to the attempt just ended; a stale one would refuse the
+          // citizen's next request for a reason unrelated to what they did.
+          this.captchaInput = '';
+          this.otpDigits = ['', '', '', '', '', ''];
+          this.devOtpPopulated.set(false);
+          this.clearResendTimer();
+          this.loadCaptcha();
         } else {
           this.otpError = body?.message || 'Verification failed.';
         }
@@ -300,19 +327,78 @@ export class PublicLoginComponent implements OnDestroy {
     });
   }
 
+  /**
+   * Requests a NEW OTP for the number already entered.
+   *
+   * <p>This used to call no API at all: it set otpSent to false and reloaded the CAPTCHA, so "Resend
+   * OTP" actually meant "start again" — no new code was issued, and the citizen who had not received
+   * one was sent back to re-solve a CAPTCHA. It now hits POST /resend-otp, which issues a fresh code
+   * to the same mobile and retires the previous one.
+   *
+   * <p>The server's own refusal message is shown verbatim on RESEND_COOLDOWN rather than a sentence
+   * composed here from retryAfterSeconds: the cooldown is configurable, and two wordings for one rule
+   * is how the citizen ends up being told a different figure from the one being enforced.
+   */
   resendOtp() {
-    if (this.resendTimer > 0) return;
-    this.otpSent.set(false);
-    this.otpDigits = ['', '', '', '', '', ''];
+    if (this.resendTimer > 0 || this.loading()) return;
     this.otpError = '';
-    this.loadCaptcha();
+    this.loading.set(true);
+
+    this.authApi.resendOtp(this.mobile, this.translation.currentLocale()).subscribe({
+      next: (res) => {
+        this.sessionId = res.sessionId;
+        this.otpDigits = ['', '', '', '', '', ''];
+        this.devOtpPopulated.set(false);
+        const devOtp = res.devOtp || (environment.devAutoPopulateOtp ? environment.devDefaultOtp : '');
+        if (devOtp) {
+          this.otpDigits = devOtp.split('').slice(0, 6);
+          this.devOtpPopulated.set(true);
+        }
+        this.startResendTimer(res.resendAfterSeconds);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.loading.set(false);
+        const body = err.error;
+        if (body?.error === 'COOLOFF_ACTIVE') {
+          this.startCooloff(body.retryAfterSeconds);
+        } else if (body?.error === 'RESEND_COOLDOWN') {
+          // The server states the wait; the countdown uses its seconds so the button re-enables exactly
+          // when a resend would in fact be accepted.
+          this.otpError = body.message;
+          this.startResendTimer(body.retryAfterSeconds);
+        } else if (body?.error === 'NO_ACTIVE_REQUEST') {
+          // The earlier CAPTCHA-gated request has lapsed, so a resend is no longer a continuation of it.
+          this.otpSent.set(false);
+          this.loginError = body.message || 'Please request an OTP first.';
+          this.loadCaptcha();
+        } else {
+          this.otpError = body?.message || 'Failed to resend OTP. Please try again.';
+        }
+      }
+    });
   }
 
+  /**
+   * "Change Phone Number" — returns to the mobile + CAPTCHA screen.
+   *
+   * <p>The mobile and the CAPTCHA answer are CLEARED. They were not: the old number stayed pre-filled,
+   * so a citizen who clicked this because they had mistyped their number was handed the mistake back,
+   * and a shoulder-surfer saw the previous number. loadCaptcha() blanks captchaInput itself, but it is
+   * cleared here as well so the field is never briefly showing an answer for a challenge that has gone.
+   */
   cancelVerification() {
     this.otpSent.set(false);
     this.otpDigits = ['', '', '', '', '', ''];
     this.otpError = '';
+    this.loginError = '';
+    this.mobile = '';
+    this.captchaInput = '';
+    this.sessionId = '';
+    this.devOtpPopulated.set(false);
     this.clearResendTimer();
+    // The challenge tied to the abandoned attempt is single-use; a fresh one is needed for the new number.
+    this.loadCaptcha();
   }
 
   toggleEmailFallback() {
@@ -342,9 +428,19 @@ export class PublicLoginComponent implements OnDestroy {
     }
   }
 
-  /** UST8: seconds are taken from the server when it reports them, so both sides agree on the wait. */
-  private startResendTimer(seconds = 120) {
+  /**
+   * Starts the Resend countdown from the gap the SERVER reports.
+   *
+   * <p>This defaulted to 120 seconds. The cooldown is cms.auth.otp.resend-cooldown-seconds (overridable
+   * via SYSTEM_CONFIG), so a literal here disabled the Resend button for two minutes in environments
+   * where the server would have accepted the resend at once — and would have left it enabled if the gap
+   * were ever raised above two minutes, sending the citizen into a 429 they were not warned about.
+   * Every caller now passes what send-otp / resend-otp returned as resendAfterSeconds; an undefined or
+   * zero value means the server applies no gap, so no countdown is shown and the button stays live.
+   */
+  private startResendTimer(seconds?: number) {
     this.clearResendTimer();
+    if (!seconds || seconds <= 0) return;
     this.resendTimer = seconds;
     this.resendInterval = setInterval(() => {
       this.resendTimer--;

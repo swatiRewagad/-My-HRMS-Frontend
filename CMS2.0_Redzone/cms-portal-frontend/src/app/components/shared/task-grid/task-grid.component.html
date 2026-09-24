@@ -59,7 +59,13 @@
     </div>
   } @else if (errorKey()) {
     <div class="ui-error-state" role="alert" data-testid="task-grid-error">
-      {{ errorKey()! | translate }}
+      <span>{{ errorKey()! | translate }}</span>
+      <!-- A retry, because error TEXT alone leaves the user with no way forward but a full reload. -->
+      @if (retryable()) {
+        <button type="button" class="btn btn-outline" data-testid="task-grid-retry" (click)="retry.emit()">
+          {{ 'ui.common.retry' | translate }}
+        </button>
+      }
     </div>
   } @else {
     <div class="table-wrapper">
@@ -117,6 +123,7 @@
         <tbody>
           @for (row of paged(); track row[rowKey()]) {
             <tr [class.selected]="isSelected(row)"
+                [class]="classFor(row)"
                 data-testid="task-grid-row"
                 (click)="onRowClick(row)">
               @if (selectable()) {
@@ -155,7 +162,16 @@
             <tr>
               <td [attr.colspan]="visibleColumns().length + (selectable() ? 1 : 0)">
                 <div class="ui-empty-state" data-testid="task-grid-empty">
-                  {{ 'ui.common.no_records' | translate }}
+                  <!--
+                    A module may supply its own empty state. RBIO echoes the search criteria back so the
+                    user can see WHAT returned nothing; a generic "no records" throws that away and is a
+                    functional regression dressed as consolidation.
+                  -->
+                  @if (emptyState()) {
+                    <ng-container [ngTemplateOutlet]="emptyState()!"></ng-container>
+                  } @else {
+                    {{ 'ui.common.no_records' | translate }}
+                  }
                 </div>
               </td>
             </tr>
@@ -166,7 +182,15 @@
 
     <div class="ui-pagination pagination">
       <span class="page-info" data-testid="task-grid-range">
-        {{ 'ui.common.showing_count' | translate: countParams() }}
+        <!--
+          A page-local filter over a server-paged grid narrows only what the server sent, so reporting
+          "1 to 10 of 4231" would be a lie. A distinct key states it is a filter of this page.
+        -->
+        @if (refinementActive()) {
+          {{ 'ui.grid.refined_count' | translate: countParams() }}
+        } @else {
+          {{ 'ui.common.showing_count' | translate: countParams() }}
+        }
       </span>
       <div class="page-controls">
         <button type="button"

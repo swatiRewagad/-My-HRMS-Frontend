@@ -5,6 +5,7 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.dto.UpdateComplaintRequest;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.PiiMaskingService;
@@ -51,6 +52,14 @@ class ComplaintControllerTest {
     @MockBean private ComplaintService complaintService;
     @MockBean private RequestIdentityResolver requestIdentityResolver;
     @MockBean private SystemConfigService systemConfigService;
+
+    private static final RequestIdentity EDITOR = RequestIdentity.builder()
+            .userId("cepc_do_001")
+            .displayName("CEPC Dealing Officer")
+            .primaryRole("CEPC_DO")
+            .roles(java.util.Set.of("CEPC_DO"))
+            .side("RBI")
+            .build();
 
     private Complaint sampleComplaint;
 
@@ -241,7 +250,8 @@ class ComplaintControllerTest {
             request.setRemarks("Fixed");
 
             sampleComplaint.setStatus("resolved");
-            when(complaintService.updateComplaint(eq(1L), any(UpdateComplaintRequest.class)))
+            when(requestIdentityResolver.resolve(any())).thenReturn(EDITOR);
+            when(complaintService.updateComplaint(eq(1L), any(UpdateComplaintRequest.class), any(RequestIdentity.class)))
                     .thenReturn(sampleComplaint);
 
             mockMvc.perform(put("/api/complaints/1")
@@ -249,6 +259,24 @@ class ComplaintControllerTest {
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("resolved"));
+        }
+
+        /**
+         * An unidentifiable caller is refused rather than having their edit attributed to nobody. The
+         * role guard is an aspect and is not woven into this slice, so this covers the controller's own
+         * check.
+         */
+        @Test
+        void shouldRefuseAnEditWhoseEditorCannotBeIdentified() throws Exception {
+            when(requestIdentityResolver.resolve(any())).thenReturn(null);
+
+            mockMvc.perform(put("/api/complaints/1")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(new UpdateComplaintRequest())))
+                    .andExpect(status().isForbidden());
+
+            verify(complaintService, never())
+                    .updateComplaint(anyLong(), any(UpdateComplaintRequest.class), any(RequestIdentity.class));
         }
     }
 

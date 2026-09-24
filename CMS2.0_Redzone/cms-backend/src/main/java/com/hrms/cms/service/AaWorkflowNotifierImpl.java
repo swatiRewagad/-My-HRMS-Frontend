@@ -92,6 +92,7 @@ public class AaWorkflowNotifierImpl implements AaWorkflowNotifier {
     static AaNotifyEvent map(AaWorkflowEvent event) {
         if (event == null) return null;
         return switch (event) {
+            case FILED -> AaNotifyEvent.APPEAL_FILED;
             case ACCEPTED -> AaNotifyEvent.APPEAL_ACCEPTED;
             case REJECTED -> AaNotifyEvent.APPEAL_REJECTED;
             case ASSIGNED_TO_REVIEWER -> AaNotifyEvent.ASSIGNED_TO_BENCH;
@@ -104,10 +105,12 @@ public class AaWorkflowNotifierImpl implements AaWorkflowNotifier {
             case SENT_BACK -> AaNotifyEvent.SENT_BACK_REGISTRAR;
             case REASSIGNED -> AaNotifyEvent.REASSIGNED;
             case ESCALATED_TO_TIER2 -> AaNotifyEvent.ESCALATED_TO_TIER2;
-            // FILED / DOCUMENTS_REQUESTED / CLOSED / REOPENED carry no S3C message yet. FILED in
-            // particular is already acknowledged at the point of filing, so a second notice would
-            // duplicate it.
-            case FILED, DOCUMENTS_REQUESTED, CLOSED, REOPENED -> null;
+            // DOCUMENTS_REQUESTED / CLOSED / REOPENED carry no S3C message yet.
+            //
+            // FILED is no longer here. Mapping it to null meant notifyOfficer returned early at the one
+            // moment that matters most: the Designated Officer the appeal had just been placed with got
+            // no bell. APPEAL_FILED is officer-only, so the appellant is still not double-notified.
+            case DOCUMENTS_REQUESTED, CLOSED, REOPENED -> null;
         };
     }
 

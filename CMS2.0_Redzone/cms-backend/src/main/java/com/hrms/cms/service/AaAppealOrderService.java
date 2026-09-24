@@ -68,8 +68,16 @@ public class AaAppealOrderService {
     public static final String COMPENSATION_FINANCIAL = "FINANCIAL";
     public static final String COMPENSATION_HARASSMENT = "HARASSMENT";
     public static final String COMPENSATION_COMBINED = "COMBINED";
-    /** Refuse an order on a declared sub-judice matter without a stated ground. Default false. */
+    /** Refuse an order on a declared sub-judice matter without a stated ground. ARMED by default. */
     static final String CFG_BLOCK_SUB_JUDICE = "cms.aa.order.block_sub_judice";
+
+    /**
+     * The sub-judice guard is ARMED out of the box. It previously defaulted to false, which meant an
+     * order could issue on a matter the appellant had declared to be before a court with nothing
+     * recording that anyone considered the point. Stating a ground still permits the order, so the
+     * guard never blocks a lawful decision — it only requires that the decision be recorded.
+     */
+    static final boolean DEFAULT_BLOCK_SUB_JUDICE = true;
 
     private static final String DEFAULT_SCHEME_VERSION = "RBIOS_2021";
 
@@ -396,13 +404,13 @@ public class AaAppealOrderService {
      * only signal available — this deliberately does NOT pretend to track case numbers or hearings.
      *
      * <p>The override is the {@code ground} text, which is persisted on the order, so a deliberate
-     * decision to proceed is auditable rather than silent. <b>Disabled by default</b>
-     * ({@code cms.aa.order.block_sub_judice}) because whether the AA may proceed on a sub-judice matter,
-     * and who may authorise it, is a question of Scheme law — arming it on a guess could block lawful
-     * orders. The mechanism and its tests exist so that switching it on is a config change, not a build.
+     * decision to proceed is auditable rather than silent. <b>Armed by default</b>
+     * ({@code cms.aa.order.block_sub_judice}). Arming it cannot block a lawful order because stating a
+     * ground always permits one — it forces the reasoning to be recorded rather than assumed. Setting
+     * the flag false restores the previous unenforced behaviour.
      */
     private void requireNotSubJudice(Appeal appeal, String ground) {
-        if (!systemConfigService.getBoolean(CFG_BLOCK_SUB_JUDICE, false)) {
+        if (!systemConfigService.getBoolean(CFG_BLOCK_SUB_JUDICE, DEFAULT_BLOCK_SUB_JUDICE)) {
             return;
         }
         if (!Boolean.TRUE.equals(appeal.getHasRelatedCourtTrial())) {

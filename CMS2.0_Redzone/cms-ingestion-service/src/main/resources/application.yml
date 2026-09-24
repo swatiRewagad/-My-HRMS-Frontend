@@ -29,6 +29,14 @@ spring:
 
   servlet:
     multipart:
+      # OUTER BOUND against a hostile multipart body, NOT the product rule. The product limit is 5 MB
+      # per file (cms.attachments.max-file-size, served by /api/v1/config/upload-limits) and is enforced
+      # by FileUploadValidator in cms-backend. This must stay ABOVE it so the application-level check is
+      # what refuses an oversized file, with a translated message, rather than the container rejecting
+      # the request with an untranslatable 500 before any handler runs.
+      #
+      # Deliberately LOWER than cms-storage-service (50MB) and cms-backend (50MB): this service accepts
+      # emails from an untrusted inbox, so it has the smallest hostile-input surface to justify.
       max-file-size: 10MB
       max-request-size: 50MB
 

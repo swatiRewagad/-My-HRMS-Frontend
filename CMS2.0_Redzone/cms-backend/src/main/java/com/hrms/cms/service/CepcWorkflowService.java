@@ -135,8 +135,10 @@ public class CepcWorkflowService {
         // Save the complaint
         complaintRepository.save(complaint);
 
-        // Add timeline entry (user-facing)
-        complaintService.addTimeline(complaint.getId(), action, actor, remarks, previousStatus, complaint.getStatus());
+        // Add timeline entry (user-facing). The acting role travels with it: the audit log below already
+        // recorded it, but the timeline is what the History panel renders, and it named nobody's role.
+        complaintService.addTimeline(complaint.getId(), action, actor,
+                params.getOrDefault("userRole", ""), remarks, previousStatus, complaint.getStatus());
 
         // Add audit log (compliance/forensics)
         Map<String, Object> auditMetadata = new LinkedHashMap<>();

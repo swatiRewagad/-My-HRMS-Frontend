@@ -1,17 +1,9 @@
-.aa-register { min-height: 100vh; background: var(--surface-sunken); }
-
-.topbar {
-  background: var(--brand-primary-strong); color: white; padding: 12px 24px;
-  display: flex; justify-content: space-between; align-items: center;
+// Rendered in the shell's light action bar, so body colours rather than the old white-on-navy.
+.subtitle { font-size: 12px; color: var(--text-muted); }
+.back-btn {
+  background: none; border: none; color: var(--brand-primary-strong);
+  font-size: 20px; line-height: 1; cursor: pointer;
 }
-.topbar-left { display: flex; align-items: center; gap: 12px; }
-.title-block h2 { margin: 0; font-size: 18px; }
-.title-block .subtitle { font-size: 12px; opacity: 0.8; }
-.back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
-.topbar-right { display: flex; align-items: center; gap: 12px; font-size: 14px; }
-.user-name { font-weight: 500; }
-
-.content { max-width: 980px; margin: 0 auto; padding: 24px 20px; }
 
 .loading-state {
   display: flex; align-items: center; justify-content: center; gap: 12px;

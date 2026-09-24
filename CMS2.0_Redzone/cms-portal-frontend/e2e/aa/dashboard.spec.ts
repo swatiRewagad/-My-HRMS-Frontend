@@ -136,6 +136,9 @@ test.describe('AA Dashboard', () => {
    * It also caught a real defect on the way through: the template interpolated `roleLabels[...]`
    * WITHOUT the translate pipe, so the badge rendered the literal key "aa.role_do" to staff. The pipe
    * is now applied, and asserting the key never appears is what keeps it applied.
+   *
+   * The badge now lives in the shared shell header, so the target is `shell-user-role`, not the
+   * per-module `.role-badge` class that each AA page used to define for itself.
    */
   test('Role badge shows the signed-in AA role, translated', async ({ page }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
@@ -143,7 +146,7 @@ test.describe('AA Dashboard', () => {
     await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
-    const doBadge = page.locator('.role-badge');
+    const doBadge = page.getByTestId('shell-user-role');
     await expect(doBadge).toBeVisible();
     const doText = (await doBadge.textContent())?.trim() ?? '';
     expect(doText.toLowerCase()).toContain('dealing officer');
@@ -155,7 +158,7 @@ test.describe('AA Dashboard', () => {
     await loginAsAaRole(page, 'AA_SECRETARIAT');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
-    const secretariatBadge = page.locator('.role-badge');
+    const secretariatBadge = page.getByTestId('shell-user-role');
     await expect(secretariatBadge).toBeVisible();
     const secretariatText = (await secretariatBadge.textContent())?.trim() ?? '';
     expect(secretariatText.toLowerCase()).toContain('secretariat');

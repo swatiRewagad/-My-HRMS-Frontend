@@ -579,7 +579,7 @@
               </div>
               <div class="upload-meta-row">
                 <span>Support formats: PDF, DOC, JPG, PNG</span>
-                <span>Maximum Size of All Files: 2MB</span>
+                <span>Maximum Size of All Files: {{ uploadLimits.maxTotalSizeMb() }}MB</span>
               </div>
             } @else {
               @if (pdfPreviewUrl()) {

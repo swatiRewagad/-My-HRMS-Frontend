@@ -324,17 +324,97 @@
   }
 }
 
-.time-barred-warning {
+/* UST13: the entity master could not be fetched. Same treatment as the question-master failure —
+   both are "we cannot let you guess" states, so they must not look different. */
+.entities-load-error {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 14px 0 0;
-  padding: 10px 14px;
-  border-left: 3px solid #ed6c02;
-  border-radius: 4px;
-  background: #fff4e5;
-  color: #7a3e00;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #ef9a9a;
+  border-radius: 6px;
+  background: #fdecea;
+  color: #b71c1c;
   font-size: 14px;
+
+  .btn-retry-entities {
+    margin-left: auto;
+    padding: 6px 14px;
+    border: 1px solid #b71c1c;
+    border-radius: 4px;
+    background: var(--surface-card);
+    color: #b71c1c;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+/* UST13 S3: search the entity list by name or by entity type. */
+.entity-search-wrapper {
+  position: relative;
+  margin-bottom: 12px;
+
+  .entity-search-input {
+    width: 100%;
+    padding-right: 36px;
+  }
+
+  .entity-search-clear {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    padding: 2px 6px;
+    border: none;
+    background: none;
+    color: #797A80;
+    cursor: pointer;
+  }
+
+  .entity-search-results {
+    position: absolute;
+    z-index: 20;
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    margin: 4px 0 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid var(--surface-border, #d5d7dd);
+    border-radius: 6px;
+    background: var(--surface-card, #fff);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  }
+
+  .entity-search-option {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 14px;
+    cursor: pointer;
+    font-size: 14px;
+
+    &:hover,
+    &[aria-selected='true'] { background: #eef3fb; }
+
+    .es-type {
+      flex: none;
+      font-size: 12px;
+      color: #797A80;
+    }
+  }
+
+  .entity-search-empty {
+    margin: 6px 0 0;
+    padding: 9px 14px;
+    border: 1px dashed var(--surface-border, #d5d7dd);
+    border-radius: 6px;
+    color: #797A80;
+    font-size: 14px;
+  }
 }
 
 .mandatory-response-error {
@@ -829,7 +909,10 @@
   p { font-size: 14px; color: #444; line-height: 1.7; margin: 0 0 12px; }
   p:last-of-type { margin-bottom: 20px; }
   strong { color: #222; }
+  p.re-window-opens { font-weight: 600; color: #222; }
 }
+
+.nm-reason p.re-window-opens { margin-top: 10px; font-weight: 600; }
 
 .btn-show-closure {
   display: inline-flex; align-items: center; gap: 6px;

@@ -38,6 +38,11 @@ class AppealEligibilityServiceTest {
     @Mock private SystemConfigRepository systemConfigRepository;
     @Mock private BankRepository bankRepository;
     @Mock private ComplaintCategoryRepository complaintCategoryRepository;
+    // Appealability is now read from CLOSURE_CLAUSE_MASTER through this service. None of the fixtures
+    // below set a closureClause, so resolveAppealability short-circuits and never calls it — but
+    // @InjectMocks would otherwise leave the field null and any fixture that later gains a clause would
+    // NPE inside the service rather than fail its own assertion.
+    @Mock private AppealClassificationService classificationService;
 
     @InjectMocks
     private AppealEligibilityService appealEligibilityService;

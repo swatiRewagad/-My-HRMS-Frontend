@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { UploadLinkService } from '../../../services/upload-link.service';
-import { environment } from '../../../../environments/environment';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 type Phase = 'loading' | 'otp' | 'upload' | 'success' | 'expired' | 'error';
 
@@ -105,7 +105,7 @@ interface SelectedFile {
             <h2>Upload Documents</h2>
             <p class="phase-desc">
               Upload supporting documents for complaint <strong>{{ complaintNumber() }}</strong>.
-              Accepted formats: PDF, JPG, PNG, DOCX. Max {{ maxFileSizeMB }}MB per file.
+              Accepted formats: PDF, JPG, PNG, DOCX. Max {{ uploadLimits.maxFileSizeMb() }}MB per file.
             </p>
 
             <!-- Drop zone -->
@@ -127,7 +127,7 @@ interface SelectedFile {
                 (change)="onFileSelect($event)"
                 hidden
               />
-              <span class="drop-hint">PDF, JPG, PNG, DOCX up to {{ maxFileSizeMB }}MB each</span>
+              <span class="drop-hint">PDF, JPG, PNG, DOCX up to {{ uploadLimits.maxFileSizeMb() }}MB each</span>
             </div>
 
             <!-- Selected files list -->
@@ -405,7 +405,9 @@ export class ComplainantUploadComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private uploadLinkService = inject(UploadLinkService);
 
-  readonly maxFileSizeMB = environment.maxFileSizeMB;
+  // The server's configured limit, not a compiled-in copy: environment.maxFileSizeMB cannot track a
+  // runtime change, so the hint here would drift from what /api/files/upload actually enforces.
+  uploadLimits = inject(UploadLimitsService);
   readonly acceptedTypes = '.pdf,.jpg,.jpeg,.png,.docx';
   private readonly allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.docx'];
 
@@ -505,7 +507,7 @@ export class ComplainantUploadComponent implements OnInit {
   }
 
   private addFiles(files: File[]) {
-    const maxSize = this.maxFileSizeMB * 1024 * 1024;
+    const maxSize = this.uploadLimits.maxFileSizeBytes();
     const newFiles: SelectedFile[] = files.map(file => {
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       const validExt = this.allowedExtensions.includes(ext);
@@ -515,7 +517,7 @@ export class ComplainantUploadComponent implements OnInit {
         name: file.name,
         size: file.size,
         valid: validExt && validSize,
-        error: !validExt ? 'Unsupported format' : !validSize ? `Exceeds ${this.maxFileSizeMB}MB` : undefined
+        error: !validExt ? 'Unsupported format' : !validSize ? `Exceeds ${this.uploadLimits.maxFileSizeMb()}MB` : undefined
       };
     });
 

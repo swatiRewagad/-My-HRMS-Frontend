@@ -140,6 +140,92 @@
                     </excludes>
                 </configuration>
             </plugin>
+
+            <!--
+                ═══════════════════════════════════════════════════════════════════════════════════
+                OFFLINE STATIC ANALYSIS
+
+                There is no SonarQube or Coverity server available, so these are the local substitutes.
+                All run through Maven with no server.
+
+                NONE of the analysers is bound to a lifecycle phase. That is deliberate: wiring SpotBugs
+                into `verify` makes every `mvn test` pay for it, and a slow build gets bypassed with
+                -DskipTests, which removes more safety than the analyser adds. Run them explicitly:
+
+                    mvn spotbugs:check       security + bug patterns (find-sec-bugs included)
+                    mvn spotbugs:spotbugs    report only, never fails the build
+                    mvn pmd:check            bug-prone constructs and dead code
+                    mvn pmd:cpd-check        copy-paste detection
+                    mvn test jacoco:report   coverage -> target/site/jacoco/index.html
+
+                JaCoCo IS bound, because its agent must attach before surefire runs or it measures
+                nothing at all. Its cost is negligible.
+                ═══════════════════════════════════════════════════════════════════════════════════
+            -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.4</version>
+                <configuration>
+                    <!-- Low threshold + Max effort because this is a FIRST pass: the aim is to see the
+                         findings. Raising the threshold to hide them would defeat the exercise. -->
+                    <effort>Max</effort>
+                    <threshold>Low</threshold>
+                    <includeTests>false</includeTests>
+                    <xmlOutput>true</xmlOutput>
+                    <failOnError>false</failOnError>
+                    <plugins>
+                        <!-- find-sec-bugs supplies the SECURITY detectors: injection, path traversal,
+                             weak crypto, XSS. These are what a Coverity licence is bought for. -->
+                        <plugin>
+                            <groupId>com.h3xstream.findsecbugs</groupId>
+                            <artifactId>findsecbugs-plugin</artifactId>
+                            <version>1.13.0</version>
+                        </plugin>
+                    </plugins>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.26.0</version>
+                <configuration>
+                    <targetJdk>17</targetJdk>
+                    <failOnViolation>false</failOnViolation>
+                    <printFailingErrors>true</printFailingErrors>
+                    <includeTests>false</includeTests>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>jacoco-prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>jacoco-report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <excludes>
+                        <!-- Lombok-generated accessors on DTOs and entities would inflate the number
+                             without saying anything about how well the LOGIC is tested. -->
+                        <exclude>com/hrms/cms/dto/**</exclude>
+                        <exclude>com/hrms/cms/entity/**</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>

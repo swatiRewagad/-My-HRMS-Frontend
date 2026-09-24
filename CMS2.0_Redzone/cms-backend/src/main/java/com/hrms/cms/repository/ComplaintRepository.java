@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -136,6 +137,18 @@ public interface ComplaintRepository
     Page<Complaint> findByComplainantPhone(String phone, Pageable pageable);
 
     Page<Complaint> findByComplainantPhoneAndStatus(String phone, String status, Pageable pageable);
+
+    /**
+     * The citizen "Open" filter: a complaint the citizen is still waiting on.
+     *
+     * Ruled by the business owner — a complaint counts as Open until it is resolved. The settled
+     * statuses are passed in rather than hardcoded, and the predicate EXCLUDES them rather than listing
+     * the open ones: there are 23 distinct statuses in use, so an inclusive list would silently drop any
+     * status added later, whereas exclusion defaults a newcomer to Open — the safe direction for a
+     * citizen's own view of what is still outstanding.
+     */
+    Page<Complaint> findByComplainantPhoneAndStatusNotIn(
+            String phone, Collection<String> statuses, Pageable pageable);
 
     /**
      * Duplicate pre-check for public filing: the same complainant (matched on phone OR email)

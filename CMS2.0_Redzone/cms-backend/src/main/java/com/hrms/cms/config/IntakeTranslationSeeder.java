@@ -103,7 +103,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
               "The decision must be either Accepted or Dismissed.");
 
         // ═══ NFR-006 attachment limits ═══
-        m.put("intake.attachment_too_large", "Each file must be 2MB or smaller.");
+        m.put("intake.attachment_too_large", "Each file must be {{size}}MB or smaller.");
         m.put("intake.attachment_total_too_large", "Attachments must total 25MB or less.");
         m.put("intake.attachment_too_many", "You may attach at most 10 files.");
         m.put("intake.attachment_rejected",
@@ -257,7 +257,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "अनदेखी नियम नहीं मिला।");
         m.put("intake.suggested_related_invalid_decision",
               "निर्णय स्वीकृत या अस्वीकृत में से कोई एक होना चाहिए।");
-        m.put("intake.attachment_too_large", "प्रत्येक फ़ाइल 2MB या उससे छोटी होनी चाहिए।");
+        m.put("intake.attachment_too_large", "प्रत्येक फ़ाइल {{size}}MB या उससे छोटी होनी चाहिए।");
         m.put("intake.attachment_total_too_large", "संलग्नकों का कुल आकार 25MB या उससे कम होना चाहिए।");
         m.put("intake.attachment_too_many", "आप अधिकतम 10 फ़ाइलें संलग्न कर सकते हैं।");
         m.put("intake.attachment_rejected",
@@ -386,7 +386,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "दुर्लक्ष नियम आढळला नाही.");
         m.put("intake.suggested_related_invalid_decision",
               "निर्णय स्वीकारलेला किंवा फेटाळलेला यापैकी एक असणे आवश्यक आहे.");
-        m.put("intake.attachment_too_large", "प्रत्येक फाइल 2MB किंवा त्याहून लहान असावी.");
+        m.put("intake.attachment_too_large", "प्रत्येक फाइल {{size}}MB किंवा त्याहून लहान असावी.");
         m.put("intake.attachment_total_too_large", "जोडपत्रांचा एकूण आकार 25MB किंवा त्याहून कमी असावा.");
         m.put("intake.attachment_too_many", "तुम्ही जास्तीत जास्त 10 फाइल्स जोडू शकता.");
         m.put("intake.attachment_rejected",
@@ -514,7 +514,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "উপেক্ষা নিয়ম পাওয়া যায়নি।");
         m.put("intake.suggested_related_invalid_decision",
               "সিদ্ধান্ত অবশ্যই গৃহীত অথবা খারিজ হতে হবে।");
-        m.put("intake.attachment_too_large", "প্রতিটি ফাইল ২ এমবি বা তার কম হতে হবে।");
+        m.put("intake.attachment_too_large", "প্রতিটি ফাইল {{size}} এমবি বা তার কম হতে হবে।");
         m.put("intake.attachment_total_too_large", "সংযুক্তিগুলির মোট আকার ২৫ এমবি বা তার কম হতে হবে।");
         m.put("intake.attachment_too_many", "আপনি সর্বাধিক ১০টি ফাইল সংযুক্ত করতে পারেন।");
         m.put("intake.attachment_rejected",
@@ -642,7 +642,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "విస్మరణ నియమం కనుగొనబడలేదు.");
         m.put("intake.suggested_related_invalid_decision",
               "నిర్ణయం ఆమోదించబడింది లేదా తిరస్కరించబడింది అనే వాటిలో ఒకటిగా ఉండాలి.");
-        m.put("intake.attachment_too_large", "ప్రతి ఫైల్ 2MB లేదా అంతకంటే తక్కువ ఉండాలి.");
+        m.put("intake.attachment_too_large", "ప్రతి ఫైల్ {{size}}MB లేదా అంతకంటే తక్కువ ఉండాలి.");
         m.put("intake.attachment_total_too_large", "అనుబంధాల మొత్తం పరిమాణం 25MB లేదా అంతకంటే తక్కువ ఉండాలి.");
         m.put("intake.attachment_too_many", "మీరు గరిష్ఠంగా 10 ఫైళ్లను జోడించవచ్చు.");
         m.put("intake.attachment_rejected",
@@ -773,7 +773,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "புறக்கணிப்பு விதி கண்டறியப்படவில்லை.");
         m.put("intake.suggested_related_invalid_decision",
               "முடிவு ஏற்கப்பட்டது அல்லது நிராகரிக்கப்பட்டது என்பதில் ஒன்றாக இருக்க வேண்டும்.");
-        m.put("intake.attachment_too_large", "ஒவ்வொரு கோப்பும் 2MB அல்லது அதற்குக் குறைவாக இருக்க வேண்டும்.");
+        m.put("intake.attachment_too_large", "ஒவ்வொரு கோப்பும் {{size}}MB அல்லது அதற்குக் குறைவாக இருக்க வேண்டும்.");
         m.put("intake.attachment_total_too_large",
               "இணைப்புகளின் மொத்த அளவு 25MB அல்லது அதற்குக் குறைவாக இருக்க வேண்டும்.");
         m.put("intake.attachment_too_many", "நீங்கள் அதிகபட்சம் 10 கோப்புகளை இணைக்கலாம்.");
@@ -907,7 +907,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "અવગણના નિયમ મળ્યો નથી.");
         m.put("intake.suggested_related_invalid_decision",
               "નિર્ણય સ્વીકૃત અથવા નકારેલ હોવો જોઈએ.");
-        m.put("intake.attachment_too_large", "દરેક ફાઈલ 2MB કે તેથી નાની હોવી જોઈએ.");
+        m.put("intake.attachment_too_large", "દરેક ફાઈલ {{size}}MB કે તેથી નાની હોવી જોઈએ.");
         m.put("intake.attachment_total_too_large", "જોડાણોનું કુલ કદ 25MB કે તેથી ઓછું હોવું જોઈએ.");
         m.put("intake.attachment_too_many", "તમે વધુમાં વધુ 10 ફાઈલો જોડી શકો છો.");
         m.put("intake.attachment_rejected",
@@ -1035,7 +1035,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "نظر انداز قاعدہ نہیں ملا۔");
         m.put("intake.suggested_related_invalid_decision",
               "فیصلہ منظور شدہ یا مسترد شدہ ہونا چاہیے۔");
-        m.put("intake.attachment_too_large", "ہر فائل ۲ ایم بی یا اس سے کم ہونی چاہیے۔");
+        m.put("intake.attachment_too_large", "ہر فائل {{size}} ایم بی یا اس سے کم ہونی چاہیے۔");
         m.put("intake.attachment_total_too_large", "منسلکات کا کل حجم ۲۵ ایم بی یا اس سے کم ہونا چاہیے۔");
         m.put("intake.attachment_too_many", "آپ زیادہ سے زیادہ ۱۰ فائلیں منسلک کر سکتے ہیں۔");
         m.put("intake.attachment_rejected",
@@ -1165,7 +1165,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "ನಿರ್ಲಕ್ಷ್ಯ ನಿಯಮ ಕಂಡುಬಂದಿಲ್ಲ.");
         m.put("intake.suggested_related_invalid_decision",
               "ನಿರ್ಧಾರವು ಸ್ವೀಕರಿಸಲಾಗಿದೆ ಅಥವಾ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ ಎಂಬುದರಲ್ಲಿ ಒಂದಾಗಿರಬೇಕು.");
-        m.put("intake.attachment_too_large", "ಪ್ರತಿ ಕಡತ 2MB ಅಥವಾ ಅದಕ್ಕಿಂತ ಕಡಿಮೆ ಇರಬೇಕು.");
+        m.put("intake.attachment_too_large", "ಪ್ರತಿ ಕಡತ {{size}}MB ಅಥವಾ ಅದಕ್ಕಿಂತ ಕಡಿಮೆ ಇರಬೇಕು.");
         m.put("intake.attachment_total_too_large",
               "ಲಗತ್ತುಗಳ ಒಟ್ಟು ಗಾತ್ರ 25MB ಅಥವಾ ಅದಕ್ಕಿಂತ ಕಡಿಮೆ ಇರಬೇಕು.");
         m.put("intake.attachment_too_many", "ನೀವು ಗರಿಷ್ಠ 10 ಕಡತಗಳನ್ನು ಲಗತ್ತಿಸಬಹುದು.");
@@ -1297,7 +1297,7 @@ public class IntakeTranslationSeeder implements CommandLineRunner {
         m.put("intake.ignore_rule_not_found", "അവഗണന നിയമം കണ്ടെത്തിയില്ല.");
         m.put("intake.suggested_related_invalid_decision",
               "തീരുമാനം സ്വീകരിച്ചു അല്ലെങ്കിൽ തള്ളി എന്നതിൽ ഒന്നായിരിക്കണം.");
-        m.put("intake.attachment_too_large", "ഓരോ ഫയലും 2MB അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
+        m.put("intake.attachment_too_large", "ഓരോ ഫയലും {{size}}MB അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
         m.put("intake.attachment_total_too_large",
               "അനുബന്ധങ്ങളുടെ ആകെ വലുപ്പം 25MB അല്ലെങ്കിൽ അതിൽ കുറവായിരിക്കണം.");
         m.put("intake.attachment_too_many", "നിങ്ങൾക്ക് പരമാവധി 10 ഫയലുകൾ ചേർക്കാം.");

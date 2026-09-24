@@ -197,3 +197,49 @@ label.file-upload-browse-link {
   position: relative;
   app-speech-button { position: absolute; right: 10px; bottom: 10px; }
 }
+
+// ── Appellant identity block ──
+.appellant-section {
+  padding: 16px; margin-bottom: 20px;
+  background: var(--surface-sunken); border: 1px solid var(--border-subtle); border-radius: 8px;
+  h4 { margin: 0 0 14px; font-size: 14px; color: var(--text-heading); }
+  .form-group:last-child { margin-bottom: 0; }
+}
+
+.field-error {
+  display: block; margin-top: 4px;
+  font-size: 12px; color: var(--state-danger-solid-hover);
+}
+
+.form-input.invalid, .form-textarea.invalid {
+  border-color: var(--state-danger-solid-hover);
+  &:focus { box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12); }
+}
+
+.clause-refusal { font-weight: 600; }
+
+// The visible Date of Receipt input is readonly; this native picker is the ONLY way to set a value.
+// It must stay fully transparent and non-interactive, otherwise a second, typeable date field appears
+// next to the readonly one and "date-picker only" stops being true.
+.date-picker-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .form-input { padding-right: 40px; }
+
+  .date-hidden-picker {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .date-picker-btn {
+    position: absolute;
+    right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 16px; padding: 4px;
+    &:hover { color: var(--citizen-accent-bright); }
+  }
+}

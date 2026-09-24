@@ -364,8 +364,8 @@ history.date_filed,history,Date filed column,Date Filed,en,Date Filed
 history.date_filed,history,Date filed column,Date Filed,hi,दायर करने की तिथि
 history.subject,history,Subject column,Subject,en,Subject
 history.subject,history,Subject column,Subject,hi,विषय
-history.no_complaints,history,No complaints message,No complaints found,en,No complaints found
-history.no_complaints,history,No complaints message,No complaints found,hi,कोई शिकायत नहीं मिली
+history.no_complaints,history,No complaints message,No complaints found.,en,No complaints found.
+history.no_complaints,history,No complaints message,No complaints found.,hi,कोई शिकायत नहीं मिली।
 history.track_complaint,history,Track complaint,Track Complaint,en,Track Complaint
 history.view_details,history,View details button,View Details,en,View Details
 status.pending,status,Pending status,Pending,en,Pending

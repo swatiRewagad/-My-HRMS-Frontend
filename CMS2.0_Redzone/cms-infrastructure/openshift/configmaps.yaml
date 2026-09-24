@@ -25,6 +25,13 @@ data:
   SPRING_PROFILES_ACTIVE: "openshift"
   TZ: "Asia/Kolkata"
 
+  # Security: never return the OTP in the send-otp response body. Set EXPLICITLY rather than left to a
+  # default, because this ConfigMap naming a profile that did not exist in application.yml is precisely
+  # what made the OTP publicly readable in every deployed environment. An explicit value cannot be
+  # defeated by a profile that fails to activate. cms-backend additionally refuses to start if this is
+  # ever true outside the dev-local profile (OtpExposureGuard).
+  OTP_DEV_AUTO_POPULATE: "false"
+
   # Oracle Database
   DB_HOST: "oracle-db.rbi-cms.svc.cluster.local"
   DB_PORT: "1521"

@@ -1,16 +1,13 @@
-.aa-detail { min-height: 100vh; background: var(--surface-sunken); }
-
-.topbar {
-  background: var(--brand-primary-strong); color: white; padding: 12px 24px;
-  display: flex; justify-content: space-between; align-items: center;
+// These render in the shell's light action bar, not the old dark topbar, so they take body colours.
+.back-btn {
+  background: none; border: none; color: var(--brand-primary-strong);
+  font-size: 20px; line-height: 1; cursor: pointer;
 }
-.topbar-left { display: flex; align-items: center; gap: 12px; }
-.topbar h2 { margin: 0; font-size: 18px; }
-.back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
-.topbar-right { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+.tier-badge {
+  background: var(--brand-primary-bg); color: var(--brand-primary-strong);
+  padding: 2px 8px; border-radius: 4px; font-size: 11px;
+}
 
-.content { max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
 .loading, .error-state { text-align: center; padding: 60px; color: var(--text-muted); font-size: 16px; }
 
 .detail-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
