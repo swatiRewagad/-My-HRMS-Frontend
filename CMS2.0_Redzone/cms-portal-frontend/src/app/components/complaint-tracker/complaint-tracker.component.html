@@ -20,13 +20,19 @@
 
   <!-- Mode: Track by ID -->
   @if (trackMode() === 'id') {
+    <!-- The placeholder example must match what ComplaintNumberGeneratorService actually issues
+         (N + financial year + office code + 6-digit sequence). The previous "CMS-20260710-ABC123"
+         matched no complaint number ever generated, so a citizen who trusted the hint typed
+         something guaranteed to 404. -->
     <div class="search-box">
       <input type="text"
              [ngModel]="searchId()"
              (ngModelChange)="searchId.set($event)"
-             placeholder="Enter Complaint ID (e.g., CMS-20260710-ABC123)"
+             placeholder="Enter Complaint Number (e.g., N202627013001025)"
              (keydown.enter)="track()">
-      <button (click)="track()" [disabled]="!searchId() || loading()">
+      <!-- Only the in-flight state disables. A blank number is refused by track() with a message, not by
+           an inert control the citizen cannot get an explanation out of. -->
+      <button (click)="track()" [disabled]="loading()">
         @if (loading()) {
           <i class="pi pi-spin pi-spinner"></i>
         } @else {

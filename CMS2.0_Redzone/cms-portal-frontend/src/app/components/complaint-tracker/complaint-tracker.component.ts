@@ -167,7 +167,13 @@ export class ComplaintTrackerComponent implements OnInit {
 
   track() {
     const id = this.searchId().trim();
-    if (!id) return;
+    // Say why nothing happened. A bare `return` left the citizen with a button that had just been pressed
+    // and a screen that did not change — the same silent refusal the login screen was corrected for.
+    if (!id) {
+      this.status.set(null);
+      this.error.set('Complaint number is required to track a complaint.');
+      return;
+    }
 
     this.loading.set(true);
     this.error.set('');

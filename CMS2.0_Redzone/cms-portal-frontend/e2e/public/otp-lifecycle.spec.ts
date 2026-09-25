@@ -33,9 +33,10 @@ import { solveMathCaptcha, otpAttemptsFor, backdateOtpAttempt, deleteOtpAttempts
  * ════════════════════════════════════════════════════════════════════════════════════════════════
  * QA states "5 minutes", "2 minutes" and "3 times". The product reads every one of them from
  * configuration — cms.auth.otp.expiry-minutes, cms.auth.otp.resend-cooldown-seconds and
- * cms.auth.otp.max-resend-per-hour, each overridable by a SYSTEM_CONFIG row — and dev-local runs
- * expiry at 10 minutes and the cooldown at 0. Pinning 5 and 2 here would assert the wrong side of the
- * product's own rule and break at the next retune (the standing ruling from the upload-limit work).
+ * cms.auth.otp.max-resend-per-hour, each overridable by a SYSTEM_CONFIG row — and dev-local still runs
+ * the cooldown at 0, even though the expiry now matches prod at 5. Pinning 5 and 2 here would assert the
+ * wrong side of the product's own rule and break at the next retune (the standing ruling from the
+ * upload-limit work).
  *
  * So the windows are read from the SERVER, out of send-otp's own `expiresInSeconds` and
  * `resendAfterSeconds`, and every boundary is computed from those. A test that says "one second past
@@ -361,8 +362,8 @@ test.describe('Citizen OTP lifecycle', () => {
   // things that decide what a citizen would read if a gateway existed. Delivery is asserted nowhere,
   // deliberately.
   //
-  // The validity is NOT pinned to 5: it is taken from the same send-otp response the portal reads, so
-  // this passes at the dev-local 10 minutes and at a retuned value, and fails if the prose and the
+  // The validity is NOT pinned to 5 even though every environment now enforces 5: it is taken from the
+  // same send-otp response the portal reads, so this survives a retune and fails if the prose and the
   // enforced window ever disagree — which is the defect this case actually guards.
   // ═══════════════════════════════════════════════════════════════════════════════════════════
   test('QA3: the OTP message is composed in QA\'s exact wording, quoting the ENFORCED validity', async ({ request }) => {

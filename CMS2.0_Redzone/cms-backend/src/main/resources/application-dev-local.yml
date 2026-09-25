@@ -126,7 +126,10 @@ cms:
   auth:
     otp:
       length: 6
-      expiry-minutes: 10
+      # 5, not a relaxed 10. The resend/verify counters below are loosened so repeated dev logins are not
+      # blocked, but the expiry is a stated rule the citizen is shown ("valid only for 5 minutes"), so a
+      # longer dev window makes dev disagree with prod on behaviour under test rather than on throttling.
+      expiry-minutes: 5
       max-resend-per-hour: 99
       max-verify-attempts-per-otp: 99
       # Relaxed like the other dev limits so repeated manual and E2E logins are not blocked.

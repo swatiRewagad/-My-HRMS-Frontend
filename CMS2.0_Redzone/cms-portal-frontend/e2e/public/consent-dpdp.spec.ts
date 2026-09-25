@@ -164,7 +164,13 @@ test.describe('UST5 — The notice is localised and recorded', () => {
     await page.locator('#mobile-input').fill(CITIZEN_PHONE);
     await page.locator('.captcha-input').fill('1234');
     // Deliberately leave the consent box unchecked.
-    await expect(page.locator('button.send-otp-btn')).toBeDisabled();
+    //
+    // The gate used to be `[disabled]="!consentChecked || ..."`. It is now the guard inside sendOtp(), so
+    // the button is clickable and the refusal is stated — what matters for DPDP is unchanged and is what
+    // this test checks: no /send-otp request is made without consent.
+    await page.locator('button.send-otp-btn').click();
+    await expect(page.locator('.error-banner'))
+      .toContainText(/must accept the data processing declaration/i);
     expect(sendOtpCalled).toBe(false);
   });
 

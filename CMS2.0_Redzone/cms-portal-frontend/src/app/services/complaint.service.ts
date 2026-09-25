@@ -44,9 +44,10 @@ export class ComplaintService {
       .pipe(map(() => undefined));
   }
 
-  trackComplaint(complaintId: string): Observable<ComplaintStatus> {
-    return this.http.get<ApiResponse<ComplaintStatus>>(`${this.baseUrl}/${complaintId}`)
-      .pipe(map(res => res.data));
+  trackComplaint(complaintNumber: string): Observable<ComplaintStatus> {
+    return this.http.get<ApiResponse<ComplaintStatus>>(
+      `${this.baseUrl}/${encodeURIComponent(complaintNumber)}`
+    ).pipe(map(res => res.data));
   }
 
   withdrawComplaint(complaintId: string, reason: string, remarks: string): Observable<void> {

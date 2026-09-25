@@ -1650,7 +1650,20 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     const step = this.currentStep();
 
     if (step === 1) {
-      if (!this.formData['firstName']?.trim()) this.validationErrors['name'] = 'First name is required';
+      // The category decides WHICH name field exists, so it must be validated before the name is:
+      // previously a blank category produced a `name` error whose only two renderers both sit inside
+      // the category-conditional blocks, so Next was refused with nothing on screen to explain it.
+      if (!this.formData['complainantCategory']) {
+        this.validationErrors['complainantCategory'] = 'Complainant category is required';
+      } else if (this.isIndividualCategory()) {
+        if (!this.formData['firstName']?.trim()) this.validationErrors['name'] = 'First name is required';
+      } else {
+        // An organisation has no first name — the field is never rendered for these categories, so
+        // requiring firstName made all ten organisation categories unable to leave step 1 at all.
+        if (!this.formData['organizationName']?.trim()) {
+          this.validationErrors['name'] = 'Name of complainant is required';
+        }
+      }
       if (!this.formData['pincode'] || !/^\d{6}$/.test(this.formData['pincode'])) this.validationErrors['pincode'] = 'Valid 6-digit pincode is required';
       if (!this.formData['state']) this.validationErrors['state'] = 'Enter valid pincode to auto-fill state';
       if (!this.formData['address']?.trim()) this.validationErrors['address'] = 'Address is required';
@@ -2230,9 +2243,13 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     return this.selectedEntityType === 'CEPC';
   }
 
+  // `pwd` is a natural person and must get the person form (name / age / gender), not the organisation
+  // form. Omitting it meant a Person with Disabilities was asked for an organisation name and could
+  // never supply their own, which also silently loses the age/gender data the PwD priority rules read.
+  private static readonly INDIVIDUAL_CATEGORIES = ['individual', 'pwd', 'senior_citizen'];
+
   isIndividualCategory(): boolean {
-    const cat = this.formData['complainantCategory'];
-    return cat === 'individual' || cat === 'senior_citizen';
+    return PublicFileComplaintComponent.INDIVIDUAL_CATEGORIES.includes(this.formData['complainantCategory']);
   }
 
   getCategoryLabel(): string {
@@ -2248,7 +2265,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   getGenderLabel(): string {
     const map: Record<string, string> = {
       male: 'Male', female: 'Female', transgender: 'Transgender',
-      not_disclosed: 'Do not wish to disclose', other: 'Other'
+      not_disclosed: 'Do not wish to disclose'
     };
     return map[this.formData['gender']] || this.formData['gender'] || '—';
   }

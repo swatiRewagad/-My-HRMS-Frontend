@@ -470,7 +470,7 @@
           <div class="form-row">
             <div class="form-group" style="max-width: 320px;">
               <label>{{ 'form.complainant_category' | translate }} <span class="required">*</span></label>
-              <select class="form-select" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
+              <select class="form-select" [class.invalid]="validationErrors['complainantCategory']" [(ngModel)]="formData['complainantCategory']" name="complainantCategory">
                 <option value="" disabled>Select Value</option>
                 <option value="individual">Individual</option>
                 <option value="pwd">Person with Disabilities</option>
@@ -485,6 +485,9 @@
                 <option value="government_department">Government Department</option>
                 <option value="psu">PSU</option>
               </select>
+              <!-- Must live OUTSIDE the two category-conditional blocks below: this is the one error a
+                   citizen can hit while neither block is rendered. -->
+              @if (validationErrors['complainantCategory']) { <span class="field-error">{{ validationErrors['complainantCategory'] }}</span> }
             </div>
           </div>
           <!-- Individual / Senior Citizen fields -->
@@ -517,8 +520,10 @@
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="transgender">Transgender</option>
+                  <!-- Ruled: the permitted values are exactly male / female / transgender /
+                       do-not-wish-to-disclose. A fifth "Other" was offered by the control but appears in
+                       no requirement, and it duplicates "do not wish to disclose" in practice. -->
                   <option value="not_disclosed">Do not wish to disclose</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
               <div class="form-group">
