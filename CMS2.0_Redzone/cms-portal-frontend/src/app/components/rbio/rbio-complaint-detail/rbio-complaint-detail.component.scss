@@ -140,24 +140,8 @@
   &:hover { color: var(--brand-primary); }
 }
 
-.rail-doc-list { display: flex; flex-direction: column; gap: 6px; }
-
-.rail-doc {
-  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
-  padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px;
-  background: var(--surface-page); font-size: 12px; color: var(--text-body);
-  &:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
-  i { color: var(--text-subtle); flex-shrink: 0; }
-}
-
-.rail-doc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.rail-doc-source {
-  flex-shrink: 0; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
-  color: var(--text-muted); background: var(--surface-subtle); border-radius: 4px; padding: 2px 6px;
-}
-
-.rail-empty { margin: 0; font-size: 12px; color: var(--text-muted); }
+// The rail's own attachment list is gone: app-rbio-attachments is the single list, and its own
+// (view-encapsulated) styles cannot be reached from here — so .rail-doc* rules would be dead weight.
 
 // ═══ COMPLAINT STRIP ACTIONS ═══
 // The strip itself is now app-complaint-summary. Only this screen's own buttons stay here, and they are

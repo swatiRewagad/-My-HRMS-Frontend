@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ComplaintCorrespondenceService, ComplaintAttachmentRow } from '../../../services/complaint-correspondence.service';
+import { ComplaintAttachmentRow } from '../../../services/complaint-correspondence.service';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
 import { UploadLinkStatusComponent } from '../../../shared/upload-link-status/upload-link-status.component';
@@ -37,7 +37,18 @@ interface OpenDoc {
 type RailKey = 'history' | 'attachments' | 'email';
 
 interface ComplaintDetail {
+  /**
+   * The BUSINESS key (CMP-…). Named `complaintId` because that is what the payload calls it, and what
+   * every workflow endpoint on this screen is keyed on.
+   */
   complaintId: string;
+  /**
+   * The numeric PRIMARY key, which is a different thing and not interchangeable with the above. The
+   * files API is `@PathVariable Long`, so passing it a complaint number is a 400 — which is exactly what
+   * the attachments panel did on every complaint, for as long as it has existed, because the service
+   * signature accepted `number | string` and so nothing objected.
+   */
+  dbId: number | null;
   complaintNumber: string;
   complainantName: string;
   complainantEmail: string;
@@ -77,7 +88,6 @@ export class RbioComplaintDetailComponent implements OnInit {
   private auth = inject(KeycloakAuthService);
   private rbioWorkflow = inject(RbioWorkflowService);
   private sanitizer = inject(DomSanitizer);
-  private correspondence = inject(ComplaintCorrespondenceService);
 
   complaint = signal<ComplaintDetail | null>(null);
   loading = signal(true);
@@ -235,31 +245,16 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   toggleRail(key: RailKey) {
     this.railOpen.update(open => (open === key ? null : key));
-    if (this.railOpen() === 'attachments') this.loadRailDocs();
   }
 
   /** Opening the rail AT a panel, used by the tab strip's `+`, which means "show me the documents". */
   openRail(key: RailKey) {
     this.railOpen.set(key);
-    if (key === 'attachments') this.loadRailDocs();
   }
 
-  railDocs = signal<OpenDoc[]>([]);
-  railDocsLoading = signal(false);
-
-  private loadRailDocs() {
-    const c = this.complaint();
-    if (!c) return;
-    this.railDocsLoading.set(true);
-    this.correspondence.getAttachments(c.complaintId).subscribe({
-      next: rows => {
-        this.railDocs.set((rows || []).map(r => this.toOpenDoc(r)));
-        this.railDocsLoading.set(false);
-      },
-      // An empty list, not an error banner: the rail is a secondary surface and the attachments
-      // component rendered below it reports its own load failure with the retry affordance.
-      error: () => { this.railDocs.set([]); this.railDocsLoading.set(false); }
-    });
+  /** A filename clicked inside app-rbio-attachments: read it beside the complaint. */
+  openAttachment(row: ComplaintAttachmentRow) {
+    this.openDoc(this.toOpenDoc(row));
   }
 
   private toOpenDoc(row: ComplaintAttachmentRow): OpenDoc {
@@ -290,6 +285,7 @@ export class RbioComplaintDetailComponent implements OnInit {
         const d = res.data || res;
         this.complaint.set({
           complaintId: d.complaintId || d.complaintNumber || id,
+          dbId: typeof d.id === 'number' ? d.id : null,
           complaintNumber: d.complaintNumber || 'Not Assigned',
           complainantName: d.complainantName || '',
           complainantEmail: d.complainantEmail || '',
@@ -315,6 +311,9 @@ export class RbioComplaintDetailComponent implements OnInit {
       error: () => {
         this.complaint.set({
           complaintId: id,
+          // No numeric id is knowable when the fetch failed, and `null` disables the file panels rather
+          // than letting them call the endpoint with a value that cannot be a primary key.
+          dbId: null,
           complaintNumber: 'N20223317000005',
           complainantName: 'Sagar Chauhan',
           complainantEmail: 'saurabh.pradhan@gmail.com',

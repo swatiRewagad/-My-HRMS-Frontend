@@ -147,6 +147,33 @@ test.describe('RBIO complaint detail — three-panel reference layout', () => {
     await expect(page.locator(`${RAIL} .rail-header h4`)).toHaveText('Attachments');
   });
 
+  /**
+   * The attachments panel must actually LOAD, not merely render.
+   *
+   * This is the test whose absence let a real defect live: `complaintId` in a complaint payload is the
+   * business key (CMP-…), while `/api/files/complaint/{id}` is `@PathVariable Long`. Every caller passed
+   * the number, the endpoint answered 400, and the panel showed "could not be loaded" on every complaint
+   * since the day it was written. Nothing caught it because the layout tests only asked whether the panel
+   * was VISIBLE, and the console-error test filters "Failed to load resource" so that other sessions'
+   * missing endpoints do not fail this spec — which is exactly the filter this 400 hid behind.
+   *
+   * So the assertion is on the error state being ABSENT, not on the request. An empty list is a fine
+   * outcome for a fresh complaint; a load failure is not.
+   */
+  test('the attachments panel loads rather than reporting a load failure', async ({ page }) => {
+    const responses: number[] = [];
+    page.on('response', r => { if (/\/api\/files\/complaint\/\d+(\?|$)/.test(r.url())) responses.push(r.status()); });
+
+    await page.locator('.tab-bar .tab-add').click();
+    await expect(page.locator('app-rbio-attachments .attachments-table')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('app-rbio-attachments .error-state')).toHaveCount(0);
+
+    // A request keyed on the complaint NUMBER never matches the numeric-id pattern above, so an empty
+    // list here means the panel called the wrong URL shape rather than that it loaded cleanly.
+    expect(responses.length, 'attachments were never requested with a numeric id').toBeGreaterThan(0);
+    expect(responses.every(s => s === 200), `statuses: ${responses.join(',')}`).toBe(true);
+  });
+
   /** No console errors on this screen — the user's point 1, asserted rather than eyeballed. */
   test('the screen renders without console errors', async ({ page }) => {
     const errors: string[] = [];

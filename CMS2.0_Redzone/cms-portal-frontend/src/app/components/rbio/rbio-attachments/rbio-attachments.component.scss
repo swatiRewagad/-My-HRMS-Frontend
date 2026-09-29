@@ -113,6 +113,20 @@
   max-width: 20rem;
 }
 
+// The filename is the affordance for reading the document beside the complaint, so it looks like a link
+// rather than a button — the download column stays for taking a copy away.
+.open-doc-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--brand-primary-hover);
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+}
+
 // UST589: provenance is colour-coded so external documents are obvious at a glance.
 .source-badge {
   display: inline-block;

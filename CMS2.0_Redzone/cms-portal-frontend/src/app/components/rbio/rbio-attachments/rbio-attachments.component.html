@@ -66,7 +66,10 @@
       <tbody>
         @for (a of visibleAttachments(); track a.id) {
           <tr>
-            <td class="name-cell">{{ a.originalName }}</td>
+            <td class="name-cell">
+              <button type="button" class="open-doc-btn" (click)="openDocument.emit(a)"
+                      [title]="'attachment.open_in_tab' | translate">{{ a.originalName }}</button>
+            </td>
             <td>
               <span class="source-badge" [class]="'src-' + (a.source || 'unknown').toLowerCase()">
                 {{ sourceKey(a.source) | translate }}

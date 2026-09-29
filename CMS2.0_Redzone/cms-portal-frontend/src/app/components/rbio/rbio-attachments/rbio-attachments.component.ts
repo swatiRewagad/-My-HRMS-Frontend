@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
@@ -36,7 +36,20 @@ import { environment } from '../../../../environments/environment';
 export class RbioAttachmentsComponent implements OnInit {
 
   @Input() complaintNumber: string | null = null;
-  @Input() complaintId: string | number | null = null;
+  /**
+   * The complaint's numeric PRIMARY key, not its CMP-… number. This was `string | number`, and every
+   * caller passed the number — so the endpoint (`@PathVariable Long`) answered 400 and the panel showed
+   * its load-failure state on every complaint, from the day it was written.
+   */
+  @Input() complaintId: number | null = null;
+
+  /**
+   * Asks the host to open this document as a TAB beside the complaint.
+   *
+   * <p>Emitted rather than handled here because only the host owns the tab strip. A host that does not
+   * listen still has the download link, so this component stays usable anywhere.
+   */
+  @Output() openDocument = new EventEmitter<ComplaintAttachmentRow>();
 
   private service = inject(ComplaintCorrespondenceService);
 

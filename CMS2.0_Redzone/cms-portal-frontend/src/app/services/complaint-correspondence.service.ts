@@ -83,18 +83,25 @@ export class ComplaintCorrespondenceService {
       .pipe(map(res => res?.data ?? []));
   }
 
-  getAttachments(complaintId: number | string): Observable<ComplaintAttachmentRow[]> {
+  /**
+   * `number`, NOT `number | string`. The files API is keyed on the complaint's numeric PRIMARY key
+   * (`@PathVariable Long`), which is a different value from the `complaintId` field in a complaint
+   * payload — that field holds the business key (CMP-…). The looser signature accepted the business key
+   * happily and the endpoint answered 400, so the attachments panel showed "could not be loaded" on
+   * every complaint. Keeping this narrow is what makes the mistake a compile error.
+   */
+  getAttachments(complaintId: number): Observable<ComplaintAttachmentRow[]> {
     return this.http.get<any>(`${this.filesUrl}/complaint/${complaintId}`)
       .pipe(map(res => res?.data ?? res ?? []));
   }
 
   /** The bundle URL (UST588). A plain link, so the browser handles the download natively. */
-  bundleUrl(complaintId: number | string, complaintNumber: string): string {
+  bundleUrl(complaintId: number, complaintNumber: string): string {
     return `${this.filesUrl}/complaint/${complaintId}/bundle`
       + `?complaintNumber=${encodeURIComponent(complaintNumber)}`;
   }
 
-  uploadAttachment(complaintNumber: string, complaintId: number | string,
+  uploadAttachment(complaintNumber: string, complaintId: number,
                    file: File, documentType?: string): Observable<any> {
     const form = new FormData();
     form.append('file', file, file.name);

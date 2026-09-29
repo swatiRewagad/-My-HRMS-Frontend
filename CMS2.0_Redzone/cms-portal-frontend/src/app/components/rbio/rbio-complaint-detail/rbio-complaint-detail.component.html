@@ -382,26 +382,14 @@
               }
               @case ('attachments') {
                 <!--
-                  The rail lists attachments; clicking one opens it as a TAB rather than replacing the
-                  rail's content, because the reason to open a document is to read it next to the
-                  complaint, not instead of the list.
+                  ONE attachment list, the real component. An earlier version of this rail rendered its own
+                  compact list ABOVE this component, so the same documents appeared twice in one panel with
+                  two different empty states — which is the incoherence this whole pass exists to remove.
+                  Clicking a filename opens it as a TAB rather than replacing the rail's content, because
+                  the reason to open a document is to read it next to the complaint, not instead of the list.
                 -->
-                <div class="rail-doc-list">
-                  @if (railDocsLoading()) {
-                    <p class="rail-empty">Loading attachments…</p>
-                  } @else if (railDocs().length === 0) {
-                    <p class="rail-empty">No attachments on this complaint.</p>
-                  } @else {
-                    @for (doc of railDocs(); track doc.id) {
-                      <button type="button" class="rail-doc" (click)="openDoc(doc)">
-                        <i class="pi pi-paperclip"></i>
-                        <span class="rail-doc-name">{{ doc.fileName }}</span>
-                        <span class="rail-doc-source">{{ doc.source }}</span>
-                      </button>
-                    }
-                  }
-                </div>
-                <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.complaintId" />
+                <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.dbId"
+                                      (openDocument)="openAttachment($event)" />
               }
               @case ('email') {
                 <app-rbio-email-communication [complaintNumber]="c.complaintNumber" />

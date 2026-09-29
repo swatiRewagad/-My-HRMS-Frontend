@@ -473,7 +473,17 @@ export class RbioConciliationComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (!input.files?.length) return;
 
-    const complaintId = this.complaint?.id ?? this.complaint?.complaintId ?? this.complaintNumber;
+    // ONLY the numeric primary key. The old fallback chain ended at `complaintNumber`, and the upload
+    // endpoint is `@RequestParam Long complaintId` — so on any payload without a numeric `id` the signed
+    // MOM went out as a request the server could only reject with a 400.
+    const complaintId = typeof this.complaint?.id === 'number' ? this.complaint.id : null;
+    if (complaintId === null) {
+      this.resultSuccess.set(false);
+      this.resultMessage.set('rbio.meeting.error.upload_failed');
+      input.value = '';
+      return;
+    }
+
     this.uploadingMinutes.set(true);
     this.minutesUploaded.set(false);
 

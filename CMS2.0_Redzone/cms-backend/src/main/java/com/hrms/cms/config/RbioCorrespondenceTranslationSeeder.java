@@ -97,6 +97,7 @@ public class RbioCorrespondenceTranslationSeeder implements CommandLineRunner {
         m.put("attachment.col_uploaded_by", "Uploaded by");
         m.put("attachment.col_size", "Size");
         m.put("attachment.col_uploaded_at", "Uploaded at");
+        m.put("attachment.open_in_tab", "Open beside the complaint");
         m.put("attachment.limit_note",
                 "Up to {{maxFile}} MB per file and {{maxTotal}} MB in total.");
         m.put("attachment.error_load_failed", "The attachments could not be loaded. Please retry.");
