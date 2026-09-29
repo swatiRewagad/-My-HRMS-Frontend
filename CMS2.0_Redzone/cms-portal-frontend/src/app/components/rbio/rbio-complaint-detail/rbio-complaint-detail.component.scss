@@ -40,14 +40,124 @@
 }
 
 // ═══ TAB BAR ═══
+// The strip is now real: tab one is the complaint, every other tab is an open document. It scrolls
+// horizontally rather than wrapping, so opening a fourth document never pushes the panels down.
 .tab-bar {
-  display: flex; align-items: center; background: var(--surface-card); border-bottom: 1px solid var(--border-subtle); padding: 0 24px;
+  display: flex; align-items: center; background: var(--surface-card); border-bottom: 1px solid var(--border-subtle);
+  padding: 0 24px; overflow-x: auto; flex-shrink: 0;
   .tab-item {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0; border: none; background: none; cursor: pointer;
     padding: 10px 20px; font-size: 13px; color: var(--text-secondary); border-bottom: 2px solid transparent;
     &.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); background: var(--brand-primary-bg); border-radius: 6px 6px 0 0; font-weight: 600; }
   }
-  .tab-add { background: none; border: none; color: var(--text-subtle); cursor: pointer; padding: 10px; font-size: 14px; }
+  .doc-tab { max-width: 220px; }
+  .doc-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-tab-close {
+    display: inline-flex; align-items: center; border-radius: 4px; padding: 2px; color: var(--text-subtle);
+    &:hover { background: var(--surface-page); color: var(--state-danger-solid); }
+  }
+  .tab-add { background: none; border: none; color: var(--text-subtle); cursor: pointer; padding: 10px; font-size: 14px; flex-shrink: 0; }
 }
+
+// ═══ DOCUMENT VIEWER ═══
+// Fills the space the panels occupy, which is what makes it read as a tab rather than an overlay.
+.doc-viewer {
+  display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 20px 24px; gap: 12px;
+}
+
+.doc-viewer-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 8px;
+}
+
+.doc-viewer-name {
+  font-size: 13px; font-weight: 600; color: var(--text-heading); display: flex; align-items: center; gap: 8px;
+  i { color: var(--brand-primary); }
+}
+
+.doc-viewer-download {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  color: var(--brand-primary); text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.doc-viewer-frame {
+  flex: 1; min-height: 480px; width: 100%; border: 1px solid var(--border-subtle); border-radius: 8px;
+  background: var(--surface-card);
+}
+
+.doc-viewer-fallback {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 40px;
+  i { font-size: 32px; color: var(--text-subtle); }
+  p { margin: 0; font-size: 13px; color: var(--text-muted); }
+}
+
+// ═══ RIGHT CONTEXT RAIL ═══
+// The rail occupies a FIXED 48px in the grid whether open or closed, and its body OVERLAYS the panels
+// rather than widening the column. An earlier version let the column grow to 360px and a layout test
+// measured the left panel losing 151px on every toggle — which would move assessment fields under the
+// officer's cursor mid-edit. The rail is context an officer glances at, so covering the panels for the
+// moment it is open costs less than reflowing them.
+.context-rail {
+  position: relative;
+  display: flex; align-items: stretch; gap: 0; width: 48px; flex-shrink: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.rail-icons {
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; width: 48px; flex-shrink: 0;
+  background: var(--surface-card); border-right: 1px solid var(--border-subtle);
+}
+
+.rail-icon {
+  background: none; border: 1px solid transparent; border-radius: 6px; padding: 8px;
+  cursor: pointer; color: var(--text-muted); font-size: 14px;
+  &:hover { background: var(--surface-page); color: var(--brand-primary); }
+  &.active { background: var(--brand-primary-bg); border-color: var(--brand-primary); color: var(--brand-primary); }
+}
+
+// Anchored to the icon strip's right edge and pulled LEFTWARD over the panels, so opening it adds no
+// width to the grid. Bounded height with its own scroll: the rail must not stretch the row and push the
+// panels' shared scroll container taller than the viewport.
+.rail-body {
+  position: absolute; top: 0; right: 48px; z-index: 20;
+  width: 340px; max-height: 100%;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 12px; overflow-y: auto;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle); border-radius: 8px 0 0 8px;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
+}
+
+.rail-header {
+  display: flex; align-items: center; justify-content: space-between;
+  h4 { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-heading); }
+}
+
+.rail-close {
+  background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;
+  &:hover { color: var(--brand-primary); }
+}
+
+.rail-doc-list { display: flex; flex-direction: column; gap: 6px; }
+
+.rail-doc {
+  display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; cursor: pointer;
+  padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px;
+  background: var(--surface-page); font-size: 12px; color: var(--text-body);
+  &:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+  i { color: var(--text-subtle); flex-shrink: 0; }
+}
+
+.rail-doc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rail-doc-source {
+  flex-shrink: 0; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--text-muted); background: var(--surface-subtle); border-radius: 4px; padding: 2px 6px;
+}
+
+.rail-empty { margin: 0; font-size: 12px; color: var(--text-muted); }
 
 // ═══ COMPLAINT STRIP ACTIONS ═══
 // The strip itself is now app-complaint-summary. Only this screen's own buttons stay here, and they are
@@ -96,9 +206,11 @@
 }
 
 // ═══ DETAIL CONTENT ═══
+// The third column is the rail's 48px icon strip and never changes width — not even the `gap` varies
+// with rail state, because any grid change at all reflows the two working panels.
 .detail-content {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 48px;
   gap: 20px;
   padding: 20px 24px;
   flex: 1;
@@ -149,35 +261,15 @@
   padding: 16px 18px; border-bottom: 1px solid var(--surface-subtle);
 }
 
-.comments-section {
-  padding: 16px 18px; border-bottom: 1px solid var(--surface-subtle);
-  h4 { font-size: 13px; font-weight: 700; color: var(--text-heading); margin: 0 0 12px; }
-}
-
-.comment-item {
-  display: flex; gap: 10px; margin-bottom: 14px;
-  .comment-avatar {
-    width: 32px; height: 32px; border-radius: 50%; background: var(--state-success-solid); color: white;
-    display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0;
-  }
-  .comment-body { flex: 1; }
-  .comment-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 4px;
-    .comment-time { font-size: 11px; color: var(--text-subtle); }
-    .comment-author { font-size: 12px; font-weight: 600; color: var(--text-heading); }
-  }
-  .comment-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0;
-    .read-more { color: var(--brand-primary); cursor: pointer; font-weight: 500; }
-  }
-}
-
-.add-comment, .speaking-order {
+// Comments are app-comment-thread now, which brings its own (view-encapsulated) styling. The old
+// .comments-section / .comment-item / .add-comment rules here styled the mock thread and cannot reach
+// the child component's DOM, so they are gone rather than left as dead weight.
+.speaking-order {
   padding: 16px 18px; border-bottom: 1px solid var(--surface-subtle); position: relative;
   label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
   textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; resize: vertical;
     &:focus { outline: none; border-color: var(--brand-primary); }
   }
-  .btn-template { position: absolute; top: 16px; right: 24px; background: none; border: 1px solid var(--border-subtle);
-    border-radius: 4px; padding: 4px 8px; cursor: pointer; color: var(--text-muted); }
 }
 
 // ═══ LOADING ═══

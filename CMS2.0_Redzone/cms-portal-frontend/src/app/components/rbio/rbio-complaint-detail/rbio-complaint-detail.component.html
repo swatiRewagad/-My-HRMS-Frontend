@@ -33,12 +33,34 @@
   }
 
   @if (complaint(); as c) {
-    <!-- Tab Bar (complaint number) -->
-    <div class="tab-bar">
-      <div class="tab-item active">
+    <!--
+      ═══ DOCUMENT TABS ═══
+      The complaint is always tab one and cannot be closed; each opened document becomes a sibling tab
+      ALONGSIDE it rather than a modal over it. That is the point: an officer reading an attachment needs
+      the complaint still on screen to compare against, and a modal or a new browser tab breaks that.
+      The `+` used to be decorative; it now opens the attachments rail, which is where documents are.
+    -->
+    <div class="tab-bar" role="tablist">
+      <button type="button" class="tab-item" [class.active]="openDocId() === null"
+              role="tab" [attr.aria-selected]="openDocId() === null"
+              (click)="openDocId.set(null)">
+        <i class="pi pi-file-edit"></i>
         <span>Complaint {{ c.complaintId }}</span>
-      </div>
-      <button class="tab-add"><i class="pi pi-plus"></i></button>
+      </button>
+      @for (doc of openDocs(); track doc.id) {
+        <button type="button" class="tab-item doc-tab" [class.active]="openDocId() === doc.id"
+                role="tab" [attr.aria-selected]="openDocId() === doc.id"
+                (click)="openDocId.set(doc.id)">
+          <i class="pi pi-paperclip"></i>
+          <span class="doc-tab-name">{{ doc.fileName }}</span>
+          <span class="doc-tab-close" role="button" [attr.aria-label]="'Close ' + doc.fileName"
+                (click)="closeDoc(doc.id); $event.stopPropagation()">
+            <i class="pi pi-times"></i>
+          </span>
+        </button>
+      }
+      <button type="button" class="tab-add" title="Open a document"
+              (click)="openRail('attachments')"><i class="pi pi-plus"></i></button>
     </div>
 
     <!-- Complaint Summary Strip — shared app-complaint-summary (see complaint-summary.types.ts) -->
@@ -90,8 +112,46 @@
       }
     </div>
 
-    <!-- Main Content: Two Panels -->
-    <div class="detail-content">
+    <!--
+      ═══ DOCUMENT VIEWER ═══
+      Rendered INSTEAD of the panels when a document tab is active, not over them, so the browser back
+      button and the tab strip stay the only navigation. An iframe rather than a bespoke viewer: the
+      browser already renders PDF and image attachments, and a preview that cannot show the file is
+      worse than none, so an unpreviewable type falls back to a download.
+    -->
+    @if (activeDoc(); as doc) {
+      <div class="doc-viewer">
+        <div class="doc-viewer-bar">
+          <span class="doc-viewer-name"><i class="pi pi-paperclip"></i> {{ doc.fileName }}</span>
+          <a class="doc-viewer-download" [href]="doc.url" target="_blank" rel="noopener">
+            <i class="pi pi-download"></i> Download
+          </a>
+        </div>
+        @if (doc.previewable) {
+          <iframe class="doc-viewer-frame" [src]="doc.safeUrl" [title]="doc.fileName"></iframe>
+        } @else {
+          <div class="doc-viewer-fallback">
+            <i class="pi pi-file"></i>
+            <p>This file type cannot be previewed in the browser.</p>
+            <a class="doc-viewer-download" [href]="doc.url" target="_blank" rel="noopener">
+              <i class="pi pi-download"></i> Download {{ doc.fileName }}
+            </a>
+          </div>
+        }
+      </div>
+    }
+
+    <!--
+      ═══ MAIN CONTENT: THREE PANELS ═══
+      LEFT is the complaint as filed (read-only facts), CENTER is the officer's assessment and the
+      actions, RIGHT is a thin rail that stays collapsed until asked for. The rail holds history,
+      attachments and email — context an officer consults rather than works in — so it does not compete
+      for width with the assessment. It was previously three full-width tabs BELOW the fold, which meant
+      checking the history scrolled the assessment out of sight and lost unsaved edits from view.
+      Hidden, not destroyed, while a document tab is open: the assessment holds unsaved ngModel state and
+      an @if here would discard an officer's half-written speaking order.
+    -->
+    <div class="detail-content" [hidden]="openDocId() !== null">
       <!-- Left Panel: Complaint Info -->
       <div class="left-panel">
         <div class="panel-card">
@@ -250,29 +310,17 @@
             </div>
           }
 
-          <!-- Comments Section -->
-          <div class="comments-section">
-            <h4>All Comments</h4>
-            @for (comment of comments(); track comment.id) {
-              <div class="comment-item">
-                <div class="comment-avatar">{{ comment.author.charAt(0) }}</div>
-                <div class="comment-body">
-                  <div class="comment-meta">
-                    <span class="comment-time">{{ comment.timestamp }}</span>
-                    <span class="comment-author">{{ comment.author }}</span>
-                  </div>
-                  <p class="comment-text">{{ comment.text }} <a class="read-more">...read more</a></p>
-                </div>
-              </div>
-            }
-          </div>
-
-          <!-- Add Comment -->
-          <div class="add-comment">
-            <label>Comments</label>
-            <textarea placeholder="Enter text here" [(ngModel)]="newComment" rows="3"></textarea>
-            <button class="btn-template"><i class="pi pi-th-large"></i></button>
-          </div>
+          <!-- ═══ Comments — shared app-comment-thread ═══ -->
+          <!--
+            What stood here looked like a working thread but was two hardcoded lorem-ipsum entries and a
+            textarea whose text went into a local signal and nowhere else. An officer could type a
+            comment, see it appear, and lose it on navigation.
+          -->
+          @if (complaint(); as c) {
+            <app-comment-thread
+              [complaintNumber]="c.complaintNumber"
+              [audienceRoles]="commentAudienceRoles" />
+          }
 
           <!-- Speaking Order -->
           <div class="speaking-order" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
@@ -299,6 +347,69 @@
           }
         </div>
       </div>
+
+      <!--
+        ═══ RIGHT RAIL ═══
+        Collapsed to an icon strip by default. The icons are always visible so the panels behind them
+        never shift width as the officer opens and closes the rail — a layout that reflows on every
+        toggle makes the assessment fields jump under the cursor.
+      -->
+      <aside class="context-rail">
+        <div class="rail-icons">
+          @for (panel of railPanels; track panel.key) {
+            <button type="button" class="rail-icon"
+                    [class.active]="railOpen() === panel.key"
+                    [title]="panel.label"
+                    [attr.aria-pressed]="railOpen() === panel.key"
+                    (click)="toggleRail(panel.key)">
+              <i class="pi" [class]="panel.icon"></i>
+            </button>
+          }
+        </div>
+
+        @if (railOpen(); as open) {
+          <div class="rail-body">
+            <div class="rail-header">
+              <h4>{{ railLabel(open) }}</h4>
+              <button type="button" class="rail-close" title="Collapse"
+                      (click)="railOpen.set(null)"><i class="pi pi-chevron-right"></i></button>
+            </div>
+
+            @switch (open) {
+              @case ('history') {
+                <app-rbio-complaint-history [complaintNumber]="c.complaintNumber" />
+                <app-rbio-action-override-history [complaint]="complaint()" />
+              }
+              @case ('attachments') {
+                <!--
+                  The rail lists attachments; clicking one opens it as a TAB rather than replacing the
+                  rail's content, because the reason to open a document is to read it next to the
+                  complaint, not instead of the list.
+                -->
+                <div class="rail-doc-list">
+                  @if (railDocsLoading()) {
+                    <p class="rail-empty">Loading attachments…</p>
+                  } @else if (railDocs().length === 0) {
+                    <p class="rail-empty">No attachments on this complaint.</p>
+                  } @else {
+                    @for (doc of railDocs(); track doc.id) {
+                      <button type="button" class="rail-doc" (click)="openDoc(doc)">
+                        <i class="pi pi-paperclip"></i>
+                        <span class="rail-doc-name">{{ doc.fileName }}</span>
+                        <span class="rail-doc-source">{{ doc.source }}</span>
+                      </button>
+                    }
+                  }
+                </div>
+                <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.complaintId" />
+              }
+              @case ('email') {
+                <app-rbio-email-communication [complaintNumber]="c.complaintNumber" />
+              }
+            }
+          </div>
+        }
+      </aside>
     </div>
 
     <!-- ═══ Legal Case Tab Content (UST553-555) ═══ -->
@@ -308,40 +419,12 @@
       </div>
     }
 
-    <!-- <<< [S6] START >>> -->
-
-    <!-- ═══ Email Communication Tab (UST590-593, UST656-657) ═══
-         The tab existed in the tab strip with NO body block, so clicking it showed nothing. -->
-    @if (activeTab() === 'email') {
-      <div class="tab-content-section">
-        <app-rbio-email-communication [complaintNumber]="c.complaintNumber">
-        </app-rbio-email-communication>
-      </div>
-    }
-
-    <!-- ═══ Attachments Tab (UST585-589) — new tab; none existed ═══ -->
-    @if (activeTab() === 'attachments') {
-      <div class="tab-content-section">
-        <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.complaintId">
-        </app-rbio-attachments>
-      </div>
-    }
-
-    <!-- <<< [S6] END >>> -->
-
-    <!-- ═══ Complaint History Tab (includes Action Override History UST639-642) ═══ -->
-    @if (activeTab() === 'history') {
-      <div class="tab-content-section">
-        <!-- <<< [S6] START >>> UST594-596: the REAL status/milestone history, from COMPLAINT_TIMELINE.
-             The action-override component below it calls an endpoint that does not exist in
-             cms-backend and swallows the 404, so it rendered "no records" for every complaint. It is
-             left in place because session S3 owns building that endpoint. -->
-        <app-rbio-complaint-history [complaintNumber]="c.complaintNumber">
-        </app-rbio-complaint-history>
-        <!-- <<< [S6] END >>> -->
-        <app-rbio-action-override-history [complaint]="complaint()"></app-rbio-action-override-history>
-      </div>
-    }
+    <!--
+      Email Communication (UST590-593, UST656-657), Attachments (UST585-589) and Complaint History
+      (UST594-596, plus action-override UST639-642) used to be three full-width blocks here, below the
+      fold. They now live in the right rail above, so an officer consults them WITHOUT the assessment
+      scrolling out of sight. The components are unchanged; only where they render moved.
+    -->
   }
 </div>
 

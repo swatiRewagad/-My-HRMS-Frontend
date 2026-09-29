@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { ComplaintCorrespondenceService, ComplaintAttachmentRow } from '../../../services/complaint-correspondence.service';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { RbioWorkflowService } from '../../../services/rbio-workflow.service';
 import { UploadLinkStatusComponent } from '../../../shared/upload-link-status/upload-link-status.component';
@@ -14,11 +16,25 @@ import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-hist
 import { environment } from '../../../../environments/environment';
 import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
+import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 // <<< [S6] START >>>
 import { RbioEmailCommunicationComponent } from '../rbio-email-communication/rbio-email-communication.component';
 import { RbioAttachmentsComponent } from '../rbio-attachments/rbio-attachments.component';
 import { RbioComplaintHistoryComponent } from '../rbio-complaint-history/rbio-complaint-history.component';
 // <<< [S6] END >>>
+
+/** One document open as a tab beside the complaint. */
+interface OpenDoc {
+  id: number;
+  fileName: string;
+  url: string;
+  safeUrl: SafeResourceUrl;
+  previewable: boolean;
+  source: string;
+}
+
+type RailKey = 'history' | 'attachments' | 'email';
 
 interface ComplaintDetail {
   complaintId: string;
@@ -42,17 +58,10 @@ interface ComplaintDetail {
   speakingOrder: string;
 }
 
-interface Comment {
-  id: string;
-  author: string;
-  text: string;
-  timestamp: string;
-}
-
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, ComplaintSummaryComponent,
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, ComplaintSummaryComponent, CommentThreadComponent,
     // <<< [S6] START >>>
     RbioEmailCommunicationComponent, RbioAttachmentsComponent, RbioComplaintHistoryComponent,
     // <<< [S6] END >>>
@@ -67,6 +76,8 @@ export class RbioComplaintDetailComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(KeycloakAuthService);
   private rbioWorkflow = inject(RbioWorkflowService);
+  private sanitizer = inject(DomSanitizer);
+  private correspondence = inject(ComplaintCorrespondenceService);
 
   complaint = signal<ComplaintDetail | null>(null);
   loading = signal(true);
@@ -79,9 +90,22 @@ export class RbioComplaintDetailComponent implements OnInit {
   // Assessment fields
   proposedAction = signal('');
   proposedClause = signal('');
-  newComment = signal('');
   speakingOrder = signal('');
-  comments = signal<Comment[]>([]);
+
+  /**
+   * RESTRICTED targets the composer offers on an RBIO complaint.
+   *
+   * The RBIO ladder only, not every role in the realm: the point of RESTRICTED is to address the people
+   * who will actually act on the complaint, and a list that included CEPC or AA roles would invite an
+   * officer to address someone who never opens this screen.
+   */
+  readonly commentAudienceRoles: readonly CommentAudienceOption[] = [
+    { value: 'RBIO_OFFICER', label: 'RBIO Officer' },
+    { value: 'RBIO_SUPERVISOR', label: 'RBIO Supervisor' },
+    { value: 'RBIO_DEPUTY_OMBUDSMAN', label: 'Deputy Ombudsman' },
+    { value: 'RBIO_OMBUDSMAN', label: 'Ombudsman' },
+    { value: 'RBIO_ADJUDICATOR', label: 'Adjudicator' }
+  ];
 
   // Assignment modal fields
   assignmentType = signal('Automatic');
@@ -112,18 +136,18 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   loggedInUser: { id: string; name: string; role: string } | null = null;
 
+  /**
+   * The WORK sections only. Email, Attachments and Complaint History left this list because they moved
+   * into the right rail — keeping a tab that no longer has a body would have been a dead control, and
+   * keeping both would have given an officer two places to look for the same attachment list.
+   */
   tabs = [
     { key: 'summary', label: 'Summary' },
     { key: 'nodal', label: 'Nodal Officer Record' },
     { key: 'conciliation', label: 'Conciliation' },
     { key: 'forward', label: 'Forward' },
-    { key: 'email', label: 'Email Communication' },
-    // <<< [S6] START >>> UST585-589: there was no attachments tab at all.
-    { key: 'attachments', label: 'Attachments' },
-    // <<< [S6] END >>>
     { key: 'final', label: 'Final Decision' },
     { key: 'legal', label: 'Legal Case' },
-    { key: 'history', label: 'Complaint History' },
   ];
 
   approvalOptions = [
@@ -160,6 +184,97 @@ export class RbioComplaintDetailComponent implements OnInit {
     ];
   });
 
+  // ═══ Document tabs ═════════════════════════════════════════════════════════════════════════════
+  // A document opens as a SIBLING TAB of the complaint, never as a modal over it: the reason to open an
+  // attachment is to read it against the complaint, and a modal hides exactly what the officer is
+  // comparing. `null` means the complaint tab, which is why it cannot be closed.
+
+  openDocId = signal<number | null>(null);
+  openDocs = signal<OpenDoc[]>([]);
+
+  readonly activeDoc = computed<OpenDoc | null>(() => {
+    const id = this.openDocId();
+    return id === null ? null : this.openDocs().find(d => d.id === id) ?? null;
+  });
+
+  /**
+   * Only formats the browser itself renders. A type not on this list falls back to a download link,
+   * because an iframe pointed at a .docx renders a download prompt or nothing at all depending on the
+   * browser, and a preview pane that silently shows nothing reads as a broken attachment.
+   */
+  private static readonly PREVIEWABLE = ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'txt'];
+
+  openDoc(doc: OpenDoc) {
+    if (!this.openDocs().some(d => d.id === doc.id)) {
+      this.openDocs.update(list => [...list, doc]);
+    }
+    this.openDocId.set(doc.id);
+  }
+
+  closeDoc(id: number) {
+    this.openDocs.update(list => list.filter(d => d.id !== id));
+    if (this.openDocId() === id) this.openDocId.set(null);
+  }
+
+  // ═══ Right context rail ════════════════════════════════════════════════════════════════════════
+  // History, attachments and email are context an officer CONSULTS; the assessment is what they work
+  // in. These were three full-width tabs below the fold, so checking the history scrolled the
+  // assessment off screen. The rail keeps both visible and collapses when not in use.
+
+  railOpen = signal<RailKey | null>(null);
+
+  readonly railPanels: readonly { key: RailKey; label: string; icon: string }[] = [
+    { key: 'history', label: 'Complaint History', icon: 'pi-history' },
+    { key: 'attachments', label: 'Attachments', icon: 'pi-paperclip' },
+    { key: 'email', label: 'Email Communication', icon: 'pi-envelope' }
+  ];
+
+  railLabel(key: RailKey): string {
+    return this.railPanels.find(p => p.key === key)?.label ?? '';
+  }
+
+  toggleRail(key: RailKey) {
+    this.railOpen.update(open => (open === key ? null : key));
+    if (this.railOpen() === 'attachments') this.loadRailDocs();
+  }
+
+  /** Opening the rail AT a panel, used by the tab strip's `+`, which means "show me the documents". */
+  openRail(key: RailKey) {
+    this.railOpen.set(key);
+    if (key === 'attachments') this.loadRailDocs();
+  }
+
+  railDocs = signal<OpenDoc[]>([]);
+  railDocsLoading = signal(false);
+
+  private loadRailDocs() {
+    const c = this.complaint();
+    if (!c) return;
+    this.railDocsLoading.set(true);
+    this.correspondence.getAttachments(c.complaintId).subscribe({
+      next: rows => {
+        this.railDocs.set((rows || []).map(r => this.toOpenDoc(r)));
+        this.railDocsLoading.set(false);
+      },
+      // An empty list, not an error banner: the rail is a secondary surface and the attachments
+      // component rendered below it reports its own load failure with the retry affordance.
+      error: () => { this.railDocs.set([]); this.railDocsLoading.set(false); }
+    });
+  }
+
+  private toOpenDoc(row: ComplaintAttachmentRow): OpenDoc {
+    const url = `${environment.apiBaseUrl}/api/files/download/${row.id}`;
+    const ext = (row.originalName || '').split('.').pop()?.toLowerCase() || '';
+    return {
+      id: row.id,
+      fileName: row.originalName,
+      url,
+      safeUrl: this.sanitizer.bypassSecurityTrustResourceUrl(url),
+      previewable: RbioComplaintDetailComponent.PREVIEWABLE.includes(ext),
+      source: row.source || 'UNKNOWN'
+    };
+  }
+
   ngOnInit() {
     const stored = sessionStorage.getItem('rbio_user');
     if (stored) this.loggedInUser = JSON.parse(stored);
@@ -194,10 +309,6 @@ export class RbioComplaintDetailComponent implements OnInit {
           proposedClause: '',
           speakingOrder: '',
         });
-        this.comments.set([
-          { id: '1', author: 'Full Name RO DO', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers. These systems provide a centralized platform...', timestamp: '2 hrs ago' },
-          { id: '2', author: 'Full Name', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', timestamp: '1 hrs ago' },
-        ]);
         this.loading.set(false);
         this.checkFinalDecisionStatus();
       },
@@ -223,10 +334,6 @@ export class RbioComplaintDetailComponent implements OnInit {
           proposedClause: '',
           speakingOrder: '',
         });
-        this.comments.set([
-          { id: '1', author: 'Full Name RO DO', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers. These systems provide a centralized platform...', timestamp: '2 hrs ago' },
-          { id: '2', author: 'Full Name', text: 'Core banking systems are the central nervous system of any bank. They process a range of transactions, from deposits and withdrawals to loan payments and fund transfers.', timestamp: '1 hrs ago' },
-        ]);
         this.loading.set(false);
       }
     });
@@ -260,17 +367,6 @@ export class RbioComplaintDetailComponent implements OnInit {
   cancelAssignment() {
     this.showAssignmentModal.set(false);
     this.selectedApprovalOption.set(null);
-  }
-
-  addComment() {
-    if (!this.newComment()) return;
-    this.comments.update(list => [...list, {
-      id: Date.now().toString(),
-      author: this.loggedInUser?.name || 'Officer',
-      text: this.newComment(),
-      timestamp: 'Just now'
-    }]);
-    this.newComment.set('');
   }
 
   onLinkStatusChange(event: { linkActive: boolean; documentsSubmitted: boolean }) {
