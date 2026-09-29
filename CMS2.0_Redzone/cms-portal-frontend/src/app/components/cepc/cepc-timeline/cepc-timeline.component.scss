@@ -1,62 +1,60 @@
+// Only this panel's chrome. The trail itself is styled by app-workflow-timeline — the ~45 lines that used
+// to duplicate it here are gone, along with the emoji dot and the doc-link markup for a `documents[]`
+// field no endpoint has ever returned.
+
 .cepc-timeline {
-  background: white; border-radius: 8px; padding: 20px; border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  border: 1px solid var(--border-subtle);
 }
 
 .timeline-header {
-  display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;
-  h4 { margin: 0; font-size: 14px; color: var(--text-heading); border-bottom: 1px solid var(--surface-subtle); padding-bottom: 8px; flex: 1; }
-  .refresh-btn {
-    background: none; border: 1px solid var(--border-input); border-radius: 4px; padding: 4px 10px;
-    font-size: 12px; cursor: pointer; color: var(--text-secondary);
-    &:hover:not(:disabled) { background: var(--surface-subtle); }
-    &:disabled { opacity: 0.5; cursor: default; }
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-7);
+
+  h4 {
+    margin: 0;
+    font-size: var(--text-md);
+    color: var(--text-heading);
+    border-bottom: 1px solid var(--surface-subtle);
+    padding-bottom: var(--space-3);
+    flex: 1;
   }
 }
 
-.loading-state { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
-.empty-timeline { color: var(--text-subtle); font-size: 13px; font-style: italic; margin: 8px 0; }
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-secondary);
 
-.timeline { display: flex; flex-direction: column; gap: 0; }
-
-.timeline-item {
-  display: flex; gap: 12px; padding: 10px 0; border-left: 2px solid var(--border-subtle);
-  margin-left: 14px; padding-left: 16px; position: relative;
-  cursor: pointer; transition: background 0.15s;
-
-  &:hover { background: var(--surface-page); border-radius: 0 6px 6px 0; }
-  &.expanded { background: #f0f9ff; border-radius: 0 6px 6px 0; }
+  &:hover:not(:disabled) { background: var(--surface-subtle); }
+  &:disabled { opacity: 0.5; cursor: default; }
 }
 
-.timeline-dot {
-  position: absolute; left: -14px; top: 12px;
-  width: 26px; height: 26px; border-radius: 50%; background: white;
-  border: 2px solid var(--brand-primary-strong); display: flex; align-items: center; justify-content: center;
+.loading-state {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--text-base);
 }
 
-.action-icon { font-size: 12px; }
-
-.timeline-content { flex: 1; min-width: 0; }
-
-.timeline-main {
-  display: flex; justify-content: space-between; align-items: center;
-}
-
-.timeline-action { font-weight: 600; font-size: 13px; color: var(--text-body); }
-.timeline-time { font-size: 11px; color: #999; white-space: nowrap; }
-.timeline-actor { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
-
-.timeline-detail {
-  margin-top: 8px; padding: 10px; background: white; border: 1px solid var(--border-subtle); border-radius: 6px;
-}
-
-.timeline-remarks { font-size: 12px; color: var(--text-secondary); margin: 0 0 6px; font-style: italic; }
-.timeline-flow { font-size: 11px; color: #888; }
-
-.timeline-docs {
-  margin-top: 8px; display: flex; flex-direction: column; gap: 4px;
-}
-
-.doc-link {
-  font-size: 12px; color: var(--brand-primary-strong); text-decoration: none;
-  &:hover { text-decoration: underline; }
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--state-danger-solid);
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
 }

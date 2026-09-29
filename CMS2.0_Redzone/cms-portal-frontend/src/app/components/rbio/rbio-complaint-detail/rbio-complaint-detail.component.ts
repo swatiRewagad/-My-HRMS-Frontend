@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -12,7 +12,8 @@ import { RbioLegalCaseComponent } from '../rbio-legal-case/rbio-legal-case.compo
 import { RbioForwardRegulatoryComponent } from '../rbio-forward-regulatory/rbio-forward-regulatory.component';
 import { RbioActionOverrideHistoryComponent } from '../rbio-action-override-history/rbio-action-override-history.component';
 import { environment } from '../../../../environments/environment';
-import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 // <<< [S6] START >>>
 import { RbioEmailCommunicationComponent } from '../rbio-email-communication/rbio-email-communication.component';
 import { RbioAttachmentsComponent } from '../rbio-attachments/rbio-attachments.component';
@@ -51,7 +52,7 @@ interface Comment {
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, StatusBadgeComponent,
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, ComplaintSummaryComponent,
     // <<< [S6] START >>>
     RbioEmailCommunicationComponent, RbioAttachmentsComponent, RbioComplaintHistoryComponent,
     // <<< [S6] END >>>
@@ -132,6 +133,32 @@ export class RbioComplaintDetailComponent implements OnInit {
   ];
 
   selectedApprovalOption = signal<any>(null);
+
+  /**
+   * The strip's facts, as data for the shared app-complaint-summary.
+   *
+   * The SLA severity is stated here rather than inferred by the strip, because "how close is too close"
+   * is a per-workflow judgement — RBIO's own copy treated anything under 48h as a breach — and a shared
+   * component guessing it would apply RBIO's threshold to CEPC's clock.
+   */
+  readonly summaryItems = computed<ComplaintSummaryItem[]>(() => {
+    const c = this.complaint();
+    if (!c) return [];
+    return [
+      { labelKey: 'ui.col.complaint_number', value: c.complaintNumber, icon: 'pi-file' },
+      { labelKey: 'ui.col.complainant_name', value: c.complainantName, icon: 'pi-user', tone: 'owner' },
+      { labelKey: 'ui.col.entity_name', value: c.entityName, icon: 'pi-building' },
+      { labelKey: 'ui.col.status', value: c.status, kind: 'status', icon: 'pi-flag' },
+      { labelKey: 'ui.col.category', value: c.category, icon: 'pi-tag' },
+      {
+        labelKey: 'ui.col.sla_remaining',
+        value: `${c.slaBreachHours} hrs`,
+        kind: 'sla',
+        icon: 'pi-clock',
+        severity: c.slaBreachHours < 24 ? 'danger' : c.slaBreachHours < 48 ? 'warn' : 'ok'
+      }
+    ];
+  });
 
   ngOnInit() {
     const stored = sessionStorage.getItem('rbio_user');

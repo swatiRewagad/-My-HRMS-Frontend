@@ -14,7 +14,14 @@ export type TaskGridCellKind =
   | 'status'
   /** An ageing/SLA value rendered as a green/amber/red chip. */
   | 'ageing'
-  /** A date, formatted for the active locale. */
+  /**
+   * A priority value rendered as a coloured dot beside its label.
+   *
+   * Every grid that shows priority renders exactly this, and four of them re-declared the dot's colours
+   * locally with different palettes — so HIGH was red in one queue and orange in the next.
+   */
+  | 'priority'
+  /** A date, rendered dd/mm/yyyy. Also sorted and filtered as an instant, not as the rendered text. */
   | 'date'
   /**
    * Rendered by a caller-supplied template rather than by the grid.

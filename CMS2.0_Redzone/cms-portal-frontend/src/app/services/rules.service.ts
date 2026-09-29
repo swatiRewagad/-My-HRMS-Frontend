@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface RuleCategory {
   id: number;
@@ -87,7 +88,7 @@ interface ApiResponse<T> {
 @Injectable({ providedIn: 'root' })
 export class RulesService {
 
-  private baseUrl = 'http://localhost:8082/api/v1/rules';
+  private baseUrl = `${environment.apiBaseUrl}/api/v1/rules`;
 
   constructor(private http: HttpClient) {}
 

@@ -17,12 +17,15 @@ import { RbioAddEntityComponent } from '../../rbio/rbio-add-entity/rbio-add-enti
 import { RbioLegalCaseComponent } from '../../rbio/rbio-legal-case/rbio-legal-case.component';
 import { RbioForwardRegulatoryComponent } from '../../rbio/rbio-forward-regulatory/rbio-forward-regulatory.component';
 import { RbioActionOverrideHistoryComponent } from '../../rbio/rbio-action-override-history/rbio-action-override-history.component';
+import { WorkflowTimelineComponent } from '../../shared/workflow-timeline/workflow-timeline.component';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })
@@ -85,8 +88,6 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   // Sliding panels
   showSimilarPanel = signal(false);
   showHistoryPanel = signal(false);
-  /** Comments start hidden: the trail is read for the sequence of actions, not the prose. */
-  hideHistoryComments = signal(true);
   loadingSimilarCases = signal(false);
   similarCases = signal<any[]>([]);
 
@@ -282,10 +283,6 @@ export class TaskActionComponent implements OnInit, OnDestroy {
 
   toggleHistoryPanel() {
     this.showHistoryPanel.set(!this.showHistoryPanel());
-  }
-
-  toggleHistoryComments() {
-    this.hideHistoryComments.set(!this.hideHistoryComments());
   }
 
   loadSimilarCases() {
@@ -785,6 +782,25 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     const status = (this.complaint()?.status || '').toLowerCase();
     return ['resolved', 'closed', 'rejected', 'withdrawn', 'adjudicated', 'conciliated'].includes(status);
   }
+
+  /**
+   * The strip's facts, as data for the shared app-complaint-summary.
+   *
+   * Status now goes through the shared badge. This screen previously printed {@code complaint().status}
+   * raw, so the same complaint read "IN_PROGRESS" here and "Under Examination" on the dashboard that
+   * linked to it.
+   */
+  readonly summaryItems = computed<ComplaintSummaryItem[]>(() => {
+    const c = this.complaint();
+    if (!c) return [];
+    return [
+      { labelKey: 'ui.col.complaint_id', value: c.complaintId || c.id, icon: 'pi-id-card' },
+      { labelKey: 'ui.col.complaint_number', value: c.complaintNumber, icon: 'pi-file' },
+      { labelKey: 'ui.col.status', value: c.status, kind: 'status', icon: 'pi-flag' },
+      { labelKey: 'ui.col.priority', value: c.priority, icon: 'pi-tag' },
+      { labelKey: 'ui.col.assigned_officer', value: c.assignedTo || 'Unassigned', icon: 'pi-user', tone: 'owner' }
+    ];
+  });
 
   goBack() {
     const dept = this.auth.currentUser()?.department?.toLowerCase() || 'rbio';

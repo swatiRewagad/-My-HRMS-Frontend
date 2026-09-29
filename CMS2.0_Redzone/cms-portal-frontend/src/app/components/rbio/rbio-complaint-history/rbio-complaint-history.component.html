@@ -1,4 +1,7 @@
-<div class="history-panel">
+<!-- `.rbio-history`, not `.history-panel`: that class names the fixed slide-in panel on the staff task
+     screen, and having one selector mean both a slide-in and an inline tab body is how these two trails
+     drifted apart in the first place. -->
+<div class="rbio-history">
 
   <div class="history-header">
     <h3 class="section-title">{{ 'complaint.history.section_title' | translate }}</h3>
@@ -23,64 +26,10 @@
   }
 
   @if (!loading() && !error()) {
-    <ol class="timeline">
-      @for (entry of visibleEntries(); track entry.id) {
-        <li class="timeline-entry" [class.automatic]="entry.eventSource === 'AUTOMATIC'">
-          <div class="entry-head">
-            <span class="entry-action">{{ actionKey(entry.action) | translate }}</span>
-            <span class="entry-time">{{ entry.performedAt | date:'dd MMM yyyy HH:mm' }}</span>
-          </div>
-
-          <div class="entry-meta">
-            @if (entry.performedBy) {
-              <span class="entry-actor">
-                {{ 'complaint.history.by' | translate }} {{ entry.performedBy }}
-                @if (entry.performedByRole) { <em>({{ entry.performedByRole }})</em> }
-              </span>
-            }
-            @if (entry.eventSource === 'AUTOMATIC') {
-              <span class="entry-badge">{{ 'complaint.history.automatic' | translate }}</span>
-            }
-          </div>
-
-          @if (entry.fromStatus || entry.toStatus) {
-            <div class="entry-status">
-              {{ entry.fromStatus || '—' }} &rarr; {{ entry.toStatus || '—' }}
-            </div>
-          }
-
-          <!-- UST596: a reassignment must show BOTH the previous and the new owner. -->
-          @if (hasOwnerChange(entry)) {
-            <div class="entry-change">
-              <span class="change-field">{{ entry.fieldName }}:</span>
-              <span class="change-old">{{ entry.oldValue || ('complaint.history.none' | translate) }}</span>
-              <span class="change-arrow">&rarr;</span>
-              <span class="change-new">{{ entry.newValue || ('complaint.history.none' | translate) }}</span>
-            </div>
-          }
-
-          <!-- UST596: closure events carry the clause they were made under. -->
-          @if (entry.closureClause) {
-            <div class="entry-clause">
-              {{ 'complaint.history.closure_clause' | translate }}: <strong>{{ entry.closureClause }}</strong>
-            </div>
-          }
-
-          <!-- UST596: routing/transfer events carry the destination office. -->
-          @if (entry.destinationOffice) {
-            <div class="entry-destination">
-              {{ 'complaint.history.destination_office' | translate }}:
-              <strong>{{ entry.destinationOffice }}</strong>
-            </div>
-          }
-
-          @if (entry.remarks) {
-            <div class="entry-remarks">{{ entry.remarks }}</div>
-          }
-        </li>
-      } @empty {
-        <li class="empty-state">{{ 'complaint.history.empty' | translate }}</li>
-      }
-    </ol>
+    <app-workflow-timeline
+      mode="history"
+      [entries]="visibleEntries()"
+      [labelFor]="translateAction"
+      [emptyText]="'complaint.history.empty' | translate" />
   }
 </div>

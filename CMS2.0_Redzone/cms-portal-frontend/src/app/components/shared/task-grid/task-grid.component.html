@@ -14,6 +14,10 @@
                (input)="setSearch($any($event.target).value)" />
       </label>
 
+      @if (headerActions()) {
+        <ng-container [ngTemplateOutlet]="headerActions()!"></ng-container>
+      }
+
       @for (action of visibleActions(); track action.labelKey) {
         <button type="button"
                 class="btn"
@@ -38,19 +42,6 @@
       </button>
     </div>
   </div>
-
-  @if (showColumnChooser()) {
-    <div class="column-chooser" data-testid="task-grid-column-chooser">
-      @for (col of columns(); track col.key) {
-        <label class="column-option">
-          <input type="checkbox"
-                 [checked]="!hiddenKeys().has(col.key)"
-                 (change)="toggleColumn(col.key)" />
-          <span>{{ col.labelKey | translate }}</span>
-        </label>
-      }
-    </div>
-  }
 
   @if (loading()) {
     <div class="ui-loading" data-testid="task-grid-loading">
@@ -143,6 +134,12 @@
                     @case ('ageing') {
                       <span class="ageing-badge" [class]="severityClass(row, col)">{{ text(row, col) }}</span>
                     }
+                    @case ('priority') {
+                      <span class="priority-dot"
+                            [attr.data-priority]="text(row, col).toUpperCase()"
+                            aria-hidden="true"></span>
+                      {{ text(row, col) }}
+                    }
                     @case ('custom') {
                       @if (templateFor(col)) {
                         <ng-container [ngTemplateOutlet]="templateFor(col)!"
@@ -200,6 +197,18 @@
                 (click)="goToPage(page() - 1)">
           {{ 'ui.common.previous' | translate }}
         </button>
+        <!--
+          Numbered jumps, because prev/next alone turns "go to page 14" into thirteen clicks. Six of the
+          consolidated grids offered these, so omitting them would be a regression for their users.
+        -->
+        @for (p of pageNumbers(); track p) {
+          <button type="button"
+                  class="page-btn"
+                  data-testid="task-grid-page"
+                  [class.active]="p === page()"
+                  [attr.aria-current]="p === page() ? 'page' : null"
+                  (click)="goToPage(p)">{{ p }}</button>
+        }
         <span class="page-indicator">
           {{ 'ui.common.page_of' | translate: pageParams() }}
         </span>
@@ -210,7 +219,82 @@
                 (click)="goToPage(page() + 1)">
           {{ 'ui.common.next' | translate }}
         </button>
+        @if (pageSizeOptions().length) {
+          <label class="page-size">
+            <span class="sr-only">{{ 'ui.common.rows_per_page' | translate }}</span>
+            <select class="page-size-select"
+                    data-testid="task-grid-page-size"
+                    [attr.aria-label]="'ui.common.rows_per_page' | translate"
+                    [value]="activePageSize()"
+                    (change)="setPageSize(+$any($event.target).value)">
+              @for (size of pageSizeOptions(); track size) {
+                <option [value]="size">{{ size }}</option>
+              }
+            </select>
+          </label>
+        }
       </div>
     </div>
   }
 </div>
+
+<!--
+  The column chooser is a MODAL, not the inline strip it used to be.
+  Four of the five grids being consolidated (RBIO tasks, RBIO home, CRPC DEO, CRPC reviewer) present it
+  as a dialog with a search box over the column names, because these queues carry eleven to thirteen
+  columns and an inline strip of that many checkboxes is unusable. Only CEPC used the strip, so the
+  dialog is the majority shape and the one the RBIO E2E contract already asserts.
+-->
+@if (showColumnChooser()) {
+  <div class="modal-overlay" (click)="showColumnChooser.set(false)">
+    <div class="modal-dialog column-dialog"
+         role="dialog"
+         aria-modal="true"
+         data-testid="task-grid-column-chooser"
+         (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        <i class="pi pi-th-large" aria-hidden="true"></i>
+        {{ 'ui.grid.choose_columns' | translate }}
+        <button type="button"
+                class="modal-close"
+                [attr.aria-label]="'ui.common.close' | translate"
+                (click)="showColumnChooser.set(false)">&times;</button>
+      </div>
+      <p class="modal-subtitle">{{ 'ui.grid.choose_columns_hint' | translate }}</p>
+      <input type="text"
+             class="column-search"
+             data-testid="task-grid-column-search"
+             [attr.placeholder]="'ui.grid.search_column' | translate"
+             [attr.aria-label]="'ui.grid.search_column' | translate"
+             [value]="columnChooserSearch()"
+             (input)="columnChooserSearch.set($any($event.target).value)" />
+      <div class="column-list">
+        @for (col of chooserColumns(); track col.key) {
+          <label class="column-option">
+            <input type="checkbox"
+                   [checked]="columnShown(col.key)"
+                   (change)="toggleColumn(col.key)" />
+            <span>{{ col.labelKey | translate }}</span>
+          </label>
+        } @empty {
+          <p class="column-empty" data-testid="task-grid-column-search-empty">
+            {{ 'ui.grid.no_columns_match' | translate }}
+          </p>
+        }
+      </div>
+      <div class="modal-actions">
+        <!--
+          Both buttons only dismiss. The checkboxes apply immediately, so a Cancel that reverted them
+          would need a snapshot the old dialogs never took — theirs did not revert either, it just said
+          "Cancel". Kept as two buttons because the RBIO contract asserts Cancel closes the dialog.
+        -->
+        <button type="button" class="btn btn-outline" (click)="showColumnChooser.set(false)">
+          {{ 'ui.common.cancel' | translate }}
+        </button>
+        <button type="button" class="btn btn-primary" (click)="showColumnChooser.set(false)">
+          {{ 'ui.common.save' | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

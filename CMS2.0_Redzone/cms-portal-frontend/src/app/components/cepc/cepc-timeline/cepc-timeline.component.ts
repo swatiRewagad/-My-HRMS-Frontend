@@ -1,39 +1,45 @@
 import { Component, Input, OnInit, OnDestroy, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
+import {
+  ComplaintCorrespondenceService, TimelineEntry
+} from '../../../services/complaint-correspondence.service';
+import { WorkflowTimelineComponent } from '../../shared/workflow-timeline/workflow-timeline.component';
 
-interface TimelineEntry {
-  action: string;
-  fromStatus: string;
-  toStatus: string;
-  timestamp: string;
-  remarks: string;
-  performedBy?: string;
-  documents?: { id: string; name: string; url?: string }[];
-}
-
+/**
+ * The CEPC complaint screen's audit trail.
+ *
+ * <p>WAS PERMANENTLY EMPTY. It fetched {@code /api/v1/complaints/{n}/timeline}, which does not exist —
+ * the only timeline route is {@code /api/complaints/{id}/timeline} on the legacy controller, keyed by id
+ * not number. The 404 was swallowed by {@code error: () => this.entries.set([])}, so every complaint in
+ * the system rendered "No timeline entries yet." indistinguishably from one with no history.
+ *
+ * <p>Now reads {@code /{complaintNumber}/history}, the canonical feed, which additionally carries
+ * {@code performedBy}/{@code performedByRole} — the acting officer that the old hardcoded shape had no
+ * slot for.
+ *
+ * <p>Rendering is delegated to app-workflow-timeline so this screen cannot drift from the staff screen's
+ * trail again; the English action-label map that used to live here was one of the ways it had.
+ */
 @Component({
   selector: 'app-cepc-timeline',
   standalone: true,
-  imports: [CommonModule],
+  imports: [WorkflowTimelineComponent],
   templateUrl: './cepc-timeline.component.html',
   styleUrl: './cepc-timeline.component.scss'
 })
 export class CepcTimelineComponent implements OnInit, OnDestroy {
   @Input() complaintNumber: string = '';
 
-  private http = inject(HttpClient);
+  private service = inject(ComplaintCorrespondenceService);
   private refreshInterval: any = null;
 
   entries = signal<TimelineEntry[]>([]);
   loading = signal(true);
-  expandedIndex = signal<number | null>(null);
+  /** A failed load is reported, never rendered as an empty trail. */
+  error = signal(false);
 
   ngOnInit() {
     if (this.complaintNumber) {
       this.loadTimeline();
-      // Auto-refresh every 30 seconds
       this.refreshInterval = setInterval(() => this.loadTimeline(), 30000);
     }
   }
@@ -45,68 +51,16 @@ export class CepcTimelineComponent implements OnInit, OnDestroy {
   }
 
   loadTimeline() {
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${this.complaintNumber}/timeline`).subscribe({
-      next: (res) => {
-        this.entries.set(res?.data || []);
+    this.service.getHistory(this.complaintNumber).subscribe({
+      next: rows => {
+        this.entries.set(rows);
+        this.error.set(false);
         this.loading.set(false);
       },
       error: () => {
-        this.entries.set([]);
+        this.error.set(true);
         this.loading.set(false);
       }
     });
-  }
-
-  toggleExpand(index: number) {
-    this.expandedIndex.set(this.expandedIndex() === index ? null : index);
-  }
-
-  getActionIcon(action: string): string {
-    const icons: Record<string, string> = {
-      'ACCEPT': '\u2705',
-      'SUBMIT_FOR_REVIEW': '\u{1F4E4}',
-      'APPROVE_REVIEW': '\u2714\uFE0F',
-      'SEND_BACK_DO': '\u21A9\uFE0F',
-      'SEND_BACK_REVIEWER': '\u21A9\uFE0F',
-      'SEND_BACK_INCHARGE': '\u21A9\uFE0F',
-      'CLOSE_COMPLAINT': '\u{1F512}',
-      'ESCALATE': '\u26A0\uFE0F',
-      'REASSIGN': '\u{1F501}',
-      'REQUEST_INFO': '\u2753',
-      'INFO_RECEIVED': '\u{1F4E5}',
-      'FORWARD_DEPT': '\u27A1\uFE0F',
-      'FORWARD_TO_CONTACT': '\u{1F4E8}',
-      'CONTACT_RESPONSE': '\u{1F4AC}',
-      'REOPEN': '\u{1F504}',
-      'CONCILIATION_SUCCESS': '\u{1F91D}',
-      'CONCILIATION_FAILED': '\u274C',
-    };
-    return icons[action] || '\u{1F4CB}';
-  }
-
-  getActionLabel(action: string): string {
-    const labels: Record<string, string> = {
-      'ACCEPT': 'Accepted & Started Examination',
-      'SUBMIT_FOR_REVIEW': 'Forwarded to Reviewer',
-      'APPROVE_REVIEW': 'Forwarded to In-Charge',
-      'APPROVE_CLOSURE': 'Approved for Closure',
-      'FORWARD_TO_CLOSING_AUTHORITY': 'Forwarded to Closing Authority',
-      'SEND_BACK_DO': 'Sent Back to Dealing Officer',
-      'SEND_BACK_REVIEWER': 'Sent Back to Reviewer',
-      'SEND_BACK_INCHARGE': 'Sent Back to In-Charge',
-      'CLOSE_COMPLAINT': 'Complaint Closed',
-      'ESCALATE': 'Escalated',
-      'REASSIGN': 'Reassigned',
-      'REQUEST_INFO': 'Information Requested',
-      'INFO_RECEIVED': 'Information Received',
-      'FORWARD_DEPT': 'Forwarded to Department',
-      'FORWARD_TO_CONTACT': 'Forwarded to Contact Person',
-      'CONTACT_RESPONSE': 'Contact Person Response',
-      'SCHEDULE_MEETING': 'Meeting Scheduled',
-      'REOPEN': 'Complaint Reopened',
-      'CONCILIATION_SUCCESS': 'Conciliation Settled',
-      'CONCILIATION_FAILED': 'Conciliation Failed',
-    };
-    return labels[action] || action;
   }
 }

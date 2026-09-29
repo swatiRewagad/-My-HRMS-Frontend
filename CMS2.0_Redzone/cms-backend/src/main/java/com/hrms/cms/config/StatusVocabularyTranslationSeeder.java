@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -28,6 +29,16 @@ import java.util.Map;
  *
  * Keyed {@code status.<lowercased status value>} to match what StatusBadgeComponent derives when no
  * explicit labelKey is supplied.
+ *
+ * <p><b>This seeder OVERWRITES existing {@code status.*} values instead of yielding to them.</b> Seven
+ * of these codes — pending, in_progress, resolved, closed, assigned, under_review, escalated — are also
+ * written by TranslationDataInitializer (@Order(2)) and by data/translations.csv with generic wording.
+ * Running at @Order(8) with the usual {@code existsByCode} skip meant the generic text always won: the
+ * badge rendered "In Progress" while CEPC's own dashboard, filters and KPI cards said "Under
+ * Examination" for that same status, so one complaint showed two different labels on two screens. The
+ * whole point of UST847 is that one status has one label, and that cannot hold if the authoritative
+ * vocabulary defers to whoever inserted the row first. No admin UI writes translations, so every row
+ * here is seeder-derived and there is no curated human edit to clobber.
  */
 @Component
 @Order(8)
@@ -529,26 +540,42 @@ public class StatusVocabularyTranslationSeeder implements CommandLineRunner {
         return m;
     }
 
+    /**
+     * Upserts, unlike the other seeders' insert-if-absent. See the class doc: an existing row here is a
+     * generic label written by an earlier-ordered seeder, and leaving it in place is what let one status
+     * carry two labels. Also forces {@code module} to "status", since the badge's per-module fetch
+     * cannot see a key the generic initializer filed elsewhere.
+     */
     private void seed(String code, String defaultValue) {
-        if (keyRepo.existsByCode(code)) return;
-        TranslationKey key = new TranslationKey();
+        TranslationKey key = keyRepo.findByCode(code).orElseGet(TranslationKey::new);
         key.setCode(code);
         key.setModule("status");
         key.setDefaultValue(defaultValue);
         keyRepo.save(key);
+        putTranslation(key, "en", defaultValue);
     }
 
     private void seedLocale(String locale, Map<String, String> values) {
         for (Map.Entry<String, String> entry : values.entrySet()) {
-            keyRepo.findByCode(entry.getKey()).ifPresent(key -> {
-                if (!translationRepo.existsByTranslationKeyAndLocale(key, locale)) {
-                    Translation t = new Translation();
-                    t.setTranslationKey(key);
-                    t.setLocale(locale);
-                    t.setValue(entry.getValue());
-                    translationRepo.save(t);
-                }
-            });
+            keyRepo.findByCode(entry.getKey())
+                .ifPresent(key -> putTranslation(key, locale, entry.getValue()));
+        }
+    }
+
+    private void putTranslation(TranslationKey key, String locale, String value) {
+        List<Translation> existing = translationRepo.findByKeyIdAndLocale(key.getId(), locale);
+        if (existing.isEmpty()) {
+            Translation t = new Translation();
+            t.setTranslationKey(key);
+            t.setLocale(locale);
+            t.setValue(value);
+            translationRepo.save(t);
+            return;
+        }
+        Translation t = existing.get(0);
+        if (!value.equals(t.getValue())) {
+            t.setValue(value);
+            translationRepo.save(t);
         }
     }
 }

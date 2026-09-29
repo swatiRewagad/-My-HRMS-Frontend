@@ -196,23 +196,39 @@ test.describe.serial('CEPC Contact Person Workflow', () => {
     }
   );
 
-  test.fixme(
-    'the Contact Person response is shown in the complaint audit trail',
-    async () => {
-      // FIXME — PRODUCTION DEFECT: the CEPC audit-trail panel is permanently empty. CepcTimelineComponent
-      // fetches GET /api/v1/complaints/{n}/timeline (cepc-timeline.component.ts:48), and that endpoint
-      // DOES NOT EXIST — verified: it returns 404 "The requested resource does not exist." The component
-      // swallows the error (`error: () => this.entries.set([])`, line 54), so the panel silently renders
-      // "No timeline entries yet." for every complaint, forever.
-      //
-      // The timeline data itself is present — it is embedded in GET /api/v1/complaints/{n} as
-      // `data.timeline`, which is what the assertions in this file use — so this is purely the CEPC
-      // screen calling a URL that was never built.
-      //
-      // The old test hid this behind `if (await timeline.isVisible()) { if (await contactEntry.isVisible())
-      // { await expect(contactEntry).toBeVisible() } }` — a tautology (asserting an element is visible
-      // immediately after checking it is visible) nested inside two guards, so it could never fail.
-      // Un-fixme once /timeline exists or the component reads the embedded timeline.
-    }
-  );
+  // WAS test.fixme. The CEPC audit-trail panel was permanently empty: CepcTimelineComponent fetched
+  // GET /api/v1/complaints/{n}/timeline, which does not exist (the only timeline route is
+  // /api/complaints/{id}/timeline on the legacy controller, keyed by id not number) and swallowed the
+  // 404 via `error: () => this.entries.set([])`. Every complaint rendered "No timeline entries yet."
+  // indistinguishably from one with no history. It now reads /{n}/history — the canonical feed — through
+  // app-workflow-timeline. Asserted with no `if (isVisible())` guard: the previous version of this test
+  // was a tautology nested inside two such guards and so could never fail.
+  test('the Contact Person response is shown in the complaint audit trail', async ({ page, request }) => {
+    test.skip(!keycloakUp, 'Keycloak is not available');
+
+    // On the server first, so a UI failure cannot be excused as missing data.
+    const complaint = await fetchComplaint(request, complaintNumber);
+    const entry = (complaint.timeline as any[]).find(e => e.action === 'CONTACT_RESPONSE');
+    expect(entry, 'the contact-person response must be on the server audit trail').toBeTruthy();
+
+    await loginAsCepcRole(page, 'DO', `/cepc/complaint/${complaintNumber}`);
+    await page.waitForSelector('.cepc-detail .detail-layout', { timeout: 15000 });
+
+    const trail = page.locator('app-cepc-timeline');
+    await expect(trail, 'the complaint screen must carry an audit trail').toBeVisible({ timeout: 10000 });
+
+    // Rows must render at all — the assertion the dead endpoint used to make impossible.
+    await expect
+      .poll(async () => trail.locator('.timeline-entry').count(), {
+        message: 'the audit-trail panel must render the rows the server returned',
+        timeout: 15000
+      })
+      .toBeGreaterThan(0);
+
+    const actions = (await trail.locator('.timeline-action').allTextContents()).map(t => t.trim());
+    expect(actions, 'the contact-person response must appear in the rendered audit trail')
+      .toContain('CONTACT_RESPONSE');
+
+    await logout(page);
+  });
 });

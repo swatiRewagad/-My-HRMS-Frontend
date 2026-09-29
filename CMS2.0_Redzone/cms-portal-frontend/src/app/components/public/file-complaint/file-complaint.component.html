@@ -102,20 +102,6 @@
             }
           </div>
 
-          <div class="entity-select-wrapper">
-            <select class="form-input entity-select-dropdown"
-                    [ngModel]="eligibilityAnswers[currentQuestionKey]"
-                    (ngModelChange)="selectEntityFromDropdown($event)"
-                    name="entitySelect">
-              <option value="" disabled selected>Select Regulated Entity Name</option>
-              @for (opt of entitySelectOptions; track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
-              }
-              @for (opt of nonCoveredEntityOptions; track opt.value) {
-                <option [value]="opt.value">{{ opt.label }}</option>
-              }
-            </select>
-          </div>
         }
 
         @if (currentQuestion?.type === 'radio') {

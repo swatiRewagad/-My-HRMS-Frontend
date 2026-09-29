@@ -70,6 +70,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "Appeals");
         m.put("ui.grid.select_all", "Select all rows on this page");
         m.put("ui.grid.select_row", "Select this row");
+        m.put("ui.grid.choose_columns", "Choose columns to display");
+        m.put("ui.grid.choose_columns_hint", "Select and manage visible columns");
+        m.put("ui.grid.search_column", "Search column name");
+        m.put("ui.grid.no_columns_match", "No column matches that name.");
 
         // ═══ Shared column headers ═══
         // Deliberately generic: the same complaint field must read the same way in every module's grid.
@@ -105,6 +109,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "अपील");
         m.put("ui.grid.select_all", "इस पृष्ठ की सभी पंक्तियाँ चुनें");
         m.put("ui.grid.select_row", "यह पंक्ति चुनें");
+        m.put("ui.grid.choose_columns", "प्रदर्शित करने के लिए स्तंभ चुनें");
+        m.put("ui.grid.choose_columns_hint", "दृश्य स्तंभ चुनें और प्रबंधित करें");
+        m.put("ui.grid.search_column", "स्तंभ का नाम खोजें");
+        m.put("ui.grid.no_columns_match", "उस नाम से कोई स्तंभ मेल नहीं खाता।");
         m.put("ui.col.complaint_number", "शिकायत संख्या");
         m.put("ui.col.complaint_id", "शिकायत आईडी");
         m.put("ui.col.appeal_number", "अपील संख्या");
@@ -137,6 +145,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "अपील");
         m.put("ui.grid.select_all", "या पृष्ठावरील सर्व ओळी निवडा");
         m.put("ui.grid.select_row", "ही ओळ निवडा");
+        m.put("ui.grid.choose_columns", "दर्शवण्यासाठी स्तंभ निवडा");
+        m.put("ui.grid.choose_columns_hint", "दृश्य स्तंभ निवडा आणि व्यवस्थापित करा");
+        m.put("ui.grid.search_column", "स्तंभाचे नाव शोधा");
+        m.put("ui.grid.no_columns_match", "त्या नावाशी जुळणारा स्तंभ नाही.");
         m.put("ui.col.complaint_number", "तक्रार क्रमांक");
         m.put("ui.col.complaint_id", "तक्रार आयडी");
         m.put("ui.col.appeal_number", "अपील क्रमांक");
@@ -169,6 +181,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "আপিল");
         m.put("ui.grid.select_all", "এই পৃষ্ঠার সব সারি নির্বাচন করুন");
         m.put("ui.grid.select_row", "এই সারি নির্বাচন করুন");
+        m.put("ui.grid.choose_columns", "প্রদর্শনের জন্য কলাম নির্বাচন করুন");
+        m.put("ui.grid.choose_columns_hint", "দৃশ্যমান কলাম নির্বাচন ও পরিচালনা করুন");
+        m.put("ui.grid.search_column", "কলামের নাম অনুসন্ধান করুন");
+        m.put("ui.grid.no_columns_match", "সেই নামের সঙ্গে কোনও কলাম মেলে না।");
         m.put("ui.col.complaint_number", "অভিযোগ নম্বর");
         m.put("ui.col.complaint_id", "অভিযোগ আইডি");
         m.put("ui.col.appeal_number", "আপিল নম্বর");
@@ -201,6 +217,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "అప్పీళ్లు");
         m.put("ui.grid.select_all", "ఈ పేజీలోని అన్ని వరుసలను ఎంచుకోండి");
         m.put("ui.grid.select_row", "ఈ వరుసను ఎంచుకోండి");
+        m.put("ui.grid.choose_columns", "ప్రదర్శించాల్సిన నిలువు వరుసలను ఎంచుకోండి");
+        m.put("ui.grid.choose_columns_hint", "కనిపించే నిలువు వరుసలను ఎంచుకోండి మరియు నిర్వహించండి");
+        m.put("ui.grid.search_column", "నిలువు వరుస పేరును వెతకండి");
+        m.put("ui.grid.no_columns_match", "ఆ పేరుతో ఏ నిలువు వరుస సరిపోలలేదు.");
         m.put("ui.col.complaint_number", "ఫిర్యాదు సంఖ్య");
         m.put("ui.col.complaint_id", "ఫిర్యాదు ఐడీ");
         m.put("ui.col.appeal_number", "అప్పీలు సంఖ్య");
@@ -233,6 +253,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "மேல்முறையீடுகள்");
         m.put("ui.grid.select_all", "இந்தப் பக்கத்தில் உள்ள அனைத்து வரிசைகளையும் தேர்ந்தெடு");
         m.put("ui.grid.select_row", "இந்த வரிசையைத் தேர்ந்தெடு");
+        m.put("ui.grid.choose_columns", "காட்ட வேண்டிய நிரல்களைத் தேர்ந்தெடுக்கவும்");
+        m.put("ui.grid.choose_columns_hint", "தெரியும் நிரல்களைத் தேர்ந்தெடுத்து நிர்வகிக்கவும்");
+        m.put("ui.grid.search_column", "நிரல் பெயரைத் தேடுக");
+        m.put("ui.grid.no_columns_match", "அந்தப் பெயருடன் எந்த நிரலும் பொருந்தவில்லை.");
         m.put("ui.col.complaint_number", "புகார் எண்");
         m.put("ui.col.complaint_id", "புகார் ஐடி");
         m.put("ui.col.appeal_number", "மேல்முறையீட்டு எண்");
@@ -265,6 +289,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "અપીલો");
         m.put("ui.grid.select_all", "આ પૃષ્ઠની બધી પંક્તિઓ પસંદ કરો");
         m.put("ui.grid.select_row", "આ પંક્તિ પસંદ કરો");
+        m.put("ui.grid.choose_columns", "પ્રદર્શિત કરવા માટે કૉલમ પસંદ કરો");
+        m.put("ui.grid.choose_columns_hint", "દૃશ્યમાન કૉલમ પસંદ કરો અને સંચાલિત કરો");
+        m.put("ui.grid.search_column", "કૉલમનું નામ શોધો");
+        m.put("ui.grid.no_columns_match", "તે નામ સાથે કોઈ કૉલમ મેળ ખાતી નથી.");
         m.put("ui.col.complaint_number", "ફરિયાદ નંબર");
         m.put("ui.col.complaint_id", "ફરિયાદ આઈડી");
         m.put("ui.col.appeal_number", "અપીલ નંબર");
@@ -297,6 +325,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "اپیلیں");
         m.put("ui.grid.select_all", "اس صفحے کی تمام قطاریں منتخب کریں");
         m.put("ui.grid.select_row", "یہ قطار منتخب کریں");
+        m.put("ui.grid.choose_columns", "دکھانے کے لیے کالم منتخب کریں");
+        m.put("ui.grid.choose_columns_hint", "نظر آنے والے کالم منتخب اور منظم کریں");
+        m.put("ui.grid.search_column", "کالم کا نام تلاش کریں");
+        m.put("ui.grid.no_columns_match", "اس نام سے کوئی کالم مماثل نہیں ہے۔");
         m.put("ui.col.complaint_number", "شکایت نمبر");
         m.put("ui.col.complaint_id", "شکایت آئی ڈی");
         m.put("ui.col.appeal_number", "اپیل نمبر");
@@ -329,6 +361,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "ಮೇಲ್ಮನವಿಗಳು");
         m.put("ui.grid.select_all", "ಈ ಪುಟದ ಎಲ್ಲಾ ಸಾಲುಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ");
         m.put("ui.grid.select_row", "ಈ ಸಾಲನ್ನು ಆಯ್ಕೆಮಾಡಿ");
+        m.put("ui.grid.choose_columns", "ಪ್ರದರ್ಶಿಸಬೇಕಾದ ಕಾಲಮ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ");
+        m.put("ui.grid.choose_columns_hint", "ಗೋಚರ ಕಾಲಮ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ನಿರ್ವಹಿಸಿ");
+        m.put("ui.grid.search_column", "ಕಾಲಮ್ ಹೆಸರನ್ನು ಹುಡುಕಿ");
+        m.put("ui.grid.no_columns_match", "ಆ ಹೆಸರಿಗೆ ಯಾವುದೇ ಕಾಲಮ್ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ.");
         m.put("ui.col.complaint_number", "ದೂರು ಸಂಖ್ಯೆ");
         m.put("ui.col.complaint_id", "ದೂರು ಐಡಿ");
         m.put("ui.col.appeal_number", "ಮೇಲ್ಮನವಿ ಸಂಖ್ಯೆ");
@@ -361,6 +397,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "അപ്പീലുകൾ");
         m.put("ui.grid.select_all", "ഈ പേജിലെ എല്ലാ വരികളും തിരഞ്ഞെടുക്കുക");
         m.put("ui.grid.select_row", "ഈ വരി തിരഞ്ഞെടുക്കുക");
+        m.put("ui.grid.choose_columns", "പ്രദർശിപ്പിക്കേണ്ട കോളങ്ങൾ തിരഞ്ഞെടുക്കുക");
+        m.put("ui.grid.choose_columns_hint", "ദൃശ്യമായ കോളങ്ങൾ തിരഞ്ഞെടുത്ത് കൈകാര്യം ചെയ്യുക");
+        m.put("ui.grid.search_column", "കോളത്തിന്റെ പേര് തിരയുക");
+        m.put("ui.grid.no_columns_match", "ആ പേരിനോട് ഒരു കോളവും പൊരുത്തപ്പെടുന്നില്ല.");
         m.put("ui.col.complaint_number", "പരാതി നമ്പർ");
         m.put("ui.col.complaint_id", "പരാതി ഐഡി");
         m.put("ui.col.appeal_number", "അപ്പീൽ നമ്പർ");
@@ -393,6 +433,10 @@ public class TaskGridTranslationSeeder implements CommandLineRunner {
         m.put("ui.grid.appeals", "ਅਪੀਲਾਂ");
         m.put("ui.grid.select_all", "ਇਸ ਪੰਨੇ ਦੀਆਂ ਸਾਰੀਆਂ ਕਤਾਰਾਂ ਚੁਣੋ");
         m.put("ui.grid.select_row", "ਇਹ ਕਤਾਰ ਚੁਣੋ");
+        m.put("ui.grid.choose_columns", "ਦਿਖਾਉਣ ਲਈ ਕਾਲਮ ਚੁਣੋ");
+        m.put("ui.grid.choose_columns_hint", "ਦਿਖਾਈ ਦੇਣ ਵਾਲੇ ਕਾਲਮ ਚੁਣੋ ਅਤੇ ਪ੍ਰਬੰਧਿਤ ਕਰੋ");
+        m.put("ui.grid.search_column", "ਕਾਲਮ ਦਾ ਨਾਮ ਖੋਜੋ");
+        m.put("ui.grid.no_columns_match", "ਉਸ ਨਾਮ ਨਾਲ ਕੋਈ ਕਾਲਮ ਮੇਲ ਨਹੀਂ ਖਾਂਦਾ।");
         m.put("ui.col.complaint_number", "ਸ਼ਿਕਾਇਤ ਨੰਬਰ");
         m.put("ui.col.complaint_id", "ਸ਼ਿਕਾਇਤ ਆਈਡੀ");
         m.put("ui.col.appeal_number", "ਅਪੀਲ ਨੰਬਰ");

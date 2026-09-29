@@ -189,8 +189,14 @@ export class HelpDeskComponent implements OnInit {
   }
 
   private loadRecent(): void {
-    this.http.get<any>(`${this.baseUrl}?modeOfReceipt=PHONE&size=10`).subscribe(res => {
-      this.recentComplaints.set(res.content || res || []);
+    this.http.get<any>(`${this.baseUrl}?modeOfReceipt=PHONE&size=10`).subscribe({
+      next: (res) => {
+        // Only ever hand the template an array: res.content may be absent and res itself is an
+        // envelope object, which @for cannot iterate.
+        const list = res?.data?.content ?? res?.content ?? res;
+        this.recentComplaints.set(Array.isArray(list) ? list : []);
+      },
+      error: () => this.recentComplaints.set([])
     });
   }
 

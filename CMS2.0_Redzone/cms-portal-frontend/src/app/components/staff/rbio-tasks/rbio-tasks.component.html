@@ -2,7 +2,7 @@
   <!-- Header Bar -->
   <header class="cms-header">
     <div class="header-left">
-      <img src="assets/rbi-logo.png" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
       <span class="cms-title">CMS</span>
       <span class="cms-subtitle">RBIO - Complaint Management</span>
     </div>
@@ -14,7 +14,10 @@
           <span class="user-role">RBIO Officer</span>
         </div>
       }
-      <button class="btn-logout" (click)="logout()"><i class="pi pi-sign-out"></i></button>
+      <!-- A literal, because ui.common.logout is not seeded and a missing key renders the key itself. -->
+      <button class="btn-logout" (click)="logout()" aria-label="Logout">
+        <i class="pi pi-sign-out" aria-hidden="true"></i>
+      </button>
     </div>
   </header>
 
@@ -23,11 +26,11 @@
     <!-- Left Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-item active">
-        <i class="pi pi-list"></i>
+        <i class="pi pi-list" aria-hidden="true"></i>
         <span>RBIO Complaints</span>
       </div>
       <div class="sidebar-item">
-        <i class="pi pi-chart-bar"></i>
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
         <span>Dashboard</span>
       </div>
     </aside>
@@ -38,7 +41,8 @@
         <h1>RBIO Complaints</h1>
         <div class="header-actions">
           <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
-          <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+          <label class="sr-only" for="rbio-queue">{{ 'rbio.grid.filter_queue' | translate }}</label>
+          <select id="rbio-queue" class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
             <option value="">All Complaints</option>
             <option value="assigned">Assigned</option>
             <option value="in_progress">In Progress</option>
@@ -47,33 +51,36 @@
             <option value="rejected">Rejected</option>
           </select>
           <button class="create-btn" (click)="navigateToCreateComplaint()">
-            <i class="pi pi-plus"></i> Create Complaint
+            <i class="pi pi-plus" aria-hidden="true"></i> Create Complaint
           </button>
         </div>
       </div>
 
-      <!-- Stats Cards -->
+      <!--
+        KPI cards. Clickable, and each one sets the queue filter it counts — a card that shows a number
+        the officer cannot act on is just decoration.
+      -->
       <div class="stats-bar">
-        <div class="stat-card" (click)="filterStatus.set('')">
+        <button type="button" class="stat-card" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
           <span class="stat-value">{{ stats().total }}</span>
           <span class="stat-label">Total Complaints</span>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('assigned')">
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'assigned'" (click)="filterStatus.set('assigned')">
           <span class="stat-value">{{ stats().assigned }}</span>
           <span class="stat-label">Assigned</span>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('in_progress')">
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
           <span class="stat-value">{{ stats().inProgress }}</span>
           <span class="stat-label">In Progress</span>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('escalated')">
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
           <span class="stat-value">{{ stats().escalated }}</span>
           <span class="stat-label">Escalated</span>
-        </div>
-        <div class="stat-card" (click)="filterStatus.set('resolved')">
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'resolved'" (click)="filterStatus.set('resolved')">
           <span class="stat-value">{{ stats().resolved }}</span>
           <span class="stat-label">Resolved</span>
-        </div>
+        </button>
       </div>
 
       <!-- Status Tabs -->
@@ -98,186 +105,94 @@
         </button>
       </div>
 
-      <!-- Complaints Table -->
-      <div class="table-section">
-        <div class="table-header-row">
-          <h3>Complaints</h3>
-          <div class="table-actions">
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterUnread()">
-                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Unread
-            </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
-                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Without Attachments
-            </label>
-            <label class="toggle-filter">
-              <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
-                <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
-                <span class="toggle-slider"></span>
-              </span>
-              Satisfies Rules
-            </label>
-            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
-              <i class="pi pi-cog"></i>
-            </button>
-          </div>
-        </div>
+      <!--
+        The three RBIO-specific toggles. Filters over THIS module's fields (visited state, attachments,
+        triage signal), not grid mechanics, so they stay here and reach the grid's own header bar through
+        its headerActions slot — otherwise this screen would carry a second row of controls above the one
+        the grid already renders.
+      -->
+      <ng-template #rbioToggles>
+        <label class="toggle-filter">
+          <span class="toggle-switch" [class.active]="filterUnread()">
+            <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Unread
+        </label>
+        <label class="toggle-filter">
+          <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+            <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Without Attachments
+        </label>
+        <label class="toggle-filter">
+          <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
+            <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Satisfies Rules
+        </label>
+      </ng-template>
 
-        @if (loading()) {
-          <div class="loading-overlay">
-            <div class="spinner"></div>
-            <span>Loading...</span>
-          </div>
-        }
+      <!--
+        A module-specific empty state. It distinguishes "your search matched nothing" from "this queue is
+        empty", which a generic "no records" would flatten — and an officer reading "no records" after a
+        search cannot tell whether their criteria were too narrow or their queue is genuinely clear.
+      -->
+      <ng-template #rbioEmpty>
+        <span class="empty-state">
+          @if (advSearchActive()) {
+            {{ 'rbio.search.no_results' | translate }}
+          } @else {
+            {{ 'rbio.grid.no_complaints' | translate }}
+          }
+        </span>
+      </ng-template>
 
-        <div class="table-wrapper">
-          <table class="data-grid">
-            <thead>
-              <tr>
-                <th class="checkbox-col">
-                  <input type="checkbox"
-                    [checked]="selectedIds().size === filteredTasks().length && filteredTasks().length > 0"
-                    (change)="toggleSelectAll()" />
-                </th>
-                @for (col of visibleColumns(); track col.key) {
-                  <th (click)="sortBy(col.key)">
-                    {{ col.label }}
-                    @if (sortColumn() === col.key) {
-                      <i class="pi" [class.pi-sort-amount-up]="sortDirection() === 'asc'" [class.pi-sort-amount-down]="sortDirection() === 'desc'"></i>
-                    }
-                  </th>
-                }
-              </tr>
-              <!-- Column Search Row -->
-              <tr class="filter-row">
-                <th></th>
-                @for (col of visibleColumns(); track col.key) {
-                  <th>
-                    <input type="text" class="col-search" placeholder="Search"
-                      [value]="columnFilters()[col.key] || ''" (input)="setColumnFilter(col.key, $any($event.target).value)" />
-                  </th>
-                }
-              </tr>
-            </thead>
-            <tbody>
-              @for (task of paginatedTasks(); track task.complaintNumber) {
-                <tr [class.selected]="selectedIds().has(task.complaintId)" [class.visited]="visitedIds().has(task.complaintId)" (click)="openTask(task)">
-                  <td class="checkbox-col" (click)="$event.stopPropagation()">
-                    <input type="checkbox"
-                      [checked]="selectedIds().has(task.complaintId)"
-                      (change)="toggleSelect(task.complaintId)" />
-                  </td>
-                  @for (col of visibleColumns(); track col.key) {
-                    <td [class]="'cell-' + col.key">
-                      @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="task.status?.toLowerCase()">{{ task.status }}</span>
-                      } @else if (col.key === 'priority') {
-                        <span class="priority-dot" [attr.data-priority]="task.priority?.toUpperCase()"></span> {{ task.priority }}
-                      } @else {
-                        {{ getCellValue(task, col.key) }}
-                      }
-                    </td>
-                  }
-                </tr>
-              } @empty {
-                <tr>
-                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
-                    @if (loadError()) {
-                      <!-- A failed load used to render as "No complaints found." An officer would read that
-                           as an empty queue and close the tab, so a 403 or an outage looked exactly like
-                           having no work. -->
-                      <span class="error-text">
-                        <i class="pi pi-exclamation-triangle"></i>
-                        Could not load your tasks. Please retry; if this persists, contact support.
-                      </span>
-                    } @else if (advSearchActive()) {
-                      No complaints match your search criteria.
-                    } @else {
-                      No complaints found.
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="pagination">
-          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredTasks().length }} entries</span>
-          <div class="page-controls">
-            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
-            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
-            @for (p of pageNumbers(); track p) {
-              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
-            }
-            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
-            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
-            <select class="page-size-select" [value]="pageSize()" (change)="changePageSize(+$any($event.target).value)">
-              <option [value]="10">10</option>
-              <option [value]="25">25</option>
-              <option [value]="50">50</option>
-            </select>
-          </div>
-        </div>
-      </div>
+      <app-task-grid
+        [rows]="filteredTasks()"
+        [columns]="gridColumns"
+        [titleKey]="'ui.grid.complaints'"
+        rowKey="complaintNumber"
+        [loading]="loading()"
+        [errorKey]="loadError()"
+        [retryable]="true"
+        [pageSize]="25"
+        [pageSizeOptions]="[10, 25, 50]"
+        [rowClass]="rowClass"
+        [headerActions]="rbioToggles"
+        [emptyState]="rbioEmpty"
+        (rowClick)="openTask($event)"
+        (retry)="loadTasks()">
+      </app-task-grid>
     </main>
   </div>
 </div>
 
-<!-- Column Selection Dialog -->
-@if (showColumnConfig()) {
-  <div class="modal-overlay" (click)="showColumnConfig.set(false)">
-    <div class="modal-dialog column-dialog" (click)="$event.stopPropagation()">
-      <div class="modal-title">
-        <i class="pi pi-th-large"></i> Choose columns to see in "Complaints" Table
-        <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
-      </div>
-      <p class="modal-subtitle">Select and manage visible columns</p>
-      <input type="text" class="column-search" placeholder="Search Column Name" [value]="columnSearchText()" (input)="columnSearchText.set($any($event.target).value)" />
-      <div class="column-list">
-        @for (col of filteredColumns(); track col.key) {
-          <label class="column-option">
-            <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
-            {{ col.label }}
-          </label>
-        }
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">Cancel</button>
-        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">Save</button>
-      </div>
-    </div>
-  </div>
-}
-
-<!-- Advanced Search Dialog -->
+<!--
+  Advanced Search. Eight RBIO criteria over RBIO's own fields, so it stays with this module rather than
+  becoming a generic feature of the shared grid.
+-->
 @if (showAdvancedSearch()) {
   <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
-    <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-dialog search-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
       <div class="modal-title">
         Advanced Search
-        <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
+        <button class="modal-close" [attr.aria-label]="'ui.common.close' | translate" (click)="showAdvancedSearch.set(false)">&times;</button>
       </div>
       <div class="search-grid">
         <div class="search-field">
-          <label>Complaint Number</label>
-          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+          <label for="adv-complaint-number">Complaint Number</label>
+          <input id="adv-complaint-number" type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Complaint Id</label>
-          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+          <label for="adv-complaint-id">Complaint Id</label>
+          <input id="adv-complaint-id" type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Status</label>
-          <select [(ngModel)]="advSearch.statusCode">
+          <label for="adv-status">Status</label>
+          <select id="adv-status" [(ngModel)]="advSearch.statusCode">
             <option value="">Select a Value</option>
             <option value="assigned">Assigned</option>
             <option value="in_progress">In Progress</option>
@@ -287,16 +202,16 @@
           </select>
         </div>
         <div class="search-field">
-          <label>Complainant Name</label>
-          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+          <label for="adv-complainant">Complainant Name</label>
+          <input id="adv-complainant" type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Entity Name</label>
-          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+          <label for="adv-entity">Entity Name</label>
+          <input id="adv-entity" type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Priority</label>
-          <select [(ngModel)]="advSearch.priority">
+          <label for="adv-priority">Priority</label>
+          <select id="adv-priority" [(ngModel)]="advSearch.priority">
             <option value="">Select a Value</option>
             <option value="HIGH">High</option>
             <option value="MEDIUM">Medium</option>
@@ -304,15 +219,21 @@
           </select>
         </div>
         <div class="search-field full-width">
-          <label>Subject</label>
-          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+          <label for="adv-subject">Subject</label>
+          <input id="adv-subject" type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
         </div>
         <div class="search-field">
-          <label>Assigned Officer</label>
-          <input type="text" [(ngModel)]="advSearch.assignedOfficer" placeholder="Enter a value" />
+          <label for="adv-officer">Assigned Officer</label>
+          <input id="adv-officer" type="text" [(ngModel)]="advSearch.assignedOfficer" placeholder="Enter a value" />
         </div>
       </div>
       <div class="modal-actions">
+        <!-- Clear, not just Cancel: an active search had no way off except reloading the page. -->
+        @if (advSearchActive()) {
+          <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">
+            {{ 'ui.common.clear_filters' | translate }}
+          </button>
+        }
         <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
         <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
       </div>

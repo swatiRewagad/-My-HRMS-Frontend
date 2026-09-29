@@ -555,23 +555,6 @@
   font-size: 13.5px; color: var(--text-secondary); margin: 0 0 20px; line-height: 1.5;
 }
 
-.entity-select-wrapper {
-  max-width: 500px;
-}
-
-.entity-select-dropdown {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  font-size: 14px;
-  color: var(--text-body);
-  background: var(--surface-card);
-  appearance: auto;
-  cursor: pointer;
-  &:focus { border-color: var(--citizen-accent); outline: none; }
-}
-
 .entity-select {
   max-width: 260px;
   padding: 10px 14px;

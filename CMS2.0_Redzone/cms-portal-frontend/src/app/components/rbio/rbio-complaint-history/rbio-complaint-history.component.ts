@@ -1,9 +1,10 @@
 import { Component, Input, OnInit, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslationService } from '../../../services/translation.service';
 import {
   ComplaintCorrespondenceService, TimelineEntry
 } from '../../../services/complaint-correspondence.service';
+import { WorkflowTimelineComponent } from '../../shared/workflow-timeline/workflow-timeline.component';
 
 /**
  * The complaint History tab: every status and milestone change, oldest first (UST594-596).
@@ -17,14 +18,14 @@ import {
  *
  * <p>Reads COMPLAINT_TIMELINE, where status changes have always been written.
  *
- * <p>A NEW component rather than reusing {@code cepc-timeline.component.ts}: that one hardcodes English
- * labels with no translate pipe, binds a {@code documents[]} field no endpoint returns, and has no slot
- * for the old/new owner, closure clause or destination office that UST596 requires.
+ * <p>The trail itself is rendered by app-workflow-timeline, which is also what the staff task screen and
+ * the CEPC audit panel now use. This component keeps only what is specific to the RBIO History TAB: the
+ * show-automatic filter, the load/error states, and the localised action labels it passes down.
  */
 @Component({
   selector: 'app-rbio-complaint-history',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [TranslatePipe, WorkflowTimelineComponent],
   templateUrl: './rbio-complaint-history.component.html',
   styleUrl: './rbio-complaint-history.component.scss'
 })
@@ -34,6 +35,7 @@ export class RbioComplaintHistoryComponent implements OnInit {
   @Input() complaintNumber: string | null = null;
 
   private service = inject(ComplaintCorrespondenceService);
+  private translations = inject(TranslationService);
 
   entries = signal<TimelineEntry[]>([]);
   loading = signal(false);
@@ -89,8 +91,18 @@ export class RbioComplaintHistoryComponent implements OnInit {
     return 'complaint.history.action.' + action.toLowerCase();
   }
 
-  /** True when this entry records a change of owner, so the old→new line is worth rendering. */
-  hasOwnerChange(e: TimelineEntry): boolean {
-    return !!e.fieldName && (!!e.oldValue || !!e.newValue);
-  }
+  /**
+   * Passed to app-workflow-timeline as its label resolver.
+   *
+   * <p>An arrow property, not a method: the template binds the function itself, so a prototype method
+   * would lose `this` when the child invoked it. Falls back to the raw action code rather than to the
+   * unresolved key, because an unseeded key renders as the key text — which reads as a bug to staff,
+   * whereas the bare code at least matches the audit export.
+   */
+  translateAction = (action: string): string => {
+    if (!action) return this.translations.translate('complaint.history.action_unknown');
+    const key = this.actionKey(action);
+    const label = this.translations.translate(key);
+    return label === key ? action : label;
+  };
 }

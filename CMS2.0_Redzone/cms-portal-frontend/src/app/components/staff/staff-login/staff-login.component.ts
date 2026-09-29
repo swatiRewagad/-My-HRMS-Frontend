@@ -11,7 +11,7 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
     <div class="login-container">
       <div class="login-card">
         <div class="logo-section">
-          <img src="assets/rbi-logo.png" alt="RBI" class="logo" onerror="this.style.display='none'">
+          <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="logo" onerror="this.style.display='none'">
           <h1>CMS Staff Portal</h1>
           <p class="subtitle">Complaint Management System - Internal Access</p>
         </div>

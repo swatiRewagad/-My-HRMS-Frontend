@@ -8,7 +8,6 @@
         <span class="rbi-english">RESERVE BANK OF INDIA</span>
       </div>
       <div class="header-divider-v"></div>
-      <img src="assets/cms-logo.png" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
       <span class="cms-title">CMS</span>
       <span class="cms-subtitle">Complaint Management System</span>
     </div>
@@ -42,55 +41,30 @@
       <button class="tab-add"><i class="pi pi-plus"></i></button>
     </div>
 
-    <!-- Complaint Summary Strip -->
-    <div class="complaint-strip">
-      <button class="btn-back" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
-      <div class="strip-item">
-        <span class="strip-label">Complaint Number</span>
-        <span class="strip-value">{{ c.complaintNumber }}</span>
+    <!-- Complaint Summary Strip — shared app-complaint-summary (see complaint-summary.types.ts) -->
+    <app-complaint-summary [items]="summaryItems()" [actions]="stripActions" (back)="goBack()" />
+
+    <ng-template #stripActions>
+      <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
+      <div class="approval-wrapper">
+        <button
+          class="btn-approval"
+          [disabled]="isClosureBlocked()"
+          [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
+          (click)="!isClosureBlocked() && showApprovalDropdown.set(!showApprovalDropdown())"
+        >
+          Send for Approval <i class="pi pi-chevron-down"></i>
+        </button>
+        @if (showApprovalDropdown()) {
+          <div class="approval-dropdown">
+            @for (opt of approvalOptions; track opt.key) {
+              <button (click)="openApprovalOption(opt)">{{ opt.label }}</button>
+            }
+          </div>
+        }
       </div>
-      <div class="strip-item">
-        <span class="strip-label">Complainant Name</span>
-        <span class="strip-value">{{ c.complainantName }}</span>
-      </div>
-      <div class="strip-item">
-        <span class="strip-label">Entity Name</span>
-        <span class="strip-value">{{ c.entityName }}</span>
-      </div>
-      <div class="strip-item">
-        <span class="strip-label">Status</span>
-        <app-status-badge [status]="c.status" />
-      </div>
-      <div class="strip-item">
-        <span class="strip-label">Complaint Category</span>
-        <span class="strip-value">{{ c.category }}</span>
-      </div>
-      <div class="strip-item">
-        <span class="strip-label">SLA Breach In</span>
-        <span class="sla-badge" [class.breach]="c.slaBreachHours < 48">{{ c.slaBreachHours }} hrs</span>
-      </div>
-      <div class="strip-actions">
-        <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
-        <div class="approval-wrapper">
-          <button
-            class="btn-approval"
-            [disabled]="isClosureBlocked()"
-            [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
-            (click)="!isClosureBlocked() && showApprovalDropdown.set(!showApprovalDropdown())"
-          >
-            Send for Approval <i class="pi pi-chevron-down"></i>
-          </button>
-          @if (showApprovalDropdown()) {
-            <div class="approval-dropdown">
-              @for (opt of approvalOptions; track opt.key) {
-                <button (click)="openApprovalOption(opt)">{{ opt.label }}</button>
-              }
-            </div>
-          }
-        </div>
-        <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
-      </div>
-    </div>
+      <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
+    </ng-template>
 
     <!-- Upload Link Status Banner -->
     <app-upload-link-status

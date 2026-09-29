@@ -94,8 +94,6 @@ test.describe('RBIO Task List', () => {
       .poll(async () => dataRows.count(), { message: 'the task grid must load rows before filtering is meaningful' })
       .toBeGreaterThan(0);
 
-    // `filterStatus` IS a signal, so this filter genuinely recomputes — unlike the per-column search
-    // boxes (see the fixme at the bottom of this file).
     await page.locator('.queue-select').selectOption('resolved');
 
     // Every remaining badge must read exactly 'resolved'. Polled on the offending values, so a
@@ -144,8 +142,7 @@ test.describe('RBIO Task List', () => {
     await configPanel.locator('button:has-text("Cancel")').click();
     await expect(configPanel).not.toBeVisible();
 
-    // Whether deselecting actually hides the column is asserted separately — see the fixme at the
-    // bottom of this file, which documents why it currently cannot.
+    // Whether deselecting actually HIDES the column is asserted separately, below.
     await logout(page);
   });
 
@@ -174,8 +171,7 @@ test.describe('RBIO Task List', () => {
 
     await expect(dialog, 'applying the filter must close the dialog').not.toBeVisible({ timeout: 5000 });
 
-    // Whether the criteria actually filter the grid is asserted separately — see the fixme at the
-    // bottom of this file. Asserting it here would be asserting a known-broken behaviour.
+    // Whether the criteria actually FILTER the grid is asserted separately, below.
     await logout(page);
   });
 
@@ -231,66 +227,154 @@ test.describe('RBIO Task List', () => {
     await logout(page);
   });
 
-  test.fixme(
-    'the visited row is marked with the .visited class on return to the list',
-    async () => {
-      // FIXME — PRODUCTION DEFECT (type mismatch). openTask stores the id as a STRING
-      // (`visited.add(String(task.complaintId))`, rbio-tasks.component.ts:203) but the row class is
-      // bound with the RAW value (`visitedIds().has(task.complaintId)`, rbio-tasks.component.html:171).
-      // The queue endpoint returns complaintId as a NUMBER (verified: `"complaintId":4476`), so
-      // `Set<string>.has(4476)` is always false and `.visited` is never applied. The same mismatch
-      // makes the "Unread" toggle (component ts:115) treat every task as unread forever.
-      //
-      // The visit itself IS recorded — covered by the localStorage test above — so this is purely the
-      // rendering of it. Un-fixme once both sides agree on a type.
-    }
-  );
+  // ──────────────────────────────────────────────────────────────────────────
+  // The four assertions below were test.fixme for as long as this screen carried its own grid. Each
+  // documented a defect caused by a computed() reading a PLAIN field, which registers no dependency and
+  // so never recomputes. Migrating to app-task-grid — whose filters, column visibility and sort are all
+  // signals — removed the class of defect rather than patching each instance, so they now assert real
+  // behaviour. They must fail if that grid is ever swapped back for a local copy.
+  // ──────────────────────────────────────────────────────────────────────────
 
-  test.fixme(
-    'per-column search boxes filter the grid',
-    async () => {
-      // FIXME — PRODUCTION DEFECT (missing reactivity), same class as the column-config one below.
-      // `columnFilters` is a PLAIN OBJECT (rbio-tasks.component.ts:49) read inside the `filteredTasks`
-      // computed (line 108). `[(ngModel)]="columnFilters[col.key]"` mutates a property of that object,
-      // which no signal observes, so the computed never recomputes and the grid does not filter.
-      // Verified in the browser: typing an impossible value into the first `.col-search` box leaves all
-      // 10 rows on screen.
-      //
-      // The old test asserted `rowCount === 0` and passed only because the grid was empty for an
-      // unrelated reason (the browser's API calls were being blocked by CORS), so a broken filter and
-      // a working one were indistinguishable. Un-fixme once `columnFilters` is a signal.
-    }
-  );
+  test('the visited row is marked with the .visited class on return to the list', async ({ page }) => {
+    test.skip(!keycloakUp, 'Keycloak is not available');
+    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
 
-  test.fixme(
-    'advanced search criteria filter the grid',
-    async () => {
-      // FIXME — PRODUCTION DEFECT. applyAdvancedSearch (rbio-tasks.component.ts:230) computes a
-      // filtered `result` and then THROWS IT AWAY — the local is never assigned anywhere. Instead it
-      // does `this.searchText.set(JSON.stringify(q))` (line 241), so the free-text filter is handed the
-      // JSON of the criteria object (e.g. `{"complaintNumber":"CMP-1",...}`). `filteredTasks` then
-      // substring-matches that whole JSON blob against complaintNumber/complainantName/entityName/
-      // subject, which can never match anything, so applying ANY advanced search silently empties the
-      // grid regardless of the criteria.
-      //
-      // That is why an "impossible term filters everything out" assertion passes here for the wrong
-      // reason: a valid, matching term would empty the grid too. Un-fixme once the computed result is
-      // actually applied.
-    }
-  );
+    await page.evaluate(() => localStorage.removeItem('rbio_visited_ids'));
+    await page.reload();
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
+    await expect(page.locator('.data-grid tbody tr.visited')).toHaveCount(0);
 
-  test.fixme(
-    'deselecting a column in the column-config dialog hides it',
-    async () => {
-      // FIXME — PRODUCTION DEFECT (missing reactivity). In rbio-tasks.component.ts `allColumns` is a
-      // PLAIN ARRAY (line 72) while `visibleColumns` is a computed (line 86). toggleColumnVisibility
-      // mutates `col.visible` in place (line 227), which no signal observes, so the computed never
-      // recomputes and the header row does not change. Verified in the browser: the dialog opens, the
-      // checkbox unchecks, Save closes it, and the grid still renders all 9 columns (before=9, after=9).
-      //
-      // The equivalent screen rbio-home.component.ts gets this right — `allColumns` is a signal and
-      // the toggle uses `.update(...)` (line 307) — so this is a one-component regression, not a
-      // design limitation. The old test hid it by capturing headersBefore and never comparing it.
-    }
-  );
+    await page.locator('.data-grid tbody tr').first().click();
+    await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
+
+    await page.goBack();
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
+
+    // Exactly one, not "at least one": the id is coerced in ONE place now, so a coercion that dims the
+    // wrong rows would be as wrong as one that dims none.
+    await expect
+      .poll(async () => page.locator('.data-grid tbody tr.visited').count(), {
+        message: 'the opened row must be dimmed as visited when the officer returns',
+        timeout: 8000
+      })
+      .toBe(1);
+
+    await logout(page);
+  });
+
+  test('per-column search boxes filter the grid', async ({ page }) => {
+    test.skip(!keycloakUp, 'Keycloak is not available');
+    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
+
+    const rows = page.locator('[data-testid="task-grid-row"]');
+    await expect.poll(async () => rows.count()).toBeGreaterThan(0);
+
+    // Driven by TYPING, not by calling a method: the defect this replaces was invisible to any test that
+    // set state directly, because the state was set correctly and only the recomputation was missing.
+    const subjectFilter = page.locator('[data-testid="task-grid-column-filter"][data-column="subject"]');
+    await expect(subjectFilter).toBeVisible();
+    await subjectFilter.fill('ZZZ-NO-SUCH-SUBJECT-99999');
+
+    await expect
+      .poll(async () => rows.count(), {
+        message: 'an impossible column filter must empty the grid',
+        timeout: 8000
+      })
+      .toBe(0);
+    await expect(page.locator('[data-testid="task-grid-empty"]')).toBeVisible();
+
+    // And it must come back, so the assertion above cannot pass because the grid simply broke.
+    await subjectFilter.fill('');
+    await expect.poll(async () => rows.count(), { timeout: 8000 }).toBeGreaterThan(0);
+
+    await logout(page);
+  });
+
+  test('advanced search criteria filter the grid', async ({ page }) => {
+    test.skip(!keycloakUp, 'Keycloak is not available');
+    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid tbody tr', { timeout: 15000 });
+
+    const rows = page.locator('[data-testid="task-grid-row"]');
+    await expect.poll(async () => rows.count()).toBeGreaterThan(0);
+
+    // A term that MATCHES, asserted first. The old code emptied the grid for every input, so only a
+    // matching term distinguishes a working filter from a broken one.
+    const firstNumber = (await rows.first().locator('td[data-column="complaintNumber"]').textContent())?.trim() || '';
+    expect(firstNumber, 'a complaint number is needed to search for').toBeTruthy();
+
+    await page.locator('button:has-text("Advanced Search")').click();
+    const dialog = page.locator('.modal-dialog.search-dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await dialog.locator('.search-field:has(label:text-is("Complaint Number")) input').fill(firstNumber);
+    await dialog.locator('button:has-text("Search")').click();
+    await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+    await expect
+      .poll(async () => rows.count(), {
+        message: 'searching for a complaint number that exists must keep exactly that row',
+        timeout: 8000
+      })
+      .toBe(1);
+    await expect(rows.first().locator('td[data-column="complaintNumber"]')).toHaveText(firstNumber);
+
+    // Narrowing an ALREADY-ACTIVE search must re-run. advSearchActive is already true at this point, so
+    // setting it again notifies nothing — only the revision bump makes the second apply take effect.
+    await page.locator('button:has-text("Advanced Search")').click();
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await dialog.locator('.search-field:has(label:text-is("Complaint Number")) input').fill('ZZZ-NO-SUCH-NUMBER-99999');
+    await dialog.locator('button:has-text("Search")').click();
+
+    await expect
+      .poll(async () => rows.count(), {
+        message: 'a second, different search must replace the first result, not leave it on screen',
+        timeout: 8000
+      })
+      .toBe(0);
+
+    await logout(page);
+  });
+
+  test('deselecting a column in the column-config dialog hides it', async ({ page }) => {
+    test.skip(!keycloakUp, 'Keycloak is not available');
+    await loginAsRbioRole(page, 'RBIO_OFFICER', '/staff/rbio/tasks');
+    await page.waitForSelector('.rbio-home', { timeout: 15000 });
+    await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });
+
+    const headers = page.locator('.data-grid thead tr:first-child th');
+    const before = await headers.count();
+    expect(before).toBeGreaterThan(3);
+    await expect(page.locator('.data-grid thead th:has-text("Subject")')).toBeVisible();
+
+    const chooser = page.locator('[data-testid="task-grid-column-chooser"]');
+    await page.locator('button.btn-icon:has(.pi-cog)').click();
+    await expect(chooser).toBeVisible({ timeout: 5000 });
+
+    const subjectOption = chooser.locator('.column-option', { hasText: 'Subject' }).first();
+    await subjectOption.locator('input[type="checkbox"]').uncheck();
+    await chooser.locator('button:has-text("Save")').click();
+    await expect(chooser).not.toBeVisible();
+
+    await expect
+      .poll(async () => headers.count(), {
+        message: 'deselecting a column must remove its header',
+        timeout: 8000
+      })
+      .toBe(before - 1);
+    await expect(page.locator('.data-grid thead th:has-text("Subject")')).toHaveCount(0);
+
+    // Re-checking must restore it, so the assertion above cannot pass because the header row collapsed.
+    await page.locator('button.btn-icon:has(.pi-cog)').click();
+    await expect(chooser).toBeVisible({ timeout: 5000 });
+    await chooser.locator('.column-option', { hasText: 'Subject' }).first().locator('input[type="checkbox"]').check();
+    await chooser.locator('button:has-text("Save")').click();
+    await expect(page.locator('.data-grid thead th:has-text("Subject")')).toBeVisible({ timeout: 8000 });
+
+    await logout(page);
+  });
 });

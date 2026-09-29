@@ -182,7 +182,10 @@ export class AaAppealDetailComponent implements OnInit {
     this.timelineLoading.set(true);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/appeals/${appealNumber}/timeline`).subscribe({
       next: (res) => {
-        this.timeline.set(res?.data || []);
+        // The list is nested under data.timeline and the instant is named performedAt; assigning
+        // res.data handed @for an object, which threw before any of the panel rendered.
+        const entries = Array.isArray(res?.data?.timeline) ? res.data.timeline : [];
+        this.timeline.set(entries.map((e: any) => ({ ...e, timestamp: e.performedAt ?? e.timestamp })));
         this.timelineLoading.set(false);
       },
       error: () => {

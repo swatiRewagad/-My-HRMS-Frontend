@@ -1,0 +1,148 @@
+// Self-contained: the host's stylesheet cannot reach into this component's template, so every rule the
+// two presentations need lives here. No raw hex — the values that used to be hardcoded in four separate
+// stylesheets are the tokens in styles.scss.
+
+:host { display: block; }
+
+.history-comments-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+
+  input { cursor: pointer; }
+}
+
+.empty-text {
+  margin: 0;
+  padding: var(--space-8) 0;
+  text-align: center;
+  font-size: var(--text-base);
+  color: var(--text-subtle);
+}
+
+// ═══ HISTORY PANEL MODE ═══
+.history-timeline .history-entry {
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border-divider);
+
+  &:last-child { border-bottom: none; }
+
+  .history-status-badge {
+    display: inline-block;
+    padding: var(--space-1) var(--space-4);
+    border-radius: var(--radius-sm);
+    background: var(--surface-subtle);
+    color: var(--text-body);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    margin-bottom: var(--space-2);
+  }
+
+  .history-description {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    margin: var(--space-1) 0;
+  }
+
+  .history-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--text-subtle);
+  }
+
+  .history-actor { font-weight: 600; color: var(--text-secondary); }
+
+  .history-actor-role,
+  .history-destination,
+  .history-clause {
+    padding: 1px var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--accent-indigo-bg);
+    color: var(--accent-indigo-fg);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .history-change {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-sm);
+
+    .change-field { color: var(--text-muted); }
+    .change-old { color: var(--state-danger-fg); text-decoration: line-through; }
+    .change-arrow { color: var(--text-muted); }
+    .change-new { color: var(--state-success-fg); font-weight: 600; }
+  }
+
+  .history-remarks {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: var(--space-1) 0 0;
+    white-space: pre-wrap;
+  }
+}
+
+// ═══ INLINE SECTION MODE ═══
+.timeline .timeline-entry {
+  display: flex;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-divider);
+
+  &:last-child { border-bottom: none; }
+
+  .timeline-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--brand-primary);
+    margin-top: var(--space-1);
+    flex-shrink: 0;
+  }
+
+  .timeline-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .timeline-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .timeline-action { font-size: var(--text-base); font-weight: 600; color: var(--text-heading); }
+  .timeline-time { font-size: var(--text-xs); color: var(--text-subtle); white-space: nowrap; }
+  .timeline-flow { font-size: var(--text-sm); color: var(--text-muted); }
+
+  .timeline-actor {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    em { color: var(--text-muted); font-style: normal; }
+  }
+
+  .timeline-remarks {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: var(--space-1) 0 0;
+    white-space: pre-wrap;
+  }
+}

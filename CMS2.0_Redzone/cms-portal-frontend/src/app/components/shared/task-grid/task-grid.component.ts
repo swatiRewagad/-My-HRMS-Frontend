@@ -1,7 +1,8 @@
-import { Component, TemplateRef, computed, input, output, signal } from '@angular/core';
+import { Component, TemplateRef, computed, inject, input, linkedSignal, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { TranslationService } from '../../../services/translation.service';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { TaskGridAction, TaskGridColumn } from './task-grid.types';
 
@@ -29,6 +30,8 @@ import { TaskGridAction, TaskGridColumn } from './task-grid.types';
   styleUrl: './task-grid.component.scss'
 })
 export class TaskGridComponent<T extends Record<string, any> = Record<string, any>> {
+  private translation = inject(TranslationService);
+
   rows = input.required<T[]>();
   columns = input.required<TaskGridColumn<T>[]>();
 
@@ -49,6 +52,22 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   pageSize = input<number>(10);
 
   /**
+   * Page sizes offered to the user. Empty (the default) hides the selector entirely.
+   *
+   * <p>RBIO and CRPC both let an officer widen the page; dropping that during consolidation would be a
+   * functional regression, so it belongs here rather than being re-implemented per host.
+   */
+  pageSizeOptions = input<number[]>([]);
+
+  /**
+   * The page size actually in force: the input, until the user picks another.
+   *
+   * <p>A linkedSignal rather than a plain signal so a host that changes `pageSize` still wins, instead of
+   * the grid silently keeping a stale value forever.
+   */
+  readonly activePageSize = linkedSignal(() => this.pageSize());
+
+  /**
    * Total row count ON THE SERVER, for grids whose API pages for them.
    *
    * <p>When null (the default) the grid owns paging and slices `rows` itself. When supplied, the caller
@@ -64,6 +83,14 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
 
   /** 1-based page the caller should load. Only emitted when `totalCount` is supplied. */
   pageChange = output<number>();
+
+  /**
+   * The newly chosen page size.
+   *
+   * <p>A server-paged caller MUST act on this, because emitting `pageChange(1)` alone would have it
+   * refetch the same 10 rows while the grid's footer counted in 50s.
+   */
+  pageSizeChange = output<number>();
 
   /** True when the caller pages server-side, so this grid must not slice or re-count. */
   readonly serverPaged = computed(() => this.totalCount() !== null);
@@ -89,6 +116,15 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   retryable = input<boolean>(false);
 
   /**
+   * Extra controls for the grid's header bar, left of the column cog.
+   *
+   * <p>Some queues carry genuinely module-specific toggles — RBIO's Unread / Without Attachments /
+   * Satisfies Rules. Those are filters over RBIO's own fields, not grid mechanics, so they stay with
+   * the host; this slot is what stops the host having to keep its own header bar and end up with two.
+   */
+  headerActions = input<TemplateRef<unknown> | null>(null);
+
+  /**
    * Per-row CSS class, for grids that signal urgency on the whole row rather than in one cell.
    *
    * <p>RE's dashboard tints a row by how close its response deadline is. Without this the migration
@@ -110,10 +146,32 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   showColumnChooser = signal(false);
   hiddenKeys = signal<Set<string>>(new Set());
 
+  /** Filters the chooser's own list by column name, for grids with a dozen or more columns. */
+  columnChooserSearch = signal('');
+
   readonly visibleColumns = computed(() => {
     const hidden = this.hiddenKeys();
     return this.columns().filter(c => (c.visible ?? true) && !hidden.has(c.key));
   });
+
+  /**
+   * Columns offered by the chooser, narrowed by its search box.
+   *
+   * <p>Matched on the TRANSLATED label, not the key: a user searching the chooser is reading the header
+   * they can see. That means the match has to go through the same translation the header uses, so the
+   * service is injected rather than the raw labelKey being substring-matched.
+   */
+  readonly chooserColumns = computed(() => {
+    const term = this.columnChooserSearch().trim().toLowerCase();
+    const all = this.columns();
+    if (!term) return all;
+    return all.filter(c => this.translation.translate(c.labelKey).toLowerCase().includes(term));
+  });
+
+  /** True when a column is currently rendered, for the chooser's checkbox state. */
+  columnShown(key: string): boolean {
+    return !this.hiddenKeys().has(key);
+  }
 
   /** Single source of truth for a cell's text, so filter, sort and display can never disagree. */
   private cellText(row: T, col: TaskGridColumn<T>): string {
@@ -121,7 +179,49 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
       return col.formatter(row);
     }
     const raw = row[col.key];
-    return raw === null || raw === undefined ? '' : String(raw);
+    if (raw === null || raw === undefined || raw === '') {
+      return '';
+    }
+    if (col.kind === 'date') {
+      return this.dateText(raw);
+    }
+    return String(raw);
+  }
+
+  /**
+   * Renders a date cell.
+   *
+   * <p>Fixed to en-IN rather than the browser's locale: every locale this application serves is Indian,
+   * dd/mm/yyyy is what those users read, and a browser-dependent format would make the same row render
+   * differently for two officers looking at the same queue.
+   *
+   * <p>An unparseable value is shown verbatim instead of "Invalid Date", so a malformed field looks like
+   * the data problem it is rather than a rendering bug.
+   */
+  private dateText(raw: unknown): string {
+    const parsed = new Date(raw as string);
+    return Number.isNaN(parsed.getTime()) ? String(raw) : parsed.toLocaleDateString('en-IN');
+  }
+
+  /**
+   * Orders two rows by one column.
+   *
+   * <p>Date columns compare the INSTANT, not the rendered text: "01/12/2026" sorts before "02/01/2026"
+   * as a string, which files December ahead of the following January. Sorting an SLA column into the
+   * wrong order is worse than not offering the sort at all, because the officer at the top of the list
+   * is not the one closest to breaching.
+   */
+  private compareRows(a: T, b: T, col: TaskGridColumn<T>): number {
+    if (col.kind === 'date') {
+      return this.instant(a[col.key]) - this.instant(b[col.key]);
+    }
+    return this.cellText(a, col).localeCompare(this.cellText(b, col), undefined, { numeric: true });
+  }
+
+  /** Missing and unparseable dates collapse to one end of the order rather than interleaving. */
+  private instant(raw: unknown): number {
+    const parsed = raw ? new Date(raw as string).getTime() : Number.NaN;
+    return Number.isNaN(parsed) ? Number.POSITIVE_INFINITY : parsed;
   }
 
   readonly filtered = computed(() => {
@@ -149,9 +249,7 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
       const col = cols.find(c => c.key === key);
       if (col) {
         const dir = this.sortDir() === 'asc' ? 1 : -1;
-        out.sort((a, b) =>
-          this.cellText(a, col).localeCompare(this.cellText(b, col), undefined, { numeric: true }) * dir
-        );
+        out.sort((a, b) => this.compareRows(a, b, col) * dir);
       }
     }
 
@@ -163,7 +261,7 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
     this.serverPaged() ? (this.totalCount() ?? 0) : this.filtered().length
   );
 
-  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.effectiveTotal() / this.pageSize())));
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.effectiveTotal() / this.activePageSize())));
 
   readonly paged = computed(() => {
     // When the caller pages server-side, `rows` IS the page — slicing it again would hide rows the
@@ -174,16 +272,16 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
     // Clamped rather than trusted: filtering down to fewer pages while sitting on a high page number
     // would otherwise render an empty grid over a non-empty result set.
     const page = Math.min(this.page(), this.totalPages());
-    const start = (page - 1) * this.pageSize();
-    return this.filtered().slice(start, start + this.pageSize());
+    const start = (page - 1) * this.activePageSize();
+    return this.filtered().slice(start, start + this.activePageSize());
   });
 
   readonly rangeStart = computed(() =>
-    this.effectiveTotal() === 0 ? 0 : (Math.min(this.page(), this.totalPages()) - 1) * this.pageSize() + 1
+    this.effectiveTotal() === 0 ? 0 : (Math.min(this.page(), this.totalPages()) - 1) * this.activePageSize() + 1
   );
 
   readonly rangeEnd = computed(() =>
-    Math.min(Math.min(this.page(), this.totalPages()) * this.pageSize(), this.effectiveTotal())
+    Math.min(Math.min(this.page(), this.totalPages()) * this.activePageSize(), this.effectiveTotal())
   );
 
   /**
@@ -211,6 +309,23 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
     current: String(Math.min(this.page(), this.totalPages())),
     total: String(this.totalPages()),
   }));
+
+  /**
+   * A window of page numbers around the current page, for direct jumps.
+   *
+   * <p>Six of the grids being consolidated offer numbered buttons and first/last jumps. Prev/Next alone
+   * would mean thirteen clicks to reach page fourteen of a queue, so the window is part of the shared
+   * grid rather than a reason for a host to keep its own footer.
+   */
+  readonly pageNumbers = computed(() => {
+    const total = this.totalPages();
+    const current = Math.min(this.page(), total);
+    const pages: number[] = [];
+    for (let p = Math.max(1, current - 2); p <= Math.min(total, current + 2); p++) {
+      pages.push(p);
+    }
+    return pages;
+  });
 
   readonly selectedRows = computed(() => {
     const keys = this.selectedKeys();
@@ -248,6 +363,22 @@ export class TaskGridComponent<T extends Record<string, any> = Record<string, an
   private resetToFirstPage(): void {
     if (this.page() === 1) return;
     this.page.set(1);
+    if (this.serverPaged()) {
+      this.pageChange.emit(1);
+    }
+  }
+
+  /**
+   * Changes how many rows a page holds.
+   *
+   * <p>Returns to page 1 unconditionally: page 4 of 10-row pages does not exist once pages hold 50, and
+   * the server-paged caller has to be told because its current page no longer means what it fetched.
+   */
+  setPageSize(size: number): void {
+    if (!Number.isFinite(size) || size <= 0) return;
+    this.activePageSize.set(size);
+    this.page.set(1);
+    this.pageSizeChange.emit(size);
     if (this.serverPaged()) {
       this.pageChange.emit(1);
     }

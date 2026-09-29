@@ -1,17 +1,20 @@
-.history-panel {
-  padding: 0.5rem 0;
+// Only the tab's own chrome. The trail is styled by app-workflow-timeline — the ~90 lines that used to
+// duplicate it here were the third of four divergent copies.
+
+.rbio-history {
+  padding: var(--space-3) 0;
 }
 
 .history-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
+  gap: var(--space-7);
+  margin-bottom: var(--space-5);
 }
 
 .section-title {
-  font-size: 1rem;
+  font-size: var(--text-lg);
   font-weight: 600;
   margin: 0;
   color: var(--text-heading);
@@ -20,17 +23,16 @@
 .filter-toggle {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  color: #4b5563;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
-.loading-state,
-.empty-state {
-  padding: 1rem;
+.loading-state {
+  padding: var(--space-7);
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: var(--text-base);
   text-align: center;
 }
 
@@ -38,122 +40,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid #fca5a5;
+  gap: var(--space-7);
+  padding: var(--space-5) var(--space-7);
+  border: 1px solid var(--state-danger-solid);
   background: var(--state-danger-bg);
   color: var(--state-danger-fg);
-  border-radius: 4px;
-  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
 
   .retry-btn {
     border: 1px solid var(--state-danger-fg);
     background: var(--surface-card);
     color: var(--state-danger-fg);
-    padding: 0.25rem 0.75rem;
-    border-radius: 3px;
+    padding: var(--space-1) var(--space-5);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: var(--text-sm);
     cursor: pointer;
-    font-size: 0.8rem;
   }
-}
-
-.timeline {
-  list-style: none;
-  margin: 0;
-  padding: 0 0 0 1rem;
-  border-left: 2px solid var(--border-subtle);
-}
-
-.timeline-entry {
-  position: relative;
-  padding: 0.6rem 0 0.9rem 1rem;
-  font-size: 0.85rem;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: -1.42rem;
-    top: 0.95rem;
-    width: 0.6rem;
-    height: 0.6rem;
-    border-radius: 50%;
-    background: var(--brand-primary-hover);
-    border: 2px solid var(--surface-card);
-  }
-
-  // System events are visually de-emphasised so an officer's own actions stand out.
-  &.automatic::before {
-    background: var(--text-subtle);
-  }
-}
-
-.entry-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.entry-action {
-  font-weight: 600;
-  color: #111827;
-}
-
-.entry-time {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.entry-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.15rem;
-  color: #4b5563;
-  font-size: 0.78rem;
-}
-
-.entry-badge {
-  background: var(--surface-subtle);
-  color: #4b5563;
-  border-radius: 10px;
-  padding: 0.05rem 0.5rem;
-  font-size: 0.7rem;
-}
-
-.entry-status {
-  margin-top: 0.3rem;
-  color: var(--state-neutral-fg);
-  font-size: 0.8rem;
-}
-
-.entry-change,
-.entry-clause,
-.entry-destination {
-  margin-top: 0.3rem;
-  font-size: 0.8rem;
-  color: var(--state-neutral-fg);
-}
-
-.entry-change {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-
-  .change-field { color: var(--text-muted); }
-  .change-old { color: var(--state-danger-fg); text-decoration: line-through; }
-  .change-arrow { color: var(--text-muted); }
-  .change-new { color: var(--state-success-fg); font-weight: 600; }
-}
-
-.entry-remarks {
-  margin-top: 0.35rem;
-  padding: 0.4rem 0.6rem;
-  background: var(--surface-subtle);
-  border-radius: 3px;
-  color: var(--state-neutral-fg);
-  font-size: 0.8rem;
-  white-space: pre-wrap;
 }

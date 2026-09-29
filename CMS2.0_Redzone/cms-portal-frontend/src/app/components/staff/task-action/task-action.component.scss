@@ -116,68 +116,6 @@
   }
 }
 
-// ═══ META ROW ═══
-.meta-row {
-  display: flex; align-items: center; gap: 20px; padding: 14px 24px;
-  background: #fff; flex-wrap: nowrap;
-  border: 1px solid #e2e8f0;
-  border-top: 3px solid #f59e0b;
-  border-radius: 10px;
-  margin: 12px 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  overflow-x: auto;
-
-  .back-arrow {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: none; border: none;
-    cursor: pointer; font-size: 18px; color: #1e293b;
-    display: flex; align-items: center; justify-content: center;
-    &:hover { background: #f1f5f9; }
-  }
-
-  .meta-item {
-    display: flex; align-items: center; gap: 10px;
-    padding-left: 20px;
-    border-left: 1px solid #e2e8f0;
-
-    .meta-icon {
-      width: 36px; height: 36px; border-radius: 50%;
-      background: linear-gradient(135deg, #6366f1, #3b82f6);
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
-      i { font-size: 14px; color: #fff; }
-      &.owner { background: linear-gradient(135deg, #1e293b, #334155); }
-    }
-
-    .meta-text {
-      display: flex; flex-direction: column; gap: 1px;
-    }
-
-    .meta-label {
-      font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; font-weight: 500;
-    }
-    .meta-value {
-      font-size: 14px; color: #1e293b; font-weight: 600;
-      display: flex; align-items: center; gap: 5px;
-    }
-    .status-badge {
-      background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600;
-      i { font-size: 11px; color: #f59e0b; }
-      &.resolved { background: #d1fae5; color: #065f46; i { color: #10b981; } }
-    }
-    .priority-text {
-      &.high { color: #dc2626; }
-      &.medium { color: #f59e0b; }
-      &.low { color: #10b981; }
-    }
-    &:first-of-type { border-left: none; padding-left: 0; }
-  }
-
-  .meta-actions {
-    margin-left: auto;
-    display: flex; align-items: center; gap: 10px;
-  }
-}
 
 // ═══ TAT TIMER ═══
 .tat-timer-bar {
@@ -487,24 +425,8 @@
   &.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 }
 
-// ═══ TIMELINE ═══
-.timeline-list {
-  .timeline-entry {
-    display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;
-    .timeline-dot {
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #3b82f6; margin-top: 4px; flex-shrink: 0;
-    }
-    .timeline-content { flex: 1; }
-    .timeline-header-row {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
-    }
-    .timeline-action { font-size: 13px; font-weight: 600; color: #1e293b; }
-    .timeline-time { font-size: 11px; color: #94a3b8; }
-    .timeline-flow { font-size: 12px; color: #64748b; }
-    .timeline-remarks { font-size: 12px; color: #475569; font-style: italic; margin: 4px 0 0; }
-  }
-}
+// The timeline and the History panel body are styled by app-workflow-timeline. The ~45 lines that used
+// to live here were one of four divergent copies of the same list.
 
 // ═══ RIGHT SIDEBAR ═══
 .col-right-sidebar {
@@ -647,34 +569,6 @@
     .expand-btn { background: none; border: none; cursor: pointer; color: #64748b; font-size: 16px; &:hover { color: #3b82f6; } }
   }
   .history-loading { text-align: center; padding: 2rem; color: #64748b; font-size: 13px; }
-}
-
-.history-timeline {
-  .history-entry {
-    padding: 12px 0; border-bottom: 1px solid #f1f5f9;
-    .history-status-badge {
-      display: inline-block; padding: 3px 10px; border-radius: 4px;
-      background: #f1f5f9; color: #334155; font-size: 12px; font-weight: 600;
-      margin-bottom: 6px;
-    }
-    .history-description { font-size: 12px; color: #64748b; margin: 4px 0; }
-    .history-meta {
-      font-size: 11px; color: #94a3b8;
-      display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-    }
-    .history-actor { font-weight: 600; color: #475569; }
-    .history-actor-role {
-      padding: 1px 6px; border-radius: 3px; background: #eef2ff; color: #4338ca;
-      font-size: 10px; font-weight: 600; text-transform: uppercase;
-    }
-    .history-remarks { font-size: 12px; color: #475569; font-style: italic; margin-top: 4px; }
-  }
-}
-
-.history-comments-toggle {
-  display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
-  font-size: 12px; color: #475569; cursor: pointer; user-select: none;
-  input { cursor: pointer; }
 }
 
 .similar-cases-list {

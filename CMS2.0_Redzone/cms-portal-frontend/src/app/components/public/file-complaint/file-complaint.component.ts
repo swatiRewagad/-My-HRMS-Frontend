@@ -150,8 +150,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   entitySearchText = '';
   entityDropdownOpen = false;
   filteredEntityOptions: { label: string; value: string; entityType?: string }[] = [];
-  entitySelectOptions: { label: string; value: string }[] = [];
-  nonCoveredEntityOptions: { label: string; value: string }[] = [];
 
   // FR-G-020: Duplicate detection
   showDuplicatePopup = signal(false);
@@ -1008,10 +1006,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
         }));
         this.banks.sort((a, b) => a.name.localeCompare(b.name));
         this.setEntityOptions(this.banks.map(b => ({ label: b.name, value: String(b.id) })));
-        const covered = this.banks.filter(b => b.department !== 'CEPC');
-        const notCovered = this.banks.filter(b => b.department === 'CEPC');
-        this.entitySelectOptions = covered.map(b => ({ label: b.name, value: String(b.id) }));
-        this.nonCoveredEntityOptions = notCovered.map(b => ({ label: b.name, value: String(b.id) }));
         this.filterEntities();
       },
       error: () => {
@@ -1320,13 +1314,6 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   closeEntityDropdown() {
     setTimeout(() => this.entityDropdownOpen = false, 200);
-  }
-
-  selectEntityFromDropdown(value: string) {
-    if (value) {
-      this.selectEligibilityAnswer(value);
-      this.entitySearchText = this.getSelectedEntityLabel();
-    }
   }
 
   eligibilityFieldError = '';

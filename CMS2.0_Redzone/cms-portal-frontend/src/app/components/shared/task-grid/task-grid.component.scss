@@ -54,13 +54,40 @@
   }
 }
 
-.column-chooser {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  padding: var(--space-5) var(--space-7);
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-page);
+// The column chooser dialog. A sibling of .table-section, so it is NOT nested under it here.
+// .modal-overlay / .modal-dialog / .modal-title / .modal-actions come from _primitives.scss.
+.column-dialog {
+  width: min(480px, 92vw);
+
+  .modal-subtitle {
+    margin: 0 0 var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+  }
+
+  .column-search {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    font-family: inherit;
+    color: var(--text-body);
+
+    &:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+    }
+  }
+
+  .column-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-height: 320px;
+    overflow-y: auto;
+  }
 
   .column-option {
     display: flex;
@@ -70,6 +97,24 @@
     color: var(--text-body);
     cursor: pointer;
   }
+
+  .column-empty {
+    margin: 0;
+    padding: var(--space-5) 0;
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    text-align: center;
+  }
+}
+
+.page-size-select {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  color: var(--text-body);
+  background: var(--surface-card);
 }
 
 .data-grid {
@@ -129,6 +174,20 @@
 .page-indicator {
   font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+// One palette for priority, replacing four local copies that disagreed about which colour HIGH is.
+.priority-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: var(--space-2);
+  background: var(--border-subtle);
+
+  &[data-priority='HIGH'], &[data-priority='URGENT'], &[data-priority='CRITICAL'] { background: var(--state-danger-solid); }
+  &[data-priority='MEDIUM'], &[data-priority='NORMAL'] { background: var(--state-warning-solid); }
+  &[data-priority='LOW'] { background: var(--state-success-solid); }
 }
 
 .ageing-badge {

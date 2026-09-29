@@ -65,6 +65,7 @@
   --accent-violet-fg: #5b21b6;
   --accent-indigo-bg: #e0e7ff;
   --accent-indigo-fg: #3730a3;
+  --accent-indigo-solid: #6366f1;
   --accent-teal-bg: #ccfbf1;
   --accent-teal-fg: #115e59;
   --accent-pink-bg: #fce7f3;
@@ -102,6 +103,9 @@
   --text-lg: 15px;
   --text-xl: 18px;
   --text-2xl: 20px;
+  /* KPI figures. 22px is what cepc-dashboard, admin-dashboard and aa-admin-console already use, so this
+     names the size they had each hardcoded rather than introducing a new one. */
+  --text-3xl: 22px;
 
   /* ── Layout ── */
   --shell-header-height: 56px;
