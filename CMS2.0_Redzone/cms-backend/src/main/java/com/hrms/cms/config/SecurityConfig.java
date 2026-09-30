@@ -178,6 +178,11 @@ public class SecurityConfig {
                 // ── Remaining staff surfaces ────────────────────────────────────────────
                 .requestMatchers("/api/v1/workflow/**", "/api/v1/appeals/**", "/api/v1/re-portal/**",
                         "/api/v1/complaint-queries/**", "/api/v1/reports/**", "/api/v1/dashboard/**",
+                        // Staff comment threads. This grant is a coarse outer fence only — the tier
+                        // (PRIVATE/RESTRICTED/PUBLIC) is resolved per comment in
+                        // ComplaintCommentService, which also refuses the RE_* roles this array
+                        // already excludes, so a broad staff grant here does not widen readership.
+                        "/api/v1/complaint-comments/**",
                         "/api/v1/senior-dashboard/**", "/api/v1/past-complaints/**",
                         "/api/v1/email-syndication/**", "/api/v1/triage/**", "/api/v1/rules/**",
                         "/api/v1/mre/**", "/api/v1/routing/**", "/api/v1/tat/**",
