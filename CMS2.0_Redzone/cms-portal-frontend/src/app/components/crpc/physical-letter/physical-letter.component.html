@@ -51,55 +51,15 @@
   <div class="page-body-layout has-sidebar">
     <!-- LEFT MAIN AREA -->
     <div class="left-main-area">
-      <!-- ═══ META ROW (KPI) ═══ -->
-      <div class="meta-row">
-        <button class="back-arrow" (click)="goBack()">
-          <i class="pi pi-arrow-left"></i>
+      <!-- ═══ META ROW (KPI) — shared app-complaint-summary ═══ -->
+      <app-complaint-summary [items]="summaryItems" [actions]="stripActions" (back)="goBack()" />
+
+      <ng-template #stripActions>
+        <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
+          @if (saving()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
+          Save
         </button>
-        <div class="meta-item">
-          <span class="meta-icon"><i class="pi pi-id-card"></i></span>
-          <div class="meta-text">
-            <span class="meta-label">Complaint ID</span>
-            <span class="meta-value">{{ draftId() || '—' }}</span>
-          </div>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon"><i class="pi pi-file"></i></span>
-          <div class="meta-text">
-            <span class="meta-label">Complaint Number</span>
-            <span class="meta-value">{{ complaintNumber || 'Not Assigned' }}</span>
-          </div>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon"><i class="pi pi-envelope"></i></span>
-          <div class="meta-text">
-            <span class="meta-label">Mode of Receipt</span>
-            <span class="meta-value">Physical Letter</span>
-          </div>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
-          <div class="meta-text">
-            <span class="meta-label">Status</span>
-            <span class="meta-value status-badge">
-              <i class="pi pi-flag"></i> Draft
-            </span>
-          </div>
-        </div>
-        <div class="meta-item">
-          <span class="meta-icon owner"><i class="pi pi-user"></i></span>
-          <div class="meta-text">
-            <span class="meta-label">Complaint Owner</span>
-            <span class="meta-value">{{ complainantName || loggedInUser?.name || '—' }}</span>
-          </div>
-        </div>
-        <div class="meta-actions">
-          <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
-            @if (saving()) { <i class="pi pi-spin pi-spinner"></i> } @else { <i class="pi pi-save"></i> }
-            Save
-          </button>
-        </div>
-      </div>
+      </ng-template>
 
       <!-- ═══ STEPPER BAR ═══ -->
       <div class="stepper-bar">

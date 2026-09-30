@@ -12,6 +12,8 @@ import { SpeechButtonComponent } from '../../../shared/speech-button/speech-butt
 import { AutoClosureComponent } from '../auto-closure/auto-closure.component';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -42,7 +44,7 @@ interface EmailCorrespondence {
 @Component({
   selector: 'app-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent, ComplaintSummaryComponent],
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
@@ -190,6 +192,35 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   draftId = '';
   draftStatus = 'DRAFT';
+
+  /**
+   * The strip's facts, for the shared app-complaint-summary.
+   *
+   * A getter, not a {@code computed()}: the fields it reads are plain class properties, and a computed
+   * over a non-signal registers no dependency, so the strip would render once and never update.
+   *
+   * Status now goes through the shared badge. The old markup tested for SENT_TO_REVIEWER and printed
+   * "Draft" for everything else, so an approved or routed draft still called itself a draft.
+   */
+  get summaryItems(): ComplaintSummaryItem[] {
+    return [
+      { labelKey: 'ui.col.complaint_id', value: this.draftId, icon: 'pi-id-card' },
+      { labelKey: 'ui.col.complaint_number', value: this.cpgramsReference || 'Not Generated', icon: 'pi-file' },
+      {
+        labelKey: 'ui.col.mode_of_receipt',
+        value: this.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email',
+        icon: 'pi-envelope'
+      },
+      { labelKey: 'ui.col.status', value: this.draftStatus, kind: 'status', icon: 'pi-flag' },
+      {
+        labelKey: 'ui.col.assigned_officer',
+        value: this.loggedInUser?.name || 'DEO',
+        icon: 'pi-user',
+        tone: 'owner'
+      }
+    ];
+  }
+
   deoAssessmentRemarks = '';
   deoAssessmentDecision = '';
   loading = signal(true);

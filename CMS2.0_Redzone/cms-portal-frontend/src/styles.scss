@@ -60,6 +60,20 @@
   --state-neutral-bg: #e5e7eb;
   --state-neutral-fg: #374151;
 
+  /* ── Workflow action accents ──
+     One colour per workflow-transition KIND, so the same kind of action reads the same on every screen.
+     These are not state colours: "escalate" and "return" are neither success nor failure, and the five
+     card hexes below (info, forward, escalate, return, close) were duplicated verbatim in
+     cepc-complaint-detail and aa-appeal-detail with no token to point at. Consumed only by
+     shared/workflow-action-bar. Hover tints are derived with color-mix rather than tokenised, because a
+     near-white wash of an accent carries no meaning of its own. */
+  --action-approve: #16a34a;
+  --action-info: #0288d1;
+  --action-forward: #00695c;
+  --action-escalate: #f57c00;
+  --action-return: #6a1b9a;
+  --action-close: #d32f2f;
+
   /* ── Accent (secondary categorical fills) ── */
   --accent-violet-bg: #ede9fe;
   --accent-violet-fg: #5b21b6;

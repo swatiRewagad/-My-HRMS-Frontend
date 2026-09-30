@@ -84,49 +84,10 @@
       <!-- LEFT MAIN AREA -->
       <div class="left-main-area">
 
-        <!-- ═══ KPI BOX (standalone) ═══ -->
-        <div class="meta-row">
-          <button class="back-arrow" (click)="goBack()">
-            <i class="pi pi-arrow-left"></i>
-          </button>
-          <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-id-card"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Complaint ID</span>
-              <span class="meta-value">{{ draftId }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-file"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Complaint Number</span>
-              <span class="meta-value">{{ cpgramsReference || 'Not Generated' }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-envelope"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Mode of Receipt</span>
-              <span class="meta-value">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon"><i class="pi pi-chart-bar"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Status</span>
-              <span class="meta-value status-badge" [class.sent]="draftStatus === 'SENT_TO_REVIEWER'" [class.approved]="draftStatus === 'APPROVED_ROUTED'">
-                <i class="pi pi-flag"></i> {{ draftStatus === 'SENT_TO_REVIEWER' ? 'Sent to Reviewer' : 'Draft' }}
-              </span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <span class="meta-icon owner"><i class="pi pi-user"></i></span>
-            <div class="meta-text">
-              <span class="meta-label">Complaint Owner</span>
-              <span class="meta-value">{{ loggedInUser?.name || 'DEO' }}</span>
-            </div>
-          </div>
-          <div class="meta-actions">
+        <!-- ═══ KPI BOX — shared app-complaint-summary ═══ -->
+        <app-complaint-summary [items]="summaryItems" [actions]="stripActions" (back)="goBack()" />
+
+        <ng-template #stripActions>
             @if (!editMode() && !isReadOnly) {
               <button class="btn btn-outline btn-edit" type="button" (click)="enterEditMode()"><i class="pi pi-pencil"></i> Edit</button>
               <button class="btn btn-primary" (click)="openConfirmDialog()" [disabled]="submitting()">Send for Approval</button>
@@ -152,9 +113,9 @@
             @if (isReadOnly) {
               <span class="readonly-badge"><i class="pi pi-lock"></i> View Only</span>
             }
-          </div>
           <button class="btn-more" title="More options"><i class="pi pi-ellipsis-v"></i></button>
-        </div>
+        </ng-template>
+
         <!-- ═══ TABS (Read-only mode only) ═══ -->
         @if (!editMode()) {
           <div class="page-tabs">

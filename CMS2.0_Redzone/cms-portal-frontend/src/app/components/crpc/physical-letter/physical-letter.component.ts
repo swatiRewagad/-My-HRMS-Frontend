@@ -11,6 +11,8 @@ import { lookupPincode } from '../../../utils/pincode-data';
 import { environment } from '../../../../environments/environment';
 import { OcrProvenance } from '../../../shared/ocr-provenance';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 interface Suggestion {
   id: string;
   field: string;
@@ -27,7 +29,7 @@ interface PastComplaint {
 @Component({
   selector: 'app-physical-letter',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ComplaintSummaryComponent],
   templateUrl: './physical-letter.component.html',
   styleUrl: './physical-letter.component.scss'
 })
@@ -45,6 +47,31 @@ export class PhysicalLetterComponent implements OnInit {
   assignedOfficer = '';
   activeStep = signal<'creation' | 'assignment'>('creation');
   loggedInUser: { id: string; name: string; role: string } | null = null;
+
+  /**
+   * The strip's facts, for the shared app-complaint-summary.
+   *
+   * A getter, not a {@code computed()}: complaintNumber, complainantName and loggedInUser are plain
+   * class properties, and a computed over a non-signal registers no dependency, so those three would
+   * render once and never update.
+   *
+   * DRAFT is a constant here rather than read from state because this screen only ever captures a
+   * not-yet-submitted letter — on submit it hands over to the success overlay.
+   */
+  get summaryItems(): ComplaintSummaryItem[] {
+    return [
+      { labelKey: 'ui.col.complaint_id', value: this.draftId() || '—', icon: 'pi-id-card' },
+      { labelKey: 'ui.col.complaint_number', value: this.complaintNumber || 'Not Assigned', icon: 'pi-file' },
+      { labelKey: 'ui.col.mode_of_receipt', value: 'Physical Letter', icon: 'pi-envelope' },
+      { labelKey: 'ui.col.status', value: 'DRAFT', kind: 'status', icon: 'pi-flag' },
+      {
+        labelKey: 'ui.col.complainant_name',
+        value: this.complainantName || this.loggedInUser?.name || '—',
+        icon: 'pi-user',
+        tone: 'owner'
+      }
+    ];
+  }
 
   // Left panel
   scannedFile: File | null = null;

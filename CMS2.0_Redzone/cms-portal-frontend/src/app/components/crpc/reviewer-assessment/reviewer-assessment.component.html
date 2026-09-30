@@ -55,52 +55,16 @@
       <div class="complaint-tab add-tab" (click)="goBack()"><i class="pi pi-plus"></i></div>
     </div>
 
-    <!-- ═══ META ROW ═══ -->
-    <div class="meta-row">
-      <button class="back-arrow" (click)="goBack()"><i class="pi pi-arrow-left"></i></button>
-      <div class="meta-item">
-        <span class="meta-icon blue"><i class="pi pi-id-card"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Complaint ID <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">{{ draftId }}</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon purple"><i class="pi pi-file"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Complaint Number <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">Not Generated</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon green"><i class="pi pi-envelope"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Mode of Receipt <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon orange"><i class="pi pi-chart-bar"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Status <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value status-badge-inline">Sent to Reviewer</span>
-        </div>
-      </div>
-      <div class="meta-item">
-        <span class="meta-icon gray"><i class="pi pi-user"></i></span>
-        <div class="meta-text">
-          <span class="meta-label">Complaint Owner <i class="pi pi-info-circle"></i></span>
-          <span class="meta-value">{{ complainantName || '—' }}</span>
-        </div>
-      </div>
-      <div class="meta-actions">
-        <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
-        <button class="btn btn-outline" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
-        <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Send Back to DEO</button>
-        <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')">Approve</button>
-        <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
-      </div>
-    </div>
+    <!-- ═══ META ROW — shared app-complaint-summary ═══ -->
+    <app-complaint-summary [items]="summaryItems" [actions]="stripActions" (back)="goBack()" />
+
+    <ng-template #stripActions>
+      <button class="btn btn-save" (click)="saveDraft()"><i class="pi pi-save"></i> Save</button>
+      <button class="btn btn-outline" (click)="toggleEditMode()"><i class="pi pi-pencil"></i> Edit</button>
+      <button class="btn btn-orange" (click)="openConfirmDialog('SENT_BACK_TO_DEO')"><i class="pi pi-replay"></i> Send Back to DEO</button>
+      <button class="btn btn-green" (click)="openConfirmDialog('APPROVE')">Approve</button>
+      <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
+    </ng-template>
 
     <!-- ═══ MAIN CONTENT + SIDEBARS ═══ -->
     <div class="content-area">

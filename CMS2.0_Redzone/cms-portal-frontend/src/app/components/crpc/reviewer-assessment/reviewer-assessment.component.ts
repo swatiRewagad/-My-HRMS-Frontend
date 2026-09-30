@@ -7,6 +7,8 @@ import { CrpcService } from '../../../services/crpc.service';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 
 interface Attachment {
   id: string;
@@ -29,7 +31,7 @@ interface HistoryEntry {
 @Component({
   selector: 'app-reviewer-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, ComplaintSummaryComponent],
   templateUrl: './reviewer-assessment.component.html',
   styleUrl: './reviewer-assessment.component.scss'
 })
@@ -45,7 +47,33 @@ export class ReviewerAssessmentComponent implements OnInit {
   loading = signal(true);
   editMode = signal(false);
 
+  /**
+   * The draft's real status. This screen printed the literal "Sent to Reviewer", so a draft the reviewer
+   * had already approved still described itself as awaiting review.
+   */
+  draftStatus = 'SENT_TO_REVIEWER';
+
   currentTab = signal<'summary' | 'email' | 'attachments' | 'history' | 'action'>('summary');
+
+  /**
+   * The strip's facts, for the shared app-complaint-summary.
+   *
+   * A getter, not a {@code computed()}: the fields it reads are plain class properties, and a computed
+   * over a non-signal registers no dependency, so the strip would render once and never update.
+   */
+  get summaryItems(): ComplaintSummaryItem[] {
+    return [
+      { labelKey: 'ui.col.complaint_id', value: this.draftId, icon: 'pi-id-card' },
+      { labelKey: 'ui.col.complaint_number', value: 'Not Generated', icon: 'pi-file' },
+      {
+        labelKey: 'ui.col.mode_of_receipt',
+        value: this.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email',
+        icon: 'pi-envelope'
+      },
+      { labelKey: 'ui.col.status', value: this.draftStatus, kind: 'status', icon: 'pi-flag' },
+      { labelKey: 'ui.col.complainant_name', value: this.complainantName || '—', icon: 'pi-user', tone: 'owner' }
+    ];
+  }
 
   sectionOpen = {
     complaint: true,
@@ -167,6 +195,7 @@ export class ReviewerAssessmentComponent implements OnInit {
       .subscribe({
         next: (res) => {
           const draft = res?.data || {};
+          this.draftStatus = draft.status || 'SENT_TO_REVIEWER';
           this.complainantName = draft.complainantName || '';
           this.complainantPhone = draft.complainantPhone || '';
           this.complainantEmail = draft.senderEmail || '';
