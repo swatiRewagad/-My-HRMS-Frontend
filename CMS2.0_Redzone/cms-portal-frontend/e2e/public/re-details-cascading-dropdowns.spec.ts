@@ -20,19 +20,26 @@
  * only four things — changing an existing selection, scrollbar navigation over a large list, arrow-key
  * + Enter selection, and the absence of multi-select — so only those are written below.
  *
- * ── BLOCK 1'S ARROW-KEY CASE FAILS, AND IT NOW BLOCKS FILING ──────────────────────────────────────
- * The search results list is `<ul role="listbox">` of `<li role="option">` (html:86-95). Each option
- * binds `(mousedown)="selectEntityFromSearch(opt)"` and NOTHING ELSE. There is no `(keydown)`, no
- * ArrowDown/ArrowUp handling, no active-descendant tracking and no `tabindex` on the options —
- * confirmed by grepping the whole component for keyboard handlers: the only two are `onStepKeydown`
- * on steps 1 and 3, unrelated to this control. A keyboard-only citizen cannot use the search results
- * at all. Recorded as defect D-B4.
+ * ── BLOCK 1'S ARROW-KEY CASE: D-B4, RAISED TO BLOCKING, NOW FIXED ─────────────────────────────────
+ * The search results list is `<ul role="listbox">` of `<li role="option">`. Each option used to bind
+ * `(mousedown)="selectEntityFromSearch(opt)"` and NOTHING ELSE — no `(keydown)`, no ArrowDown/ArrowUp
+ * handling, no active-descendant tracking, no `tabindex`. A keyboard-only citizen could tab into the
+ * box and type, but could neither reach nor activate a result. Recorded as defect D-B4.
  *
- * When this was first written a native `<select>` stood beside the combobox and WAS keyboard-operable
- * (browsers give that for free), so the citizen was not locked out of filing. That select has since
- * been removed in the UI homogenisation — one question must have one control — which makes the
- * mouse-only combobox the only way to answer the question that gates the entire Scheme. D-B4 is
- * therefore re-raised as blocking: a keyboard-only citizen cannot file a complaint.
+ * WHY IT BECAME BLOCKING, which is the non-obvious part and the reason it is kept on record: when this
+ * was first written a native `<select>` of the same list stood beside the combobox and WAS
+ * keyboard-operable (browsers give that for free), so the citizen was merely inconvenienced. That
+ * select was removed in the UI homogenisation — one question must have one control — which left the
+ * mouse-only combobox as the ONLY way to answer the question that gates the entire Scheme, i.e. a
+ * keyboard-only citizen could not file a complaint at all.
+ *
+ * FIXED. The input now carries `role="combobox"`, `aria-autocomplete="list"`, `aria-expanded`,
+ * `aria-controls` and `aria-activedescendant`; each option carries a stable id and an `.active`
+ * highlight class. The input's `(keydown)` handler (`onEntitySearchKeydown`) drives ArrowDown/ArrowUp
+ * (wrapping), Home/End, Enter (through the SAME `selectEntityFromSearch` the mouse uses) and Escape
+ * (closes the list, leaves the recorded answer alone). DOM focus never leaves the input, per the ARIA
+ * pattern, so typing to narrow the list keeps working. The mouse path is untouched: `(mousedown)`
+ * remains, because it must beat the input's blur. Asserted below.
  *
  * ── THE PACK'S RBIO ROUTING RULE DOES NOT EXIST ──────────────────────────────────────────────────
  * Blocks 24/26/27 each assert: "if the Regulated entity selected is other than RBIO then the user is
@@ -71,7 +78,7 @@
  * Mobiles come from Session B's reserved 98765_2____ range via the helper.
  */
 
-import { test, expect } from '../fixtures';
+import { test, expect, Page } from '../fixtures';
 import {
   openWizard, gotoComplainantDetails, gotoComplainantDetailsWithEntity, gotoReDetails, gotoReCascade,
   fillComplainantMinimalAndAdvance, fieldError, clickNextAndCollectErrors, entityByDepartment,
@@ -81,6 +88,70 @@ import {
 test.beforeEach(async ({ page }) => {
   await redirectAppApi(page);
 });
+
+/**
+ * Types `term` and waits for the rendered list to be the list for THAT term, not for some earlier
+ * keystroke.
+ *
+ * `toHaveValue(term)` is not sufficient on its own. pressSequentially delivers one key at a time and
+ * Angular applies each (ngModelChange) in a later change-detection pass, so the box can already read
+ * 'Bank' while the popup is still showing the rows matching 'Ban'. A row COUNT read at that instant is
+ * too large, and every aria-activedescendant index derived from it is then wrong — which is exactly
+ * how the ArrowUp case failed intermittently in a full run and passed in isolation.
+ *
+ * The expected count comes from the master through the API (ruling 1: never a hardcoded number), and
+ * reproduces filterEntities' rule — case-insensitive substring over NAME or ENTITY TYPE.
+ */
+async function typeAndSettle(page: Page, box: ReturnType<Page['locator']>, term: string): Promise<number> {
+  const master = await (await page.request.get(`${API_BASE}/api/v1/routing/entities/list`)).json();
+  const rows = (master?.data ?? master ?? []) as any[];
+  const needle = term.toLowerCase().trim();
+  const expected = rows.filter(r =>
+    String(r.name ?? '').toLowerCase().includes(needle) ||
+    String(r.entityType ?? '').toLowerCase().includes(needle)).length;
+  expect(expected, `"${term}" matches nothing in the master, so no index assertion below can hold`)
+    .toBeGreaterThan(2);
+
+  await box.focus();
+  await box.fill('');
+  await box.pressSequentially(term);
+  await expect(box).toHaveValue(term);
+  await expect
+    .poll(() => entitySearchOptions(page).count(),
+      { timeout: 15000, message: `the popup never settled on the ${expected} entities matching "${term}"` })
+    .toBe(expected);
+  return expected;
+}
+
+/**
+ * Reopens the entity list on the FULL master, by keyboard only, after a choice has been made.
+ *
+ * Needed because `selectEntityFromSearch` writes the chosen entity's name into the box and the box's
+ * text is the filter term — so simply reopening shows a one-row list holding only what was already
+ * chosen, and `#entity-search-option-1` would not exist. Selecting-all and deleting is how a citizen
+ * with no pointing device clears it; `fill('')` would do it too but is not a keystroke.
+ */
+async function clearFilterByKeyboard(page: Page, box: ReturnType<Page['locator']>, chosenLabel: string) {
+  // Waits for the chosen label to LAND first, and for that exact label rather than merely for a
+  // non-empty box. The component writes it in a change-detection pass later than the keydown that
+  // made the choice, so a clear issued immediately empties the box and then Angular fills the name
+  // straight back in — leaving the list filtered to the one row that was already chosen.
+  await expect(box, 'the chosen entity never reached the box, so there is no filter to clear')
+    .toHaveValue(chosenLabel, { timeout: 10000 });
+  await box.press('ControlOrMeta+a');
+  await box.press('Delete');
+  await expect(box).toHaveValue('');
+
+  // And waits for the POPUP to catch up with the empty box, for the same reason typeAndSettle exists:
+  // an empty box whose list is still the single chosen row would make the assertions that follow read
+  // a one-row view instead of the whole master.
+  const master = await (await page.request.get(`${API_BASE}/api/v1/routing/entities/list`)).json();
+  const total = ((master?.data ?? master ?? []) as any[]).length;
+  await expect
+    .poll(() => entitySearchOptions(page).count(),
+      { timeout: 15000, message: 'clearing the filter did not restore the full entity master' })
+    .toBe(total);
+}
 
 // ═════════════════════════════════════════════════════════════════════════════════════════════════
 // Block 1 — Regulated Entity selection: only what re-entity-search.spec.ts does not already cover
@@ -209,51 +280,158 @@ test.describe('QA-B1 — changing, scrolling and keyboard-driving the Regulated 
   });
 
   /**
-   * DEFECT D-B4, NOW BLOCKING. Case 1.3 asks for arrow-key + Enter selection from the searchable list.
-   * The options bind only (mousedown), so a keyboard-only citizen cannot reach or activate them.
+   * D-B4 (was blocking, now FIXED). Case 1.3: arrow-key + Enter selection from the searchable list.
    *
-   * This was a degraded-experience defect while the native <select> stood beside the combobox, because
-   * browsers make a select keyboard-operable for free. The select has since been removed (see the
-   * combobox note in helpers-forms-b.ts), so the mouse-only control is now the ONLY way to answer the
-   * one question that gates the whole Scheme: a keyboard-only citizen cannot file a complaint at all.
-   * Re-raised at that severity.
+   * The three tests below are the acceptance evidence for the fix. They are written keyboard-only on
+   * purpose — `focus()` and `press()`, never `click()` or `dispatchEvent('mousedown')` — so none of
+   * them can pass on the strength of the pointer path that the single-select case above already covers.
    *
-   * Written as a failing-behaviour proof rather than test.fixme: the test PASSES by demonstrating the
-   * keyboard does nothing, which is what the BA needs evidence of. The single-select case above
-   * already covers the mouse path, so this documents the gap without pretending it is satisfied.
+   * Selection is asserted on `aria-selected`, never on the box's text: the component writes the chosen
+   * name into the box, but a citizen can type that same text without ever choosing, so the box is not
+   * evidence of a recorded answer. And because the list renders only while open, every "nothing is
+   * selected" assertion first proves an option is VISIBLE — `toHaveCount(0)` against a closed list is
+   * vacuous and would pass no matter what was recorded.
    */
-  test('DEFECT: the searchable entity list cannot be driven by keyboard — arrow keys and Enter select nothing', async ({ page }) => {
+  test('the searchable entity list is keyboard-operable: ArrowDown highlights, Enter records the answer, and filing proceeds', async ({ page }) => {
     await openWizard(page);
     const box = await waitForEntityPicker(page);
+    const options = entitySearchOptions(page);
 
-    await box.click();
-    await box.fill('');
-    await box.pressSequentially('Bank');
-    await expect(page.locator('li.entity-search-option').first()).toBeVisible({ timeout: 20000 });
+    // focus(), not click(): this whole test must hold for a citizen with no pointing device.
+    await typeAndSettle(page, box, 'Bank');
+    await expect(options.first()).toBeVisible({ timeout: 20000 });
 
-    // No option is marked active, and none is focusable — the two things a keyboard listbox needs.
-    const firstOption = page.locator('li.entity-search-option').first();
-    expect(await firstOption.getAttribute('tabindex'), 'options are not focusable').toBeNull();
+    // The ARIA contract the pattern requires, without which a screen reader cannot follow the highlight.
+    await expect(box).toHaveAttribute('role', 'combobox');
+    await expect(box).toHaveAttribute('aria-autocomplete', 'list');
+    await expect(box).toHaveAttribute('aria-expanded', 'true');
+    await expect(box).toHaveAttribute('aria-controls', 'entity-search-results');
+
+    // Nothing is highlighted on arrival, so an Enter pressed out of habit cannot pick a bank at random.
     expect(await box.getAttribute('aria-activedescendant'),
-      'no active-descendant is tracked, so arrow keys have nothing to move').toBeNull();
+      'a row is highlighted before the citizen has arrowed to it').toBeNull();
 
     await box.press('ArrowDown');
+    await expect(box, 'ArrowDown did not highlight the first result')
+      .toHaveAttribute('aria-activedescendant', 'entity-search-option-0');
     await box.press('ArrowDown');
-    expect(await box.getAttribute('aria-activedescendant'),
-      'ArrowDown does not highlight an option').toBeNull();
-    await expect(page.locator('li.entity-search-option[aria-selected="true"]'),
-      'ArrowDown selects nothing').toHaveCount(0);
+    await expect(box, 'a second ArrowDown did not advance the highlight')
+      .toHaveAttribute('aria-activedescendant', 'entity-search-option-1');
+
+    // The highlight is VISIBLE, and is exactly one row — a sighted keyboard user has to be able to see
+    // where they are, and must not see two candidates at once.
+    await expect(page.locator('li.entity-search-option.active'),
+      'the keyboard highlight is not rendered, so a sighted keyboard user cannot see where they are')
+      .toHaveCount(1);
+    const highlighted = page.locator('#entity-search-option-1');
+    const expectedName = ((await highlighted.locator('.es-name').textContent()) || '').trim();
+    expect(expectedName, 'the highlighted row must name an entity').not.toBe('');
 
     await box.press('Enter');
-    // The recorded answer is what matters, and it is readable off aria-selected — not off the box,
-    // which holds the citizen's typed 'Bank' and would look like a selection to a naive read.
-    await expect(page.locator('li.entity-search-option[aria-selected="true"]'),
-      'Enter records no entity: the keyboard path selects nothing at all').toHaveCount(0);
+    // Reopened on the FULL master rather than on the 'Bank' filter, so "exactly one row is selected"
+    // is a claim about every entity and not about the handful matching a term. The list has to be on
+    // screen before any aria-selected count means anything — a count against a closed list is vacuous.
+    await clearFilterByKeyboard(page, box, expectedName);
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    const selected = page.locator('li.entity-search-option[aria-selected="true"]');
+    await expect(selected, 'Enter recorded no entity').toHaveCount(1);
+    await expect(selected.locator('.es-name'), 'Enter recorded a different entity than the highlighted one')
+      .toHaveText(expectedName);
 
-    // And the consequence, which is the severity: the citizen who got this far by keyboard is stopped.
+    // And the severity is discharged: the keyboard-only citizen gets past the question that gates the
+    // whole Scheme, instead of being held on it by the mandatory-field error.
+    await box.press('Escape');
     await page.locator('button.btn-next').click();
-    await expect(page.locator('#eligibility-mandatory-error'),
-      'a keyboard-only citizen cannot get past the entity question at all').toBeVisible();
+    await expect(page.locator('.radio-list'),
+      'a keyboard-only citizen still cannot get past the entity question').toBeVisible({ timeout: 20000 });
+    await expect(page.locator('#eligibility-mandatory-error')).toHaveCount(0);
+    await expect(page.locator('.eligibility-card'), 'the keyboard-chosen entity is not what was carried forward')
+      .toContainText(expectedName, { timeout: 20000 });
+  });
+
+  test('ArrowUp walks the list backwards from the end, and the highlight wraps at both ends', async ({ page }) => {
+    await openWizard(page);
+    const box = await waitForEntityPicker(page);
+    const options = entitySearchOptions(page);
+
+    const count = await typeAndSettle(page, box, 'Bank');
+    await expect(options.first()).toBeVisible({ timeout: 20000 });
+
+    // With nothing highlighted, ArrowUp enters the list at the LAST row — the citizen reaching for the
+    // bottom of a 145-row popup should not have to arrow down through all of it.
+    await box.press('ArrowUp');
+    await expect(box, 'ArrowUp did not enter the list at its last row')
+      .toHaveAttribute('aria-activedescendant', `entity-search-option-${count - 1}`);
+    await box.press('ArrowUp');
+    await expect(box, 'ArrowUp did not move backwards')
+      .toHaveAttribute('aria-activedescendant', `entity-search-option-${count - 2}`);
+
+    // The contract is WRAPPING, not clamping, at both ends.
+    await box.press('ArrowDown');
+    await expect(box).toHaveAttribute('aria-activedescendant', `entity-search-option-${count - 1}`);
+    await box.press('ArrowDown');
+    await expect(box, 'ArrowDown past the last row must wrap to the first, not stick')
+      .toHaveAttribute('aria-activedescendant', 'entity-search-option-0');
+    await box.press('ArrowUp');
+    await expect(box, 'ArrowUp before the first row must wrap to the last, not stick')
+      .toHaveAttribute('aria-activedescendant', `entity-search-option-${count - 1}`);
+
+    // And ArrowUp + Enter records the row it landed on, not merely the row ArrowDown would have found.
+    const lastName = ((await page.locator(`#entity-search-option-${count - 1} .es-name`).textContent()) || '').trim();
+    await box.press('Enter');
+    await clearFilterByKeyboard(page, box, lastName);
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    const selected = page.locator('li.entity-search-option[aria-selected="true"]');
+    await expect(selected).toHaveCount(1);
+    await expect(selected.locator('.es-name'), 'the entity reached by ArrowUp was not the one recorded')
+      .toHaveText(lastName);
+  });
+
+  test('Escape closes the list and drops the highlight without changing the recorded answer', async ({ page }) => {
+    await openWizard(page);
+    const box = await waitForEntityPicker(page);
+    const options = entitySearchOptions(page);
+
+    // Record an answer first, so "unchanged" is a real claim rather than "nothing was chosen anyway".
+    await box.focus();
+    await box.fill('');
+    await box.press('ArrowDown');
+    await expect(options.first()).toBeVisible({ timeout: 20000 });
+    const chosen = ((await page.locator('#entity-search-option-0 .es-name').textContent()) || '').trim();
+    expect(chosen, 'the row about to be chosen must name an entity').not.toBe('');
+    await box.press('Enter');
+    await clearFilterByKeyboard(page, box, chosen);
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('li.entity-search-option[aria-selected="true"] .es-name'),
+      'no entity was recorded, so Escape has nothing to leave alone').toHaveText(chosen);
+    await expect
+      .poll(() => options.count(), { timeout: 10000, message: 'a second row is needed to arrow onto' })
+      .toBeGreaterThan(1);
+
+    // Arrow onto a DIFFERENT row, then dismiss. Dismissing a popup is not un-answering a question, and
+    // it is not answering it either: the highlight must be discarded, not committed. Row 1, because
+    // the answer just recorded is row 0 of the unfiltered master (ArrowDown entered it at the top).
+    await box.press('ArrowDown');
+    await box.press('ArrowDown');
+    await expect(box).toHaveAttribute('aria-activedescendant', 'entity-search-option-1');
+    const notChosen = ((await page.locator('#entity-search-option-1 .es-name').textContent()) || '').trim();
+    expect(notChosen, 'the row arrowed onto is the one already chosen, so nothing would change anyway')
+      .not.toBe(chosen);
+
+    await box.press('Escape');
+    await expect(options.first(), 'Escape did not close the list').toBeHidden({ timeout: 10000 });
+    await expect(box).toHaveAttribute('aria-expanded', 'false');
+    expect(await box.getAttribute('aria-activedescendant'),
+      'Escape left a stale highlight behind, so a later Enter would fire at it').toBeNull();
+
+    // Reopened before reading, because a count against a closed list proves nothing. The box is still
+    // empty here — Escape does not restore the chosen label — so this is the full master again.
+    await box.press('ArrowDown');
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    const selected = page.locator('li.entity-search-option[aria-selected="true"]');
+    await expect(selected, 'Escape changed how many entities are recorded').toHaveCount(1);
+    await expect(selected.locator('.es-name'), 'Escape committed the highlighted row instead of discarding it')
+      .toHaveText(chosen);
   });
 });
 

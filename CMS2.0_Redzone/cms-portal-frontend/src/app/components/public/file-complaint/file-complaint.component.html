@@ -69,12 +69,16 @@
             <input type="text" class="form-input entity-search-input"
                    name="entitySearch"
                    autocomplete="off"
+                   role="combobox"
+                   aria-autocomplete="list"
                    [attr.aria-expanded]="entityDropdownOpen"
                    aria-controls="entity-search-results"
+                   [attr.aria-activedescendant]="entityActiveDescendantId"
                    [attr.aria-label]="'eligibility.entity_search_label' | translate"
                    [placeholder]="'eligibility.entity_search_placeholder' | translate"
                    [ngModel]="entitySearchText"
                    (ngModelChange)="onEntitySearchInput($event)"
+                   (keydown)="onEntitySearchKeydown($event)"
                    (focus)="openEntityDropdown()"
                    (blur)="closeEntityDropdown()">
             @if (entitySearchText) {
@@ -84,8 +88,13 @@
             }
             @if (entityDropdownOpen && filteredEntityOptions.length > 0) {
               <ul class="entity-search-results" id="entity-search-results" role="listbox">
-                @for (opt of filteredEntityOptions; track opt.value) {
+                @for (opt of filteredEntityOptions; track opt.value; let i = $index) {
+                  <!-- (mousedown), not (click): it fires BEFORE the input's blur closes the list, so a
+                       click would let blur remove the option mid-gesture. Keyboard activation goes
+                       through the same selectEntityFromSearch, from the input's own (keydown). -->
                   <li class="entity-search-option" role="option"
+                      [id]="entityOptionId(i)"
+                      [class.active]="entityActiveIndex === i"
                       [attr.aria-selected]="eligibilityAnswers[currentQuestionKey] === opt.value"
                       [attr.data-entity-type]="opt.entityType || ''"
                       (mousedown)="selectEntityFromSearch(opt)">

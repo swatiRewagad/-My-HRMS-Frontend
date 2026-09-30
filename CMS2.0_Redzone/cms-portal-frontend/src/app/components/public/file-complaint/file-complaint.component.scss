@@ -400,6 +400,14 @@
     &:hover,
     &[aria-selected='true'] { background: #eef3fb; }
 
+    /* D-B4: the keyboard highlight. Deliberately stronger than the hover/selected tint and carrying
+       an accent bar, so "where the arrow keys are" is not confusable with "what is already chosen"
+       when a citizen arrows past the row they previously picked. */
+    &.active {
+      background: #dbe6f7;
+      box-shadow: inset 3px 0 0 var(--citizen-accent, #2460b9);
+    }
+
     .es-type {
       flex: none;
       font-size: 12px;
