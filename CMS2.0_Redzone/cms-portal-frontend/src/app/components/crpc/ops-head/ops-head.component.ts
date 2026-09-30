@@ -14,6 +14,8 @@ interface TransferComplaint {
   pending: number;
   fromOffice: string;
   targetOffice: string;
+  /** `<fromLayout>_<toLayout>` as written by the server. The direction KPIs key on this. */
+  transferType: string;
   status: string;
   entityName: string;
   proposedCategory: string;
@@ -95,16 +97,25 @@ export class OpsHeadComponent implements OnInit {
   languages = ['English', 'Hindi', 'Marathi', 'Tamil', 'Telugu', 'Kannada', 'Bengali', 'Gujarati', 'Malayalam', 'Punjabi', 'Odia', 'Urdu'];
   territories = ['Mumbai', 'Delhi', 'Chennai', 'Kolkata', 'Bangalore', 'Hyderabad', 'Ahmedabad', 'Pune', 'Jaipur', 'Lucknow', 'Chandigarh', 'Bhopal', 'Thiruvananthapuram', 'Bhubaneswar', 'Guwahati', 'Patna'];
 
+  /**
+   * Direction counts read the server's `transferType`, not the office NAMES.
+   *
+   * The office columns hold codes on live rows ("013"), so substring tests for "RBIO" and "CRPC"
+   * matched nothing and every direction card read 0 — while the mock fallback used display names and
+   * made them all look populated. transferType is written as `<fromLayout>_<toLayout>` by
+   * RbioWorkflowService.transferTypeFor, which is the same fact without the guesswork.
+   */
   stats = computed(() => {
     const all = this.complaints();
+    const ofType = (t: string) => all.filter(c => c.transferType === t).length;
     return {
       total: all.length,
-      totalTransfers: all.filter(c => c.status.includes('Sent')).length,
-      intraRbio: all.filter(c => c.fromOffice.includes('RBIO') && c.targetOffice.includes('RBIO')).length,
-      withinCrpc: all.filter(c => c.fromOffice.includes('CRPC') && c.targetOffice.includes('CRPC')).length,
-      rbioToCrpc: all.filter(c => c.fromOffice.includes('RBIO') && c.targetOffice.includes('CRPC')).length,
-      crpcToRbio: all.filter(c => c.fromOffice.includes('CRPC') && c.targetOffice.includes('RBIO')).length,
-      crpcToRbioDept: all.filter(c => c.targetOffice.includes('RBI Dept')).length,
+      totalTransfers: all.length,
+      intraRbio: ofType('RBIO_RBIO'),
+      withinCrpc: ofType('CEPC_CEPC'),
+      rbioToCrpc: ofType('RBIO_CEPC'),
+      crpcToRbio: ofType('CEPC_RBIO'),
+      crpcToRbioDept: all.filter(c => !!c.proposedCategory).length,
     };
   });
 
@@ -162,8 +173,8 @@ export class OpsHeadComponent implements OnInit {
     this.loading.set(true);
     this.http.get<any>(`${environment.apiBaseUrl}/api/v1/crpc/head/transfers/pending`).subscribe({
       next: (res) => {
-        const data = Array.isArray(res) ? res : (res?.data || []);
-        this.complaints.set(data);
+        const rows = Array.isArray(res) ? res : (res?.data || []);
+        this.complaints.set(rows.map((r: any) => this.toTransferComplaint(r)));
         this.loading.set(false);
       },
       error: () => {
@@ -173,8 +184,42 @@ export class OpsHeadComponent implements OnInit {
     });
   }
 
+  /**
+   * The server's transfer row does not carry the fields this screen reads.
+   *
+   * It sends `toOffice` where this screen wants `targetOffice`, and sends no complainant, subject,
+   * entity or timeline at all — that data lives on the complaint, not on the transfer request. Every
+   * string therefore needs a fallback: stats() calls .includes() on four of them, so one undefined
+   * threw and took the whole computed down, leaving the screen blank on live data. It rendered only
+   * because a 4xx dropped it into getMockData(), which has every field.
+   */
+  private toTransferComplaint(row: any): TransferComplaint {
+    return {
+      complaintId: row.complaintNumber ?? String(row.id ?? ''),
+      complaintNumber: row.complaintNumber ?? '',
+      from: row.requestedBy ?? '',
+      pending: 0,
+      fromOffice: row.fromOfficeCode || row.fromOffice || '',
+      targetOffice: row.toOfficeCode || row.toOffice || '',
+      transferType: row.transferType ?? '',
+      status: row.status ?? '',
+      entityName: row.targetBodyName ?? '',
+      proposedCategory: row.targetDepartment ?? '',
+      creationDate: row.requestedAt ?? '',
+      language: row.language ?? '',
+      territory: row.toOffice ?? '',
+      subject: row.reason ?? '',
+      complainantName: '',
+      complainantEmail: '',
+      complainantPhone: '',
+      description: row.reason ?? '',
+      timeline: [],
+    };
+  }
+
   private getMockData(): TransferComplaint[] {
     const statuses = ['Sent to Other', 'Sent to DO', 'Pending Approval', 'Sent Back'];
+    const types = ['RBIO_RBIO', 'CEPC_CEPC', 'RBIO_CEPC', 'CEPC_RBIO'];
     const offices = ['CRPC Mumbai', 'CRPC Delhi', 'RBIO Chennai', 'RBIO Kolkata', 'CRPC Bangalore', 'RBI Dept - Banking Supervision'];
     const entities = ['HDFC Bank', 'ICICI Bank', 'SBI', 'Axis Bank', 'PNB', 'Bank of Baroda', 'Kotak Mahindra', 'IndusInd Bank'];
     const data: TransferComplaint[] = [];
@@ -186,6 +231,7 @@ export class OpsHeadComponent implements OnInit {
         pending: Math.floor(Math.random() * 15) + 1,
         fromOffice: offices[Math.floor(Math.random() * 3)],
         targetOffice: offices[Math.floor(Math.random() * offices.length)],
+        transferType: types[Math.floor(Math.random() * types.length)],
         status: statuses[Math.floor(Math.random() * statuses.length)],
         entityName: entities[Math.floor(Math.random() * entities.length)],
         proposedCategory: ['Banking', 'Credit Card', 'Insurance', 'ATM', 'Digital Payment'][Math.floor(Math.random() * 5)],
