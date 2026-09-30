@@ -69,6 +69,12 @@ public class ClauseLabelTranslationSeeder implements CommandLineRunner {
         // ── Closure ──
         m.put("clause.16_3", "Closed - complainant not responding");
         m.put("clause.16_4", "Closed - matter settled between the parties");
+        // ── First Resolution (FRC) pre-conditions under clause 10(1) ──
+        // AutoClosureService resolves its citation through CLOSURE_CLAUSE_MASTER, so these two rows
+        // reach citizen-facing closure text. Their label_keys were seeded onto the clause rows without
+        // ever being registered here, which rendered them as the raw key to the complainant.
+        m.put("clause.10_1_e", "Not maintainable - complainant has not first approached the Regulated Entity");
+        m.put("clause.10_1_g", "Not maintainable - filed before the Regulated Entity reply window elapsed");
         return m;
     }
 
