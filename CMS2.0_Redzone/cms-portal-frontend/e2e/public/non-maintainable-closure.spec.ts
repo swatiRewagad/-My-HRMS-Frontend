@@ -248,12 +248,28 @@ async function openFileComplaint(page: Page, mobile: string): Promise<void> {
   await expect(page.locator('.eligibility-card')).toBeVisible({ timeout: 20000 });
 }
 
-/** Selects a NAMED entity, so the department — and therefore the question set — is controlled. */
+/**
+ * Selects a NAMED entity, so the department — and therefore the question set — is controlled.
+ *
+ * The entity question is a SEARCHABLE COMBOBOX, not a native <select>; the select that used to sit
+ * beside it was a second control bound to the same answer and has been removed. The name is TYPED
+ * rather than picked from the full list because the master serves ~200 entities and the one wanted is
+ * routinely below the fold of the popup — which is also the path a citizen takes.
+ */
 async function selectEntityByName(page: Page, name: string): Promise<void> {
-  const select = page.locator('select.entity-select-dropdown');
-  await expect(select).toBeVisible({ timeout: 20000 });
-  await expect(select.locator('option:not([disabled])').first()).toBeAttached({ timeout: 20000 });
-  await select.selectOption({ label: name });
+  const box = page.locator('input.entity-search-input');
+  await expect(box).toBeVisible({ timeout: 20000 });
+  await box.click();
+  await box.fill('');
+  await box.pressSequentially(name.slice(0, 20));
+  const option = page.locator('li.entity-search-option').filter({ hasText: name }).first();
+  await expect(option, `no entity named "${name}" was offered by the search`)
+    .toBeVisible({ timeout: 20000 });
+  // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+  // closes the list. A click would let blur remove the option mid-gesture.
+  await option.dispatchEvent('mousedown');
+  await expect(box, `"${name}" was not recorded as the chosen entity`)
+    .toHaveValue(name, { timeout: 10000 });
   await page.locator(NEXT).click();
   await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
 }
@@ -847,18 +863,23 @@ test.describe('QA-C50/51 — RBIO and CEPC entities are asked different question
   });
 
   test('a CEPC entity can be selected at all, despite being listed as not covered', async ({ page, request }) => {
-    // A trap worth pinning. `loadRegulatedEntities` splits the list into `entitySelectOptions`
-    // (department !== 'CEPC') and `nonCoveredEntityOptions` (department === 'CEPC') at ts:1011-1014,
-    // and the template renders BOTH into the same `<select>` (html:111-116) with nothing marking which
-    // group an option is in. So the "not covered" distinction exists in the code and is invisible on
-    // screen. If that grouping were ever turned into a disabled section, every CEPC test here would
-    // break — this test says so first.
+    // A trap worth pinning. `loadRegulatedEntities` once split the list into covered
+    // (department !== 'CEPC') and non-covered (department === 'CEPC') groups and rendered both into the
+    // same control with nothing marking which group an option was in — so the "not covered"
+    // distinction existed in the code and was invisible on screen. The split is gone and every entity
+    // the master serves is now offered identically. If a CEPC entity were ever hidden or disabled,
+    // every CEPC test in this file would break — this test says so first.
     const cepc = await pickEntity(request, 'CEPC');
     await openFileComplaint(page, nextMobile());
 
-    const select = page.locator('select.entity-select-dropdown');
-    await expect(select.locator(`option:text-is("${cepc.name}")`)).toBeAttached({ timeout: 20000 });
-    await expect(select.locator(`option:text-is("${cepc.name}")`)).not.toBeDisabled();
+    // Searching for it, rather than scanning the whole list: the master serves ~200 entities.
+    const box = page.locator('input.entity-search-input');
+    await expect(box).toBeVisible({ timeout: 20000 });
+    await box.click();
+    await box.pressSequentially(cepc.name.slice(0, 20));
+    await expect(page.locator('li.entity-search-option').filter({ hasText: cepc.name }).first(),
+      `the CEPC entity "${cepc.name}" is not offered to the citizen at all`)
+      .toBeVisible({ timeout: 20000 });
   });
 });
 

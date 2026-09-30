@@ -20,7 +20,7 @@
  * only four things — changing an existing selection, scrollbar navigation over a large list, arrow-key
  * + Enter selection, and the absence of multi-select — so only those are written below.
  *
- * ── BLOCK 1'S ARROW-KEY CASE FAILS, AND IT IS A REAL ACCESSIBILITY DEFECT ────────────────────────
+ * ── BLOCK 1'S ARROW-KEY CASE FAILS, AND IT NOW BLOCKS FILING ──────────────────────────────────────
  * The search results list is `<ul role="listbox">` of `<li role="option">` (html:86-95). Each option
  * binds `(mousedown)="selectEntityFromSearch(opt)"` and NOTHING ELSE. There is no `(keydown)`, no
  * ArrowDown/ArrowUp handling, no active-descendant tracking and no `tabindex` on the options —
@@ -28,8 +28,11 @@
  * on steps 1 and 3, unrelated to this control. A keyboard-only citizen cannot use the search results
  * at all. Recorded as defect D-B4.
  *
- * The native `<select>` beside it IS keyboard-operable (browsers give that for free), so the citizen
- * is not locked out of filing — but the searchable control the pack describes is mouse-only.
+ * When this was first written a native `<select>` stood beside the combobox and WAS keyboard-operable
+ * (browsers give that for free), so the citizen was not locked out of filing. That select has since
+ * been removed in the UI homogenisation — one question must have one control — which makes the
+ * mouse-only combobox the only way to answer the question that gates the entire Scheme. D-B4 is
+ * therefore re-raised as blocking: a keyboard-only citizen cannot file a complaint.
  *
  * ── THE PACK'S RBIO ROUTING RULE DOES NOT EXIST ──────────────────────────────────────────────────
  * Blocks 24/26/27 each assert: "if the Regulated entity selected is other than RBIO then the user is
@@ -72,7 +75,7 @@ import { test, expect } from '../fixtures';
 import {
   openWizard, gotoComplainantDetails, gotoComplainantDetailsWithEntity, gotoReDetails, gotoReCascade,
   fillComplainantMinimalAndAdvance, fieldError, clickNextAndCollectErrors, entityByDepartment,
-  redirectAppApi, API_BASE,
+  redirectAppApi, API_BASE, waitForEntityPicker, entitySearchOptions,
 } from './helpers-forms-b';
 
 test.beforeEach(async ({ page }) => {
@@ -87,28 +90,36 @@ test.describe('QA-B1 — changing, scrolling and keyboard-driving the Regulated 
 
   test('the citizen can change an entity selection to a different entity before proceeding', async ({ page }) => {
     await openWizard(page);
-    const select = page.locator('select.entity-select-dropdown');
-    await expect(select.locator('option:not([disabled])').first()).toBeAttached({ timeout: 20000 });
-
-    const values = await select.locator('option:not([disabled])')
-      .evaluateAll(opts => opts.map(o => (o as HTMLOptionElement).value));
-    expect(values.length, 'the master must offer at least two entities to change between')
+    const box = await waitForEntityPicker(page);
+    const options = entitySearchOptions(page);
+    expect(await options.count(), 'the master must offer at least two entities to change between')
       .toBeGreaterThan(1);
 
-    // Case 1.1. Select, then re-select a different row, then confirm the SECOND one is what is held.
-    await select.selectOption(values[0]);
-    await expect(select).toHaveValue(values[0]);
-    await select.selectOption(values[1]);
-    await expect(select, 'the changed selection must replace the first, not be ignored')
-      .toHaveValue(values[1]);
-
-    // Read the names while the select is still on screen: advancing past the entity question removes
-    // it from the DOM, so a post-click read finds nothing.
-    const firstName = ((await page.locator(
-      `select.entity-select-dropdown option[value="${values[0]}"]`).textContent()) || '').trim();
-    const changedName = ((await page.locator(
-      `select.entity-select-dropdown option[value="${values[1]}"]`).textContent()) || '').trim();
+    // Read the names while the list is still on screen: advancing past the entity question removes it
+    // from the DOM, so a post-advance read finds nothing.
+    const firstName = ((await options.nth(0).locator('.es-name').textContent()) || '').trim();
+    const changedName = ((await options.nth(1).locator('.es-name').textContent()) || '').trim();
     expect(changedName, 'the two entities must be distinguishable by name').not.toBe(firstName);
+
+    // Case 1.1. Choose one, then choose a different row, then confirm the SECOND is what is held.
+    // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+    // closes the list, so a click lets blur remove the option mid-gesture.
+    await options.nth(0).dispatchEvent('mousedown');
+    await expect(box).toHaveValue(firstName, { timeout: 10000 });
+
+    // Changing the answer means RETYPING, and that is the product's actual behaviour rather than a
+    // harness detail: selectEntityFromSearch writes the chosen name into the box (component.ts:1292),
+    // and the box's text is the filter term (filterEntities, ts:1244). So merely reopening the list
+    // shows the one row already chosen — the citizen who wants a different bank has to type its name,
+    // or clear the box first. Driven the way a citizen does it.
+    await box.click();
+    await box.fill('');
+    await box.pressSequentially(changedName.slice(0, 20));
+    const changedRow = options.filter({ hasText: changedName }).first();
+    await expect(changedRow, 'the entity being changed to was not offered').toBeVisible({ timeout: 15000 });
+    await changedRow.dispatchEvent('mousedown');
+    await expect(box, 'the changed selection must replace the first, not be ignored')
+      .toHaveValue(changedName, { timeout: 10000 });
 
     // And the changed selection is the one carried forward: the questionnaire interpolates the RE name
     // into its questions, so it names the entity last chosen, not the one first clicked.
@@ -123,55 +134,100 @@ test.describe('QA-B1 — changing, scrolling and keyboard-driving the Regulated 
 
   test('a large entity list is scrollable rather than truncated', async ({ page }) => {
     await openWizard(page);
-    const select = page.locator('select.entity-select-dropdown');
-    await expect(select.locator('option:not([disabled])').first()).toBeAttached({ timeout: 20000 });
+    const box = await waitForEntityPicker(page);
+    const options = entitySearchOptions(page);
 
-    // Case 1.2. "Check the dropdown scrollbar" is not observable on a native <select> — the popup is
-    // painted by the OS, outside the DOM. What IS checkable, and is the substance of the case, is that
-    // every entity the master returns is present as an option rather than the list being capped.
+    // Case 1.2. Two things make up this case, and the combobox lets both be checked where a native
+    // <select> allowed only the second (its popup is painted by the OS, outside the DOM).
     const master = await (await page.request.get(`${API_BASE}/api/v1/routing/entities/list`)).json();
     const rows = (master?.data ?? master ?? []) as any[];
     expect(rows.length, 'this assertion is only meaningful on a large master').toBeGreaterThan(50);
 
-    const optionCount = await select.locator('option:not([disabled])').count();
-    expect(optionCount, 'every entity in the master must be reachable, none paged away')
+    // (a) every entity the master returns is offered, rather than the list being capped or paged; and
+    expect(await options.count(), 'every entity in the master must be reachable, none paged away')
       .toBe(rows.length);
+
+    // (b) the list really does scroll — the popup overflows its own box rather than growing without
+    // bound or clipping rows away. This is the scrollbar the case asks for, now that it is a real
+    // element: scrollHeight exceeding clientHeight IS a scrollable region.
+    const list = page.locator('ul.entity-search-results');
+    const metrics = await list.evaluate((el: HTMLElement) => ({
+      scrollHeight: el.scrollHeight, clientHeight: el.clientHeight,
+      overflowY: getComputedStyle(el).overflowY,
+    }));
+    expect(metrics.scrollHeight,
+      'the list is not scrollable: it renders at full height, so a 145-row master runs off screen')
+      .toBeGreaterThan(metrics.clientHeight);
+    expect(['auto', 'scroll'], 'the overflow is not scrollable').toContain(metrics.overflowY);
+
+    // And the last entity is reachable by scrolling to it, not merely present in the DOM.
+    await options.last().scrollIntoViewIfNeeded();
+    await expect(options.last(), 'the last entity cannot be scrolled to').toBeVisible();
+    await expect(box).toHaveValue('');
   });
 
-  test('the entity select is single-select, so multiple entities cannot be chosen', async ({ page }) => {
+  test('the entity list is single-select, so multiple entities cannot be chosen', async ({ page }) => {
     await openWizard(page);
-    const select = page.locator('select.entity-select-dropdown');
+    const box = await waitForEntityPicker(page);
+    const options = entitySearchOptions(page);
 
-    // Case 1.4. Proven on the attribute, which is the real guarantee.
-    expect(await select.getAttribute('multiple')).toBeNull();
-    expect(await select.evaluate((el: HTMLSelectElement) => el.multiple)).toBe(false);
+    // Case 1.4. The control is a `ul role="listbox"` of `li role="option"`, so there is no `multiple`
+    // attribute to read as there was on the select. What replaces it is stronger: the answer is a
+    // SINGLE value (`eligibilityAnswers[currentQuestionKey]`), and `aria-selected` is bound to an
+    // equality test against it, so at most one option can ever be marked selected. Asserted on the
+    // behaviour — choosing a second entity replaces the first rather than adding to it.
+    await expect(options.first()).toBeVisible({ timeout: 20000 });
+    const firstName = ((await options.nth(0).locator('.es-name').textContent()) || '').trim();
+    const secondName = ((await options.nth(1).locator('.es-name').textContent()) || '').trim();
 
-    // And the search results list, though it carries role="listbox", is not multi-selectable either:
-    // selecting a second option replaces the first rather than adding to it.
-    await expect(select.locator('option:not([disabled])').first()).toBeAttached({ timeout: 20000 });
-    const values = await select.locator('option:not([disabled])')
-      .evaluateAll(opts => opts.map(o => (o as HTMLOptionElement).value));
-    await select.selectOption(values[0]);
-    await select.selectOption(values[1]);
-    const selectedCount = await select.evaluate((el: HTMLSelectElement) => el.selectedOptions.length);
-    expect(selectedCount, 'exactly one entity is ever selected').toBe(1);
+    await options.nth(0).dispatchEvent('mousedown');
+    await expect(box).toHaveValue(firstName, { timeout: 10000 });
+    // Retyping, because the chosen name is also the filter term — see the change-selection case above.
+    await box.click();
+    await box.fill('');
+    await box.pressSequentially(secondName.slice(0, 20));
+    await options.filter({ hasText: secondName }).first().dispatchEvent('mousedown');
+    await expect(box).toHaveValue(secondName, { timeout: 10000 });
+
+    // Clearing the FILTER (not the selection) brings the whole master back with the chosen row still
+    // marked, so the single-selection guarantee is not an artifact of a one-row filtered view.
+    //
+    // `fill('')` and not `click()`: the box still holds focus after the choice, so a click fires no
+    // focus event and `openEntityDropdown` never runs — the list would stay closed and every
+    // aria-selected assertion would vacuously find zero. Typing drives (ngModelChange), which
+    // re-filters AND reopens. Note this is the filter only: clearEntitySelection (the × button) is
+    // what drops the answer.
+    await box.fill('');
+    await expect(options.first()).toBeVisible({ timeout: 15000 });
+    const selected = page.locator('li.entity-search-option[aria-selected="true"]');
+    await expect(selected, 'exactly one entity is ever selected').toHaveCount(1);
+    await expect(selected.locator('.es-name'), 'the second choice must have replaced the first')
+      .toHaveText(secondName);
+    // Also on the aria contract itself: a multi-selectable listbox announces aria-multiselectable.
+    expect(await page.locator('ul.entity-search-results').getAttribute('aria-multiselectable'),
+      'the listbox must not advertise multi-select').toBeNull();
   });
 
   /**
-   * DEFECT D-B4. Case 1.3 asks for arrow-key + Enter selection from the searchable list. The options
-   * bind only (mousedown), so a keyboard-only citizen cannot reach or activate them.
+   * DEFECT D-B4, NOW BLOCKING. Case 1.3 asks for arrow-key + Enter selection from the searchable list.
+   * The options bind only (mousedown), so a keyboard-only citizen cannot reach or activate them.
+   *
+   * This was a degraded-experience defect while the native <select> stood beside the combobox, because
+   * browsers make a select keyboard-operable for free. The select has since been removed (see the
+   * combobox note in helpers-forms-b.ts), so the mouse-only control is now the ONLY way to answer the
+   * one question that gates the whole Scheme: a keyboard-only citizen cannot file a complaint at all.
+   * Re-raised at that severity.
    *
    * Written as a failing-behaviour proof rather than test.fixme: the test PASSES by demonstrating the
-   * keyboard does nothing, which is what the BA needs evidence of. The `multiple` case above already
-   * covers the mouse path, so this documents the gap without pretending it is satisfied.
+   * keyboard does nothing, which is what the BA needs evidence of. The single-select case above
+   * already covers the mouse path, so this documents the gap without pretending it is satisfied.
    */
   test('DEFECT: the searchable entity list cannot be driven by keyboard — arrow keys and Enter select nothing', async ({ page }) => {
     await openWizard(page);
-    const box = page.locator('input.entity-search-input');
-    await expect(page.locator('select.entity-select-dropdown option:not([disabled])').first())
-      .toBeAttached({ timeout: 20000 });
+    const box = await waitForEntityPicker(page);
 
     await box.click();
+    await box.fill('');
     await box.pressSequentially('Bank');
     await expect(page.locator('li.entity-search-option').first()).toBeVisible({ timeout: 20000 });
 
@@ -189,8 +245,15 @@ test.describe('QA-B1 — changing, scrolling and keyboard-driving the Regulated 
       'ArrowDown selects nothing').toHaveCount(0);
 
     await box.press('Enter');
-    await expect(page.locator('select.entity-select-dropdown'),
-      'Enter records no entity: the keyboard path selects nothing at all').toHaveValue('');
+    // The recorded answer is what matters, and it is readable off aria-selected — not off the box,
+    // which holds the citizen's typed 'Bank' and would look like a selection to a naive read.
+    await expect(page.locator('li.entity-search-option[aria-selected="true"]'),
+      'Enter records no entity: the keyboard path selects nothing at all').toHaveCount(0);
+
+    // And the consequence, which is the severity: the citizen who got this far by keyboard is stopped.
+    await page.locator('button.btn-next').click();
+    await expect(page.locator('#eligibility-mandatory-error'),
+      'a keyboard-only citizen cannot get past the entity question at all').toBeVisible();
   });
 });
 
@@ -282,7 +345,7 @@ test.describe('QA-B24/26/27 — the documented RBIO-only routing rule', () => {
     const byDept = await entityByDepartment(page);
     expect(byDept['CEPC'], 'this assertion needs a CEPC entity in the master').toBeTruthy();
 
-    await gotoComplainantDetailsWithEntity(page, byDept['CEPC'].id);
+    await gotoComplainantDetailsWithEntity(page, byDept['CEPC'].name);
     await fillComplainantMinimalAndAdvance(page);
 
     // Blocks 24, 26 and 27 each state the user "should not be navigated to the Regulated entity
@@ -296,7 +359,7 @@ test.describe('QA-B24/26/27 — the documented RBIO-only routing rule', () => {
     const byDept = await entityByDepartment(page);
     expect(byDept['RBIO'], 'this assertion needs an RBIO entity in the master').toBeTruthy();
 
-    await gotoComplainantDetailsWithEntity(page, byDept['RBIO'].id);
+    await gotoComplainantDetailsWithEntity(page, byDept['RBIO'].name);
     await fillComplainantMinimalAndAdvance(page);
 
     await expect(page.locator('input[name="isCreditCardComplaint"]').first())
@@ -307,7 +370,7 @@ test.describe('QA-B24/26/27 — the documented RBIO-only routing rule', () => {
     const byDept = await entityByDepartment(page);
     const entity = byDept['RBIO'] || byDept['CEPC'];
 
-    await gotoComplainantDetailsWithEntity(page, entity.id);
+    await gotoComplainantDetailsWithEntity(page, entity.name);
     await fillComplainantMinimalAndAdvance(page);
 
     await expect(page.locator('.re-value'), 'the chosen entity must be echoed back, not a placeholder')

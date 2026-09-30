@@ -95,62 +95,85 @@ export async function openWizard(page: Page, mobile = sessionBMobile()): Promise
 }
 
 /**
- * Waits for the entity <select> to be usable, and names the reason when it never becomes usable.
+ * ── THE ENTITY QUESTION IS A SEARCHABLE COMBOBOX, NOT A NATIVE <select> ──────────────────────────
+ * It used to be both: a `select.entity-select-dropdown` and an `input.entity-search-input` bound to
+ * the SAME answer, so a citizen faced two controls for one question and a selection made in one did
+ * not visibly settle in the other. The select was removed and the combobox is now the only control.
+ *
+ * Every helper below therefore drives the combobox. Nothing here may reintroduce a select locator:
+ * asserting on a hidden mirror of a control is how the duplicate survived as long as it did.
+ *
+ * The combobox: `input.entity-search-input` opens `ul.entity-search-results` on focus holding one
+ * `li.entity-search-option` per entity (`.es-name` + optional `.es-type`); `mousedown` on an option
+ * records the answer and writes its name into the box (component ts:1288-1295); the clear button
+ * `button.entity-search-clear` drops the answer and restores the full list.
+ */
+export const entitySearchBox = (page: Page) => page.locator('input.entity-search-input');
+export const entitySearchOptions = (page: Page) => page.locator('li.entity-search-option');
+
+/**
+ * Waits for the entity combobox to be usable, and names the reason when it never becomes usable.
  *
  * ── WHY THIS IS NOT A PLAIN toBeVisible WAIT ─────────────────────────────────────────────────────
- * The select only exists inside `@if (currentQuestion?.type === 'select')` (html:52-119), and
+ * The combobox only exists inside `@if (currentQuestion?.type === 'select')` (html:52-105), and
  * currentQuestion comes from the questions master. When GET /api/v1/eligibility/questions fails OR
  * returns zero rows, `questionsLoadFailed` is set (ts:943-978), there is no currentQuestion, and the
- * select is never rendered at all — while `.eligibility-card` (which openWizard waits for) stays
+ * combobox is never rendered at all — while `.eligibility-card` (which openWizard waits for) stays
  * perfectly visible. There is deliberately NO hardcoded question fallback, because serving a stale
  * maintainability rule could wrongly deny a citizen the Scheme.
  *
- * A bare visibility wait therefore reports a 20s timeout on `select.entity-select-dropdown` for a
- * failure that has nothing to do with the select, landing on whichever test happened to run at that
- * moment. That is what produced "2 tests fail in the full run, 4 different ones fail on re-run, all 24
- * pass in isolation" — it reads as harness flake and is actually a master-data fetch failing under the
- * request load of a long suite.
+ * A bare visibility wait therefore reports a 20s timeout on the search input for a failure that has
+ * nothing to do with it, landing on whichever test happened to run at that moment. That is what
+ * produced "2 tests fail in the full run, 4 different ones fail on re-run, all 24 pass in isolation"
+ * — it reads as harness flake and is actually a master-data fetch failing under the request load of a
+ * long suite.
  *
  * Both fail-closed notices carry a retry button that exists precisely so a transient failure is
  * recoverable, so this clicks it once before giving up, and then throws naming which master is down.
  */
-async function waitForEntitySelect(page: Page) {
-  const select = page.locator('select.entity-select-dropdown');
+export async function waitForEntityPicker(page: Page) {
+  const box = entitySearchBox(page);
   const questionsFailed = page.locator('.questions-load-error');
   const entitiesFailed = page.locator('.entities-load-error');
 
   /**
-   * Settles as soon as EITHER the select or the questions-failure notice appears, rather than waiting
+   * Settles as soon as EITHER the box or the questions-failure notice appears, rather than waiting
    * out the full timeout on one of them.
    *
    * `isVisible({ timeout })` cannot be used for this: the option is documented as ignored — the call
    * returns immediately — so polling with it would report "not rendered" while Angular was still
    * mounting, reintroducing exactly the race this function exists to remove. `waitFor` does wait.
    */
-  const raceSelectAgainstFailure = () => Promise.race([
-    select.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'select').catch(() => null),
+  const raceBoxAgainstFailure = () => Promise.race([
+    box.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'box').catch(() => null),
     questionsFailed.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'questions').catch(() => null),
   ]);
 
   /**
-   * The two masters load independently, so the select appears as soon as the QUESTIONS request lands —
+   * The two masters load independently, so the box appears as soon as the QUESTIONS request lands —
    * typically while the ENTITIES request is still in flight. Checking for the entities notice at that
    * instant therefore finds nothing even when the entity fetch is about to fail, and the failure lands
    * on the option wait instead. Racing the two settles on whichever actually happens.
+   *
+   * The list renders only while the dropdown is OPEN, so the box is focused first. Focus is idempotent
+   * and `openEntityDropdown` just re-filters, so doing it on the retry pass costs nothing.
    */
-  const raceOptionsAgainstFailure = () => Promise.race([
-    select.locator('option:not([disabled])').first()
-      .waitFor({ state: 'attached', timeout: 20000 }).then(() => 'options').catch(() => null),
-    entitiesFailed.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'failed').catch(() => null),
-  ]);
+  const raceOptionsAgainstFailure = async () => {
+    await box.click();
+    return Promise.race([
+      entitySearchOptions(page).first()
+        .waitFor({ state: 'visible', timeout: 20000 }).then(() => 'options').catch(() => null),
+      entitiesFailed.waitFor({ state: 'visible', timeout: 20000 }).then(() => 'failed').catch(() => null),
+    ]);
+  };
 
   for (let attempt = 0; attempt < 2; attempt++) {
-    const outcome = await raceSelectAgainstFailure();
+    const outcome = await raceBoxAgainstFailure();
 
-    if (outcome === 'select') {
-      // The entity fetch can fail independently: the select still renders, holding only its disabled
-      // placeholder. Report that as the master-data failure it is rather than as an option-wait timeout.
-      if (await raceOptionsAgainstFailure() === 'options') return select;
+    if (outcome === 'box') {
+      // The entity fetch can fail independently: the box still renders, holding no options at all.
+      // Report that as the master-data failure it is rather than as an option-wait timeout.
+      if (await raceOptionsAgainstFailure() === 'options') return box;
 
       if (attempt === 0 && (await page.locator('.btn-retry-entities').isVisible().catch(() => false))) {
         await page.locator('.btn-retry-entities').click();
@@ -158,7 +181,7 @@ async function waitForEntitySelect(page: Page) {
         continue;
       }
       throw new Error(
-        'ENTITY MASTER UNAVAILABLE: the select rendered but never gained a selectable option' +
+        'ENTITY MASTER UNAVAILABLE: the search box rendered but the list never offered an entity' +
         (await entitiesFailed.isVisible().catch(() => false)
           ? ', and the wizard is showing its entities_unavailable notice'
           : ', though no entities_unavailable notice was rendered either') +
@@ -173,26 +196,55 @@ async function waitForEntitySelect(page: Page) {
       }
       throw new Error(
         'QUESTIONS MASTER UNAVAILABLE: GET /api/v1/eligibility/questions failed or returned zero rows, ' +
-        'so no question is current and the entity select is never rendered. Retrying did not recover it. ' +
-        'The eligibility card is visible, which is why this previously surfaced as an unrelated 20s ' +
-        'timeout on select.entity-select-dropdown.');
+        'so no question is current and the entity combobox is never rendered. Retrying did not recover ' +
+        'it. The eligibility card is visible, which is why this previously surfaced as an unrelated 20s ' +
+        'timeout on the entity control.');
     }
 
     throw new Error(
-      'The entity select never appeared and NEITHER fail-closed notice was rendered. The eligibility ' +
+      'The entity combobox never appeared and NEITHER fail-closed notice was rendered. The eligibility ' +
       'card mounted but no question became current — the questions request is likely still in flight, ' +
       'or the component threw during init.');
   }
 
-  return select;
+  return box;
 }
 
-/** Picks the first genuinely selectable entity from the native <select> and advances. */
+/**
+ * Chooses the entity whose name is `name`, by typing enough of it to filter the list.
+ *
+ * Typed rather than clicked-from-the-full-list because the master serves ~200 entities and the one
+ * wanted is routinely below the fold of a 340px popup; filtering is also the path a citizen takes.
+ */
+export async function selectEntityByName(page: Page, name: string) {
+  const box = await waitForEntityPicker(page);
+  await box.fill('');
+  await box.pressSequentially(name.slice(0, 20));
+  const option = entitySearchOptions(page).filter({ hasText: name }).first();
+  await expect(option, `no entity named "${name}" was offered by the search`)
+    .toBeVisible({ timeout: 20000 });
+  // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+  // closes the list. A click would let blur remove the option mid-gesture.
+  await option.dispatchEvent('mousedown');
+  await expect(box).toHaveValue(name, { timeout: 10000 });
+}
+
+/** The name of the first entity the combobox offers, and the answer it records. */
+export async function selectFirstEntity(page: Page): Promise<string> {
+  const box = await waitForEntityPicker(page);
+  const first = entitySearchOptions(page).first();
+  const name = ((await first.locator('.es-name').textContent()) || '').trim();
+  await first.dispatchEvent('mousedown');
+  // The recorded answer is only observable through the box, which now holds the chosen name — the
+  // component writes it there precisely so the citizen can see what they picked.
+  await expect(box, 'the chosen entity was not recorded').toHaveValue(name, { timeout: 10000 });
+  return name;
+}
+
+/** Picks the first entity the master offers and advances past the entity question. */
 export async function selectFirstEntityAndAdvance(page: Page) {
-  // waitForEntitySelect already guarantees a selectable option, or throws naming the master that failed.
-  const select = await waitForEntitySelect(page);
-  const value = await select.locator('option:not([disabled])').first().getAttribute('value');
-  await select.selectOption(value!);
+  // selectFirstEntity already guarantees an offered entity, or throws naming the master that failed.
+  await selectFirstEntity(page);
   await page.locator('button.btn-next').click();
   await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
 }
@@ -217,15 +269,17 @@ export async function entityByDepartment(page: Page): Promise<Record<string, { i
 }
 
 /**
- * Seeds a session, selects a SPECIFIC entity by id, walks the gate and lands on step 1.
+ * Seeds a session, selects a SPECIFIC entity by name, walks the gate and lands on step 1.
  *
  * `selectFirstEntityAndAdvance` is alphabetical-first, which is a CEPC row on this master — fine for
- * field validation, useless for proving department-dependent behaviour. This takes the id explicitly.
+ * field validation, useless for proving department-dependent behaviour. This names the entity.
+ *
+ * By NAME and not by id because the combobox that replaced the select has no ids in the DOM: options
+ * carry the entity's name and type only. `entityByDepartment` returns both, so callers pass `.name`.
  */
-export async function gotoComplainantDetailsWithEntity(page: Page, entityId: string, mobile?: string) {
+export async function gotoComplainantDetailsWithEntity(page: Page, entityName: string, mobile?: string) {
   await openWizard(page, mobile);
-  const select = await waitForEntitySelect(page);
-  await select.selectOption(entityId);
+  await selectEntityByName(page, entityName);
   await page.locator('button.btn-next').click();
   await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
   await walkQuestionnaire(page);

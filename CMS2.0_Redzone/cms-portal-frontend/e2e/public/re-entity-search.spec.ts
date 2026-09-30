@@ -23,12 +23,16 @@ import { seedCitizenSession } from '../utils/test-data';
  * used by staff screens, not by this one — is separately probed below, because if it ever becomes the
  * citizen's path the injection question becomes live.
  *
- * ── WHY THERE ARE TWO CONTROLS ─────────────────────────────────────────────────────────────────────
- * A searchable list and a plain <select> of the full list, both bound to the same answer. The <select>
- * is what four existing specs drive (eligibility-re-window, -maintainability-questions,
- * -sub-questions, -clause-interpolation, session-timeout), and a citizen on a screen reader or an old
- * browser is better served by a native control. Every test here that asserts a SELECTION asserts it
- * through whichever control it used AND through the shared answer, so the two cannot drift.
+ * ── WHY THERE IS ONE CONTROL ───────────────────────────────────────────────────────────────────────
+ * There were two: a searchable combobox and a plain <select> of the full list, both bound to the same
+ * answer — one question wearing two controls. The <select> carried a defect of its own: the component
+ * rendered its "covered" and "not covered" entity groups into the single list with nothing marking
+ * which group an option came from, so a citizen could pick an entity the Scheme does not cover and be
+ * told nothing. It was removed during the UI homogenisation, and every spec that drove it (this one,
+ * eligibility-re-window, -maintainability-questions, -sub-questions, -clause-interpolation,
+ * -simplify-statutory, filing-windows, session-timeout, otp-lifecycle, non-maintainable-closure and
+ * the two shared helpers) now drives the combobox. Selection is asserted on the recorded answer —
+ * see expectRecordedAnswer below — never on the box's text, which a citizen can fill without choosing.
  *
  * ── WHAT WAS BROKEN AND IS NOW FIXED (all three verified in a real browser first) ───────────────────
  *   1. There was NO search box. filterEntities/selectEntityFromSearch/clearEntitySelection/
@@ -107,11 +111,24 @@ async function openFileComplaint(page: Page) {
   await page.waitForLoadState('networkidle');
   // A non-existent Angular route falls through to the public home page, so confirm the wizard mounted.
   await expect(page.locator('.eligibility-card')).toBeVisible({ timeout: 25000 });
-  // The list arrives asynchronously; every test below needs it loaded.
-  await expect(page.locator('select.entity-select-dropdown option:not([disabled])').first())
-    .toBeAttached({ timeout: 25000 });
+  // The list arrives asynchronously; every test below needs it loaded. It renders only while the
+  // dropdown is OPEN, which focusing the box does — and leaving it open is the state a citizen who has
+  // reached this question is in anyway.
+  await searchBox(page).click();
+  await expect(results(page).first()).toBeVisible({ timeout: 25000 });
 }
 
+/**
+ * ── THERE IS ONE ENTITY CONTROL, AND IT IS THIS COMBOBOX ─────────────────────────────────────────
+ * There used to be two: a `select.entity-select-dropdown` and this searchable input, bound to the SAME
+ * answer. A citizen faced two controls for one question, and the select carried a further defect — the
+ * component split the master into "covered" and "not covered" groups and rendered both into it with
+ * nothing marking which group an option belonged to. The select was removed.
+ *
+ * So the recorded answer is no longer readable from a mirror control. It is read off the BOX, which
+ * holds the chosen entity's NAME (component ts:1288-1295 writes it there precisely so the citizen can
+ * see what they picked) and is empty when nothing is chosen.
+ */
 const searchBox = (page: Page) => page.locator('input.entity-search-input');
 const results = (page: Page) => page.locator('li.entity-search-option');
 const resultNames = (page: Page) => page.locator('li.entity-search-option .es-name');
@@ -134,14 +151,47 @@ async function typeSearch(page: Page, term: string) {
 }
 
 /**
- * The answer the wizard has recorded, read off the shared <select>.
+ * The answer the wizard has RECORDED — asserted on `aria-selected`, not on the search box's text.
  *
- * Auto-retrying on purpose. The select is bound one-way with [ngModel], so its DOM value is written by
- * Angular forms a tick or more AFTER selectEntityFromSearch() records the answer; a single
- * inputValue() read returns the pre-selection value and fails a selection that did in fact happen.
+ * The distinction is the substance of QA 7: text in the box is not an answer. A citizen who typed
+ * their bank's name and never clicked it has a full box and no recorded entity, so reading the box
+ * would call that a selection. The option list carries
+ * `[attr.aria-selected]="eligibilityAnswers[currentQuestionKey] === opt.value"` (html:88-90), which is
+ * the recorded answer itself, and is also what a screen reader announces.
+ *
+ * The list renders only while the dropdown is open, so this opens it — by CLEARING THE FILTER, which
+ * matters for two separate reasons:
+ *
+ *   1. A click does not reliably reopen it. After a choice the box still holds focus, so `click()`
+ *      fires no `focus` event and `openEntityDropdown()` never runs. `fill('')` drives
+ *      (ngModelChange) → `onEntitySearchInput` → `filterEntities`, which both re-filters and sets
+ *      `entityDropdownOpen = true`. This is the filter only; the × button is what drops the answer.
+ *   2. It makes the `null` case non-vacuous. `toHaveCount(0)` on a CLOSED list passes no matter what
+ *      is recorded, so "nothing is selected" would be proven by a list that simply was not rendered.
+ *      Waiting for an option to be visible first means the whole master is on screen and genuinely
+ *      carries no selected row.
+ *
+ * Auto-retrying assertions on purpose: the attribute is written by a later change-detection pass than
+ * the mousedown handler, so a single immediate read fails a selection that did in fact happen.
+ *
+ * Pass `null` for "nothing is recorded".
  */
-async function expectRecordedAnswer(page: Page, value: string, message?: string) {
-  await expect(page.locator('select.entity-select-dropdown'), message).toHaveValue(value);
+async function expectRecordedAnswer(page: Page, name: string | null, message?: string) {
+  const box = searchBox(page);
+  await box.click();
+  await box.fill('');
+  await expect(results(page).first(),
+    'the entity list did not reopen, so nothing can be concluded about what is recorded')
+    .toBeVisible({ timeout: 20000 });
+
+  const selected = page.locator('li.entity-search-option[aria-selected="true"]');
+  if (name === null) {
+    await expect(selected, message ?? 'an entity was recorded when none should have been')
+      .toHaveCount(0);
+    return;
+  }
+  await expect(selected, message).toHaveCount(1);
+  await expect(selected.locator('.es-name'), message).toHaveText(name);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -157,34 +207,41 @@ test.describe('The Regulated Entity is chosen from a list of REs', () => {
     const entities = await servedEntities(request);
     await openFileComplaint(page);
 
-    const rendered = await page.locator('select.entity-select-dropdown option:not([disabled])')
-      .allInnerTexts();
+    const rendered = await resultNames(page).allInnerTexts();
     expect(rendered.length,
-      `the API serves ${entities.length} entities but the dropdown rendered ${rendered.length}`)
+      `the API serves ${entities.length} entities but the list rendered ${rendered.length}`)
       .toBe(entities.length);
 
     const servedNames = new Set(entities.map(e => e.name));
     for (const name of rendered) {
       expect(servedNames.has(name.trim()),
-        `the dropdown offers "${name.trim()}", which the entity master does not contain`).toBe(true);
+        `the list offers "${name.trim()}", which the entity master does not contain`).toBe(true);
     }
   });
 
-  test('both the searchable list and the native dropdown are offered', async ({ page }) => {
+  test('the entity list is searchable, which is the whole of UST13 S3', async ({ page, request }) => {
+    const entities = await servedEntities(request);
     await openFileComplaint(page);
     await expect(searchBox(page),
       'there is no way to search the entity list, so UST13 S3 cannot be satisfied').toBeVisible();
-    await expect(page.locator('select.entity-select-dropdown')).toBeEnabled();
+    await expect(searchBox(page)).toBeEnabled();
+    // Searchable AND complete: a box over a truncated list satisfies the letter of S3 and not its
+    // point. The resting list is the whole master.
+    await expect.poll(() => results(page).count(), { timeout: 20000 }).toBe(entities.length);
   });
 
-  test('selecting from the native dropdown records the answer and advances', async ({ page, request }) => {
+  test('choosing from the resting list records the answer and advances', async ({ page, request }) => {
+    // The citizen who scrolls rather than types. Both paths must satisfy QA2.
     const entities = await servedEntities(request);
     await openFileComplaint(page);
 
-    const select = page.locator('select.entity-select-dropdown');
     const target = entities[0];
-    await select.selectOption(String(target.id));
-    await expectRecordedAnswer(page, String(target.id));
+    const option = results(page).filter({ hasText: target.name }).first();
+    await expect(option).toBeVisible({ timeout: 10000 });
+    // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+    // closes the list. A click would let blur remove the option mid-gesture.
+    await option.dispatchEvent('mousedown');
+    await expectRecordedAnswer(page, target.name);
 
     await page.locator('button.btn-next').click();
     // QA2: the citizen reaches the next section, which is the first radio question.
@@ -193,7 +250,7 @@ test.describe('The Regulated Entity is chosen from a list of REs', () => {
   });
 
   test('selecting from the search results records the answer and advances', async ({ page, request }) => {
-    // The same case through the other control: QA2 must hold whichever way the citizen chose.
+    // The citizen who types. QA2 must hold whichever way they chose.
     const entities = await servedEntities(request);
     const target = entities[0];
     await openFileComplaint(page);
@@ -201,9 +258,9 @@ test.describe('The Regulated Entity is chosen from a list of REs', () => {
     await typeSearch(page, target.name);
     const option = results(page).filter({ hasText: target.name }).first();
     await expect(option).toBeVisible({ timeout: 10000 });
-    await option.click();
+    await option.dispatchEvent('mousedown');
 
-    await expectRecordedAnswer(page, String(target.id),
+    await expectRecordedAnswer(page, target.name,
       'choosing from the search results did not record the entity as the answer');
     await page.locator('button.btn-next').click();
     await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
@@ -395,8 +452,8 @@ test.describe('Searching the entity list by entity type', () => {
     await openFileComplaint(page);
 
     await typeSearch(page, type);
-    await results(page).filter({ hasText: target.name }).first().click();
-    await expectRecordedAnswer(page, String(target.id),
+    await results(page).filter({ hasText: target.name }).first().dispatchEvent('mousedown');
+    await expectRecordedAnswer(page, target.name,
       'selecting from a type-filtered list recorded the wrong entity');
   });
 });
@@ -409,7 +466,7 @@ test.describe('No entity selected is refused, naming the field', () => {
 
   test('pressing Next with nothing selected shows "Regulated Entity Name is mandatory."', async ({ page }) => {
     await openFileComplaint(page);
-    await expectRecordedAnswer(page, '', 'an entity was pre-selected, so this case proves nothing');
+    await expectRecordedAnswer(page, null, 'an entity was pre-selected, so this case proves nothing');
 
     await page.locator('button.btn-next').click();
 
@@ -442,7 +499,7 @@ test.describe('No entity selected is refused, naming the field', () => {
 
     await expect(page.locator('#eligibility-mandatory-error'))
       .toContainText('Regulated Entity Name is mandatory.');
-    await expectRecordedAnswer(page, '', 'typing alone recorded an entity');
+    await expectRecordedAnswer(page, null, 'typing alone recorded an entity');
   });
 
   test('the refusal clears once an entity is chosen', async ({ page, request }) => {
@@ -478,7 +535,10 @@ test.describe('No entity selected is refused, naming the field', () => {
     // eligibility-maintainability-questions.spec.ts) — this is the guard that they stayed distinct.
     const entities = await servedEntities(request);
     await openFileComplaint(page);
-    await page.locator('select.entity-select-dropdown').selectOption(String(entities[0].id));
+    const chosen = results(page).filter({ hasText: entities[0].name }).first();
+    await expect(chosen).toBeVisible({ timeout: 10000 });
+    await chosen.dispatchEvent('mousedown');
+    await expect(searchBox(page)).toHaveValue(entities[0].name, { timeout: 10000 });
     await page.locator('button.btn-next').click();
     await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
 
@@ -794,11 +854,15 @@ test.describe('Clearing the search restores the full list', () => {
     await openFileComplaint(page);
 
     await typeSearch(page, entities[0].name);
-    await results(page).filter({ hasText: entities[0].name }).first().click();
-    await expectRecordedAnswer(page, String(entities[0].id));
+    await results(page).filter({ hasText: entities[0].name }).first().dispatchEvent('mousedown');
+    // Deliberately NOT expectRecordedAnswer here: that helper empties the box to reopen the list, and
+    // the × button only renders while the box has text (`@if (entitySearchText)`), so asserting
+    // through it would remove the very control this case is about. The box holding the chosen name is
+    // enough to know the choice landed — the answer itself is asserted after the clear.
+    await expect(searchBox(page)).toHaveValue(entities[0].name, { timeout: 10000 });
 
     await page.locator('button.entity-search-clear').click();
-    await expectRecordedAnswer(page, '',
+    await expectRecordedAnswer(page, null,
       'the entity stayed selected after the search was cleared, so the screen and the answer disagree');
 
     await page.locator('button.btn-next').click();
@@ -859,9 +923,11 @@ test.describe('An unavailable entity master is reported, not shown as an empty l
     await page.locator('button.btn-retry-entities').click();
 
     await expect(page.locator('.entities-load-error')).toHaveCount(0, { timeout: 20000 });
+    // The notice going away is not recovery — the whole master has to be back. The list renders only
+    // while the dropdown is open, so open it and count what the retry actually loaded.
+    await searchBox(page).click();
     await expect
-      .poll(() => page.locator('select.entity-select-dropdown option:not([disabled])').count(),
-            { timeout: 20000 })
+      .poll(() => results(page).count(), { timeout: 20000 })
       .toBe(entities.length);
   });
 

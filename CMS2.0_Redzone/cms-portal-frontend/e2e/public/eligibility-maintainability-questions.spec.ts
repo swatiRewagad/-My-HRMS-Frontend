@@ -83,11 +83,20 @@ async function openWizard(page: Page) {
 
 /** Step 1 is the mandatory entity selection; the radio questions are not reachable until it is answered. */
 async function selectEntityAndAdvance(page: Page) {
-  const select = page.locator('select.entity-select-dropdown');
-  await expect(select).toBeVisible({ timeout: 20000 });
-  await expect(select.locator('option:not([disabled])').first()).toBeAttached({ timeout: 20000 });
-  const value = await select.locator('option:not([disabled])').first().getAttribute('value');
-  await select.selectOption(value!);
+  // The entity question is a SEARCHABLE COMBOBOX, not a native <select>. The select that used to sit
+  // beside it was a SECOND control bound to the same answer and has been removed, so this is the only
+  // path a citizen has.
+  const box = page.locator('input.entity-search-input');
+  await expect(box).toBeVisible({ timeout: 20000 });
+  // The results list renders only while the dropdown is open, which focus does.
+  await box.click();
+  const first = page.locator('li.entity-search-option').first();
+  await expect(first, 'the entity master offered nothing to select').toBeVisible({ timeout: 20000 });
+  const name = ((await first.locator('.es-name').textContent()) || '').trim();
+  // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+  // closes the list. A click would let blur remove the option mid-gesture.
+  await first.dispatchEvent('mousedown');
+  await expect(box, 'the chosen entity was not recorded').toHaveValue(name, { timeout: 10000 });
   await page.locator('button.btn-next').click();
   await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
 }

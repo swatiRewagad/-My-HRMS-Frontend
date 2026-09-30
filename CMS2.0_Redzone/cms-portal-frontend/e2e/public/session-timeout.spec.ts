@@ -31,6 +31,15 @@ import { loginCitizen, seedCitizenSession } from '../utils/test-data';
 const CITIZEN_MOBILE = '9876512388';
 const TIMEOUT_MINUTES = 15;
 
+/**
+ * The wizard's first control, used here purely as "the guarded screen has rendered".
+ *
+ * A SEARCHABLE COMBOBOX, not a native <select>: the `select.entity-select-dropdown` that used to sit
+ * beside it was a second control bound to the same answer and has been removed.
+ */
+const entitySearchBox = (page: import('@playwright/test').Page) =>
+  page.locator('input.entity-search-input');
+
 /** Ages the citizen session so the live countdown sees `minutes` of inactivity. */
 async function ageSessionBy(page: import('@playwright/test').Page, minutes: number, extraMs = 0) {
   await page.evaluate(([mins, extra]) => {
@@ -142,13 +151,16 @@ test.describe('Citizen portal — login and session timeout', () => {
     // "navigation works" half of the case.
     await expect(page).toHaveURL(/\/public\/file-complaint/);
 
-    const entitySelect = page.locator('.entity-select-dropdown');
-    await expect(entitySelect).toBeVisible({ timeout: 20000 });
+    const entityBox = entitySearchBox(page);
+    await expect(entityBox).toBeVisible({ timeout: 20000 });
 
-    // "Clickable" for a <select> means it is enabled and has real options to choose, not just present.
-    await expect(entitySelect).toBeEnabled();
+    // "Clickable" means it is enabled AND offers real entities to pick, not merely that it is present:
+    // a box over an empty master looks identical to a working one. The list renders only while the
+    // dropdown is open, which focus does.
+    await expect(entityBox).toBeEnabled();
+    await entityBox.click();
     await expect
-      .poll(async () => entitySelect.locator('option:not([disabled])').count(), { timeout: 20000 })
+      .poll(async () => page.locator('li.entity-search-option').count(), { timeout: 20000 })
       .toBeGreaterThan(0);
   });
 
@@ -164,12 +176,16 @@ test.describe('Citizen portal — login and session timeout', () => {
     await seedCitizenSession(page, CITIZEN_MOBILE, token!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
 
-    const entitySelect = page.locator('.entity-select-dropdown');
-    await expect(entitySelect).toBeVisible({ timeout: 20000 });
+    const entityBox = entitySearchBox(page);
+    await expect(entityBox).toBeVisible({ timeout: 20000 });
 
-    const firstEntity = await entitySelect.locator('option:not([disabled])').first().getAttribute('value');
-    expect(firstEntity, 'no selectable regulated entity was offered').toBeTruthy();
-    await entitySelect.selectOption(firstEntity!);
+    await entityBox.click();
+    const firstEntity = page.locator('li.entity-search-option').first();
+    await expect(firstEntity, 'no selectable regulated entity was offered')
+      .toBeVisible({ timeout: 20000 });
+    // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+    // closes the list. A click would let blur remove the option mid-gesture.
+    await firstEntity.dispatchEvent('mousedown');
 
     // Advance through the Yes/No questions the way a citizen would. Three steps is enough to show the
     // sequence is not interrupted; the point of the case is the absence of a break, not the full wizard.
@@ -205,7 +221,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await seedCitizenSession(page, CITIZEN_MOBILE, token!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
 
     // 14 minutes + 1s old → remaining 59s → the last minute of the window.
     await ageSessionBy(page, 14, 1000);
@@ -242,7 +258,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await seedCitizenSession(page, CITIZEN_MOBILE, token!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
 
     await ageSessionBy(page, TIMEOUT_MINUTES, 1000);
 
@@ -268,7 +284,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await seedCitizenSession(page, CITIZEN_MOBILE, token!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
 
     // Timing precision: at 13 minutes idle there must be NO warning, because a banner that appears
     // early is just as wrong as one that never appears.
@@ -306,7 +322,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await seedCitizenSession(page, CITIZEN_MOBILE, first!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
 
     await ageSessionBy(page, TIMEOUT_MINUTES, 1000);
     await expect
@@ -347,7 +363,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await seedCitizenSession(page, CITIZEN_MOBILE, token!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
 
     await ageSessionBy(page, TIMEOUT_MINUTES, 2000);
 
@@ -365,7 +381,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await loginThroughUi(page, CITIZEN_MOBILE);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/public\/file-complaint/);
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
     await expect(page.locator('.session-timeout-banner')).toHaveCount(0);
   });
 
@@ -385,7 +401,7 @@ test.describe('Citizen portal — login and session timeout', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await seedCitizenSession(page, CITIZEN_MOBILE, token!);
     await page.goto('/public/file-complaint', { waitUntil: 'domcontentloaded' });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    await expect(entitySearchBox(page)).toBeVisible({ timeout: 20000 });
 
     // Let the session time out in this tab, then lose the tab.
     await ageSessionBy(page, TIMEOUT_MINUTES, 2000);

@@ -342,11 +342,23 @@ export async function reachComplainantDetails(page: Page, mobile: string): Promi
   // rather than asserting against a page that merely looks blank.
   await expect(page.locator('.eligibility-card')).toBeVisible({ timeout: 20000 });
 
-  const select = page.locator('select.entity-select-dropdown');
-  await expect(select).toBeVisible({ timeout: 20000 });
-  await expect(select.locator('option:not([disabled])').first()).toBeAttached({ timeout: 20000 });
-  const entity = await select.locator('option:not([disabled])').first().getAttribute('value');
-  await select.selectOption(entity!);
+  // The entity question is a SEARCHABLE COMBOBOX, not a native <select>. It used to be both controls
+  // bound to the same answer; the select was removed, so `input.entity-search-input` +
+  // `li.entity-search-option` is the only path. Kept inline rather than imported from
+  // helpers-forms-b.ts for the reason given in this file's header.
+  const entityBox = page.locator('input.entity-search-input');
+  await expect(entityBox).toBeVisible({ timeout: 20000 });
+  // The list renders only while the dropdown is open, which focus does.
+  await entityBox.click();
+  const firstEntity = page.locator('li.entity-search-option').first();
+  await expect(firstEntity, 'the entity master offered nothing to select')
+    .toBeVisible({ timeout: 20000 });
+  const entityName = ((await firstEntity.locator('.es-name').textContent()) || '').trim();
+  // mousedown, not click: the option's handler is (mousedown), which fires BEFORE the input's blur
+  // closes the list. A click would let blur remove the option mid-gesture.
+  await firstEntity.dispatchEvent('mousedown');
+  await expect(entityBox, 'the chosen entity was not recorded')
+    .toHaveValue(entityName, { timeout: 10000 });
   await page.locator('button.btn-next').click();
   await expect(page.locator('.radio-list')).toBeVisible({ timeout: 20000 });
 

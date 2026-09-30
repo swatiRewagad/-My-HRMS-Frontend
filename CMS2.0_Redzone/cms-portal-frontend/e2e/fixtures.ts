@@ -10,11 +10,15 @@ import { redirectBrowserApiCalls } from './utils/api-redirect';
  * legitimately reports "not found" for a record that was just created.
  *
  * Import `test` from here instead of '@playwright/test' in any spec that drives the UI.
+ *
+ * Registered on the CONTEXT, not the page, so a tab a spec opens itself with `context.newPage()`
+ * inherits the rewrite. Patching only the injected page left such tabs pointed at the compiled
+ * 8082 — see the note in api-redirect.ts.
  */
 export const test = base.extend({
-  page: async ({ page }, use) => {
-    await redirectBrowserApiCalls(page);
-    await use(page);
+  context: async ({ context }, use) => {
+    await redirectBrowserApiCalls(context);
+    await use(context);
   },
 });
 

@@ -327,7 +327,9 @@ test.describe('Citizen OTP lifecycle', () => {
 
     // The guarded route renders, which no unauthenticated visitor can reach.
     await expect(page).toHaveURL(/\/public\/file-complaint/, { timeout: 20000 });
-    await expect(page.locator('.entity-select-dropdown')).toBeVisible({ timeout: 20000 });
+    // The wizard's first control: a searchable entity combobox. (The native <select> that used to sit
+    // beside it was a second control for the same answer and has been removed.)
+    await expect(page.locator('input.entity-search-input')).toBeVisible({ timeout: 20000 });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════════════════
