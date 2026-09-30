@@ -21,12 +21,14 @@ import { ComplaintSummaryComponent } from '../../shared/complaint-summary/compla
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
 import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
+import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
+import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent],
+  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent, CommentThreadComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })
@@ -347,6 +349,28 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     if (dept === 'CEPC') return 'CEPC, Chandigarh';
     return `RBIO, Mumbai`;
   }
+
+  /**
+   * RESTRICTED targets offered by the comment composer, keyed on the acting department rather than a
+   * fixed list: this one component serves BOTH /staff/rbio/task/:id and /staff/cepc/task/:id, and
+   * offering a CEPC officer the RBIO ladder would name an audience that cannot read their office's
+   * cases. The lists mirror the ones the two detail screens already offer.
+   */
+  readonly commentAudienceRoles = computed<readonly CommentAudienceOption[]>(() =>
+    this.auth.currentUser()?.department === 'CEPC'
+      ? [
+          { value: 'CEPC_DO', label: 'Dealing Official' },
+          { value: 'CEPC_REVIEWER', label: 'Reviewer' },
+          { value: 'CEPC_INCHARGE', label: 'In-Charge' },
+          { value: 'CEPC_CLOSING_AUTHORITY', label: 'Closing Authority' }
+        ]
+      : [
+          { value: 'RBIO_OFFICER', label: 'RBIO Officer' },
+          { value: 'RBIO_SUPERVISOR', label: 'RBIO Supervisor' },
+          { value: 'RBIO_DEPUTY_OMBUDSMAN', label: 'Deputy Ombudsman' },
+          { value: 'RBIO_OMBUDSMAN', label: 'Ombudsman' },
+          { value: 'RBIO_ADJUDICATOR', label: 'Adjudicator' }
+        ]);
 
   scrollToActions() {
     this.sectionOpen['actions'] = true;

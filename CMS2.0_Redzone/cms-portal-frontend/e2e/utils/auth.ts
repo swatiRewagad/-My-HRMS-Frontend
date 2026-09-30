@@ -45,10 +45,13 @@ interface Credentials {
 }
 
 const ENV_MAP: Record<CepcRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
+  // cepc_do2, not cepc_do1. Both hold exactly the CEPC_DO realm role, but cepc_do1 has no usable
+  // password credential in the realm (every convention answers invalid_grant), so it fails at the
+  // Keycloak form and every CEPC browser test times out waiting for the redirect home.
   DO: {
     userEnv: 'CEPC_DO_USER',
     passEnv: 'CEPC_DO_PASS',
-    defaults: { username: 'cepc_do1', password: 'password' },
+    defaults: { username: 'cepc_do2', password: 'password' },
   },
   REVIEWER: {
     userEnv: 'CEPC_REVIEWER_USER',
@@ -175,10 +178,12 @@ export async function loginAsCepcRole(
 // ────────────────────────────────────────────────────────────────────────────
 
 const RBIO_ENV_MAP: Record<RbioRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
+  // rbio.officer's password is Test@123, NOT the Test@1234 its siblings use. Verified against the
+  // realm's token endpoint; the two conventions coexist and this account is on the shorter one.
   RBIO_OFFICER: {
     userEnv: 'RBIO_OFFICER_USER',
     passEnv: 'RBIO_OFFICER_PASS',
-    defaults: { username: 'rbio.officer', password: 'Test@1234' },
+    defaults: { username: 'rbio.officer', password: 'Test@123' },
   },
   RBIO_SUPERVISOR: {
     userEnv: 'RBIO_SUPERVISOR_USER',
@@ -271,12 +276,12 @@ const RE_ENV_MAP: Record<ReRoleKey, { userEnv: string; passEnv: string; defaults
   RE_NODAL_OFFICER: {
     userEnv: 'RE_NODAL_USER',
     passEnv: 'RE_NODAL_PASS',
-    defaults: { username: 're_pno_001', password: 'test123' },
+    defaults: { username: 're_pno_001', password: 'Test@123' },
   },
   RE_PNO: {
     userEnv: 'RE_PNO_USER',
     passEnv: 'RE_PNO_PASS',
-    defaults: { username: 're_pno_001', password: 'test123' },
+    defaults: { username: 're_pno_001', password: 'Test@123' },
   },
 };
 
@@ -339,10 +344,11 @@ export async function loginAsReRole(
  * claim, because routing has to name a specific reviewer and a role cannot express that.
  */
 const AA_ENV_MAP: Record<AaRoleKey, { userEnv: string; passEnv: string; defaults: Credentials }> = {
+  // aa_do_001 alone among the AA accounts answers to Test@123; the rest are still on test123.
   AA_DO: {
     userEnv: 'AA_DO_USER',
     passEnv: 'AA_DO_PASS',
-    defaults: { username: 'aa_do_001', password: 'test123' },
+    defaults: { username: 'aa_do_001', password: 'Test@123' },
   },
   AA_REVIEWER_1: {
     userEnv: 'AA_REVIEWER_1_USER',

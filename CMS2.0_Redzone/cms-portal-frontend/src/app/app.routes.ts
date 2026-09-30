@@ -88,12 +88,19 @@ export const routes: Routes = [
     canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
     loadComponent: () => import('./components/admin/rule-tester/rule-tester.component').then(m => m.RuleTesterComponent)
   },
+  // Both of these carried NO canActivate at all, which is worse than the too-broad guard the RBIO
+  // screens had: nothing on the route calls KeycloakAuthService.init() (only the guards do), so the
+  // page rendered for an anonymous visitor and every request it made went out unauthenticated. The
+  // complaint-action screen shows a named complainant and now hosts the internal comment thread, so
+  // it needs the same role guard as its /staff/rbio/task/:id equivalent.
   {
     path: 'officer',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/officer/officer-dashboard/officer-dashboard.component').then(m => m.OfficerDashboardComponent)
   },
   {
     path: 'officer/complaint/:id',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
     loadComponent: () => import('./components/officer/complaint-action/complaint-action.component').then(m => m.ComplaintActionComponent)
   },
   // ── Staff Portal (Keycloak SSO) ──

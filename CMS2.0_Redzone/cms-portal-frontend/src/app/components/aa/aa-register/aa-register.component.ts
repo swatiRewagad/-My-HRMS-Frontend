@@ -8,6 +8,8 @@ import { UploadLimitsService } from '../../../services/upload-limits.service';
 import { environment } from '../../../../environments/environment';
 import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
+import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 
 /** Standard response envelope used by every AA endpoint. */
 interface ApiEnvelope<T> {
@@ -179,7 +181,7 @@ const EMPTY_FORM: RegisterForm = {
 @Component({
   selector: 'app-aa-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, AppShellComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, AppShellComponent, TranslatePipe, CommentThreadComponent],
   templateUrl: './aa-register.component.html',
   styleUrl: './aa-register.component.scss'
 })
@@ -190,6 +192,12 @@ export class AaRegisterComponent implements OnInit {
   auth = inject(KeycloakAuthService);
 
   complaintNumber = signal<string>('');
+
+  readonly commentAudienceRoles: readonly CommentAudienceOption[] = [
+    { value: 'AA_DO', label: 'AA Dealing Official' },
+    { value: 'AA_REVIEWER', label: 'AA Reviewer' },
+    { value: 'AA_SECRETARIAT', label: 'AA Secretariat' }
+  ];
 
   loading = signal<boolean>(true);
   loadError = signal<boolean>(false);

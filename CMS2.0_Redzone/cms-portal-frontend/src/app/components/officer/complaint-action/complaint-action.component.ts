@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { OfficerService, ComplaintDetail } from '../../../services/officer.service';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
+import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 
 @Component({
   selector: 'app-complaint-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, CommentThreadComponent],
   templateUrl: './complaint-action.component.html',
   styleUrl: './complaint-action.component.scss'
 })
@@ -23,6 +25,14 @@ export class ComplaintActionComponent implements OnInit {
   error = signal('');
   actionLoading = signal(false);
   successMessage = signal('');
+
+  readonly commentAudienceRoles: readonly CommentAudienceOption[] = [
+    { value: 'RBIO_OFFICER', label: 'RBIO Officer' },
+    { value: 'RBIO_SUPERVISOR', label: 'RBIO Supervisor' },
+    { value: 'RBIO_DEPUTY_OMBUDSMAN', label: 'Deputy Ombudsman' },
+    { value: 'RBIO_OMBUDSMAN', label: 'Ombudsman' },
+    { value: 'RBIO_ADJUDICATOR', label: 'Adjudicator' }
+  ];
 
   // Action form fields
   showResolveForm = signal(false);

@@ -216,6 +216,16 @@
           </div>
         }
 
+        <!-- ═══ Comments — shared app-comment-thread ═══ -->
+        <!--
+          complaintId is this screen's ONLY identifier: OfficerService.ComplaintDetail carries no
+          complaintNumber field, and /api/v1/complaints/{id} sets complaintId from
+          COMPLAINTS.complaint_number — which is the key the comment API resolves.
+        -->
+        <app-comment-thread
+          [complaintNumber]="c.complaintId"
+          [audienceRoles]="commentAudienceRoles" />
+
         <!-- Timeline -->
         @if (c.timeline && c.timeline.length > 0) {
           <div class="panel-section timeline-section">

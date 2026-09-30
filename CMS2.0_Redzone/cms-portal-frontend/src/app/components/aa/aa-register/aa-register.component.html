@@ -601,6 +601,18 @@
           </button>
         </div>
       </form>
+
+      <!-- ═══ Comments — shared app-comment-thread ═══ -->
+      <!--
+        OUTSIDE the form, not inside it: the registration form posts the whole appeal, and a composer
+        nested in it would put a second set of controls inside the submit boundary.
+        Keyed on the PARENT COMPLAINT, which is this route's own param — the registrar needs the
+        handling office's notes on the complaint they are about to raise an appeal against, and at this
+        point no appeal number exists to thread on.
+      -->
+      <app-comment-thread
+        [complaintNumber]="complaintNumber()"
+        [audienceRoles]="commentAudienceRoles" />
     }
   </div>
 </app-shell>
