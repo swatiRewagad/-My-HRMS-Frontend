@@ -13,9 +13,20 @@ import { CommentThreadComponent } from '../../shared/comment-thread/comment-thre
 import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
 import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { ContextRailComponent } from '../../shared/context-rail/context-rail.component';
+import { ContextRailPanel } from '../../shared/context-rail/context-rail.types';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 type AaRole = 'AA_DO' | 'AA_REVIEWER' | 'AA_SECRETARIAT' | 'AA_ADMIN';
+
+/**
+ * The rail panels this screen can populate.
+ *
+ * No 'attachments': nothing serves an appeal's attachment list. See the rail comment in the template.
+ */
+type RailKey = 'timeline' | 'comments';
 
 /** The shared action contract plus the target picker only this module renders. */
 interface ActionDef extends WorkflowAction {
@@ -52,7 +63,7 @@ interface TimelineEntry {
 @Component({
   selector: 'app-aa-appeal-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, AppShellComponent, CommentThreadComponent, WorkflowActionBarComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, AppShellComponent, CommentThreadComponent, WorkflowActionBarComponent, ComplaintSummaryComponent, ContextRailComponent, TranslatePipe],
   templateUrl: './aa-appeal-detail.component.html',
   styleUrl: './aa-appeal-detail.component.scss'
 })
@@ -161,6 +172,42 @@ export class AaAppealDetailComponent implements OnInit {
   sla = computed<AppealSla | null>(() => this.appeal()?.sla ?? null);
 
   slaOverdue = computed(() => this.sla()?.breached === true);
+
+  /**
+   * The shared summary strip's facts.
+   *
+   * Reuses the `aa.detail.*` keys this template already seeds rather than the `ui.col.*` family the
+   * complaint screens use: an appeal's identifying facts are a different vocabulary (appeal number,
+   * classification, original complaint) and only the AA keys exist in the bundles for them.
+   *
+   * No SLA item even though the appeal carries one: `sla.statusKey` is a translation key and the strip's
+   * 'sla' kind takes a rendered string plus its own severity, so the banner in the left region — which
+   * also shows the deadline and the overdue day count — stays the single place the SLA is stated.
+   */
+  readonly summaryItems = computed<readonly ComplaintSummaryItem[]>(() => {
+    const a = this.appeal();
+    if (!a) return [];
+    return [
+      { labelKey: 'aa.detail.title', value: a.appealNumber, icon: 'pi-file' },
+      { labelKey: 'aa.detail.name', value: a.appellantName, icon: 'pi-user', tone: 'owner' },
+      { labelKey: 'aa.detail.entity', value: a.entityCode, icon: 'pi-building' },
+      { labelKey: 'aa.detail.workflow_stage', value: a.status, kind: 'status', icon: 'pi-flag' },
+      { labelKey: 'aa.detail.original_complaint', value: a.originalComplaintNumber, icon: 'pi-link' },
+      { labelKey: 'aa.detail.assigned_officer', value: a.assignedOfficer, icon: 'pi-users' }
+    ];
+  });
+
+  // ═══ Right context rail ════════════════════════════════════════════════════════════════════════
+  // The timeline and the comment thread are material a bench officer CONSULTS; the action cards and the
+  // hearing/order forms are what they work in. Both used to sit full-width at the bottom of the left
+  // column, so reading the history scrolled the actions off screen.
+
+  railOpen = signal<RailKey | null>(null);
+
+  readonly railPanels: readonly ContextRailPanel<RailKey>[] = [
+    { key: 'timeline', label: 'Timeline', icon: 'pi-history' },
+    { key: 'comments', label: 'Comments', icon: 'pi-comments' }
+  ];
 
   async ngOnInit() {
     const authenticated = await this.auth.init();

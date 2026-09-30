@@ -350,54 +350,34 @@
 
       <!--
         ═══ RIGHT RAIL ═══
-        Collapsed to an icon strip by default. The icons are always visible so the panels behind them
-        never shift width as the officer opens and closes the rail — a layout that reflows on every
-        toggle makes the assessment fields jump under the cursor.
+        Collapsed to an icon strip by default, and now the shared app-context-rail so CEPC and AA cannot
+        re-diverge from this screen's behaviour. The rail's own DOM, width contract and overlay body all
+        live in that component; this template supplies only the panel list and the bodies.
       -->
-      <aside class="context-rail">
-        <div class="rail-icons">
-          @for (panel of railPanels; track panel.key) {
-            <button type="button" class="rail-icon"
-                    [class.active]="railOpen() === panel.key"
-                    [title]="panel.label"
-                    [attr.aria-pressed]="railOpen() === panel.key"
-                    (click)="toggleRail(panel.key)">
-              <i class="pi" [class]="panel.icon"></i>
-            </button>
+      <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+
+      <ng-template #railBody let-open>
+        @switch (open) {
+          @case ('history') {
+            <app-rbio-complaint-history [complaintNumber]="c.complaintNumber" />
+            <app-rbio-action-override-history [complaint]="complaint()" />
           }
-        </div>
-
-        @if (railOpen(); as open) {
-          <div class="rail-body">
-            <div class="rail-header">
-              <h4>{{ railLabel(open) }}</h4>
-              <button type="button" class="rail-close" title="Collapse"
-                      (click)="railOpen.set(null)"><i class="pi pi-chevron-right"></i></button>
-            </div>
-
-            @switch (open) {
-              @case ('history') {
-                <app-rbio-complaint-history [complaintNumber]="c.complaintNumber" />
-                <app-rbio-action-override-history [complaint]="complaint()" />
-              }
-              @case ('attachments') {
-                <!--
-                  ONE attachment list, the real component. An earlier version of this rail rendered its own
-                  compact list ABOVE this component, so the same documents appeared twice in one panel with
-                  two different empty states — which is the incoherence this whole pass exists to remove.
-                  Clicking a filename opens it as a TAB rather than replacing the rail's content, because
-                  the reason to open a document is to read it next to the complaint, not instead of the list.
-                -->
-                <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.dbId"
-                                      (openDocument)="openAttachment($event)" />
-              }
-              @case ('email') {
-                <app-rbio-email-communication [complaintNumber]="c.complaintNumber" />
-              }
-            }
-          </div>
+          @case ('attachments') {
+            <!--
+              ONE attachment list, the real component. An earlier version of this rail rendered its own
+              compact list ABOVE this component, so the same documents appeared twice in one panel with
+              two different empty states — which is the incoherence this whole pass exists to remove.
+              Clicking a filename opens it as a TAB rather than replacing the rail's content, because
+              the reason to open a document is to read it next to the complaint, not instead of the list.
+            -->
+            <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.dbId"
+                                  (openDocument)="openAttachment($event)" />
+          }
+          @case ('email') {
+            <app-rbio-email-communication [complaintNumber]="c.complaintNumber" />
+          }
         }
-      </aside>
+      </ng-template>
     </div>
 
     <!-- ═══ Legal Case Tab Content (UST553-555) ═══ -->

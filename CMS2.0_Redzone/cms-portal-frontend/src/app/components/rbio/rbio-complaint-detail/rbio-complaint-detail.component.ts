@@ -18,6 +18,8 @@ import { ComplaintSummaryComponent } from '../../shared/complaint-summary/compla
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
 import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
+import { ContextRailComponent } from '../../shared/context-rail/context-rail.component';
+import { ContextRailPanel } from '../../shared/context-rail/context-rail.types';
 // <<< [S6] START >>>
 import { RbioEmailCommunicationComponent } from '../rbio-email-communication/rbio-email-communication.component';
 import { RbioAttachmentsComponent } from '../rbio-attachments/rbio-attachments.component';
@@ -72,7 +74,7 @@ interface ComplaintDetail {
 @Component({
   selector: 'app-rbio-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, ComplaintSummaryComponent, CommentThreadComponent,
+  imports: [CommonModule, FormsModule, UploadLinkStatusComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, ComplaintSummaryComponent, CommentThreadComponent, ContextRailComponent,
     // <<< [S6] START >>>
     RbioEmailCommunicationComponent, RbioAttachmentsComponent, RbioComplaintHistoryComponent,
     // <<< [S6] END >>>
@@ -233,19 +235,11 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   railOpen = signal<RailKey | null>(null);
 
-  readonly railPanels: readonly { key: RailKey; label: string; icon: string }[] = [
+  readonly railPanels: readonly ContextRailPanel<RailKey>[] = [
     { key: 'history', label: 'Complaint History', icon: 'pi-history' },
     { key: 'attachments', label: 'Attachments', icon: 'pi-paperclip' },
     { key: 'email', label: 'Email Communication', icon: 'pi-envelope' }
   ];
-
-  railLabel(key: RailKey): string {
-    return this.railPanels.find(p => p.key === key)?.label ?? '';
-  }
-
-  toggleRail(key: RailKey) {
-    this.railOpen.update(open => (open === key ? null : key));
-  }
 
   /** Opening the rail AT a panel, used by the tab strip's `+`, which means "show me the documents". */
   openRail(key: RailKey) {
