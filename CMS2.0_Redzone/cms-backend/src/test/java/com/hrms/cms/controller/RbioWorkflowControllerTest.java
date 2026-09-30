@@ -7,6 +7,7 @@ import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
+import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.CepcSlaService;
 import com.hrms.cms.service.CepcWorkflowService;
 import com.hrms.cms.service.ClosureLetterService;
@@ -62,6 +63,9 @@ class RbioWorkflowControllerTest {
     @MockBean private ComplaintEventPublisher complaintEventPublisher;
     @MockBean private ClosureLetterService closureLetterService;
     @MockBean private CommunicationTemplateService communicationTemplateService;
+    // Returns null by default, which withResolvedRole treats as "no identity established" and leaves
+    // the request untouched — the same path a caller that passes userRole explicitly takes.
+    @MockBean private RequestIdentityResolver requestIdentityResolver;
 
     private Complaint sampleComplaint;
 

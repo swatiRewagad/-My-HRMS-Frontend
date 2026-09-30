@@ -11,6 +11,7 @@ import com.hrms.cms.service.FileStorageService;
 import com.hrms.cms.service.FileUploadValidator;
 import com.hrms.cms.service.ReNotificationService;
 import com.hrms.cms.service.RePortalService;
+import com.hrms.cms.service.UploadLimitsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +69,7 @@ class RePortalControllerTest {
     @MockBean private FileStorageService fileStorageService;
     @MockBean private FileUploadValidator fileUploadValidator;
     @MockBean private FileStorageConfig fileStorageConfig;
+    @MockBean private UploadLimitsService uploadLimitsService;
 
     private Complaint sampleComplaint;
     private RegulatedEntity sampleEntity;
@@ -778,6 +780,7 @@ class RePortalControllerTest {
         @MockBean private FileStorageService fileStorageService;
         @MockBean private FileUploadValidator fileUploadValidator;
         @MockBean private FileStorageConfig fileStorageConfig;
+        @MockBean private UploadLimitsService uploadLimitsService;
 
         @Test
         @DisplayName("SECURITY: X-Entity-Code alone must not establish scope — 403, no query issued")

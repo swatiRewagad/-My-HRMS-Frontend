@@ -547,7 +547,9 @@ class CepcWorkflowServiceTest {
             cepcWorkflowService.performAction("CMP-20260706-123456", "REQUEST_INFO", params);
 
             verify(complaintRepository).save(sampleComplaint);
-            verify(complaintService).addTimeline(eq(1L), eq("REQUEST_INFO"), eq("do-1"),
+            // The role-carrying overload: an audit entry naming the user but not the role they acted in
+            // cannot answer "who was allowed to do this". No userRole in params, so the role is blank.
+            verify(complaintService).addTimeline(eq(1L), eq("REQUEST_INFO"), eq("do-1"), eq(""),
                     eq("Need docs"), eq("in_progress"), eq("info_requested"));
         }
 

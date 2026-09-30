@@ -288,7 +288,10 @@ class AppealEligibilityServiceTest {
             Map<String, Object> result = appealEligibilityService.checkEligibility("CMP-20260501-002");
 
             assertThat(result.get("eligible")).isEqualTo(false);
-            assertThat(result.get("reason").toString()).contains("deadline exceeded");
+            // The citizen gets the fixed refusal; the arithmetic an operator needs travels separately
+            // on reasonDetail rather than being concatenated into the message the complainant reads.
+            assertThat(result.get("reason")).isEqualTo(AppealEligibilityService.WINDOW_CLOSED_MESSAGE);
+            assertThat(result.get("reasonDetail").toString()).contains("deadline exceeded");
         }
 
         @Test
