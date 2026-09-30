@@ -5,11 +5,14 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
-import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
 import { CepcTimelineComponent } from '../cepc-timeline/cepc-timeline.component';
 import { CepcConciliationComponent } from '../cepc-conciliation/cepc-conciliation.component';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
+import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
+import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
+import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
 import { ToastService } from '../../../services/toast.service';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
 
@@ -24,11 +27,11 @@ interface TimelineEntry {
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
 
-interface ActionDef {
-  id: string;
+/** The shared action contract plus the target picker only this module renders. */
+interface ActionDef extends WorkflowAction {
   label: string;
   description: string;
-  style: string;
+  style: WorkflowActionStyle;
   requiresRemarks: boolean;
   requiresTarget?: boolean;
   targetType?: 'user' | 'department';
@@ -37,7 +40,7 @@ interface ActionDef {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })
@@ -61,6 +64,19 @@ export class CepcComplaintDetailComponent implements OnInit {
 
   actionResult = signal('');
   actionSuccess = signal(false);
+
+  /**
+   * RESTRICTED targets the composer offers on a CEPC complaint — the CEPC ladder only.
+   *
+   * RBIO roles are absent even though a CEPC complaint can be escalated to RBIO: addressing a comment
+   * to a role that does not open this screen would read as delivered and never be.
+   */
+  readonly commentAudienceRoles: readonly CommentAudienceOption[] = [
+    { value: 'CEPC_DO', label: 'Dealing Official' },
+    { value: 'CEPC_REVIEWER', label: 'Reviewer' },
+    { value: 'CEPC_INCHARGE', label: 'In-Charge' },
+    { value: 'CEPC_CLOSING_AUTHORITY', label: 'Closing Authority' }
+  ];
 
   // For forwarding to other departments
   rbiDepartments = [
@@ -242,6 +258,12 @@ export class CepcComplaintDetailComponent implements OnInit {
     this.uploadingDoc.set(false);
     input.value = '';
   }
+
+  /** "Confirm Close Complaint", not a bare "Confirm": the caption restates what is about to happen. */
+  confirmLabel = computed(() => {
+    const action = this.selectedAction();
+    return action ? `Confirm ${action.label}` : 'Confirm';
+  });
 
   selectAction(action: ActionDef) {
     this.selectedAction.set(action);

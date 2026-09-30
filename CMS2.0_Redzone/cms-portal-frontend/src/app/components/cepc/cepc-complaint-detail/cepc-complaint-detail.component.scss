@@ -74,28 +74,11 @@
   .action-hint { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; }
 }
 
-.action-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-.action-card {
-  display: flex; flex-direction: column; gap: 2px; padding: 12px 14px;
-  border: 1px solid var(--border-subtle); border-radius: 6px; cursor: pointer;
-  background: white; text-align: left; transition: all 0.2s;
-  &:hover { border-color: var(--brand-primary-strong); background: #f8faff; }
-  &.selected { border-color: var(--brand-primary-strong); background: #e3f2fd; }
-  &.primary { border-left: 3px solid var(--brand-primary-strong); }
-  &.info { border-left: 3px solid #0288d1; }
-  &.review { border-left: 3px solid #6a1b9a; }
-  &.forward { border-left: 3px solid #00695c; }
-  &.escalate { border-left: 3px solid #f57c00; }
-  &.return { border-left: 3px solid #6a1b9a; }
-  &.close { border-left: 3px solid var(--state-success-fg); }
-  .action-label { font-size: 13px; font-weight: 600; color: var(--text-body); }
-  .action-desc { font-size: 11px; color: var(--text-muted); }
-}
+// The action cards and the confirm form are styled by app-workflow-action-bar. The ~25 lines that used to
+// live here were one of three divergent copies; the five border-left hexes are now --action-* tokens.
 
-.action-form {
-  border-top: 1px solid var(--border-subtle); padding-top: 16px; margin-top: 8px;
-  h5 { margin: 0 0 12px; font-size: 14px; color: var(--text-body); }
-}
+// Kept for BOTH the inline edit block above and the target picker this template declares and projects
+// into the shared bar — projected content is styled by the declaring component, not the consumer.
 .form-field {
   margin-bottom: 12px;
   label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }

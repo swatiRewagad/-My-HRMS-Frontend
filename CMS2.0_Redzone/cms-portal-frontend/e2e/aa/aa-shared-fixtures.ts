@@ -49,12 +49,18 @@ export const CLAUSE = {
   unmapped: '99(9)(z)',
 } as const;
 
-/** Runs a statement against cms_db. utf8mb4 is mandatory or native scripts come back as "?". */
+/**
+ * Runs a statement against cms_db. utf8mb4 is mandatory or native scripts come back as "?".
+ *
+ * <p>stderr is INHERITED, not discarded. It used to be ignored, so a seed that failed on schema drift
+ * threw "Command failed: mysql.exe INSERT INTO …" with the mysql diagnosis thrown away — which is how two
+ * broken columns in the AA seeds went unexplained long enough to be filed as UI failures.
+ */
 export function sql(statement: string): string {
   return execFileSync(
     MYSQL_CLI,
     ['-u', 'cms_user', '-pcms_pass', 'cms_db', '--default-character-set=utf8mb4', '-N', '-B', '-e', statement],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }
   ).trim();
 }
 
@@ -106,16 +112,16 @@ export function seedComplaint(complaintNumber: string, options: SeedComplaintOpt
   sql(`INSERT INTO COMPLAINTS
         (complaint_number, complainant_name, complainant_email, complainant_phone,
          subject, description, status, workflow_stage, closure_clause,
-         entity_code, entity_name, category_id,
-         priority, filing_type, scheme_version,
+         entity_code, category_id,
+         priority, filing_type, scheme_version, record_version,
          created_at, updated_at, filed_at, closed_at)
        VALUES
         ('${esc(complaintNumber)}', '${esc(complainantName)}', '${esc(complainantEmail)}',
          '${esc(complainantPhone)}',
          'AA fixture complaint', 'Seeded by an AA E2E suite via aa-shared-fixtures',
          '${esc(status)}', ${stage}, ${clause},
-         '${esc(entityCode)}', 'Fixture Entity', ${category},
-         'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021',
+         '${esc(entityCode)}', ${category},
+         'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021', 0,
          NOW(), NOW(), NOW(), ${closedAt})`);
 }
 
@@ -155,10 +161,15 @@ export function seedReopenedComplaint(
  */
 export function purgeByPrefix(prefix: string): void {
   const p = esc(prefix);
-  sql(`DELETE FROM appeal_timeline WHERE appeal_number IN
-         (SELECT appeal_number FROM appeals WHERE original_complaint_number LIKE '${p}%')`);
-  sql(`DELETE FROM appeal_attachments WHERE appeal_number IN
-         (SELECT appeal_number FROM appeals WHERE original_complaint_number LIKE '${p}%')`);
+  // Both sides of the IN are COLLATEd: appeal_number is utf8mb4_unicode_ci on some of these tables and
+  // utf8mb4_0900_ai_ci on others, so an uncollated comparison is "Illegal mix of collations" (errno
+  // 1267). The purge then threw in beforeAll and took every test in the file with it.
+  sql(`DELETE FROM appeal_timeline WHERE appeal_number COLLATE utf8mb4_unicode_ci IN
+         (SELECT appeal_number COLLATE utf8mb4_unicode_ci FROM appeals
+           WHERE original_complaint_number LIKE '${p}%')`);
+  sql(`DELETE FROM appeal_attachments WHERE appeal_number COLLATE utf8mb4_unicode_ci IN
+         (SELECT appeal_number COLLATE utf8mb4_unicode_ci FROM appeals
+           WHERE original_complaint_number LIKE '${p}%')`);
   sql(`DELETE FROM appeals WHERE original_complaint_number LIKE '${p}%'`);
   sql(`DELETE FROM COMPLAINTS WHERE complaint_number LIKE '${p}%'`);
 }

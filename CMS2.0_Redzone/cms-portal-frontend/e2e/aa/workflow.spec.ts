@@ -47,7 +47,9 @@ test.describe.serial('AA Workflow', () => {
     const resultMsg = page.locator('.result-msg.success');
     await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
-    const statusBadge = page.locator('.status-badge');
+    // The appeal's OWN status. Three .status-badge elements render on this screen, so the bare class
+    // was a strict-mode violation that failed the assertion before it could read anything.
+    const statusBadge = page.getByTestId('appeal-status');
     const statusText = await statusBadge.textContent();
     expect(statusText?.toLowerCase()).toMatch(/under.review|accepted|in.review/);
 
@@ -80,7 +82,9 @@ test.describe.serial('AA Workflow', () => {
     const resultMsg = page.locator('.result-msg.success');
     await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
-    const statusBadge = page.locator('.status-badge');
+    // The appeal's OWN status. Three .status-badge elements render on this screen, so the bare class
+    // was a strict-mode violation that failed the assertion before it could read anything.
+    const statusBadge = page.getByTestId('appeal-status');
     const statusText = await statusBadge.textContent();
     expect(statusText?.toLowerCase()).toMatch(/rejected|dismissed/);
 
@@ -93,7 +97,10 @@ test.describe.serial('AA Workflow', () => {
     await loginAsAaRole(page, 'AA_DO', `/aa/appeal/${appealNumber}`);
     await page.waitForSelector('.aa-detail .detail-layout', { timeout: 15000 });
 
-    const assignBtn = page.locator('.action-card:has-text("Assign to Bench")');
+    // Keyed on the action ID, not its label. ASSIGN_TO_BENCH is presented to officers as "Assign to
+    // Reviewer" (AaFrontendTranslationSeeder), so a has-text("Assign to Bench") selector matched nothing
+    // and reported a working transition as a missing button.
+    const assignBtn = page.getByTestId('action-ASSIGN_TO_BENCH');
     await expect(assignBtn).toBeVisible({ timeout: 5000 });
     await assignBtn.click();
 
@@ -146,21 +153,16 @@ test.describe.serial('AA Workflow', () => {
     await expect(dateInput).toBeVisible();
     await dateInput.fill(dateStr);
 
-    // Fill time
-    const timeInput = hearingPanel.locator('input[type="time"]');
-    if (await timeInput.isVisible().catch(() => false)) {
-      await timeInput.fill('10:30');
-    }
+    await hearingPanel.getByTestId('hearing-time').fill('10:30');
 
-    // Select venue from dropdown
-    const venueSelect = hearingPanel.locator('select');
-    if (await venueSelect.isVisible().catch(() => false)) {
-      const options = venueSelect.locator('option');
-      const optionCount = await options.count();
-      if (optionCount > 1) {
-        await venueSelect.selectOption({ index: 1 });
-      }
-    }
+    // Venue is keyed on its test id, and filling it is MANDATORY rather than best-effort. The panel has
+    // two selects (venue and mode), so `locator('select')` was a strict-mode violation — thrown inside an
+    // `isVisible().catch(() => false)`, which swallowed it, left the venue blank, and made previewNotice()
+    // refuse with "Select a venue". The failure then surfaced as a missing confirm button several lines
+    // later, which is why this read as a broken preview flow rather than as a bad selector.
+    const venueSelect = hearingPanel.getByTestId('hearing-venue');
+    await expect(venueSelect).toBeVisible();
+    await venueSelect.selectOption({ index: 1 });
 
     // Click Preview Notice
     const previewBtn = hearingPanel.locator('.preview-btn');
@@ -332,7 +334,9 @@ test.describe.serial('AA Workflow', () => {
     const resultMsg = page.locator('.result-msg.success');
     await expect(resultMsg).toBeVisible({ timeout: 10000 });
 
-    const statusBadge = page.locator('.status-badge');
+    // The appeal's OWN status. Three .status-badge elements render on this screen, so the bare class
+    // was a strict-mode violation that failed the assertion before it could read anything.
+    const statusBadge = page.getByTestId('appeal-status');
     const statusText = await statusBadge.textContent();
     expect(statusText?.toLowerCase()).toMatch(/dismissed|closed/);
 

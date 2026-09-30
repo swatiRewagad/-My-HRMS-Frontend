@@ -192,6 +192,16 @@
             </div>
           </section>
 
+          <!-- ═══ Comments — shared app-comment-thread ═══ -->
+          <!--
+            CEPC had no thread at all: the only place an officer could write prose was the per-action
+            Remarks box, which is bound to one transition and disappears with it. There was nowhere to
+            leave a note that outlives a single workflow step.
+          -->
+          <app-comment-thread
+            [complaintNumber]="complaint().complaintNumber || complaint().complaintId"
+            [audienceRoles]="commentAudienceRoles" />
+
           <!-- Audit Trail / Timeline -->
           <app-cepc-timeline [complaintNumber]="complaint().complaintNumber || complaint().complaintId"></app-cepc-timeline>
 
@@ -213,71 +223,50 @@
             <h4>Available Actions</h4>
             <p class="action-hint">Select an action to perform on this complaint.</p>
 
-            <div class="action-list">
-              @for (action of availableActions(); track action.id) {
-                <button class="action-card" [class]="action.style"
-                        [class.selected]="selectedAction()?.id === action.id"
-                        (click)="selectAction(action)">
-                  <span class="action-label">{{ action.label }}</span>
-                  <span class="action-desc">{{ action.description }}</span>
-                </button>
-              }
-            </div>
+            <app-workflow-action-bar
+              [actions]="availableActions()"
+              [selectedId]="selectedAction()?.id ?? null"
+              [processing]="processing()"
+              [(remarks)]="remarks"
+              [showFormTitle]="true"
+              [speech]="true"
+              [fields]="targetPicker"
+              [commitLabel]="confirmLabel()"
+              (select)="selectAction($event)"
+              (commit)="submitAction()"
+              (cancel)="cancelAction()" />
 
-            @if (selectedAction(); as action) {
-              <div class="action-form">
-                <h5>{{ action.label }}</h5>
-
-                @if (action.requiresTarget && action.targetType === 'department') {
-                  <div class="form-field">
-                    <label>Target Department</label>
-                    <select [(ngModel)]="targetDepartment">
-                      <option value="">Select Department</option>
-                      @for (dept of rbiDepartments; track dept) {
-                        <option [value]="dept">{{ dept }}</option>
-                      }
-                    </select>
-                  </div>
-                }
-
-                @if (action.requiresTarget && action.targetType === 'user') {
-                  <div class="form-field">
-                    <label>Assign To</label>
-                    <select [(ngModel)]="targetUser">
-                      <option value="">Select {{ action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN' ? 'Contact Person' : 'Officer' }}</option>
-                      @if (action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN') {
-                        @for (cp of contactPersons(); track cp.id) {
-                          <option [value]="cp.id">{{ cp.name }}</option>
-                        }
-                      } @else {
-                        @for (officer of cepcOfficers(); track officer.id) {
-                          <option [value]="officer.id">{{ officer.name }}</option>
-                        }
-                      }
-                    </select>
-                  </div>
-                }
-
-                @if (action.requiresRemarks) {
-                  <div class="form-field">
-                    <label>Remarks</label>
-                    <div class="textarea-with-speech">
-                      <textarea [(ngModel)]="remarks" rows="4"
-                                placeholder="Enter remarks (required)..."></textarea>
-                      <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
-                    </div>
-                  </div>
-                }
-
-                <div class="form-actions">
-                  <button class="submit-btn" [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
-                          (click)="submitAction()">
-                    @if (processing()) { Processing... } @else { Confirm {{ action.label }} }
-                  </button>
-                  <button class="cancel-btn" (click)="cancelAction()">Cancel</button>
+            <ng-template #targetPicker let-action>
+              @if (action.requiresTarget && action.targetType === 'department') {
+                <div class="form-field">
+                  <label>Target Department</label>
+                  <select [(ngModel)]="targetDepartment">
+                    <option value="">Select Department</option>
+                    @for (dept of rbiDepartments; track dept) {
+                      <option [value]="dept">{{ dept }}</option>
+                    }
+                  </select>
                 </div>
-              </div>
-            }
+              }
+
+              @if (action.requiresTarget && action.targetType === 'user') {
+                <div class="form-field">
+                  <label>Assign To</label>
+                  <select [(ngModel)]="targetUser">
+                    <option value="">Select {{ action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN' ? 'Contact Person' : 'Officer' }}</option>
+                    @if (action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN') {
+                      @for (cp of contactPersons(); track cp.id) {
+                        <option [value]="cp.id">{{ cp.name }}</option>
+                      }
+                    } @else {
+                      @for (officer of cepcOfficers(); track officer.id) {
+                        <option [value]="officer.id">{{ officer.name }}</option>
+                      }
+                    }
+                  </select>
+                </div>
+              }
+            </ng-template>
 
             @if (actionResult()) {
               <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">

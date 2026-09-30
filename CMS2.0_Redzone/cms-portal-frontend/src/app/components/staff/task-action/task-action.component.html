@@ -432,6 +432,20 @@
                 </div>
                 @if (sectionOpen.actions) {
                   <div class="section-body">
+                    <!--
+                      OUTSIDE the three branches below, because the outcome of an action must outlive the
+                      actions. A transition that closes the complaint, or that hands it to the next role,
+                      empties availableActions() — so the re-fetch that follows swapped this panel for a
+                      banner and destroyed the very confirmation the officer had just earned. The write
+                      succeeded and the screen said nothing about it.
+                    -->
+                    @if (actionResult()) {
+                      <div class="result-msg" role="status" aria-live="polite" data-testid="action-result"
+                           [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                        {{ actionResult() }}
+                      </div>
+                    }
+
                     @if (isTerminalState()) {
                       <div class="closed-banner">
                         <span class="closed-icon"><i class="pi pi-check-circle"></i></span>
@@ -445,22 +459,24 @@
                         <p>No actions available for your role. This complaint is awaiting action from the next role in the workflow.</p>
                       </div>
                     } @else {
-                      <div class="action-buttons">
-                        @for (action of availableActions(); track action.value) {
-                          <button class="action-btn" [class]="action.style" [disabled]="processing()" (click)="selectAction(action.value)">
-                            {{ action.label }}
-                          </button>
-                        }
-                      </div>
+                      <app-workflow-action-bar
+                        layout="pills"
+                        [actions]="actionBarActions()"
+                        [selectedId]="selectedAction()"
+                        [processing]="processing()"
+                        [(remarks)]="remarks"
+                        [speech]="true"
+                        [commitSpinner]="true"
+                        [remarksRows]="3"
+                        [remarksLabel]="remarksLabel()"
+                        [commitLabel]="confirmLabel()"
+                        [extras]="closureAndDraftFields"
+                        [commitExtras]="saveDraftButton"
+                        (select)="selectAction($event.id)"
+                        (commit)="originalSubmitAction()"
+                        (cancel)="cancelAction()" />
 
-                      @if (selectedAction()) {
-                        <div class="remarks-section">
-                          <label>Remarks for "{{ selectedAction() }}"</label>
-                          <div class="textarea-with-speech">
-                            <textarea [(ngModel)]="remarks" rows="3" placeholder="Enter remarks (required)..."></textarea>
-                            <app-speech-button (transcription)="remarks = remarks + ' ' + $event"></app-speech-button>
-                          </div>
-
+                      <ng-template #closureAndDraftFields>
                           <!-- UST576, UST581-584: Final Decision fields for CLOSE_COMPLAINT -->
                           @if (selectedAction() === 'CLOSE_COMPLAINT') {
                             <div class="closure-fields" style="margin-top:12px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e0e0e0;">
@@ -515,21 +531,17 @@
                               Draft saved at {{ draftSavedAt() }}
                             </div>
                           }
+                      </ng-template>
 
-                          <div class="confirm-actions">
-                            <button class="btn btn-primary" [disabled]="!remarks.trim() || processing()" (click)="originalSubmitAction()">
-                              @if (processing()) { <i class="pi pi-spin pi-spinner"></i> Processing... } @else { Confirm {{ selectedAction() }} }
-                            </button>
-                            <!-- UST674: the Conciliation / Forward / Final Decision save point. This
-                                 component had no draft save at all before. -->
-                            <button class="btn btn-outline" [disabled]="savingDraft() || processing() || !remarks.trim()"
-                                    (click)="saveDraft()" data-testid="save-draft">
-                              @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> Saving... } @else { Save in Draft }
-                            </button>
-                            <button class="btn btn-outline" (click)="cancelAction()">Cancel</button>
-                          </div>
-                        </div>
-                      }
+                      <!-- UST674: the Conciliation / Forward / Final Decision save point, unique to this
+                           screen — hence a projected template rather than an input on the shared bar. -->
+                      <ng-template #saveDraftButton>
+                        <button type="button" class="btn btn-outline"
+                                [disabled]="savingDraft() || processing() || !remarks.trim()"
+                                (click)="saveDraft()" data-testid="save-draft">
+                          @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> Saving... } @else { Save in Draft }
+                        </button>
+                      </ng-template>
 
                       <!-- UST675: the concurrent-save refusal. A 409 is not a validation error, so it gets
                            its own treatment and a reload affordance — repeating the same request with a
@@ -543,11 +555,6 @@
                         </div>
                       }
 
-                      @if (actionResult()) {
-                        <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
-                          {{ actionResult() }}
-                        </div>
-                      }
                     }
                   </div>
                 }

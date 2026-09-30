@@ -79,14 +79,14 @@ function seedClosedComplaint(complaintNumber: string, closureClause: string | nu
   const clause = closureClause === null ? 'NULL' : `'${closureClause}'`;
   sql(`INSERT INTO COMPLAINTS
         (complaint_number, complainant_name, complainant_email, complainant_phone,
-         subject, description, status, closure_clause, entity_code, entity_name,
-         priority, filing_type, scheme_version,
+         subject, description, status, closure_clause, entity_code,
+         priority, filing_type, scheme_version, record_version,
          created_at, updated_at, filed_at, closed_at)
        VALUES
         ('${complaintNumber}', 'AA Foundation Test', 'aafoundation@example.com', '9876543210',
          'AA foundation security fixture', 'Seeded by aa-foundation-security.spec.ts',
-         'closed', ${clause}, '${entityCode}', 'Fixture Entity',
-         'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021',
+         'closed', ${clause}, '${entityCode}',
+         'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021', 0,
          NOW(), NOW(), NOW(), NOW())`);
 }
 
@@ -94,13 +94,13 @@ function seedClosedComplaint(complaintNumber: string, closureClause: string | nu
 function seedForwardedComplaint(complaintNumber: string, entityCode: string): void {
   sql(`INSERT INTO COMPLAINTS
         (complaint_number, complainant_name, complainant_email, complainant_phone,
-         subject, description, status, entity_code, entity_name,
-         priority, filing_type, created_at, updated_at, filed_at)
+         subject, description, status, entity_code,
+         priority, filing_type, record_version, created_at, updated_at, filed_at)
        VALUES
         ('${complaintNumber}', 'AA Foundation RE Test', 'aare@example.com', '9876543210',
          'RE entity scope fixture', 'Seeded by aa-foundation-security.spec.ts',
-         'forwarded', '${entityCode}', 'Fixture Entity',
-         'MEDIUM', 'CEPC_MANUAL', NOW(), NOW(), NOW())`);
+         'forwarded', '${entityCode}',
+         'MEDIUM', 'CEPC_MANUAL', 0, NOW(), NOW(), NOW())`);
 }
 
 function purgeSeedData(): void {

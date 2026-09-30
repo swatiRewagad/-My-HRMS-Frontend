@@ -29,11 +29,11 @@ function seedClosedParent(complaintNumber: string): void {
   sql(`INSERT INTO COMPLAINTS
         (complaint_number, complainant_name, complainant_email, complainant_phone,
          subject, description, status, workflow_stage, closure_clause,
-         entity_code, entity_name, priority, filing_type, scheme_version,
+         entity_code, priority, filing_type, scheme_version, record_version,
          created_at, updated_at, filed_at, closed_at)
        VALUES ('${complaintNumber}', 'S3BC Appellant', 's3bc@example.com', '9876543210',
          'S3BC fixture', 'Seeded by the S3B contract suite', 'closed', NULL, '15(1)(a)',
-         'HDFC Bank', 'Fixture Entity', 'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021',
+         'HDFC Bank', 'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021', 0,
          NOW(), NOW(), NOW(), NOW())`);
 }
 

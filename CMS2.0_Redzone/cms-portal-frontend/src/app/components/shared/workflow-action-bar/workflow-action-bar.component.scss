@@ -1,0 +1,197 @@
+// Self-contained: view encapsulation means a host's stylesheet cannot reach into this template, so every
+// rule the two layouts need lives here. No raw hex — the values the three old stylesheets hardcoded are
+// now the --action-* tokens in styles.scss.
+//
+// One style vocabulary covers the union of both old ones. `approve|escalate|reject|resolve|return` came
+// from staff/task-action, `primary|info|review|forward|escalate|return|close` from cepc and aa; all ten
+// still get a distinct treatment so no host loses a colour it currently sets.
+
+:host { display: block; }
+
+// ═══ PILL ROW (staff/task-action) ═══
+:host(.layout-pills) {
+
+  .action-buttons {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    margin-bottom: var(--space-7);
+  }
+
+  .action-btn {
+    padding: var(--space-4) var(--space-8);
+    border: 2px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-card);
+    color: var(--text-body);
+    cursor: pointer;
+    font-size: var(--text-base);
+    font-weight: 600;
+    transition: all 0.2s;
+
+    &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 1px; }
+
+    // The outlined-pill treatment: the accent is the border and the label, and the hover is a wash of
+    // the same accent. color-mix keeps that wash derived from the one token rather than being a second
+    // hex per style, which is how the old stylesheet ended up with ten hardcoded values.
+    @each $style, $token in (
+      approve: --action-approve,
+      primary: --brand-primary-strong,
+      resolve: --brand-primary-hover,
+      info: --action-info,
+      forward: --action-forward,
+      review: --action-return,
+      return: --action-return,
+      escalate: --action-escalate,
+      reject: --state-danger-solid-hover,
+      close: --action-close
+    ) {
+      &.#{$style} {
+        border-color: var(#{$token});
+        color: var(#{$token});
+        &:hover:not(:disabled) { background: color-mix(in srgb, var(#{$token}) 8%, var(--surface-card)); }
+      }
+    }
+  }
+}
+
+// ═══ STACKED CARDS (cepc-complaint-detail, aa-appeal-detail) ═══
+:host(.layout-cards) {
+
+  .action-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-7);
+  }
+
+  .action-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--space-5) var(--space-6);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--surface-card);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover { border-color: var(--brand-primary-strong); background: var(--brand-primary-bg); }
+    &.selected { border-color: var(--brand-primary-strong); background: var(--brand-primary-bg-strong); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+    &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 1px; }
+
+    // Here the accent is a left edge rather than the whole border, so the card stays readable while the
+    // selected state owns the border colour.
+    @each $style, $token in (
+      primary: --brand-primary-strong,
+      approve: --action-approve,
+      resolve: --brand-primary-hover,
+      info: --action-info,
+      forward: --action-forward,
+      review: --action-return,
+      return: --action-return,
+      escalate: --action-escalate,
+      reject: --state-danger-solid-hover,
+      close: --action-close
+    ) {
+      &.#{$style} { border-left: 3px solid var(#{$token}); }
+    }
+
+    .action-label { font-size: var(--text-base); font-weight: 600; color: var(--text-body); }
+    .action-desc { font-size: var(--text-xs); color: var(--text-muted); }
+  }
+}
+
+// ═══ CONFIRM STEP — shared by both layouts ═══
+.remarks-section {
+  margin-top: var(--space-3);
+  padding-top: var(--space-7);
+  border-top: 1px solid var(--border-subtle);
+
+  h5 { margin: 0 0 var(--space-5); font-size: var(--text-md); color: var(--text-body); }
+}
+
+.form-field {
+  margin-bottom: var(--space-5);
+
+  label {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-1);
+  }
+
+  textarea {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    font-size: var(--text-base);
+    font-family: inherit;
+    resize: vertical;
+
+    // A visible focus indicator, not just a border tint: `outline: none` with a colour change alone
+    // fails WCAG 2.4.7 and 1.4.11, which two of the three old stylesheets did.
+    &:focus-visible {
+      outline: 2px solid var(--brand-primary-strong);
+      outline-offset: 1px;
+      border-color: var(--brand-primary-strong);
+    }
+  }
+}
+
+.textarea-with-speech {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+
+  textarea { flex: 1; }
+}
+
+.confirm-actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+// The commit and cancel buttons carry `.btn .btn-primary .submit-btn` and `.btn .btn-outline
+// .cancel-btn` — see the template header for the specs pinning each name. Styled once here rather than
+// inherited from a host, because encapsulation means no host rule reaches these elements.
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--brand-primary-strong); outline-offset: 2px; }
+}
+
+.btn-primary {
+  background: var(--brand-primary-strong);
+  color: var(--text-on-brand);
+
+  &:hover:not(:disabled) { background: var(--brand-primary-hover); }
+}
+
+.btn-outline {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-body);
+  font-weight: 500;
+
+  &:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--border-strong); }
+}

@@ -25,16 +25,22 @@ const DO = identityHeadersFor('aa_do_001', 'AA');
 const REVIEWER = identityHeadersFor('aa_reviewer_001', 'AA');
 const SECRETARIAT = identityHeadersFor('aa_secretariat_001', 'AA');
 
+// Two schema facts this seed got wrong, either of which aborted all nine tests before a page rendered —
+// so this browser suite asserted nothing since it was written:
+//  - COMPLAINTS has entity_code and NO entity_name. The Complaint entity has no such field and no
+//    migration adds one.
+//  - record_version is NOT NULL with no default in the live cms_db, despite V58 declaring DEFAULT 0
+//    (ddl-auto rebuilt the column without it). @Version means Hibernate always supplies it; raw SQL must.
 function seedClosedParent(complaintNumber: string, clause = '15(1)(a)'): void {
   purgeComplaint(complaintNumber);
   sql(`INSERT INTO COMPLAINTS
         (complaint_number, complainant_name, complainant_email, complainant_phone,
          subject, description, status, workflow_stage, closure_clause,
-         entity_code, entity_name, priority, filing_type, scheme_version,
+         entity_code, priority, filing_type, scheme_version, record_version,
          created_at, updated_at, filed_at, closed_at)
        VALUES ('${complaintNumber}', 'S3B Appellant', 's3b@example.com', '9876543210',
          'S3B fixture', 'Seeded by the S3B UI suite', 'closed', NULL, '${clause}',
-         'HDFC Bank', 'Fixture Entity', 'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021',
+         'HDFC Bank', 'MEDIUM', 'CEPC_MANUAL', 'RBIOS_2021', 0,
          NOW(), NOW(), NOW(), NOW())`);
 }
 

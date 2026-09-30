@@ -29,7 +29,10 @@
                   {{ 'aa.overridden' | translate }}
                 </span>
               }
-              <app-status-badge [status]="appeal().status" />
+              <!-- Three .status-badge elements render on this screen (classification, this one, and the
+                   terminal banner's), so that class alone is ambiguous. This test id names the APPEAL's
+                   own status, which is what workflow assertions are actually about. -->
+              <app-status-badge [status]="appeal().status" data-testid="appeal-status" />
             </div>
             <div class="header-meta">
               <span>{{ 'aa.detail.filed' | translate }}: {{ appeal().filedAt | date:'dd MMM yyyy' }}</span>
@@ -157,18 +160,24 @@
           </section>
 
           <!-- Hearing -->
+          <!--
+            `-summary` suffixes because app-aa-hearing's own date and venue CONTROLS already own
+            data-testid="hearing-date" / "hearing-venue". Both render at once when the hearing panel is
+            open, and the bare ids made every getByTestId on them a strict-mode violation — so a spec
+            trying to fill the form resolved two elements and could not proceed.
+          -->
           <section class="detail-section">
             <h4>{{ 'aa.detail.hearing' | translate }}</h4>
             <div class="field-grid">
               <div class="field">
                 <span class="field-label">{{ 'aa.detail.hearing_date' | translate }}</span>
-                <span data-testid="hearing-date">
+                <span data-testid="hearing-date-summary">
                   {{ appeal().hearingDate ? (appeal().hearingDate | date:'dd MMM yyyy, HH:mm') : ('aa.detail.not_scheduled' | translate) }}
                 </span>
               </div>
               <div class="field">
                 <span class="field-label">{{ 'aa.detail.hearing_venue' | translate }}</span>
-                <span data-testid="hearing-venue">{{ appeal().hearingVenue || '—' }}</span>
+                <span data-testid="hearing-venue-summary">{{ appeal().hearingVenue || '—' }}</span>
               </div>
             </div>
           </section>
@@ -262,12 +271,42 @@
               </div>
             }
           </section>
+
+          <!-- ═══ Comments — shared app-comment-thread ═══ -->
+          <!--
+            Keyed on the ORIGINAL COMPLAINT, not the appeal. The complaint is the one entity every
+            officer works around, so an RBIO note written before the appeal was filed is exactly the
+            context a bench officer needs; a thread scoped to the appeal number would hide it.
+            Absent when the appeal carries no complaint reference — an appeal against an order with no
+            originating complaint has nothing to thread on.
+          -->
+          @if (appeal().originalComplaintNumber) {
+            <app-comment-thread
+              [complaintNumber]="appeal().originalComplaintNumber"
+              [audienceRoles]="commentAudienceRoles" />
+          }
         </div>
 
         <!-- Right: Action Panel -->
         <div class="action-panel">
+          <!--
+            OUTSIDE the terminal/actions branches, because the outcome of an action must outlive the
+            actions. Reject and Dismiss both move the appeal to a terminal state, so the re-fetch that
+            follows flipped this panel to the banner below and destroyed the very confirmation the
+            officer had just earned — the write succeeded and the screen said nothing about it.
+          -->
+          @if (actionResult()) {
+            <div class="result-msg" role="status" aria-live="polite" data-testid="action-result"
+                 [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+              {{ actionResult() | translate }}
+            </div>
+          }
+
+          <!-- `terminal-banner` matches the isTerminalState() predicate that gates it. It was
+               data-testid="no-actions", which no spec referenced, while the S3B suite asserted on
+               `terminal-banner` — so the one banner had two names and the assertion could never pass. -->
           @if (isTerminalState()) {
-            <div class="closed-banner" data-testid="no-actions">
+            <div class="closed-banner" data-testid="terminal-banner">
               <span class="closed-icon" aria-hidden="true">&#10003;</span>
               <h4>{{ 'aa.detail.no_actions_available' | translate }}</h4>
               <app-status-badge [status]="appeal().status" />
@@ -280,20 +319,40 @@
             <!--
               Server-driven: the cards are exactly the ids the API returned in availableActions, rendered
               through their translation keys. Nothing here decides eligibility.
+
+              SCHEDULE_HEARING and PASS_ORDER never reach the generic confirm step — selectAction routes
+              them to app-aa-hearing / app-aa-order and clears the selection, so the bar renders its cards
+              and no form. Those two screens own their own remarks and their own submit.
             -->
-            <div class="action-list" data-testid="action-list">
-              @for (action of availableActions(); track action.id) {
-                <button type="button" class="action-card" [class]="action.style"
-                        [class.selected]="selectedAction()?.id === action.id"
-                        [attr.data-testid]="'action-' + action.id"
-                        (click)="selectAction(action)">
-                  <span class="action-label">{{ action.labelKey | translate }}</span>
-                  @if (action.descriptionKey) {
-                    <span class="action-desc">{{ action.descriptionKey | translate }}</span>
-                  }
-                </button>
+            <app-workflow-action-bar
+              [actions]="availableActions()"
+              [selectedId]="selectedAction()?.id ?? null"
+              [processing]="processing()"
+              [(remarks)]="remarks"
+              [showFormTitle]="true"
+              [fields]="targetPicker"
+              remarksLabelKey="aa.detail.remarks"
+              remarksPlaceholderKey="aa.detail.remarks_placeholder"
+              commitLabelKey="aa.detail.confirm"
+              processingLabelKey="aa.detail.processing"
+              cancelLabelKey="aa.detail.cancel"
+              (select)="selectAction($event)"
+              (commit)="submitAction()"
+              (cancel)="cancelAction()" />
+
+            <ng-template #targetPicker let-action>
+              @if (action.requiresTarget && action.targetType === 'user') {
+                <div class="form-field">
+                  <label for="action-target-user">{{ 'aa.detail.assign_to' | translate }}</label>
+                  <select id="action-target-user" data-testid="action-target-user" [(ngModel)]="targetUser">
+                    <option value="">{{ 'aa.detail.select_officer' | translate }}</option>
+                    @for (officer of aaOfficers(); track officer.id) {
+                      <option [value]="officer.id">{{ officer.name }}</option>
+                    }
+                  </select>
+                </div>
               }
-            </div>
+            </ng-template>
 
             <!-- Hearing Panel -->
             @if (showHearingPanel()) {
@@ -305,57 +364,6 @@
               <app-aa-order [appeal]="appeal()" (orderPassed)="onOrderPassed()" (cancelled)="cancelAction()"></app-aa-order>
             }
 
-            <!-- Generic Action Form -->
-            @if (selectedAction(); as action) {
-              <div class="action-form" data-testid="action-form">
-                <h5>{{ action.labelKey | translate }}</h5>
-
-                @if (action.requiresTarget && action.targetType === 'user') {
-                  <div class="form-field">
-                    <label for="action-target-user">{{ 'aa.detail.assign_to' | translate }}</label>
-                    <select id="action-target-user" data-testid="action-target-user" [(ngModel)]="targetUser">
-                      <option value="">{{ 'aa.detail.select_officer' | translate }}</option>
-                      @for (officer of aaOfficers(); track officer.id) {
-                        <option [value]="officer.id">{{ officer.name }}</option>
-                      }
-                    </select>
-                  </div>
-                }
-
-                @if (action.requiresRemarks) {
-                  <div class="form-field">
-                    <label for="action-remarks">{{ 'aa.detail.remarks' | translate }}</label>
-                    <textarea id="action-remarks" data-testid="action-remarks" rows="4"
-                              [(ngModel)]="remarks"
-                              [attr.placeholder]="'aa.detail.remarks_placeholder' | translate"></textarea>
-                  </div>
-                }
-
-                <div class="form-actions">
-                  <button type="button" class="submit-btn" data-testid="submit-action"
-                          [disabled]="processing() || (action.requiresRemarks && !remarks.trim())"
-                          [attr.aria-busy]="processing()"
-                          (click)="submitAction()">
-                    @if (processing()) {
-                      {{ 'aa.detail.processing' | translate }}
-                    } @else {
-                      {{ 'aa.detail.confirm' | translate }}
-                    }
-                  </button>
-                  <button type="button" class="cancel-btn" data-testid="cancel-action" (click)="cancelAction()">
-                    {{ 'aa.detail.cancel' | translate }}
-                  </button>
-                </div>
-              </div>
-            }
-
-            <!-- actionResult holds a translation KEY, never prose: the server picks the message. -->
-            @if (actionResult()) {
-              <div class="result-msg" role="status" aria-live="polite" data-testid="action-result"
-                   [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
-                {{ actionResult() | translate }}
-              </div>
-            }
           }
         </div>
       </div>

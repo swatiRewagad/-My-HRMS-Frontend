@@ -7,7 +7,6 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { TatService, TatResult } from '../../../services/tat.service';
 import { RbioWorkflowService, ReassignmentCandidate } from '../../../services/rbio-workflow.service';
 import { environment } from '../../../../environments/environment';
-import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { RbioConciliationComponent } from '../../rbio/rbio-conciliation/rbio-conciliation.component';
 import { RbioAdjudicationComponent } from '../../rbio/rbio-adjudication/rbio-adjudication.component';
 import { RbioAdvisoryComponent } from '../../rbio/rbio-advisory/rbio-advisory.component';
@@ -20,12 +19,14 @@ import { RbioActionOverrideHistoryComponent } from '../../rbio/rbio-action-overr
 import { WorkflowTimelineComponent } from '../../shared/workflow-timeline/workflow-timeline.component';
 import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
+import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent],
+  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })
@@ -58,8 +59,27 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   selectedAction = signal<string>('');
   actionResult = signal<string>('');
   actionSuccess = signal(false);
-  availableActions = signal<{label: string; value: string; style: string}[]>([]);
+  availableActions = signal<{label: string; value: string; style: WorkflowActionStyle}[]>([]);
   remarks = '';
+
+  /**
+   * The shared bar's shape, adapted from this screen's `value`-keyed list.
+   *
+   * Kept as an adapter rather than rewriting all forty pushes in determineActions(), which is imperative
+   * and re-derives from roles plus status. `requiresRemarks` is true on every action because this screen
+   * has always demanded remarks unconditionally — it is stated here rather than relied upon as a default.
+   */
+  actionBarActions = computed<WorkflowAction[]>(() =>
+    this.availableActions().map(a => ({
+      id: a.value,
+      label: a.label,
+      style: a.style,
+      requiresRemarks: true,
+    })));
+
+  /** Both captions name the pending transition, so an officer cannot confirm the wrong one by habit. */
+  remarksLabel = computed(() => `Remarks for "${this.selectedAction()}"`);
+  confirmLabel = computed(() => `Confirm ${this.selectedAction()}`);
 
   // TAT Timer
   tatData = signal<TatResult | null>(null);
@@ -338,7 +358,7 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   private determineActions() {
     const roles = this.auth.getRoles();
     const status = (this.complaint()?.status || '').toLowerCase();
-    const actions: {label: string; value: string; style: string}[] = [];
+    const actions: {label: string; value: string; style: WorkflowActionStyle}[] = [];
 
     if (this.isTerminalState()) {
       if (roles.includes('CEPC_CLOSING_AUTHORITY') || roles.includes('CEPC_ADMIN') || roles.includes('ADMIN')) {

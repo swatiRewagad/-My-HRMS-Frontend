@@ -9,16 +9,20 @@ import { AaHearingComponent } from '../aa-hearing/aa-hearing.component';
 import { AaOrderComponent } from '../aa-order/aa-order.component';
 import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
 import { AppShellComponent } from '../../shared/app-shell/app-shell.component';
+import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
+import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
+import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
+import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 
 type AaRole = 'AA_DO' | 'AA_REVIEWER' | 'AA_SECRETARIAT' | 'AA_ADMIN';
 
-interface ActionDef {
-  id: string;
+/** The shared action contract plus the target picker only this module renders. */
+interface ActionDef extends WorkflowAction {
   /** Translation keys, not text: every user-facing string in this module resolves through the API. */
   labelKey: string;
   descriptionKey: string;
-  style: string;
+  style: WorkflowActionStyle;
   requiresRemarks: boolean;
   requiresTarget?: boolean;
   targetType?: 'user' | 'date';
@@ -48,7 +52,7 @@ interface TimelineEntry {
 @Component({
   selector: 'app-aa-appeal-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe],
+  imports: [CommonModule, FormsModule, AaHearingComponent, AaOrderComponent, StatusBadgeComponent, AppShellComponent, CommentThreadComponent, WorkflowActionBarComponent, TranslatePipe],
   templateUrl: './aa-appeal-detail.component.html',
   styleUrl: './aa-appeal-detail.component.scss'
 })
@@ -68,6 +72,19 @@ export class AaAppealDetailComponent implements OnInit {
 
   selectedAction = signal<ActionDef | null>(null);
   remarks = '';
+
+  /**
+   * RESTRICTED targets the composer offers on an appeal.
+   *
+   * The AA ladder only, even though the thread is keyed on the original complaint and RBIO officers can
+   * therefore read it: an AA officer addressing RBIO_OFFICER would be routing round the appeal, which
+   * is a workflow action, not a comment.
+   */
+  readonly commentAudienceRoles: readonly CommentAudienceOption[] = [
+    { value: 'AA_DO', label: 'AA Dealing Official' },
+    { value: 'AA_REVIEWER', label: 'AA Reviewer' },
+    { value: 'AA_SECRETARIAT', label: 'AA Secretariat' }
+  ];
   targetUser = '';
   hearingDate = '';
   hearingVenue = '';

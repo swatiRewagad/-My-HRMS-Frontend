@@ -1,0 +1,111 @@
+<!--
+  ══ WHY EVERY ELEMENT BELOW CARRIES TWO CLASS NAMES ══
+
+  This component replaces three hand-rolled action bars whose class names had drifted apart, and the E2E
+  suite pins BOTH vocabularies. Emitting only one set would leave the other vertical's specs matching
+  nothing — a silent break, because Playwright reports it as "element not visible", not as a refactor.
+  The same reason `shared/workflow-timeline` emits `.timeline-entry` AND `.timeline-item`.
+
+    wrapper     .action-buttons   e2e/aa/backlog-traceable.spec.ts:398 (`.action-buttons button`)
+                .action-list      e2e/cepc/contact-person.spec.ts:170, reopen-reassign.spec.ts:117
+                [action-list]     e2e/aa/s3b-appeal-screens.spec.ts:124,148,168,219,261,304
+
+    button      .action-btn       e2e/rbio/officer-workflow.spec.ts:63,
+                                  e2e/rbio/supervisor-workflow.spec.ts:53,85,118,151
+                .action-card      e2e/aa/workflow.spec.ts (8 sites), e2e/aa/order.spec.ts:45,73,98,
+                                  e2e/aa/hearing.spec.ts:39, e2e/cepc/workflow-actions.spec.ts (8 sites),
+                                  e2e/cepc/dashboard-grid.spec.ts:716 (`.action-panel .action-card`)
+                [action-<id>]     e2e/aa/s3b-appeal-screens.spec.ts:128,152,231,262
+
+    remarks     .remarks-section  e2e/rbio/officer-workflow.spec.ts:67, supervisor-workflow.spec.ts:57,…
+                .action-form      e2e/aa/workflow.spec.ts:73,100,191,325,
+                                  e2e/cepc/workflow-actions.spec.ts (8 sites), contact-person.spec.ts:64
+
+    commit row  .confirm-actions  e2e/rbio/officer-workflow.spec.ts:71 (`.confirm-actions .btn-primary`)
+                .form-actions     the cepc/aa flex row
+                .btn-primary      ditto, rbio
+                .submit-btn       e2e/aa/workflow.spec.ts:43,77,195,329, e2e/cepc/* (9 sites)
+
+  Both names on one element is the ONLY arrangement that satisfies all of them at once. Do not
+  "clean up" the duplication: it breaks roughly sixty assertions across nine spec files.
+
+  Also load-bearing: when there are no actions this renders NOTHING — not an empty wrapper.
+  e2e/rbio/reopen-admin.spec.ts:172 asserts 0 `.action-btn` and 0 `.action-card`;
+  e2e/aa/s3b-appeal-screens.spec.ts:168 asserts the action-list test id has count 0.
+-->
+@if (actions().length > 0) {
+  <div class="action-buttons action-list" data-testid="action-list">
+    @for (action of actions(); track action.id) {
+      <button type="button" [class]="buttonClass(action)"
+              [attr.data-testid]="'action-' + action.id"
+              [disabled]="processing()"
+              (click)="select.emit(action)">
+        @if (layout() === 'cards') {
+          <span class="action-label">{{ captionOf(action) }}</span>
+          @if (subCaptionOf(action); as sub) {
+            <span class="action-desc">{{ sub }}</span>
+          }
+        } @else {
+          {{ captionOf(action) }}
+        }
+      </button>
+    }
+  </div>
+
+  @if (selected(); as action) {
+    <div class="remarks-section action-form" data-testid="action-form">
+      @if (showFormTitle()) {
+        <h5>{{ captionOf(action) }}</h5>
+      }
+
+      @if (fields()) {
+        <ng-container [ngTemplateOutlet]="fields()!" [ngTemplateOutletContext]="{ $implicit: action }" />
+      }
+
+      @if (remarksRequired()) {
+        <div class="form-field">
+          <label for="action-remarks">{{ resolvedRemarksLabel() }}</label>
+          <!-- The `.textarea-with-speech` wrapper is emitted for all three hosts even though aa has no
+               microphone: every spec reaches the control through a DESCENDANT selector
+               (`.action-form textarea`, `.remarks-section textarea`), so an extra wrapper cannot break
+               one, and a single structure beats a branch. The button itself stays opt-in. -->
+          <div class="textarea-with-speech">
+            <textarea id="action-remarks" data-testid="action-remarks" [rows]="remarksRows()"
+                      [value]="remarks()"
+                      [attr.placeholder]="resolvedRemarksPlaceholder()"
+                      (input)="onRemarksInput($any($event.target).value)"></textarea>
+            @if (speech()) {
+              <app-speech-button (transcription)="onTranscription($event)" />
+            }
+          </div>
+        </div>
+      }
+
+      @if (extras()) {
+        <ng-container [ngTemplateOutlet]="extras()!" [ngTemplateOutletContext]="{ $implicit: action }" />
+      }
+
+      <div class="confirm-actions form-actions">
+        <button type="button" class="btn btn-primary submit-btn" data-testid="submit-action"
+                [disabled]="!canCommit()" [attr.aria-busy]="processing()"
+                (click)="commit.emit()">
+          @if (processing()) {
+            @if (commitSpinner()) { <i class="pi pi-spin pi-spinner"></i> }
+            {{ resolvedProcessingLabel() }}
+          } @else {
+            {{ resolvedCommitLabel() }}
+          }
+        </button>
+
+        @if (commitExtras()) {
+          <ng-container [ngTemplateOutlet]="commitExtras()!" [ngTemplateOutletContext]="{ $implicit: action }" />
+        }
+
+        <button type="button" class="btn btn-outline cancel-btn" data-testid="cancel-action"
+                (click)="cancel.emit()">
+          {{ resolvedCancelLabel() }}
+        </button>
+      </div>
+    </div>
+  }
+}

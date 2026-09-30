@@ -131,8 +131,12 @@ test.describe('AA - Order Management', () => {
     // Pass order via API
     await performAppealAction(request, appealNumber, 'PASS_ORDER', {
       actor: 'aa.authority',
-      outcome: 'UPHELD',
-      orderRemarks: 'E2E: Order passed via API for display verification.',
+      // `orderOutcome` / `orderSummary`, which is what the /action endpoint's PASS_ORDER branch reads.
+      // This sent `outcome` / `orderRemarks`: both were ignored, so the order never persisted and the
+      // detail screen correctly showed no order section — a spec defect reported as a missing UI.
+      // (The separate /appeals/{n}/order endpoint does take `outcome`; the two are not interchangeable.)
+      orderOutcome: 'UPHELD',
+      orderSummary: 'E2E: Order passed via API for display verification.',
     });
 
     await loginAsAaRole(page, 'AA_SECRETARIAT', `/aa/appeal/${appealNumber}`);
