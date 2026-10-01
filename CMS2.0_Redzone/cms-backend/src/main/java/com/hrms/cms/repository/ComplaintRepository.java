@@ -2,12 +2,16 @@ package com.hrms.cms.repository;
 
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ReActivityStatus;
+import com.hrms.cms.repository.projection.DashboardProjections;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.QueryHint;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -192,4 +196,193 @@ public interface ComplaintRepository
            """)
     List<Complaint> findNudgeCandidates(@Param("statuses") List<ReActivityStatus> statuses,
                                         Pageable pageable);
+
+    String QUERY_TIMEOUT_HINT = "jakarta.persistence.query.timeout";
+
+    /** Milliseconds. A missing index must fail fast rather than hold a Hikari connection. */
+    String DASHBOARD_TIMEOUT_MS = "5000";
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════
+    // SENIOR-DASHBOARD AGGREGATES
+    //
+    // These replaced five findAll() calls in SeniorDashboardService, each of which loaded all 105
+    // columns of every row — including six TEXT bodies — to compute counts in Java.
+    //
+    // ─── WHY JPQL AND NOT NATIVE SQL ───
+    // The deployed profiles (prod, openshift) run OracleDialect; only dev-local runs MySQL. Native
+    // GROUP BY SQL would work locally and break in the environment that matters, so every query below
+    // is JPQL with a constructor expression.
+    //
+    // ─── CASE FOLDING IS A REAL HAZARD HERE, AND IS NOT INTRODUCED ───
+    // COMPLAINTS is utf8mb4_0900_ai_ci, so a SQL GROUP BY folds case where the Java
+    // Collectors.groupingBy it replaces did not. priority genuinely holds both 'MEDIUM' (2177 rows)
+    // and 'medium' (252), plus 'high' (39) / 'HIGH' (20), 'low' (19) and 'CRITICAL' (2) — six stored
+    // spellings that MySQL reports as four. Grouping it in SQL MERGES buckets the old code kept
+    // apart: that is a behaviour change dressed as an optimisation.
+    //   The fix is NOT "SELECT DISTINCT then count each value", which was tried and MEASURED to fail:
+    // DISTINCT itself folds case (returns 4 rows) and `priority = 'MEDIUM'` / `= 'medium'` BOTH return
+    // 2428, the merged total. Under this collation no query can address one spelling. So
+    // findAllPriorityValues() projects the bare column — the one shape that applies no comparison
+    // operator and therefore preserves the stored bytes — and the caller tallies case-sensitively in
+    // Java. See that method's javadoc for the cost analysis.
+    //   department, status and entity_code were MEASURED to have no case collisions (3/3, 22/22,
+    // 31/31 distinct under CAST(... AS BINARY) vs plain), so those group in SQL safely. That
+    // measurement is a snapshot of dev data, not a constraint the schema enforces; if a mixed-case
+    // department is ever inserted these counts will silently merge two buckets.
+    //
+    // ─── CAPS AND TIMEOUTS ───
+    // The grouped queries return at most a few dozen rows. The two that return per-row data are
+    // capped by Pageable at the call site and every query carries a 5s timeout, so a missing index
+    // surfaces as a fast failure rather than a stalled request pinning a Hikari connection.
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+    /** One row per distinct status (22 today), for the pipeline counts. */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$KeyCount("
+            + "c.status, COUNT(c)) FROM Complaint c GROUP BY c.status")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.KeyCount> countGroupedByStatus();
+
+    /**
+     * Department backlog for the given statuses.
+     *
+     * <p>Null departments are excluded, matching the Java filter this replaced — 22 rows have none.
+     */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$KeyCount("
+            + "c.department, COUNT(c)) FROM Complaint c "
+            + "WHERE c.department IS NOT NULL AND c.status IN :statuses GROUP BY c.department")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.KeyCount> countByDepartmentForStatuses(
+            @Param("statuses") Collection<String> statuses);
+
+    /** Backlog per category id; names are resolved outside SQL from the 10-row category table. */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$IdCount("
+            + "c.categoryId, COUNT(c)) FROM Complaint c "
+            + "WHERE c.categoryId IS NOT NULL AND c.status IN :statuses "
+            + "GROUP BY c.categoryId ORDER BY COUNT(c) DESC")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.IdCount> countByCategoryForStatuses(
+            @Param("statuses") Collection<String> statuses);
+
+    /**
+     * Unassigned backlog per department.
+     *
+     * <p>Blank is treated as unassigned alongside NULL because both occur and the replaced Java
+     * predicate ({@code == null || isBlank()}) treated them alike.
+     */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$KeyCount("
+            + "c.department, COUNT(c)) FROM Complaint c "
+            + "WHERE c.department IS NOT NULL AND c.status IN :statuses "
+            + "AND (c.assignedOfficer IS NULL OR TRIM(c.assignedOfficer) = '') "
+            + "GROUP BY c.department")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.KeyCount> countUnassignedByDepartment(
+            @Param("statuses") Collection<String> statuses);
+
+    /** Status breakdown per department; neither column has case collisions (measured). */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$DeptStatusCount("
+            + "c.department, c.status, COUNT(c)) FROM Complaint c "
+            + "WHERE c.department IS NOT NULL AND c.status IS NOT NULL "
+            + "GROUP BY c.department, c.status")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.DeptStatusCount> countByDepartmentAndStatus();
+
+    /** Volume per regulated entity; entity_code has no case collisions (measured 31/31). */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$KeyCount("
+            + "c.entityCode, COUNT(c)) FROM Complaint c "
+            + "WHERE c.entityCode IS NOT NULL GROUP BY c.entityCode ORDER BY COUNT(c) DESC")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.KeyCount> countByEntity();
+
+    /** Per-entity counts restricted to a status list. */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$KeyCount("
+            + "c.entityCode, COUNT(c)) FROM Complaint c "
+            + "WHERE c.entityCode IS NOT NULL AND c.status IN :statuses "
+            + "GROUP BY c.entityCode ORDER BY COUNT(c) DESC")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.KeyCount> countByEntityForStatuses(
+            @Param("statuses") Collection<String> statuses);
+
+    /**
+     * EVERY stored priority value, one row per complaint, NOT grouped and NOT de-duplicated.
+     *
+     * <p>This looks wasteful and is deliberate. Two earlier attempts at a cheaper shape were both
+     * MEASURED to be wrong on MySQL, because {@code utf8mb4_0900_ai_ci} folds case in far more places
+     * than {@code GROUP BY}:
+     *
+     * <ul>
+     *   <li>{@code SELECT DISTINCT c.priority} returns FOUR rows, not six — it collapsed
+     *       {@code MEDIUM}/{@code medium} and {@code HIGH}/{@code high} and then arbitrarily reported
+     *       whichever spelling it encountered first ({@code medium}, {@code high}).
+     *   <li>{@code WHERE c.priority = :priority} cannot address one spelling either:
+     *       {@code = 'MEDIUM'} and {@code = 'medium'} both returned 2428, i.e. the sum of both
+     *       buckets. So a "count one exact spelling" query does not exist under this collation.
+     * </ul>
+     *
+     * <p>A bare column projection is the only portable shape that preserves the stored bytes, because
+     * no comparison or grouping operator is applied to the column at all. The caller tallies with a
+     * case-SENSITIVE Java map, which reproduces the {@code Collectors.groupingBy} buckets exactly.
+     *
+     * <p>The cost is acceptable and bounded: this is ONE {@code VARCHAR(20)} column, served by a
+     * covering index-only scan of {@code idx_complaint_priority} (measured: {@code type=index},
+     * {@code Extra='Using where; Using index'} — the 105-column row is never touched). Roughly 50 KB
+     * of strings at present volume against the ~6 MB of entity rows the {@code findAll()} it replaced
+     * had to hydrate. A {@code CAST(... AS BINARY)} group-by would be cheaper still but is MySQL-only
+     * syntax, and the deployed profiles run Oracle.
+     */
+    @Query("SELECT c.priority FROM Complaint c WHERE c.priority IS NOT NULL")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<String> findAllPriorityValues();
+
+    /**
+     * The two timestamps every bar of the 12-week trend is computed from, for rows inside the window.
+     *
+     * <p>ONE round trip, deliberately, rather than the 24 {@code COUNT(*)} queries (12 weeks x filed
+     * and resolved) that the obvious decomposition implies. Measured on the dev dataset: the 24-count
+     * form cost 1.58 s per dashboard render against 0.18 s for this projection — roughly 9x worse —
+     * because {@code resolved_at} CARRIES NO INDEX (verified against
+     * {@code information_schema.STATISTICS}), so each of the 12 resolved-counts degrades to a full
+     * table scan: {@code type=ALL, key=NULL, rows=2524}. Twelve full scans plus twelve round trips
+     * beats one scan only in the abstract.
+     *
+     * <p>The bucketing therefore stays in Java, where it is 24 comparisons per row over two
+     * {@code DATETIME} columns. That is not the anti-pattern this change set exists to remove: what
+     * was expensive about the {@code findAll()} here was hydrating 105 columns and six {@code TEXT}
+     * bodies per row, not the arithmetic.
+     *
+     * <p>An index on {@code resolved_at} would make the 24-count form viable and is a defensible
+     * follow-up, but it is NOT added here: {@code resolved_at} is written on every resolution and no
+     * other query in the codebase filters on it, so the write cost would buy one dashboard panel.
+     *
+     * <p>The window predicate is an {@code OR} across two columns, so it cannot be index-sought
+     * either ({@code type=ALL}); it is kept because it bounds the result set as history grows, which
+     * is what protects the heap. At present volume it excludes almost nothing (2520 of 2522 rows) —
+     * i.e. today this is a full scan of two narrow columns, and it is priced as one.
+     */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$TimestampPair("
+            + "c.createdAt, c.resolvedAt) FROM Complaint c "
+            + "WHERE c.createdAt >= :windowStart OR c.resolvedAt >= :windowStart")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.TimestampPair> findTrendTimestampsSince(
+            @Param("windowStart") LocalDateTime windowStart);
+
+    /**
+     * The three columns TAT needs, for active complaints only, newest first.
+     *
+     * <p>Replaces {@code findAll()} followed by a Java filter. The caller passes a {@link Pageable}
+     * carrying a hard row cap, so this can never return an unbounded list; ordering by {@code
+     * createdAt DESC} makes the cap drop the OLDEST rows, and the caller reports when it bites.
+     */
+    @Query("SELECT new com.hrms.cms.repository.projection.DashboardProjections$TatRow("
+            + "c.entityCode, c.createdAt, c.resolvedAt) FROM Complaint c "
+            + "WHERE c.createdAt IS NOT NULL AND c.status NOT IN :closedStatuses "
+            + "ORDER BY c.createdAt DESC")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<DashboardProjections.TatRow> findActiveTatRows(
+            @Param("closedStatuses") Collection<String> closedStatuses, Pageable pageable);
+
+    /** Active-complaint count, so the caller can tell whether its row cap truncated the TAT set. */
+    @Query("SELECT COUNT(c) FROM Complaint c "
+            + "WHERE c.createdAt IS NOT NULL AND c.status NOT IN :closedStatuses")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    long countActiveForTat(@Param("closedStatuses") Collection<String> closedStatuses);
 }
