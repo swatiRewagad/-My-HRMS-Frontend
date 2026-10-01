@@ -231,15 +231,30 @@ export class NotificationService {
    * The token is preferred; the dev header is a local-only fallback that the server honours only
    * while cms.security.allow-dev-identity-headers is true. Returns null when neither is available,
    * so no socket is opened that the server would only reject.
+   *
+   * BOTH are sent when both are available, and that is not belt-and-braces. The dev-local profile
+   * EXCLUDES OAuth2ResourceServerAutoConfiguration, so that profile has no JwtDecoder bean at all —
+   * and StompIdentityChannelInterceptor cannot verify a token without one. It logs the miss and
+   * drops through to the dev header. Sending the token *instead of* the dev header therefore made
+   * the server's documented fallback unreachable the moment a real Keycloak login existed: CONNECT
+   * was rejected with "no verifiable user identity on the frame" for an authenticated officer, and
+   * the bell silently stayed on the REST-only path. The server prefers the token wherever a decoder
+   * exists, and ignores the dev header entirely outside dev-local, so the extra header changes
+   * nothing in a deployed instance.
    */
   private buildConnectHeaders(): StompHeaders | null {
     const token = this.auth.isAuthenticated() ? this.auth.getToken() : '';
+    const devUserId = this.devUserId();
+
+    const headers: StompHeaders = {};
     if (token) {
-      return { [CONNECT_AUTH_HEADER]: `Bearer ${token}` };
+      headers[CONNECT_AUTH_HEADER] = `Bearer ${token}`;
+    }
+    if (devUserId) {
+      headers[CONNECT_DEV_USER_HEADER] = devUserId;
     }
 
-    const devUserId = this.devUserId();
-    return devUserId ? { [CONNECT_DEV_USER_HEADER]: devUserId } : null;
+    return Object.keys(headers).length > 0 ? headers : null;
   }
 
   private devUserId(): string {

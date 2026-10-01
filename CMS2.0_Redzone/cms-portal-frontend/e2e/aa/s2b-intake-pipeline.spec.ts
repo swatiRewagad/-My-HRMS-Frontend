@@ -244,10 +244,15 @@ test.describe('S2B intake — deduplication', () => {
 
   /** Seeds a draft whose parent complaint has the given status. */
   function seedPriorDraft(sender: string, subject: string, parentNumber: string, parentStatus: string): void {
+    // record_version is NOT NULL with no default in the live cms_db (V58 declares DEFAULT 0 but
+    // ddl-auto rebuilt the column without it). @Version means Hibernate always supplies it, so the
+    // app never notices; raw INSERT must. Omitting it gives
+    //   ERROR 1364 (HY000): Field 'record_version' doesn't have a default value
+    // which aborted these three tests before the intake endpoint was ever called.
     sql(`INSERT INTO COMPLAINTS (complaint_number, complainant_name, complainant_email, subject,
-           description, status, priority, filing_type, created_at, updated_at)
+           description, status, priority, filing_type, record_version, created_at, updated_at)
          VALUES ('${q(parentNumber)}', 'S2B Prior', '${q(sender)}', '${q(subject)}',
-           'prior complaint', '${q(parentStatus)}', 'medium', 'email', NOW(6), NOW(6))`);
+           'prior complaint', '${q(parentStatus)}', 'medium', 'email', 0, NOW(6), NOW(6))`);
     // is_duplicate / ocr_processed / sub_judice / is_vernacular / requires_manual_entry are NOT NULL
     // without defaults, so they must be supplied explicitly here.
     sql(`INSERT INTO email_drafts (draft_id, message_id, sender_email, subject, body, status,

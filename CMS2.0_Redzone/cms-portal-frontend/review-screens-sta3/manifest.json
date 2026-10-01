@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-09-30T13:33:31.763Z",
+  "appBase": "http://localhost:4202",
+  "apiBase": "http://localhost:8092",
+  "resolved": {
+    "complaintNumber": "CMP-20260930-906580",
+    "appealNumber": "APL-20260930-9D3112",
+    "draftId": "DRF-000025",
+    "ruleId": "1",
+    "closedComplaintNumber": "CMP-20260930-906580"
+  },
+  "captures": [
+    {
+      "id": "STA-003",
+      "area": "Panel states",
+      "name": "CEPC complaint detail — context rail open",
+      "actor": "CEPC_DO",
+      "routeTemplate": "/cepc/complaint/:complaintNumber",
+      "resolvedRoute": "/cepc/complaint/CMP-20260930-906580",
+      "url": "http://localhost:4202/cepc/complaint/CMP-20260930-906580",
+      "finalUrl": "http://localhost:4202/cepc/complaint/CMP-20260930-906580",
+      "shot": "shots/STA-003.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "CEPC Complaint Examination"
+      ],
+      "visibleText": 1217,
+      "consoleErrors": [],
+      "capturedAt": "2026-09-30T13:33:18.126Z",
+      "interaction": "opened: .context-rail .rail-icon"
+    }
+  ]
+}

@@ -650,6 +650,16 @@
                   <p class="pc-subject">{{ pc.subject }}</p>
                 </div>
               }
+            } @else if (pastComplaintsError()) {
+              <!--
+                A distinct message, NOT the empty state. "No past complaints found" over a failed
+                lookup is an assertion about the complainant that the screen has no basis for, and it
+                is what concealed this panel being broken.
+              -->
+              <p class="sidebar-error" role="alert">
+                Past complaints could not be loaded.
+                <button type="button" class="link-btn" (click)="loadPastComplaints()">Retry</button>
+              </p>
             } @else {
               <p class="sidebar-empty">No past complaints found</p>
             }

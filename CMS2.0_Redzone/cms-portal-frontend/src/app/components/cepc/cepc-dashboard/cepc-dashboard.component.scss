@@ -272,6 +272,43 @@
   }
 }
 
+/**
+ * The queue toggles, styled at TOP LEVEL rather than nested.
+ *
+ * The block above is scoped `.table-header-row .toggle-filter`, which was correct while this component
+ * rendered its own table header. The toggles now reach the screen through the shared task-grid's
+ * headerActions template, so at render time they sit inside <app-task-grid>'s own header bar and have
+ * NO `.table-header-row` ancestor — the nested rules cannot match, and the switch renders as a bare
+ * unstyled checkbox. The template still belongs to THIS component so its styles do reach the nodes;
+ * only the ancestor selector was wrong.
+ *
+ * Duplicated rather than re-scoped: `.table-header-row` is still used by other markup in this
+ * component, and widening that selector would restyle it too.
+ */
+.toggle-filter {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-secondary); cursor: pointer;
+  white-space: nowrap;
+
+  .toggle-switch {
+    position: relative; width: 36px; height: 20px; display: inline-block; flex: none;
+    input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--border-strong); border-radius: 10px; transition: background 0.2s;
+      &::before {
+        content: ''; position: absolute; width: 16px; height: 16px;
+        left: 2px; bottom: 2px; background: var(--surface-card); border-radius: 50%;
+        transition: transform 0.2s;
+      }
+    }
+    &.active .toggle-slider {
+      background: var(--brand-primary);
+      &::before { transform: translateX(16px); }
+    }
+  }
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

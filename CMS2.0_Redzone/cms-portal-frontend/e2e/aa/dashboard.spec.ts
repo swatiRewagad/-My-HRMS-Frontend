@@ -1,6 +1,32 @@
-import { test, expect } from '../fixtures';
-import { loginAsAaRole, isKeycloakAvailable, logout } from '../utils/auth';
+import { test, expect, type Page } from '../fixtures';
+import { loginAsAaRole, isKeycloakAvailable } from '../utils/auth';
 import { createTestComplaint, advanceToStatus, fileAppeal } from '../utils/test-data';
+
+/**
+ * Signs out through the SHARED SHELL's button, then waits for the session to be gone.
+ *
+ * The shared `logout()` in e2e/utils/auth.ts looks for `button:has-text("Logout"), .logout-btn`. The
+ * shell migration renders `data-testid="shell-logout"` with class `btn-logout` and the label "Sign
+ * out", so none of those selectors match any more. `logout()` therefore finds nothing, returns
+ * quietly, and the previous session SURVIVES — which is why the role-badge test signed in as
+ * AA_SECRETARIAT and still read "Dealing Officer". It is a dead selector in a shared helper, not a
+ * role-resolution defect in the app.
+ *
+ * Kept local because e2e/utils/auth.ts is owned elsewhere and shared with other modules' specs; this
+ * only teaches the AA dashboard spec how to leave a session. Falls back to clearing storage so a
+ * missing button can never leave a stale identity behind and silently weaken the next assertion.
+ */
+async function signOutOfShell(page: Page): Promise<void> {
+  const signOut = page.getByTestId('shell-logout');
+  if (await signOut.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await signOut.click({ force: true });
+    await page.waitForLoadState('networkidle').catch(() => {});
+  }
+  await page.context().clearCookies();
+  await page.evaluate(() => {
+    try { localStorage.clear(); sessionStorage.clear(); } catch { /* opaque origin */ }
+  }).catch(() => {});
+}
 
 test.describe('AA Dashboard', () => {
   let keycloakUp: boolean;
@@ -13,7 +39,9 @@ test.describe('AA Dashboard', () => {
 
   test.afterEach(async ({ page }) => {
     if (keycloakUp) {
-      await logout(page);
+      // Same helper, same dead selectors — so this must also go through signOutOfShell, or each test
+      // inherits the previous test's identity.
+      await signOutOfShell(page);
     }
   });
 
@@ -23,8 +51,15 @@ test.describe('AA Dashboard', () => {
     await loginAsAaRole(page, 'AA_DO');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
 
-    const heading = page.locator('h2:has-text("Appellate Authority")');
+    // The heading moved into the shared shell, which renders ONE h1 from its titleKey —
+    // aa-dashboard.component.html passes 'ui.page.aa_appeals' ("Appeals Dashboard"). The old
+    // `h2:has-text("Appellate Authority")` was the per-module topbar that the shell migration
+    // deleted, so this assertion was pinning markup that no longer exists: the SPEC was stale, the
+    // page is correct. Asserting the resolved text also keeps the untranslated-key regression covered
+    // (a missing bundle entry leaves the literal "ui.page.aa_appeals" on screen).
+    const heading = page.getByTestId('shell-page-title');
     await expect(heading).toBeVisible();
+    await expect(heading).toHaveText('Appeals Dashboard');
 
     const statsRow = page.locator('.stats-row');
     await expect(statsRow).toBeVisible({ timeout: 10000 });
@@ -153,7 +188,7 @@ test.describe('AA Dashboard', () => {
     // A raw key leaking to the screen is the specific regression guarded against here.
     expect(doText).not.toMatch(/^aa\.role_/);
 
-    await logout(page);
+    await signOutOfShell(page);
 
     await loginAsAaRole(page, 'AA_SECRETARIAT');
     await page.waitForSelector('.aa-dashboard', { timeout: 15000 });

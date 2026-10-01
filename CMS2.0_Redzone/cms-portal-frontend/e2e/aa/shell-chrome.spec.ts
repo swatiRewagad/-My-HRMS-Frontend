@@ -1,4 +1,21 @@
-import { test, expect, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
+// NOT '@playwright/test'. The shared fixture registers the API_BASE_URL rewrite on the browser
+// CONTEXT (e2e/utils/api-redirect.ts). Without it the PAGE keeps calling the compiled
+// environment.apiBaseUrl (8082) while this spec's own `request` fixture talks to API_BASE_URL — the
+// two halves of the test drive DIFFERENT backends, and only the browser half is unredirected.
+//
+// 8082 is NOT an absent JVM. Verified this session: it is UP and answers 200. An earlier version of
+// this comment called it dead and that was factually wrong — the bug is a harness SPLIT (page and
+// request on different servers, hence different DB state), not a missing server.
+//
+// It is also NOT a missing translation. ui.page.aa_appeals is present in the bundle and resolves to
+// "Appeals Dashboard"; the shell renders the literal key only when TranslationService's
+// GET /api/v1/i18n/translations/en fails or races, at which point it falls back to echoing the key.
+// An un-rewritten cross-origin fetch is exactly that condition. So DO NOT add i18n keys to chase a
+// `ui.*` / `aa.*` literal on screen until you have confirmed the key is genuinely absent from the
+// bundle — here it never was. Importing from '../fixtures' puts page and request on the same
+// backend, which is why three of this file's assertions stopped failing.
+import { test, expect } from '../fixtures';
 import { loginAsAaRole } from '../utils/auth';
 
 /**

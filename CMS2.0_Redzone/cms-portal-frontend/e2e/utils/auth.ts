@@ -441,6 +441,86 @@ export async function loginAsAaRole(
   await waitForAuthAndNavigate(page, targetUrl);
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Username → password resolution (for API-level token minting)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Resolves the password for a *username* rather than a role key.
+ *
+ * WHY: the API-level helpers (e.g. aa-shared-fixtures.mintToken) are called with a bare username —
+ * `mintToken(request, 'aa_do_001')` — not a role key, so they cannot use getAaCredentials(). They
+ * used to carry `password = 'test123'` as a default parameter. That is wrong for `aa_do_001` and
+ * `re_pno_001`, which are on the `Test@123` convention: the direct grant returns 401, mintToken's
+ * `expect(...).toBe(200)` throws inside a `describe.serial` beforeAll, and Playwright then marks
+ * EVERY remaining test in the file "skipped". One wrong literal therefore reads as a 16-test
+ * failure. Hardcoding a different literal just moves the bug to the next account.
+ *
+ * So: walk the role maps above, which are already env-overridable from e2e/review/credentials.env,
+ * and index them by their EFFECTIVE username. A credentials.env that renames an account therefore
+ * keeps working, because the key is recomputed from the same env var that supplied the name.
+ *
+ * Accounts with no role-map entry fall back to EXTRA_PASSWORD_DEFAULTS below.
+ *
+ * KNOWN GAP: `re_nodal_001` exists in the realm but has NO working password (every convention
+ * answers invalid_grant). Use `re_pno_001` instead; see RE_ENV_MAP.
+ */
+const EXTRA_PASSWORD_DEFAULTS: Record<string, string> = {
+  // Verified by direct grant against client `cms-portal`, realm `cms` on 9090.
+  'aa_do_001': 'Test@123',
+  're_pno_001': 'Test@123',
+  'aa_secretariat_001': 'test123',
+  'aa_reviewer_001': 'test123',
+  'aa_reviewer_002': 'test123',
+  'aa_admin_001': 'test123',
+};
+
+/** Fallback for a username nothing knows about. The commonest convention in this realm. */
+const UNKNOWN_USER_PASSWORD = 'test123';
+
+export interface ResolvedPassword {
+  password: string;
+  /** Where the value came from, for error messages: an env var name or 'built-in default'. */
+  source: string;
+}
+
+type AnyEnvMap = Record<string, { userEnv: string; passEnv: string; defaults: Credentials }>;
+
+const ALL_ENV_MAPS: AnyEnvMap[] = [
+  ENV_MAP as AnyEnvMap,
+  RBIO_ENV_MAP as AnyEnvMap,
+  RE_ENV_MAP as AnyEnvMap,
+  AA_ENV_MAP as AnyEnvMap,
+  ORBIO_ENV_MAP as AnyEnvMap,
+];
+
+/**
+ * Resolves a password for the given username, preferring whatever credentials.env exported.
+ *
+ * Resolution order:
+ *   1. `<ROLE>_PASS` env var, when some role map's effective username matches.
+ *   2. The role map's built-in default password.
+ *   3. EXTRA_PASSWORD_DEFAULTS (verified literals for accounts with no role key).
+ *   4. UNKNOWN_USER_PASSWORD.
+ */
+export function resolvePasswordFor(username: string): ResolvedPassword {
+  for (const map of ALL_ENV_MAPS) {
+    for (const cfg of Object.values(map)) {
+      const effectiveUser = process.env[cfg.userEnv] || cfg.defaults.username;
+      if (effectiveUser !== username) continue;
+      const fromEnv = process.env[cfg.passEnv];
+      if (fromEnv) return { password: fromEnv, source: cfg.passEnv };
+      return { password: cfg.defaults.password, source: `built-in default for ${cfg.passEnv}` };
+    }
+  }
+  const extra = EXTRA_PASSWORD_DEFAULTS[username];
+  if (extra) return { password: extra, source: `built-in default (no env var maps to ${username})` };
+  return {
+    password: UNKNOWN_USER_PASSWORD,
+    source: `last-resort default (username ${username} is in no credential map)`,
+  };
+}
+
 /**
  * Logs out the current user via the UI logout button.
  */

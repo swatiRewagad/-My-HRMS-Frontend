@@ -1,4 +1,12 @@
-import { test, expect } from '@playwright/test';
+// From '../fixtures', NOT '@playwright/test': the fixture installs redirectBrowserApiCalls, which
+// points the PAGE's own fetches at API_BASE_URL. Without it the app keeps using its compiled
+// environment.apiBaseUrl (8082), which is a DIFFERENT backend from the one this run seeds and
+// asserts against (API_BASE_URL, e.g. 8092) — commonly a developer's own JVM on another database,
+// occasionally nothing at all. Either way GET /api/v1/i18n/translations/en is not answered by the
+// server under test, TranslationService.translate falls through to returning the key, and the h1
+// renders as the literal "faq.page_title" / "wizard.title" / "seo.track_title". Three tests
+// reported a broken product; nothing was broken but the wiring.
+import { test, expect } from '../fixtures';
 
 /**
  * Heading structure and image alt text on the INDEXABLE public pages.

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CMS 2.0 — Process flowcharts</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html" class="active">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>CMS 2.0 — Process flowcharts</h1>
+  <p class="sub">How the RBI complaint management system actually works today, module by module</p>
+  <div class="meta">
+    <span>Written for business readers, with a technical appendix on every page</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026 · works offline, no internet needed</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>How to read these pages</h2>
+  <p>
+    Each page describes one part of the system: <strong>who does what</strong>, a <strong>flowchart of the
+    journey</strong>, the <strong>same journey as a numbered checklist</strong>, the <strong>deadlines</strong> that
+    apply, and a section called <em>"Things to know before relying on this"</em> that sets out where the software
+    behaves differently from what you would reasonably expect. At the bottom of every page there is a collapsed
+    <strong>technical appendix</strong> with file names, status values and API details — open it only if you need it.
+  </p>
+  <p>
+    Everything here is derived from reading the code, not from earlier documentation. Where the code and the written
+    requirements disagree, these pages describe <strong>the code</strong>.
+  </p>
+</div>
+
+<div class="card-index">
+  <a href="combined.html">
+    <h3>End-to-end journey</h3>
+    <p>Start here. How the six parts hand work to each other, all deadlines in one table, and the cross-module issues worth raising.</p>
+  </a>
+  <a href="portal.html">
+    <h3>1 · Citizen Portal</h3>
+    <p>Logging in by OTP, the eligibility interview, the six-step form, and the four stages a citizen can see.</p>
+  </a>
+  <a href="crpc.html">
+    <h3>2 · CRPC — Central intake</h3>
+    <p>Emails, scanned letters and phone calls becoming formal complaints. Automatic filtering, data entry, review.</p>
+  </a>
+  <a href="rbio.html">
+    <h3>3 · RBIO — Ombudsman office</h3>
+    <p>Maintainability, asking the bank, the review ladder, conciliation, adjudication and awards.</p>
+  </a>
+  <a href="cepc.html">
+    <h3>4 · CEPC — Consumer protection cell</h3>
+    <p>The regional four-person review chain for grievances the Ombudsman scheme does not cover.</p>
+  </a>
+  <a href="re.html">
+    <h3>5 · Bank / RE portal</h3>
+    <p>The bank's side: the 15-day reply clock, the progress ladder the RBI officer watches, and proceeding without the bank.</p>
+  </a>
+  <a href="aa.html">
+    <h3>6 · Appellate Authority</h3>
+    <p>Who may appeal and when, the five admission gates, hearings, orders and remand back to the Ombudsman.</p>
+  </a>
+</div>
+
+<div class="card">
+  <h2>The three things to know before reading any of it</h2>
+  <div class="watch">
+    <span class="lbl">1 · These are six separate systems, not one workflow</span>
+    Each module has its own set of states, its own rules and its own degree of enforcement, while all of them write
+    to the same complaint record. A complaint's "status" means something different depending on which module last
+    touched it.
+  </div>
+  <div class="watch">
+    <span class="lbl">2 · Enforcement varies enormously between modules</span>
+    The Appellate Authority and the bank portal genuinely check who is asking and whether the action is allowed
+    right now. The Ombudsman office checks partially. The consumer protection cell and the central intake centre
+    <strong>check almost nothing</strong> — the screens decide what to show, and the server accepts whatever it is
+    sent.
+  </div>
+  <div class="watch">
+    <span class="lbl">3 · Almost nothing happens on a timer</span>
+    Only the bank's 15-day reply clock is actively enforced. Inside the RBI offices, deadlines are calculated and
+    displayed but never acted on. No case escalates, reassigns or closes by itself.
+  </div>
+</div>
+
+<div class="card">
+  <h2>Using the diagrams</h2>
+  <ul>
+    <li><strong>Drag</strong> to move around, <strong>scroll</strong> to zoom in and out.</li>
+    <li><strong>Fit</strong> resizes the diagram to the window; <strong>Reset</strong> returns to the original view.</li>
+    <li><strong>Full screen</strong> is the easiest way to read the larger diagrams.</li>
+    <li><strong>Save image</strong> downloads the diagram as an SVG you can drop into a slide deck or document.</li>
+    <li><strong>Print</strong> works too — the toolbars are hidden and the diagrams expand to their full height.</li>
+  </ul>
+  <p>Colours are consistent across every page:</p>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Entry point</span>
+    <span><i class="swatch sw-state"></i>The case is sitting here</span>
+    <span><i class="swatch sw-dec"></i>Someone must decide</span>
+    <span><i class="swatch sw-term"></i>Finished</span>
+    <span><i class="swatch sw-bad"></i>Refused or dropped</span>
+    <span><i class="swatch sw-auto"></i>Automatic, or recorded without moving the case</span>
+    <span><i class="swatch sw-gap"></i>A gap — something that does not work, or does not exist</span>
+  </div>
+  <p class="file-ref" style="margin-top:14px">
+    These pages need no internet connection. The diagram library is bundled in <code>lib/</code>.
+    Open <code>index.html</code> in any browser, or copy the whole <code>flowcharts</code> folder anywhere.
+  </p>
+</div>
+
+</div>
+
+<footer class="page">CMS 2.0 — process flowcharts · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026</footer>
+
+</body>
+</html>

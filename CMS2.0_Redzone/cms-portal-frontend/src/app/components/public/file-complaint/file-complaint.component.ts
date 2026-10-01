@@ -1252,6 +1252,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
       ? all.filter(o => o.label.toLowerCase().includes(term) ||
                         !!o.entityType?.toLowerCase().includes(term))
       : all;
+    // Cancel any close armed by a preceding blur: opening is the newer, deliberate intent. Without
+    // this the clear button re-opened the list and a stale blur timer shut it 200ms later.
+    if (this.entityCloseTimer) { clearTimeout(this.entityCloseTimer); this.entityCloseTimer = null; }
     this.entityDropdownOpen = true;
     // Every re-filter and every re-open drops the highlight, so Enter can never activate a row the
     // citizen can no longer see.
@@ -1318,8 +1321,25 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.filterEntities();
   }
 
+  /**
+   * Closes the list on blur, but only if nothing has deliberately re-opened it in the meantime.
+   *
+   * The delay exists so a (mousedown) on an option is not cut short by the input's own blur. But the
+   * timer used to be fired and forgotten, which broke the clear button: clicking it blurs the input
+   * (arming a close for +200ms), then `clearEntitySelection` → `filterEntities` sets
+   * `entityDropdownOpen = true`, and 200ms later the stale timer closed the list the citizen had just
+   * asked to see. The list collapsed to zero rows and the full master was unreachable without
+   * re-focusing. Keeping the handle and cancelling it in `filterEntities` makes the last deliberate
+   * action win.
+   */
+  private entityCloseTimer: any = null;
+
   closeEntityDropdown() {
-    setTimeout(() => this.entityDropdownOpen = false, 200);
+    if (this.entityCloseTimer) clearTimeout(this.entityCloseTimer);
+    this.entityCloseTimer = setTimeout(() => {
+      this.entityCloseTimer = null;
+      this.entityDropdownOpen = false;
+    }, 200);
   }
 
   /** Stable per-row id so aria-activedescendant has something to point at. */

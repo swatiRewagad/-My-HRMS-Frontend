@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { NotificationBellComponent } from '../../../shared/notification-bell/notification-bell.component';
@@ -16,6 +16,14 @@ import { TaskGridComponent } from '../../shared/task-grid/task-grid.component';
 import { TaskGridColumn } from '../../shared/task-grid/task-grid.types';
 
 interface CepcComplaint {
+  /**
+   * The numeric primary key, as a STRING.
+   *
+   * <p>The server sends `complaintId` as a number (Complaint#getId). It is normalised to a string on
+   * arrival because this field is the grid's rowKey and the advanced-search filter calls
+   * `.toLowerCase()` on it — on a raw number that threw a TypeError inside a computed(), which left
+   * the Advanced Search dialog stuck open and the grid frozen on every Complaint Id search.
+   */
   complaintId: string;
   complaintNumber: string;
   subject: string;
@@ -35,6 +43,25 @@ interface CepcComplaint {
   modeOfReceipt: string;
   category: string;
   createdAt: string;
+  /** True when an attachment exists. Published by WorkflowController.buildTaskList. */
+  hasAttachments: boolean;
+  /** >0 once the complaint has been reopened at least once. */
+  reopenCount: number;
+}
+
+/**
+ * One selectable queue bucket.
+ *
+ * <p>A bucket is a PREDICATE, not a status string, because three of the buckets the DO needs are not
+ * statuses: "Meeting Scheduled" is a workflow stage, "Reopened" is a counter, and "Pending" folds four
+ * statuses together. Modelling them all as status equality is what left 445 of the DO's 641 complaints
+ * with no bucket that reached them.
+ */
+interface CepcBucket {
+  /** Stable code, used as the selected value and in the URL-free component state. */
+  code: string;
+  labelKey: string;
+  match: (c: CepcComplaint) => boolean;
 }
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
@@ -42,7 +69,7 @@ type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AU
 @Component({
   selector: 'app-cepc-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe, TaskGridComponent],
+  imports: [CommonModule, RouterLink, FormsModule, SessionTimeoutComponent, SpeechButtonComponent, CepcSlaIndicatorComponent, StatusBadgeComponent, AppShellComponent, TranslatePipe, TaskGridComponent],
   templateUrl: './cepc-dashboard.component.html',
   styleUrl: './cepc-dashboard.component.scss'
 })
@@ -61,8 +88,22 @@ export class CepcDashboardComponent implements OnInit {
   filterStatus = signal('');
   filterQueue = signal<'ASSIGNED_TO_ME' | 'ALL'>('ASSIGNED_TO_ME');
   filterUnread = signal(false);
-  filterWithoutAttachments = signal(false);
-  columnFilters: Record<string, string> = {};
+  /**
+   * The "Without Attachments" toggle's state.
+   *
+   * <p>Named for what the filter DOES rather than for the label, because the two disagree: the manual
+   * QA case requires the toggle to show complaints that HAVE attachments. See filteredComplaints().
+   */
+  filterWithAttachments = signal(false);
+  /**
+   * Per-column text filters.
+   *
+   * <p>A SIGNAL, not the plain object this used to be: `filteredComplaints` is a computed(), and a
+   * plain field read inside one registers no dependency, so typing in a column filter recomputed
+   * nothing. The shared task-grid owns its own column filtering now, but this is still read by the
+   * component's own filter chain and had the same defect as RBIO's did.
+   */
+  columnFilters = signal<Record<string, string>>({});
 
   sortColumn = '';
   sortDirection: 'asc' | 'desc' = 'asc';
@@ -109,50 +150,124 @@ export class CepcDashboardComponent implements OnInit {
    * header here would put it straight back. The grid owns sorting, per-column filtering, the column
    * chooser, empty/loading states and pagination, so none of that is re-implemented in this component.
    */
+  /**
+   * All twelve columns are default-visible.
+   *
+   * <p>Four of them — category, modeOfReceipt, assignedOfficer, createdAt — were `visible: false`, and
+   * three carried no server data at all, so un-hiding them alone would have produced four permanently
+   * blank columns. WorkflowController.buildTaskList now publishes category, modeOfReceipt and createdAt,
+   * which is what made this safe. RBIO's grid default-shows the same field set by name, and RBIO is the
+   * reference every module copies; a column still hideable through the chooser for an officer who does
+   * not want it.
+   */
   readonly gridColumns: TaskGridColumn<CepcComplaint>[] = [
     { key: 'complaintId', labelKey: 'ui.col.complaint_id' },
     { key: 'complaintNumber', labelKey: 'ui.col.complaint_number' },
     { key: 'complainantName', labelKey: 'ui.col.complainant_name' },
     { key: 'entityName', labelKey: 'ui.col.entity_name' },
     { key: 'subject', labelKey: 'ui.col.subject' },
-    { key: 'priority', labelKey: 'ui.col.priority' },
+    { key: 'priority', labelKey: 'ui.col.priority', kind: 'priority' },
     { key: 'status', labelKey: 'ui.col.status', kind: 'status' },
     { key: 'slaDueDate', labelKey: 'ui.col.deadline', kind: 'custom', template: 'sla' },
-    { key: 'category', labelKey: 'ui.col.category', visible: false },
-    { key: 'modeOfReceipt', labelKey: 'ui.col.mode_of_receipt', visible: false },
-    { key: 'assignedOfficer', labelKey: 'ui.col.assigned_officer', visible: false },
-    { key: 'createdAt', labelKey: 'ui.col.created_at', visible: false },
+    { key: 'category', labelKey: 'ui.col.category' },
+    { key: 'modeOfReceipt', labelKey: 'ui.col.mode_of_receipt' },
+    { key: 'assignedOfficer', labelKey: 'ui.col.assigned_officer' },
+    { key: 'createdAt', labelKey: 'ui.col.created_at' },
   ];
 
+  /**
+   * The queue buckets, built from the statuses the role ACTUALLY holds.
+   *
+   * <p>The old six were a fixed list (All / Pending / Under Examination / Under Review / Awaiting
+   * Closure / Escalated) that reached none of FORWARDED, RE_RESPONDED or INFO_REQUESTED — 145 of the
+   * DO's 641 complaints were unreachable through any bucket, and ASSIGNED's 320 were silently folded
+   * into "Pending" with no way to separate them. Deriving the list from the loaded rows means a bucket
+   * appears exactly when the role has work in it, which is also why the Reviewer and the DO no longer
+   * see the same strip: their queues hold different statuses.
+   *
+   * <p>Server statuses arrive UPPERCASE; the comparison lowercases both sides, which the previous
+   * `c.status === status` did not — another reason several buckets matched nothing.
+   */
+  readonly allBuckets: readonly CepcBucket[] = [
+    { code: 'pending', labelKey: 'status.pending', match: c => ['pending', 'new'].includes(c.status) },
+    { code: 'assigned', labelKey: 'status.assigned', match: c => c.status === 'assigned' },
+    { code: 'in_progress', labelKey: 'status.in_progress', match: c => c.status === 'in_progress' },
+    { code: 'reviewer_review', labelKey: 'status.reviewer_review', match: c => c.status === 'reviewer_review' },
+    { code: 'incharge_review', labelKey: 'status.incharge_review', match: c => c.status === 'incharge_review' },
+    { code: 'under_review', labelKey: 'status.under_review', match: c => c.status === 'under_review' },
+    { code: 'info_requested', labelKey: 'status.info_requested', match: c => c.status === 'info_requested' },
+    { code: 're_responded', labelKey: 'status.re_responded', match: c => c.status === 're_responded' },
+    { code: 'forwarded', labelKey: 'status.forwarded', match: c => c.status === 'forwarded' },
+    { code: 'forwarded_external', labelKey: 'status.forwarded_external', match: c => c.status === 'forwarded_external' },
+    { code: 'forwarded_to_contact', labelKey: 'status.forwarded_to_contact', match: c => c.status === 'forwarded_to_contact' },
+    { code: 'sent_back', labelKey: 'status.sent_back', match: c => c.status === 'sent_back' },
+    { code: 'awaiting_closure', labelKey: 'status.awaiting_closure', match: c => c.status === 'awaiting_closure' },
+    { code: 'escalated', labelKey: 'status.escalated', match: c => c.status === 'escalated' },
+    { code: 'resolved', labelKey: 'status.resolved', match: c => c.status === 'resolved' },
+    { code: 'closed', labelKey: 'status.closed', match: c => c.status === 'closed' },
+    // Not statuses. A scheduled meeting is a workflow STAGE and a reopen is a counter, so neither can
+    // be reached by any status bucket — which is why both needed modelling as a predicate.
+    {
+      code: 'meeting_scheduled',
+      labelKey: 'cepc.bucket.meeting_scheduled',
+      match: c => c.workflowStage === 'MEETING_SCHEDULED',
+    },
+    { code: 'reopened', labelKey: 'cepc.bucket.reopened', match: c => c.reopenCount > 0 },
+  ];
+
+  /** Only the buckets this role holds work in, so no bucket is offered that returns nothing. */
+  visibleBuckets = computed(() => {
+    const all = this.complaints();
+    return this.allBuckets.filter(b => all.some(c => b.match(c)));
+  });
+
+  bucketCount(bucket: CepcBucket): number {
+    return this.complaints().filter(c => bucket.match(c)).length;
+  }
+
+  /**
+   * The KPI cards, matching RBIO's five.
+   *
+   * <p>RBIO is the reference vertical, its cards read from `rbio.stats.*`, and those keys already carry
+   * all eleven locales — so CEPC reuses them rather than minting a parallel `cepc.stats.*` set that
+   * could drift. Unlike RBIO these counts are over the WHOLE loaded queue, not one page, because this
+   * dashboard is not server-paged: loadComplaints() takes no page parameter.
+   */
   stats = computed(() => {
     const all = this.complaints();
+    const isOpen = (s: string) => ['new', 'pending', 'assigned', 'in_progress'].includes(s);
+    const now = Date.now();
     return {
-      total: all.length,
-      pending: all.filter(c => ['assigned', 'pending', 'new'].includes(c.status)).length,
-      inProgress: all.filter(c => c.status === 'in_progress').length,
-      underReview: all.filter(c => ['under_review', 'reviewer_review', 'incharge_review'].includes(c.status)).length,
-      awaitingClosure: all.filter(c => c.status === 'awaiting_closure').length,
-      escalated: all.filter(c => c.status === 'escalated').length,
+      totalPending: all.filter(c => !['closed', 'resolved', 'withdrawn', 'rejected'].includes(c.status)).length,
+      pendingWithMe: all.filter(c => isOpen(c.status)).length,
+      pendingContactPerson: all.filter(c => c.status === 'forwarded_to_contact' || c.status === 'info_requested').length,
+      pendingMeeting: all.filter(c => c.workflowStage === 'MEETING_SCHEDULED').length,
+      // An SLA breach is a deadline in the past on a complaint that is still open. A breach on a closed
+      // complaint is history, not a queue a DO can act on.
+      slaBreach: all.filter(c => {
+        if (['closed', 'resolved', 'withdrawn', 'rejected'].includes(c.status)) return false;
+        const due = c.slaDueDate ? Date.parse(c.slaDueDate) : NaN;
+        return !Number.isNaN(due) && due < now;
+      }).length,
     };
   });
 
   filteredComplaints = computed(() => {
     let result = this.complaints();
-    const status = this.filterStatus();
-    if (status) {
-      if (status === 'pending') {
-        result = result.filter(c => ['assigned', 'pending', 'new'].includes(c.status));
-      } else if (status === 'under_review') {
-        result = result.filter(c => ['under_review', 'reviewer_review', 'incharge_review'].includes(c.status));
-      } else {
-        result = result.filter(c => c.status === status);
-      }
+
+    const bucketCode = this.filterStatus();
+    if (bucketCode) {
+      const bucket = this.allBuckets.find(b => b.code === bucketCode);
+      if (bucket) result = result.filter(c => bucket.match(c));
     }
 
     if (this.advSearchActive()) {
       const q = this.advSearch;
       if (q.complaintNumber) result = result.filter(d => d.complaintNumber?.toLowerCase().includes(q.complaintNumber.toLowerCase()));
-      if (q.complaintId) result = result.filter(d => d.complaintId.toLowerCase().includes(q.complaintId.toLowerCase()));
+      // String(...) rather than a bare .toLowerCase(): complaintId arrives from the server as a NUMBER,
+      // so the bare call raised a TypeError inside this computed() and froze the grid mid-search.
+      // mapComplaint normalises it too; this is belt-and-braces because the exception was silent.
+      if (q.complaintId) result = result.filter(d => String(d.complaintId ?? '').toLowerCase().includes(q.complaintId.toLowerCase()));
       if (q.statusCode) result = result.filter(d => d.status === q.statusCode);
       if (q.complainantName) result = result.filter(d => d.complainantName?.toLowerCase().includes(q.complainantName.toLowerCase()));
       if (q.email) result = result.filter(d => d.complainantEmail?.toLowerCase().includes(q.email.toLowerCase()));
@@ -161,7 +276,7 @@ export class CepcDashboardComponent implements OnInit {
       if (q.priority) result = result.filter(d => d.priority === q.priority);
     }
 
-    for (const [key, val] of Object.entries(this.columnFilters)) {
+    for (const [key, val] of Object.entries(this.columnFilters())) {
       if (val) {
         const q = val.toLowerCase();
         result = result.filter(d => String((d as any)[key] || '').toLowerCase().includes(q));
@@ -170,6 +285,19 @@ export class CepcDashboardComponent implements OnInit {
 
     if (this.filterUnread()) {
       result = result.filter(d => !this.visitedIds().has(d.complaintId));
+    }
+
+    // Narrows to complaints that HAVE an attachment, which is what the manual QA case specifies for
+    // this toggle ("...then all the complaints which contains attachments are displayed"). That reads
+    // backwards against the control's own name and is flagged for confirmation in the report rather
+    // than quietly reversed here.
+    //
+    // RBIO deleted its equivalent toggle because its list response carries no attachment fact, so the
+    // control could only ever animate and do nothing. CEPC is genuinely different: GET
+    // /workflow/cepc/tasks publishes hasAttachments per row (WorkflowController.buildTaskList), so
+    // this filter has real data behind it.
+    if (this.filterWithAttachments()) {
+      result = result.filter(d => d.hasAttachments);
     }
 
     if (this.sortColumn) {
@@ -206,7 +334,16 @@ export class CepcDashboardComponent implements OnInit {
   async ngOnInit() {
     try {
       const visited = localStorage.getItem('cepc_visitedComplaintIds');
-      if (visited) this.visitedIds.set(new Set(JSON.parse(visited)));
+      // Each id is coerced to a string on the way IN. complaintId is a string everywhere in this
+      // component, but ids persisted by earlier builds (and the numeric complaintId the server sends)
+      // are JSON numbers, and Set<string>.has(4724) is false for a stored 4724 — so the Unread filter
+      // silently treated every already-read complaint as still unread.
+      if (visited) {
+        const parsed = JSON.parse(visited);
+        if (Array.isArray(parsed)) {
+          this.visitedIds.set(new Set(parsed.map((id: unknown) => String(id))));
+        }
+      }
     } catch {}
 
     const authenticated = await this.auth.init();
@@ -271,7 +408,10 @@ export class CepcDashboardComponent implements OnInit {
 
   private mapComplaint(c: any): CepcComplaint {
     return {
-      complaintId: c.complaintId || c.complaintNumber || '',
+      // Coerced to a string HERE, at the boundary. The server sends a number; every downstream use —
+      // the grid rowKey, the visited-ids Set, the advanced-search filter — assumes a string, and the
+      // mismatch both threw inside a computed() and made the read/unread Set never match.
+      complaintId: c.complaintId != null ? String(c.complaintId) : (c.complaintNumber || ''),
       complaintNumber: c.complaintNumber || '',
       subject: c.subject || '',
       complainantName: c.complainantName || '',
@@ -280,7 +420,12 @@ export class CepcDashboardComponent implements OnInit {
       entityName: c.entityName || '',
       entityType: c.entityType || '',
       priority: c.priority || 'MEDIUM',
-      status: c.status || 'pending',
+      // LOWERCASED at the boundary. GET /workflow/cepc/tasks publishes status in UPPER CASE
+      // ('IN_PROGRESS', 'ASSIGNED'), while every bucket predicate, the stats() counters and the
+      // advanced-search statusCode option all compare against lower-case codes. Without this
+      // normalisation not one bucket matched, so visibleBuckets() was empty and every KPI counted 0
+      // on a 759-row queue.
+      status: (c.status || 'pending').toLowerCase(),
       assignedAt: c.assignedAt || '',
       slaDueDate: c.slaDueDate || '',
       department: c.department || 'CEPC',
@@ -290,6 +435,8 @@ export class CepcDashboardComponent implements OnInit {
       modeOfReceipt: c.modeOfReceipt || c.filingType || '',
       category: c.category || '',
       createdAt: c.createdAt || '',
+      hasAttachments: c.hasAttachments === true,
+      reopenCount: Number(c.reopenCount) || 0,
     };
   }
 

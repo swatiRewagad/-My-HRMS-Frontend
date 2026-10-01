@@ -19,6 +19,7 @@
  */
 import { APIRequestContext, expect } from '@playwright/test';
 import { execFileSync } from 'child_process';
+import { resolvePasswordFor } from '../utils/auth';
 
 export const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
 export const KEYCLOAK_BASE = process.env['KEYCLOAK_BASE_URL'] || 'http://localhost:9090';
@@ -174,16 +175,36 @@ export function purgeByPrefix(prefix: string): void {
   sql(`DELETE FROM COMPLAINTS WHERE complaint_number LIKE '${p}%'`);
 }
 
-/** A real Keycloak access token, so the JWT-first resolution paths are exercised for real. */
+/**
+ * A real Keycloak access token, so the JWT-first resolution paths are exercised for real.
+ *
+ * The password is resolved PER USERNAME by {@link resolvePasswordFor} (e2e/utils/auth.ts), which
+ * reads the same `*_PASS` env vars e2e/review/credentials.env exports. This used to be
+ * `password = 'test123'` — a single default literal — which is simply wrong for aa_do_001 and
+ * re_pno_001 (both `Test@123`). Because this runs in a `describe.serial` beforeAll, the resulting
+ * 401 took every remaining test in the file down as "skipped", so one wrong literal looked like a
+ * 16-test product failure. Do not reintroduce a literal default here: add the account to the
+ * credential maps in e2e/utils/auth.ts instead, so every caller gets the fix at once.
+ */
 export async function mintToken(
   request: APIRequestContext,
   username: string,
-  password = 'test123'
+  password?: string
 ): Promise<string> {
+  const resolved = password
+    ? { password, source: 'explicit argument' }
+    : resolvePasswordFor(username);
   const res = await request.post(`${KEYCLOAK_BASE}/realms/cms/protocol/openid-connect/token`, {
-    form: { client_id: 'cms-portal', username, password, grant_type: 'password' },
+    form: { client_id: 'cms-portal', username, password: resolved.password, grant_type: 'password' },
+    failOnStatusCode: false,
   });
-  expect(res.status(), `Keycloak must issue a token for ${username} — is it running on 9090 with provision-aa-roles.sh applied?`).toBe(200);
+  expect(
+    res.status(),
+    `Keycloak at ${KEYCLOAK_BASE}/realms/cms must issue a token for username '${username}' ` +
+      `(password came from ${resolved.source}). A 401 means the password is wrong for THIS account — ` +
+      `fix it in e2e/review/credentials.env or in the credential maps in e2e/utils/auth.ts, not here. ` +
+      `A connection error means Keycloak is not running on 9090, or provision-aa-roles.sh was never applied.`
+  ).toBe(200);
   const body = await res.json();
   expect(body.access_token, `token payload for ${username}`).toBeTruthy();
   return body.access_token as string;

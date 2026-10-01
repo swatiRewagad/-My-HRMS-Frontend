@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CMS 2.0 — Screen Review (1 screens)</title>
+<style>
+  :root { --line:#d8dce3; --ink:#1b2430; --muted:#5b6573; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:#f4f6f9; }
+  header.top { position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--line); padding:14px 20px; }
+  header.top h1 { margin:0 0 4px; font-size:19px; }
+  .sub { color:var(--muted); font-size:13px; }
+  .controls { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  select,input { padding:6px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+  .tallies { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .tally { font-size:12px; padding:3px 9px; border-radius:99px; border:1px solid var(--line); background:#fafbfc; }
+  main { padding:20px; display:grid; gap:20px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .card header { display:flex; gap:10px; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .card header h3 { margin:0; font-size:15px; font-weight:600; }
+  .id { font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace; background:#eef1f6; padding:3px 8px; border-radius:5px; }
+  .badge { font-size:11px; font-weight:700; letter-spacing:.4px; padding:3px 8px; border-radius:99px; text-transform:uppercase; }
+  .badge.captured { background:#e6f5ec; color:#1a6b3c; }
+  .badge.redirected { background:#fff3e0; color:#8a5200; }
+  .badge.blocked { background:#eceff3; color:#4b5563; }
+  .badge.error { background:#fdeaea; color:#a11b1b; }
+  table.meta { width:100%; border-collapse:collapse; font-size:13px; }
+  table.meta th { text-align:left; width:130px; color:var(--muted); font-weight:500; padding:5px 14px; vertical-align:top; }
+  table.meta td { padding:5px 14px 5px 0; word-break:break-all; }
+  .detail { margin:0; padding:9px 14px; background:#fff8e6; border-top:1px solid #f0e2bf; color:#7a5200; font-size:13px; }
+  .errs { padding:8px 14px; border-top:1px solid var(--line); font-size:12px; }
+  .errs pre { white-space:pre-wrap; background:#fbfbfc; padding:8px; border-radius:6px; overflow:auto; max-height:170px; }
+  /* Large thumbnails: the screenshot is the point of this document, so it gets the full card width
+     and is capped by height rather than scaled down to a thumbnail strip. Click opens the full PNG. */
+  .shot { border-top:1px solid var(--line); background:#eef0f4; padding:10px; }
+  .shot img { display:block; width:100%; height:auto; max-height:1400px; object-fit:contain; object-position:top;
+              border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .shot .hint { font-size:11px; color:var(--muted); padding:0 0 6px; }
+  .jump { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .jump a { font-size:12px; padding:3px 9px; border-radius:99px; border:1px solid var(--line); background:#fff;
+            text-decoration:none; color:var(--ink); }
+  .jump a:hover { background:#eef1f6; }
+  h2.area { margin:6px 0 0; font-size:15px; letter-spacing:.3px; color:var(--muted); text-transform:uppercase; }
+  .noshot { padding:26px; text-align:center; color:var(--muted); font-style:italic; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>CMS 2.0 — Screen Review</h1>
+  <div class="sub">
+    1 screens · captured 9/30/2026, 7:03:31 PM ·
+    app <code>http://localhost:4202</code> · api <code>http://localhost:8092</code>
+  </div>
+  <div class="tallies">
+    <span class="tally">CAPTURED 1</span>
+    <span class="tally">REDIRECTED 0</span>
+    <span class="tally">BLOCKED 0</span>
+    <span class="tally">ERROR 0</span>
+  </div>
+  <div class="controls">
+    <label>Area
+      <select id="fArea"><option value="">all</option><option>Panel states</option></select>
+    </label>
+    <label>Status
+      <select id="fStatus"><option value="">all</option><option>CAPTURED</option><option>REDIRECTED</option><option>BLOCKED</option><option>ERROR</option></select>
+    </label>
+    <label>Find <input id="fText" type="search" placeholder="id, name or url"></label>
+    <span class="sub" id="shown"></span>
+  </div>
+  <div class="jump"><a href="#first-Panel-states">Panel states (1)</a></div>
+</header>
+<main id="cards">
+<div id="first-Panel-states"></div><h2 class="area">Panel states</h2>
+<section class="card" id="STA-003" data-area="Panel states" data-status="CAPTURED">
+  <header>
+    <span class="id">STA-003</span>
+    <span class="badge captured">CAPTURED</span>
+    <h3>CEPC complaint detail — context rail open</h3>
+  </header>
+  <table class="meta">
+    <tr><th>Area</th><td>Panel states</td></tr>
+    <tr><th>Signed in as</th><td>CEPC_DO</td></tr>
+    <tr><th>URL</th><td><a href="http://localhost:4202/cepc/complaint/CMP-20260930-906580" target="_blank">http://localhost:4202/cepc/complaint/CMP-20260930-906580</a></td></tr>
+    
+    <tr><th>Page title</th><td>RBI Complaint Management System | RBI Complaint Management System</td></tr>
+    <tr><th>Before the shot</th><td>opened: .context-rail .rail-icon</td></tr>
+    <tr><th>Headings</th><td>CEPC Complaint Examination</td></tr>
+  </table>
+  
+  
+  <div class="shot"><div class="hint">click the image for the full-size capture</div>
+         <a href="shots/STA-003.png" target="_blank"><img loading="lazy" src="shots/STA-003.png" alt="STA-003"></a></div>
+</section>
+</main>
+<script>
+  const cards = [...document.querySelectorAll('.card')];
+  const fArea = document.getElementById('fArea');
+  const fStatus = document.getElementById('fStatus');
+  const fText = document.getElementById('fText');
+  const shown = document.getElementById('shown');
+  function apply() {
+    const a = fArea.value, s = fStatus.value, t = fText.value.toLowerCase();
+    let n = 0;
+    for (const c of cards) {
+      const ok =
+        (!a || c.dataset.area === a) &&
+        (!s || c.dataset.status === s) &&
+        (!t || c.textContent.toLowerCase().includes(t));
+      c.classList.toggle('hidden', !ok);
+      if (ok) n++;
+    }
+    shown.textContent = n + ' of ' + cards.length + ' shown';
+  }
+  [fArea, fStatus, fText].forEach(el => el.addEventListener('input', apply));
+  apply();
+</script>
+</body>
+</html>

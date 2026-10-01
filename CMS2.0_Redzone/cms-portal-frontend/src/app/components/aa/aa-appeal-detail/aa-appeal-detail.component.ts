@@ -435,14 +435,19 @@ export class AaAppealDetailComponent implements OnInit {
    *
    * reviewer_tier is a real claim (aa_reviewer_001 = 1, aa_reviewer_002 = 2) that nothing in the UI has
    * ever surfaced, so a tier-1 reviewer had no way to know escalation was open to them.
+   *
+   * Reads the TYPED `reviewerTier` off StaffUser. It used to cast currentUser() to
+   * Record<string, unknown> and index the raw claim name `reviewer_tier`, but KeycloakAuthService
+   * builds a fixed StaffUser literal and never copied that claim onto it — so the lookup was always
+   * undefined and this badge never rendered for anybody. The cast is what hid it: indexing a
+   * Record<string, unknown> compiles for any key, present or not. Going through the declared field
+   * means a future rename breaks the build instead of silently blanking the badge again.
    */
   reviewerTier = computed<string | null>(() => {
     if (this.userRole() !== 'AA_REVIEWER') {
       return null;
     }
-    const claims = this.auth.currentUser() as Record<string, unknown> | null;
-    const tier = claims?.['reviewer_tier'];
-    return tier == null ? null : String(tier);
+    return this.auth.currentUser()?.reviewerTier ?? null;
   });
 
   goBack() {

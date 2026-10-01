@@ -1,4 +1,11 @@
-import { test, expect } from '@playwright/test';
+// From '../fixtures', NOT '@playwright/test': the fixture installs redirectBrowserApiCalls, which
+// points the PAGE's own fetches at API_BASE_URL. Without it the app keeps using its compiled
+// environment.apiBaseUrl (8082), a DIFFERENT backend from the one this run seeds and asserts
+// against (API_BASE_URL, e.g. 8092), so the i18n bundle and the FAQ rows are read from the wrong
+// database — or from nothing, if no JVM happens to be listening there. The title then stays at its
+// untranslated placeholder and the FAQPage structured-data block is built from an empty list,
+// which read as three product defects.
+import { test, expect } from '../fixtures';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 

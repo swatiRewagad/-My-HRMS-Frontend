@@ -145,6 +145,14 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   // Right sidebar - Past Complaints
   pastComplaints = signal<any[]>([]);
   loadingPastComplaints = signal(false);
+  /**
+   * True when the lookup FAILED, as distinct from the complainant having no history.
+   *
+   * <p>Without this the panel showed "No past complaints found" whether the complainant was a
+   * first-time filer or the request had 401'd — and it was the latter for every complaint, undetected,
+   * because the two states looked identical.
+   */
+  pastComplaintsError = signal(false);
   // Signal-backed: `filteredPastComplaints` is a computed() and a plain field read inside one
   // registers no dependency, so searching past complaints did nothing.
   pastComplaintSearch = signal('');
@@ -333,20 +341,38 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     this.showHistoryPanel.set(!this.showHistoryPanel());
   }
 
+  /**
+   * The complainant's earlier complaints, fetched by COMPLAINT NUMBER rather than by email.
+   *
+   * <p>This previously called `GET /api/v1/complaints?complainantEmail=` — the CITIZEN
+   * track-my-complaint list, which does not declare that parameter and answers 401 SESSION_EXPIRED to
+   * any staff caller. The `error:` arm then set the list to `[]`, so the sidebar rendered a tidy
+   * "No past complaints found" for every complaint ever opened and nothing in the UI said otherwise.
+   *
+   * <p>Even with the right endpoint, email was the wrong key: the detail response masks
+   * `complainantEmail` to `q***@example.com`, so the lookup could never match. The identity resolution
+   * therefore happens server-side from the complaint number — which this screen already has — and the
+   * complainant's real address never reaches the browser.
+   */
   loadPastComplaints() {
     const c = this.complaint();
-    const email = c?.complainantEmail;
-    if (!email) return;
+    const complaintNumber = c?.complaintNumber || c?.complaintId;
+    if (!complaintNumber) return;
     this.loadingPastComplaints.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints`, { params: { complainantEmail: email } })
+    this.pastComplaintsError.set(false);
+    this.http.get<any>(
+      `${environment.apiBaseUrl}/api/v1/past-complaints/for-complaint/${encodeURIComponent(complaintNumber)}`)
       .subscribe({
         next: (res) => {
-          const list = res.data || res.content || res || [];
+          const list = res?.data ?? res?.content ?? res ?? [];
           this.pastComplaints.set(Array.isArray(list) ? list : []);
           this.loadingPastComplaints.set(false);
         },
         error: () => {
+          // A failed lookup is NOT an empty history. Showing the empty state here is what hid this
+          // defect for as long as it existed, so the panel now says the lookup failed.
           this.pastComplaints.set([]);
+          this.pastComplaintsError.set(true);
           this.loadingPastComplaints.set(false);
         }
       });

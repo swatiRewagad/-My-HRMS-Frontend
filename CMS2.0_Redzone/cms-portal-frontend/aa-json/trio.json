@@ -1,0 +1,1655 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/aa/s2b-intake-pipeline.spec.ts",
+      "e2e/aa/shell-chrome.spec.ts",
+      "e2e/aa/dashboard.spec.ts",
+      "--project=chromium",
+      "--workers=1",
+      "--reporter=json"
+    ],
+    "configFile": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\playwright.config.ts",
+    "rootDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "aa\\dashboard.spec.ts",
+      "file": "aa/dashboard.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "AA Dashboard",
+          "file": "aa/dashboard.spec.ts",
+          "line": 31,
+          "column": 6,
+          "specs": [
+            {
+              "title": "AA dashboard loads with stats",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11119,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:22.004Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f6673d433841d4f1159e-a657de562bf17472eeec",
+              "file": "aa/dashboard.spec.ts",
+              "line": 48,
+              "column": 7
+            },
+            {
+              "title": "Appeals table shows filed appeals",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11053,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:33.483Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f6673d433841d4f1159e-a269245d531a0f09cfa9",
+              "file": "aa/dashboard.spec.ts",
+              "line": 72,
+              "column": 7
+            },
+            {
+              "title": "Classification badge (APPEAL/REPRESENTATION) displays correctly",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 12766,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:44.545Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f6673d433841d4f1159e-8bdd531620f49c8d5b25",
+              "file": "aa/dashboard.spec.ts",
+              "line": 92,
+              "column": 7
+            },
+            {
+              "title": "Status filter works",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11488,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:57.322Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f6673d433841d4f1159e-b41ddb7fa6628cd2b4a0",
+              "file": "aa/dashboard.spec.ts",
+              "line": 127,
+              "column": 7
+            },
+            {
+              "title": "Search by appeal number works",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 12260,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:08.822Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f6673d433841d4f1159e-fa182225625d81a048e3",
+              "file": "aa/dashboard.spec.ts",
+              "line": 146,
+              "column": 7
+            },
+            {
+              "title": "Role badge shows the signed-in AA role, translated",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 21864,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:21.093Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f6673d433841d4f1159e-e9f088aa78db61113158",
+              "file": "aa/dashboard.spec.ts",
+              "line": 178,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "aa\\s2b-intake-pipeline.spec.ts",
+      "file": "aa/s2b-intake-pipeline.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "S2B intake — ignore list (Exceptional Email Master)",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 71,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a matching rule suppresses draft creation and logs WHICH rule matched",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 600,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:42.983Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-5446333a3c49fc9124b2",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 75,
+              "column": 7
+            },
+            {
+              "title": "matching happens BEFORE creation, so no complaint or acknowledgement is produced",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 512,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:44.111Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-8872740f3c99f6729816",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 103,
+              "column": 7
+            },
+            {
+              "title": "a rule on CC is enforced — proving To/CC/BCC are persisted and matched",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 337,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:44.629Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-6f8c3631dd10b58c8746",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 117,
+              "column": 7
+            },
+            {
+              "title": "an exception pattern overrides the ignore rule and the draft IS created",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 581,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:44.972Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-c005689495b308a76d5e",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 134,
+              "column": 7
+            },
+            {
+              "title": "an inactive rule does not suppress",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 545,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:45.559Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-4b6cc4bf70795d038972",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 154,
+              "column": 7
+            },
+            {
+              "title": "admin CRUD persists — a created rule survives and is really deleted",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 519,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:46.110Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-d9261983abefd4e0b014",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 168,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S2B intake — acknowledgement suppression",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 205,
+          "column": 6,
+          "specs": [
+            {
+              "title": "an @rbi.org.in sender receives NO automatic acknowledgement",
+              "ok": true,
+              "tags": [
+                "rbi.org.in"
+              ],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 457,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:47.435Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-2385767260b957d6f237",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 209,
+              "column": 7
+            },
+            {
+              "title": "an external citizen sender DOES receive an acknowledgement",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 368,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:48.300Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-3b5d0acb0c1853131f99",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 225,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S2B intake — deduplication",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 241,
+          "column": 6,
+          "specs": [
+            {
+              "title": "same sender + identical subject with a CLOSED parent creates NO new draft and links to the parent",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 493,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:49.423Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-dc0be7bcdcabe98fe394",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 268,
+              "column": 7
+            },
+            {
+              "title": "an OPEN parent is NOT a duplicate — live correspondence must still reach the officer",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 515,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:50.338Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-76d506ac3887cffa5d16",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 298,
+              "column": 7
+            },
+            {
+              "title": "a different subject from the same sender is not a duplicate",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 645,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:50.859Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-eae67633e2b0d95713a5",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 316,
+              "column": 7
+            },
+            {
+              "title": "redelivery of the same messageId does not create a second draft",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 223,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IA=="
+                        },
+                        {
+                          "buffer": "W1dhcm5pbmddIFVzaW5nIGEgcGFzc3dvcmQgb24gdGhlIGNvbW1hbmQgbGluZSBpbnRlcmZhY2UgY2FuIGJlIGluc2VjdXJlLg0K"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:51.510Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-61684cf392b73f54c2d8",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 330,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S2B intake — OCR gating (vernacular routed to a human)",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 345,
+          "column": 6,
+          "specs": [
+            {
+              "title": "vernacular content is flagged, NOT OCR-processed, and routed to manual entry",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 529,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:52.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-27845303c6ac32084999",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 349,
+              "column": 7
+            },
+            {
+              "title": "the citizen original is preserved as the body — never replaced by a machine translation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 827,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:53.597Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-0772e1e5c5d1c90a31c0",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 366,
+              "column": 7
+            },
+            {
+              "title": "plain English content is not flagged as vernacular",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 805,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:54.431Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-b1b7301cb95b7f98ef85",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 383,
+              "column": 7
+            },
+            {
+              "title": "a vernacular message padded with Latin punctuation is still detected",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 651,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:55.244Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-bf95fcb5702caaeb7a51",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 395,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S2B intake — NFR-006 attachment limits (server-enforced)",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 408,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a file over 2MB is rejected even when the client declares an allowed type",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 147,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:56.758Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-421d6f03936163cb9641",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 412,
+              "column": 7
+            },
+            {
+              "title": "a file whose bytes contradict its declared content type is rejected",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 31,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:57.353Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-3975993da68e76957974",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 431,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S2B intake — ignored-email report and CSV export",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 451,
+          "column": 6,
+          "specs": [
+            {
+              "title": "the report lists sender, subject, timestamp and matched rule",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 303,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:57.830Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-7dc011630a3047a0d921",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 455,
+              "column": 7
+            },
+            {
+              "title": "the CSV export is downloadable and quotes a subject containing a comma",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 320,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:58.622Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-b1466c59c9a4e1f1cc61",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 480,
+              "column": 7
+            },
+            {
+              "title": "the stats endpoint reports a real ignored count, not a hardcoded zero",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 285,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:58.950Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-820763843c8151973051",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 502,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S2B intake — i18n",
+          "file": "aa/s2b-intake-pipeline.spec.ts",
+          "line": 518,
+          "column": 6,
+          "specs": [
+            {
+              "title": "every intake message key resolves in all ten locales without falling back to English",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 600,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:59.883Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "93cee25ff8584645ad50-667b81fedda9c6c961b0",
+              "file": "aa/s2b-intake-pipeline.spec.ts",
+              "line": 519,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "aa\\shell-chrome.spec.ts",
+      "file": "aa/shell-chrome.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "AA screens render the shared staff shell",
+          "file": "aa/shell-chrome.spec.ts",
+          "line": 60,
+          "column": 6,
+          "specs": [
+            {
+              "title": "dashboard shows shell chrome with a populated nav",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10263,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:00.495Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "114c5505870bd2307f96-c638be4e5def8af0fc68",
+              "file": "aa/shell-chrome.spec.ts",
+              "line": 62,
+              "column": 9
+            },
+            {
+              "title": "appeal search shows shell chrome with a populated nav",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10252,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:10.769Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "114c5505870bd2307f96-1a13eef1ee26b9071752",
+              "file": "aa/shell-chrome.spec.ts",
+              "line": 62,
+              "column": 9
+            },
+            {
+              "title": "admin console shows shell chrome with a populated nav",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10517,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:21.030Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "114c5505870bd2307f96-29d2f9a84cc30aeed62c",
+              "file": "aa/shell-chrome.spec.ts",
+              "line": 62,
+              "column": 9
+            },
+            {
+              "title": "the AA officer is offered the Appeals nav item",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10219,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:31.556Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "114c5505870bd2307f96-a76522364af60b22eeb3",
+              "file": "aa/shell-chrome.spec.ts",
+              "line": 72,
+              "column": 7
+            },
+            {
+              "title": "no page-level topbar survives alongside the shell header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10321,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:41.782Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "114c5505870bd2307f96-9cb271821b48c31099f2",
+              "file": "aa/shell-chrome.spec.ts",
+              "line": 81,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T11:26:20.535Z",
+    "duration": 151798.106,
+    "expected": 33,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

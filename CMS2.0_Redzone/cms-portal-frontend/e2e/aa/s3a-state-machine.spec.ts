@@ -71,6 +71,22 @@ function statusOf(appealNumber: string): string {
 }
 
 /**
+ * A hearing slot unique to one test.
+ *
+ * Every test in this file used the SAME '2026-10-15T11:00'. ASSIGN_TO_BENCH rotates the bench between
+ * aa_reviewer_001 and aa_reviewer_002, so two tests in one run can land on the same reviewer; the
+ * second then hits AaHearingService.assertNoConflict — which refuses to list one officer at two
+ * hearings inside the configured slot — and comes back with a refusal. The guard is correct and the
+ * appeal is genuinely double-booked, so this was a FIXTURE collision, not a state-machine defect. It
+ * presented as a flake precisely because it depended on which way the rotation pointer happened to
+ * fall. Distinct days remove the shared resource instead of disabling the guard.
+ */
+function hearingSlotFor(tag: string): string {
+  const day = 10 + (Array.from(tag).reduce((acc, c) => acc + c.charCodeAt(0), 0) % 15);
+  return `2026-11-${String(day).padStart(2, '0')}T11:00`;
+}
+
+/**
  * Releases every placement this suite's appeals still hold.
  *
  * Each test files an appeal, which the engine places with aa_do_001 against a threshold of 20. Deleting
@@ -91,6 +107,58 @@ function releaseSuitePlacements(): void {
           AND NOT EXISTS (SELECT 1 FROM appeals a
                            WHERE a.appeal_number COLLATE utf8mb4_unicode_ci
                                  = r.appeal_number COLLATE utf8mb4_unicode_ci)`);
+
+  // The same orphan problem, one table over, and for the same reason: an earlier run of this suite
+  // predates the appeal_hearing purge below, so 20 hearings for deleted appeals were still holding
+  // officer slots. These rows belong to no appeal at all, so no suite can reach them by prefix, and
+  // they block the conflict check forever. Scoped to orphans only — a hearing whose appeal still
+  // exists is somebody's live data and is never touched here.
+  sql(`DELETE h FROM appeal_hearing h
+        WHERE NOT EXISTS (SELECT 1 FROM appeals a
+                           WHERE a.appeal_number COLLATE utf8mb4_unicode_ci
+                                 = h.appeal_number COLLATE utf8mb4_unicode_ci)`);
+
+  releaseStaleFixturePlacements();
+}
+
+/**
+ * Returns capacity held by OTHER AA specs' abandoned fixtures.
+ *
+ * This is the real reason 'filing places the appeal with a real AA_DO' failed with
+ * assigned_officer = NULL. aa_do_001's pool threshold is 20 (wf_officer_pool.max_workload), and a
+ * census found EXACTLY 20 unreleased aa_assignment_record rows already held by aa_do_001 — so the
+ * engine was at capacity and correctly declined to place the appeal. The engine is RIGHT; the test
+ * could not place anything because other suites had eaten the officer's entire allowance.
+ *
+ * Crucially the leftovers are NOT orphans and NOT this suite's: every one had a live `appeals` row
+ * whose parent was a `CMP-`-prefixed complaint from a different spec (UST111, AA-US-008, AA-US-018,
+ * classification-badge ...). Both of the releases above are prefix- or orphan-scoped, so neither
+ * could ever see them. That is why this suite degraded a little more on every run of its neighbours
+ * and looked like an intermittent assignment defect.
+ *
+ * Nothing here deletes real data. Two guards, both required:
+ *   1. the parent complaint's email must be @example.com — the e2e fixture convention. cms_db holds
+ *      ~3,864 complaints of which ~3,746 are fixtures, and all 22 held placements traced to one.
+ *   2. the placement must be older than STALE_AFTER. ~6 sessions share this database, so a freshly
+ *      assigned placement may belong to a sibling agent's RUNNING test; yanking it would manufacture
+ *      a failure in someone else's suite. An hour-old placement is abandoned, not in flight.
+ *
+ * Scoped to AA role groups so no RBIO/CEPC/CRPC placement is reachable from here at all.
+ */
+function releaseStaleFixturePlacements(): void {
+  const STALE_AFTER = '1 HOUR';
+  sql(`DELETE r FROM aa_assignment_record r
+        WHERE r.released_at IS NULL
+          AND r.role_group LIKE 'AA\\_%'
+          AND r.assigned_at < DATE_SUB(NOW(), INTERVAL ${STALE_AFTER})
+          AND EXISTS (
+            SELECT 1 FROM appeals a
+              JOIN COMPLAINTS c
+                ON c.complaint_number COLLATE utf8mb4_unicode_ci
+                   = a.original_complaint_number COLLATE utf8mb4_unicode_ci
+             WHERE a.appeal_number COLLATE utf8mb4_unicode_ci
+                   = r.appeal_number COLLATE utf8mb4_unicode_ci
+               AND c.complainant_email LIKE '%@example.com')`);
 }
 
 /** Clears one complaint and everything hanging off it, so its number can be reused. */
@@ -99,6 +167,14 @@ function purgeComplaint(complaintNumber: string): void {
     `SELECT appeal_number COLLATE utf8mb4_unicode_ci FROM appeals
       WHERE original_complaint_number = '${complaintNumber}'`;
   sql(`DELETE FROM appeal_timeline
+        WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOf})`);
+  // appeal_hearing MUST go, and not merely for tidiness. AaHearingService.assertNoConflict refuses a
+  // SCHEDULE_HEARING whose slot overlaps an existing listing for the same presiding officer, and it
+  // reads appeal_hearing directly — it never joins back to appeals. A hearing row left behind by an
+  // earlier run therefore keeps holding aa_reviewer_001's slot at the fixed '2026-10-15T11:00' these
+  // tests all use, and the NEXT run's SCHEDULE_HEARING comes back 400 HearingConflictException. That
+  // reads as a broken state machine while the conflict guard is working exactly as designed.
+  sql(`DELETE FROM appeal_hearing
         WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOf})`);
   sql(`DELETE FROM aa_assignment_record
         WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOf})`);
@@ -122,6 +198,8 @@ function purge(): void {
       WHERE original_complaint_number LIKE '${PREFIX}-%'`;
 
   sql(`DELETE FROM appeal_timeline
+        WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOfPrefix})`);
+  sql(`DELETE FROM appeal_hearing
         WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOfPrefix})`);
   sql(`DELETE FROM aa_assignment_record
         WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOfPrefix})`);
@@ -175,7 +253,7 @@ test.describe('S3A state machine — from-status validation', () => {
     const appeal = await fileAppeal(request, parent);
 
     const res = await act(request, appeal, REVIEWER,
-      { action: 'SCHEDULE_HEARING', hearingDate: '2026-10-15T11:00', hearingVenue: 'Mumbai' });
+      { action: 'SCHEDULE_HEARING', hearingDate: hearingSlotFor('SM-2'), hearingVenue: 'Mumbai' });
 
     expect(res.status()).toBe(409);
     expect(statusOf(appeal)).toBe('filed');
@@ -191,9 +269,11 @@ test.describe('S3A state machine — from-status validation', () => {
 
     expect((await act(request, appeal, DO, { action: 'ASSIGN_TO_BENCH' })).status()).toBe(200);
 
-    expect((await act(request, appeal, REVIEWER, {
-      action: 'SCHEDULE_HEARING', hearingDate: '2026-10-15T11:00', hearingVenue: 'Mumbai',
-    })).status()).toBe(200);
+    const scheduled = await act(request, appeal, REVIEWER, {
+      action: 'SCHEDULE_HEARING', hearingDate: hearingSlotFor('SM-3'), hearingVenue: 'Mumbai',
+    });
+    expect(scheduled.status(),
+      `SCHEDULE_HEARING must succeed — server said: ${await scheduled.text()}`).toBe(200);
     expect(statusOf(appeal)).toBe('hearing_scheduled');
 
     expect((await act(request, appeal, REVIEWER, { action: 'FORWARD_TO_AUTHORITY' })).status()).toBe(200);
@@ -215,19 +295,70 @@ test.describe('S3A state machine — from-status validation', () => {
       .toBe('hearing_scheduled->order_passed');
   });
 
-  test('a hearing date without a time is a client error, not a 500', async ({ request }) => {
+  /**
+   * A date-only hearing date is ACCEPTED, and an unparseable one is a client error rather than a 500.
+   *
+   * This test previously sent the date-only '2026-09-30' and then asserted the appeal stayed
+   * `under_review`, i.e. that a missing time is REFUSED. That contradicts the product on purpose:
+   * AaHearingService.parseHearingDateTime and AppealWorkflowService.parseHearingDate both fall back
+   * from LocalDateTime to LocalDate deliberately, and the comment on the former spells out why — "a
+   * date-only hearing is a real intent ('that day, time to be confirmed')", resolved to 11:00 rather
+   * than midnight so it does not imply a hearing nobody could attend. So the SPEC was wrong, not the
+   * product: it asserted a refusal the design explicitly rejects. Verified directly against 8092 —
+   * date-only returns 200 and moves the appeal to hearing_scheduled.
+   *
+   * What is worth pinning is the 500 the original title was really about: DateTimeParseException is
+   * unchecked, so an unparseable value once escaped the controller as a server error. That is now
+   * asserted with a value that is genuinely not a date, which is the only input that can still reach
+   * the throw.
+   */
+  test('a date-only hearing date is accepted, and an unparseable one is not a 500', async ({ request }) => {
     const parent = `${PREFIX}-SM-4`;
     seedClosedParent(parent);
     const appeal = await fileAppeal(request, parent);
     await act(request, appeal, DO, { action: 'ACCEPT' });
 
-    // DateTimeParseException extends RuntimeException, not IllegalArgumentException, so this escaped
-    // the controller's catch and surfaced as a 500 — three hearing specs failed on it.
-    const res = await act(request, appeal, REVIEWER,
-      { action: 'SCHEDULE_HEARING', hearingDate: '2026-09-30', hearingVenue: 'Mumbai' });
+    const dateOnly = hearingSlotFor('SM-4').slice(0, 10);
+    const accepted = await act(request, appeal, REVIEWER,
+      { action: 'SCHEDULE_HEARING', hearingDate: dateOnly, hearingVenue: 'Mumbai' });
+    expect(accepted.status(),
+      `a date-only hearing is a supported input — server said: ${await accepted.text()}`).toBe(200);
+    expect(statusOf(appeal)).toBe('hearing_scheduled');
 
-    expect(res.status(), 'a malformed date must not be a 500').toBeLessThan(500);
-    expect(statusOf(appeal)).toBe('under_review');
+    // The hearing is recorded on the DAY asked for — asserted through the API, NOT through raw SQL.
+    //
+    // Reading appeal_hearing.hearing_date directly with the mysql CLI is off by one whole day here
+    // and that is NOT a product defect. cms-backend connects with `serverTimezone=UTC`
+    // (application-dev-local.yml:17) while this MySQL runs on SYSTEM time (= IST, +05:30, verified:
+    // SELECT @@global.time_zone -> SYSTEM). So a LocalDateTime of 2026-11-12T00:00 is STORED as
+    // 2026-11-11 18:30, and the driver shifts it back on the way out — the application round-trips
+    // the value correctly. Verified live on 8092: GET /api/v1/appeals/{n} returns
+    // "2026-10-22T00:00" for a row the CLI shows as "2026-10-21 18:30:00".
+    //
+    // `atStartOfDay()` is what makes a date-only value land exactly on the boundary the shift
+    // crosses, so the raw read lands on the PREVIOUS date every time. The CLI is the wrong
+    // instrument for a timestamp in this harness; use it for ids, statuses and counts only.
+    //
+    // The time-of-day is still deliberately NOT asserted, because the two code paths disagree and
+    // which one is right is a product ruling, not a test's call:
+    // AaHearingService.parseHearingDateTime:263 uses `atTime(11, 0)` and documents why ("midnight
+    // would imply a hearing nobody could attend"), while AppealWorkflowService.parseHearingDate:894
+    // — the parser THIS /action route actually uses — uses `atStartOfDay()`. So the same date-only
+    // value lands at midnight through /action and at 11:00 through /hearings. Reported, not papered
+    // over; asserting either value would freeze one of two contradictory behaviours as the intent.
+    const readBack = await request.get(`${API_BASE}/api/v1/appeals/${appeal}`, { headers: REVIEWER });
+    expect(readBack.status()).toBe(200);
+    const hearingDate = ((await readBack.json()).data ?? {}).hearingDate as string | null;
+    expect(hearingDate, 'the appeal must report the hearing it was just given').toBeTruthy();
+    expect(String(hearingDate).slice(0, 10),
+      'the hearing must fall on the DAY that was asked for').toBe(dateOnly);
+
+    // A value that is not a date at all must still be reported as a client error, never a 500.
+    const malformed = await act(request, appeal, REVIEWER,
+      { action: 'SCHEDULE_HEARING', hearingDate: 'not-a-date', hearingVenue: 'Mumbai' });
+    expect(malformed.status(), 'a malformed date must not be a 500').toBeLessThan(500);
+    expect((await malformed.json()).success,
+      'an unparseable hearing date must be refused, not silently accepted').toBe(false);
   });
 });
 

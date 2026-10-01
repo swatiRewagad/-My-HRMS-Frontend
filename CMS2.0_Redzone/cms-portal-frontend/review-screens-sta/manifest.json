@@ -1,0 +1,56 @@
+{
+  "generatedAt": "2026-09-30T13:32:53.389Z",
+  "appBase": "http://localhost:4202",
+  "apiBase": "http://localhost:8092",
+  "resolved": {
+    "complaintNumber": "CMP-20260930-906580",
+    "appealNumber": "APL-20260930-9D3112",
+    "draftId": "DRF-000025",
+    "ruleId": "1",
+    "closedComplaintNumber": "CMP-20260930-906580"
+  },
+  "captures": [
+    {
+      "id": "STA-003",
+      "area": "Panel states",
+      "name": "CEPC complaint detail — context rail open",
+      "actor": "CEPC_DO",
+      "routeTemplate": "/cepc/complaint/:complaintNumber",
+      "resolvedRoute": "/cepc/complaint/CMP-20260930-906580",
+      "url": "http://localhost:4202/cepc/complaint/CMP-20260930-906580",
+      "finalUrl": "http://localhost:4202/staff/login",
+      "shot": "shots/STA-003.png",
+      "status": "REDIRECTED",
+      "detail": "Requested /cepc/complaint/CMP-20260930-906580 but landed on /staff/login — not authenticated or not authorised.",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "CMS Staff Portal"
+      ],
+      "visibleText": 381,
+      "consoleErrors": [],
+      "capturedAt": "2026-09-30T13:32:26.455Z",
+      "interaction": "NOT OPENED — selector did not match: .context-rail .rail-icon"
+    },
+    {
+      "id": "STA-004",
+      "area": "Panel states",
+      "name": "AA appeal detail — context rail open",
+      "actor": "AA_DO",
+      "routeTemplate": "/aa/appeal/:appealNumber",
+      "resolvedRoute": "/aa/appeal/APL-20260930-9D3112",
+      "url": "http://localhost:4202/aa/appeal/APL-20260930-9D3112",
+      "finalUrl": "http://localhost:4202/aa/appeal/APL-20260930-9D3112",
+      "shot": "shots/STA-004.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "Appeal Examination"
+      ],
+      "visibleText": 1966,
+      "consoleErrors": [],
+      "capturedAt": "2026-09-30T13:32:40.362Z",
+      "interaction": "opened: .context-rail .rail-icon"
+    }
+  ]
+}

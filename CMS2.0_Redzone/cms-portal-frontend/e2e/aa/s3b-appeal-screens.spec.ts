@@ -6,8 +6,16 @@
  * cards on statuses the backend cannot produce, bound to response keys that do not exist, and reported
  * success for writes the server had refused. Only rendering the page catches that class of bug.
  *
- * Requires a dev server. Port 4200 belongs to the developer, so the suite is skipped unless
- * S3B_UI_BASE_URL points at one (start your own: npx ng serve --port 4297).
+ * Requires a dev server. Port 4200 belongs to the developer, so this never starts one and never
+ * assumes 4200; it reads UI_BASE_URL, which is the variable the harness exports and the same one
+ * playwright.config.ts already uses for `baseURL`.
+ *
+ * It used to read a BESPOKE `S3B_UI_BASE_URL` that nothing in the harness, the config or any other
+ * spec ever set. That single mismatched variable name was the whole reason all nine tests in this
+ * file reported "did not run": the module-scope test.skip() was permanently true, so a suite written
+ * specifically to catch UI defects the API tests cannot see had never once executed. The skip is kept
+ * — a run with no dev server must say so rather than fail confusingly — but it now triggers only when
+ * there is genuinely no UI to drive.
  *
  * Fixtures are prefixed S3B- and purged in beforeAll and afterAll. cms_db is shared and holds real
  * complaints, so nothing here truncates.
@@ -19,7 +27,9 @@ import { identityHeadersFor } from '../utils/test-data';
 import { loginAsAaRole, KEYCLOAK_REALM_URL } from '../utils/auth';
 
 const PREFIX = 'S3B';
-const UI_BASE = process.env['S3B_UI_BASE_URL'] || '';
+// S3B_UI_BASE_URL is still honoured so an existing local override keeps working, but UI_BASE_URL is
+// the real contract. Left as '' when neither is set, which the skip below reports honestly.
+const UI_BASE = process.env['S3B_UI_BASE_URL'] || process.env['UI_BASE_URL'] || '';
 
 const DO = identityHeadersFor('aa_do_001', 'AA');
 const REVIEWER = identityHeadersFor('aa_reviewer_001', 'AA');
@@ -66,6 +76,11 @@ function purgeComplaint(complaintNumber: string): void {
                       WHERE original_complaint_number = '${complaintNumber}'`;
   sql(`DELETE FROM appeal_timeline
         WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOf})`);
+  // Hearings too: AaHearingService.assertNoConflict reads appeal_hearing directly and never joins
+  // back to appeals, so a row left behind keeps holding its presiding officer's slot and refuses the
+  // next run's SCHEDULE_HEARING with a conflict that has nothing to do with the screen under test.
+  sql(`DELETE FROM appeal_hearing
+        WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOf})`);
   sql(`DELETE FROM aa_assignment_record
         WHERE appeal_number COLLATE utf8mb4_unicode_ci IN (${appealsOf})`);
   sql(`DELETE FROM appeals WHERE original_complaint_number = '${complaintNumber}'`);
@@ -100,7 +115,7 @@ async function act(request: APIRequestContext, appealNumber: string,
 
 test.describe('S3B AA screens (browser)', () => {
   test.skip(!UI_BASE,
-    'Set S3B_UI_BASE_URL to a running dev server. Port 4200 is the developer\'s and is never started here.');
+    'Set UI_BASE_URL to a running dev server. Port 4200 is the developer\'s and is never started here.');
 
   // Resolved ONCE, at module scope, and asserted rather than silently skipped. A per-test
   // test.skip(!keycloakUp) reads the flag at collection time — before beforeAll can set it — so every

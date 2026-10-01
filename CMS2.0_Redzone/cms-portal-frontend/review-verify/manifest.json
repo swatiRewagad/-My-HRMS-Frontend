@@ -1,0 +1,103 @@
+{
+  "generatedAt": "2026-09-28T12:28:44.210Z",
+  "appBase": "http://localhost:4202",
+  "apiBase": "http://localhost:8092",
+  "resolved": {
+    "complaintNumber": "CMP-20260928-742668",
+    "appealNumber": "APL-20260928-FBC38F",
+    "draftId": "DRF-000025",
+    "ruleId": "1",
+    "closedComplaintNumber": "CMP-20260928-642047"
+  },
+  "captures": [
+    {
+      "id": "CEPC-001",
+      "area": "CEPC",
+      "name": "CEPC dashboard",
+      "actor": "CEPC_DO",
+      "routeTemplate": "/cepc/dashboard",
+      "resolvedRoute": "/cepc/dashboard",
+      "url": "http://localhost:4202/cepc/dashboard",
+      "finalUrl": "http://localhost:4202/cepc/dashboard",
+      "shot": "shots/CEPC-001.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "CEPC Complaints"
+      ],
+      "visibleText": 1962,
+      "consoleErrors": [],
+      "capturedAt": "2026-09-28T12:27:56.667Z"
+    },
+    {
+      "id": "RBIO-001",
+      "area": "RBIO",
+      "name": "RBIO home",
+      "actor": "RBIO_OFFICER",
+      "routeTemplate": "/rbio",
+      "resolvedRoute": "/rbio",
+      "url": "http://localhost:4202/rbio",
+      "finalUrl": "http://localhost:4202/rbio",
+      "shot": "shots/RBIO-001.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "RBIO Complaints"
+      ],
+      "visibleText": 3098,
+      "consoleErrors": [
+        "WebSocket connection to 'ws://localhost:8082/ws/notifications' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED",
+        "[notifications] websocket error: Event"
+      ],
+      "capturedAt": "2026-09-28T12:28:08.745Z"
+    },
+    {
+      "id": "AA-002",
+      "area": "AA",
+      "name": "AA appeal detail",
+      "actor": "AA_DO",
+      "routeTemplate": "/aa/appeal/:appealNumber",
+      "resolvedRoute": "/aa/appeal/APL-20260928-FBC38F",
+      "url": "http://localhost:4202/aa/appeal/APL-20260928-FBC38F",
+      "finalUrl": "http://localhost:4202/aa/appeal/APL-20260928-FBC38F",
+      "shot": "shots/AA-002.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "Appeal Examination"
+      ],
+      "visibleText": 1413,
+      "consoleErrors": [],
+      "capturedAt": "2026-09-28T12:28:20.554Z"
+    },
+    {
+      "id": "CRPC-006",
+      "area": "CRPC",
+      "name": "CRPC help desk",
+      "actor": "CEPC_DO",
+      "routeTemplate": "/crpc/help-desk",
+      "resolvedRoute": "/crpc/help-desk",
+      "url": "http://localhost:4202/crpc/help-desk",
+      "finalUrl": "http://localhost:4202/crpc/help-desk",
+      "shot": "shots/CRPC-006.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "Toll-Free Help Desk",
+        "New Phone Complaint",
+        "Recent Phone Complaints"
+      ],
+      "visibleText": 419,
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "capturedAt": "2026-09-28T12:28:32.435Z"
+    }
+  ]
+}

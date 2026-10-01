@@ -110,34 +110,54 @@ test.describe('AA-US-001: Search parent & create Appeal/Representation', () => {
     if (keycloakUp) await logout(page);
   });
 
+  /**
+   * Parent search lives on /aa/search, NOT on the dashboard.
+   *
+   * This drove the AA DASHBOARD's search box, which queries APPEALS
+   * (placeholder: "Search by appeal no, complaint no, appellant name..." against the appeal grid) —
+   * so typing a parent COMPLAINT number that has no appeal yet correctly yields "No appeals found",
+   * and `text=CMP-...` matched nothing. The screen was right; the spec was pointed at the wrong one.
+   * Parent-complaint search is aa-appeal-search.component (route /aa/search), and the register
+   * affordance it offers is `aa-search-create-appeal`, gated on the server's `appealEligible`.
+   *
+   * It also never clicked Search. The component refuses a filterless query and only fetches on
+   * submit, so `fill` + `waitForTimeout` could not have produced results on any screen.
+   *
+   * Pre-population is asserted on the destination (/aa/register/:complaintNumber), which is where it
+   * actually happens — the old `if (isVisible)` wrapper meant the pre-population claim in the test
+   * name was never asserted at all.
+   */
   test('TC-00101: Happy path — search closed parent, create appeal with pre-populated data', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak not available');
 
     const complaint = await createTestComplaint(request, { subject: 'AA-US-001 Parent' });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await loginAsAaRole(page, 'AA_DO');
-    await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
+    await loginAsAaRole(page, 'AA_DO', '/aa/search');
+    await expect(page.getByTestId('aa-search-form')).toBeVisible({ timeout: 20000 });
 
-    const searchInput = page.locator('.search-box input, input[placeholder*="Search"], input[aria-label*="search"]');
-    await searchInput.first().fill(complaint.complaintNumber);
-    await page.waitForTimeout(1000);
+    await page.getByTestId('aa-search-complaint-number').fill(complaint.complaintNumber);
+    await page.getByTestId('aa-search-submit').click();
 
-    const parentRow = page.locator(`text=${complaint.complaintNumber}`).first();
-    await expect(parentRow).toBeVisible({ timeout: 10000 });
-    await parentRow.click();
+    const parentRow = page.locator(`tr[data-complaint-number="${complaint.complaintNumber}"]`);
+    await expect(parentRow, 'the closed parent must be findable by its complaint number')
+      .toBeVisible({ timeout: 15000 });
 
-    const createBtn = page.locator('button:has-text("Create Appeal"), button:has-text("File Appeal")');
-    await expect(createBtn.first()).toBeVisible({ timeout: 10000 });
-    await createBtn.first().click();
+    // Offered only when the server says the clause is appealable — createTestComplaint closes with
+    // 15(1)(a), which a complainant may appeal, so the affordance MUST be present here.
+    const createBtn = parentRow.getByTestId('aa-search-create-appeal');
+    await expect(createBtn).toBeVisible({ timeout: 10000 });
+    await createBtn.click();
 
-    await page.waitForSelector('form, .appeal-form, .create-appeal', { timeout: 10000 });
+    await expect(page).toHaveURL(new RegExp(`/aa/register/${complaint.complaintNumber}$`), {
+      timeout: 15000,
+    });
+    await expect(page.getByTestId('aa-register-form')).toBeVisible({ timeout: 20000 });
 
-    const complainantField = page.locator('input[name="appellantName"], input[formControlName="appellantName"]');
-    if (await complainantField.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const value = await complainantField.inputValue();
-      expect(value.length).toBeGreaterThan(0);
-    }
+    // The point of the story: the appellant's identity is carried over from the parent rather than
+    // retyped. Asserted unconditionally — a blank here is the defect this test exists to catch.
+    const appellantName = page.getByTestId('aa-register-appellant-name');
+    await expect(appellantName).not.toHaveValue('', { timeout: 10000 });
   });
 
   test('TC-00102: Negative — AA Admin cannot create appeals (no button visible)', async ({ page }) => {
@@ -328,26 +348,93 @@ test.describe('AA-US-004: Multi-channel registration', () => {
     if (keycloakUp) await logout(page);
   });
 
+  /**
+   * Registration happens on /aa/register/:complaintNumber, which is the route that EXISTS.
+   *
+   * This drove `/aa/create-appeal`, which is not in app.routes.ts and never has been — the AA routes
+   * are aa/dashboard, aa/appeal/:appealNumber, aa/search, aa/register/:complaintNumber, aa/draft/:id
+   * and aa/admin. So the goto landed on no AA screen at all, rendered no form, and
+   * `[required], .required-field` counted 0. The SPEC was wrong: it asserted against a screen that
+   * was never built, under a name nobody implemented. aa-register.component.html is the real thing
+   * and carries 12 required controls.
+   *
+   * The two claims in the test's own name are now asserted rather than merely hoped for:
+   *   - mode of receipt — `aa-register-mode-of-receipt`, which is READ-ONLY by design (Story 10
+   *     derives it from the intake channel server-side). The old `selectOption({label:'Email'})` was
+   *     wrong twice over: there is no <select>, and the field is deliberately not the officer's to
+   *     set. Wrapped in `if (isVisible)` it would have "passed" without touching anything.
+   *   - the CMD/ED approval declaration — `aa-register-ed-approval-yes` / `-no`, the fields this test
+   *     is named for and which the original never looked for at all.
+   *
+   * THE "PNO" HALF OF THIS STORY IS NOT REACHABLE AND NEEDS A RULING — do not "fix" it by deleting
+   * the assertion. The ED-approval section is gated on `edApprovalRequired()`, which the server sets
+   * from `caller.entityScope() != null` (AaParentComplaintController.java:188), i.e. for an RE/PNO
+   * caller ONLY. Verified live on 8092: register-form returns edApprovalRequired=false for aa_do_001.
+   * But the route `aa/register/:complaintNumber` is guarded by `staffRoleGuard(AA_ROLES)`, and
+   * AA_ROLES = [AA_DO, AA_REVIEWER, AA_SECRETARIAT, AA_ADMIN, ADMIN] (app.routes.ts:9) — RE_PNO is
+   * NOT in it, even though the API's own @AaRoleGuard on /register-form DOES admit RE_PNO and
+   * RE_NODAL_OFFICER (AaParentComplaintController.java:158-159). So the server builds a PNO
+   * registration contract that no PNO can navigate to, and the only roles that CAN navigate there
+   * are precisely the ones for which the ED block never renders. Client guard and server guard
+   * disagree about who registers an appeal.
+   *
+   * Until that is ruled on, this asserts the declaration against the server's OWN flag rather than
+   * assuming either answer: when the server says approval is required the fields must be there, and
+   * when it says it is not they must be absent. That way the test tracks the contract instead of
+   * freezing today's accident, and it will start failing the moment the gap is closed either way.
+   */
   test('TC-00401: Happy path — PNO creates appeal with CMD approval fields', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak not available');
 
     const complaint = await createTestComplaint(request, { subject: 'AA-US-004 PNO Create' });
     await advanceToStatus(request, complaint.complaintNumber, 'closed');
 
-    await loginAsAaRole(page, 'AA_DO');
-    await page.waitForSelector('.aa-dashboard', { timeout: 15000 });
+    await loginAsAaRole(page, 'AA_DO', `/aa/register/${complaint.complaintNumber}`);
+    await expect(page.getByTestId('aa-register-form')).toBeVisible({ timeout: 20000 });
 
-    await page.goto('/aa/create-appeal', { waitUntil: 'networkidle' });
-    await page.waitForTimeout(2000);
+    // Derived from the intake channel server-side, so it must be present AND not editable here.
+    const modeOfReceipt = page.getByTestId('aa-register-mode-of-receipt');
+    await expect(modeOfReceipt).toBeVisible();
+    await expect(modeOfReceipt).toHaveAttribute('readonly', '');
 
-    const channelSelect = page.locator('select[name="channel"], [formControlName="modeOfReceipt"]');
-    if (await channelSelect.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await channelSelect.selectOption({ label: 'Email' });
+    // The CMD/ED approval declaration this story is named for, asserted against the server's own
+    // edApprovalRequired flag — see the note above on why no reachable role currently sets it.
+    const formContract = await (await request.get(
+      `${process.env['API_BASE_URL'] || 'http://localhost:8082'}` +
+      `/api/v1/aa/parent-complaints/${complaint.complaintNumber}/register-form`,
+      { headers: identityHeadersFor('aa_do_001', 'AA') })).json();
+    const edRequired = Boolean((formContract.data ?? formContract).edApprovalRequired);
+
+    const edYes = page.getByTestId('aa-register-ed-approval-yes');
+    const edNo = page.getByTestId('aa-register-ed-approval-no');
+    if (edRequired) {
+      await expect(edYes, 'the server requires ED approval, so the form must collect it').toBeVisible();
+      await expect(edNo).toBeVisible();
+    } else {
+      // Not merely "allowed to be missing": a form that silently collects a statutory approval the
+      // server never asked for is its own defect, so the absence is asserted too.
+      await expect(edYes,
+        'the server does not require ED approval for this caller, so the form must not ask for it')
+        .toHaveCount(0);
+      await expect(edNo).toHaveCount(0);
     }
 
-    const mandatoryFields = page.locator('[required], .required-field');
-    const count = await mandatoryFields.count();
-    expect(count).toBeGreaterThan(0);
+    // A registration form with no mandatory field would accept an empty statutory appeal.
+    //
+    // Asserted through the mechanism this form ACTUALLY uses, not the HTML `required` attribute.
+    // `[required], .required-field` counted 0 even on the correct screen, because aa-register marks
+    // its 12 mandatory controls with a `*` in the label and enforces them by DISABLING submit via
+    // `canSubmit()` -> `mandatoryComplete()` (aa-register.component.ts:299). It never sets the
+    // native attribute, and `.required-field` is not a class this template defines. So the old
+    // locator could not have found anything on any version of this page — it was testing for a
+    // convention the component does not follow.
+    const starredLabels = page.locator('form label:has-text("*"), form .declaration-label:has-text("*")');
+    expect(await starredLabels.count(),
+      'the registration form must mark its mandatory fields').toBeGreaterThan(0);
+
+    // And the enforcement, not just the marking: nothing is filled in yet, so submit must be shut.
+    await expect(page.getByTestId('aa-register-submit'),
+      'an unfilled registration form must not be submittable').toBeDisabled();
   });
 
   test('TC-00402: Negative — account numbers masked in display', async ({ page, request }) => {

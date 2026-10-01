@@ -183,14 +183,19 @@ public class CrpcReportService {
 
     /** Per-entity totals with resolved/pending split and mean days to resolution. */
     private ReportResult entityWise(LocalDate from, LocalDate to, String office) {
+        // COMPLAINTS has no entity_name column — only entity_code and a bank_id FK. The former
+        // COALESCE(NULLIF(c.entity_name,''), ...) therefore made EVERY entity-wise report answer 400
+        // with a raw JDBC exception quoting the SQL, rather than returning a report. The readable name
+        // lives in BANKS, so it is LEFT JOINed through bank_id rather than invented, and entity_code
+        // stays the fallback for a complaint with no bank linked.
         StringBuilder sql = new StringBuilder(
-                "SELECT COALESCE(NULLIF(c.entity_name,''), COALESCE(c.entity_code,'Unknown')) AS name, "
+                "SELECT COALESCE(NULLIF(b.name,''), COALESCE(c.entity_code,'Unknown')) AS name, "
                         + " COUNT(*) AS total_ct, "
                         + " SUM(CASE WHEN c.closed_at IS NOT NULL THEN 1 ELSE 0 END) AS resolved_ct, "
                         + " SUM(CASE WHEN c.closed_at IS NULL THEN 1 ELSE 0 END) AS pending_ct, "
                         + " AVG(CASE WHEN c.closed_at IS NOT NULL "
                         + "     THEN TIMESTAMPDIFF(DAY, c.created_at, c.closed_at) END) AS avg_days "
-                        + "FROM COMPLAINTS c WHERE 1=1");
+                        + "FROM COMPLAINTS c LEFT JOIN BANKS b ON b.id = c.bank_id WHERE 1=1");
         appendDateRange(sql, "c.created_at", from, to);
         appendOffice(sql, office);
         sql.append(" GROUP BY name ORDER BY total_ct DESC");

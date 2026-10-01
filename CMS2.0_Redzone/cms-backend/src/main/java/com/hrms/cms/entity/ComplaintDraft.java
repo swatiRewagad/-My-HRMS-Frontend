@@ -24,10 +24,15 @@ public class ComplaintDraft {
     @Column(length = 200)
     private String entityName;
 
-    @Column(columnDefinition = "CLOB")
+    // TEXT, not CLOB. `CLOB` is not a MySQL type — MySQL rejects `x CLOB` with ERROR 1064 — so
+    // `ddl-auto: update` could never create COMPLAINT_DRAFTS, and every citizen draft save answered
+    // HTTP 400 "Table 'cms_db.complaint_drafts' doesn't exist". The Angular wizard swallows that in
+    // `saveDraftToServer`'s error branch, so the citizen saw no failure and nothing was persisted.
+    // TEXT is what every other large-JSON column in this schema uses (AuditLog, AppealOutboxEvent).
+    @Column(columnDefinition = "TEXT")
     private String formDataJson;
 
-    @Column(columnDefinition = "CLOB")
+    @Column(columnDefinition = "TEXT")
     private String eligibilityAnswersJson;
 
     @Column

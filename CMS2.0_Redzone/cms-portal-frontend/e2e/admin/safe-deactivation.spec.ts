@@ -37,11 +37,16 @@ const OTHER_GROUP = 'E2E_DEACT_OTHER_GRP';
 const MYSQL_CLI =
   process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe';
 
+/**
+ * stderr is INHERITED, not discarded. It used to be 'ignore', so a seed that failed on schema drift
+ * surfaced only as "Command failed: mysql.exe INSERT INTO …" with mysql's actual diagnosis thrown
+ * away — which is how a missing record_version column read as four product failures.
+ */
 function sql(statement: string): string {
   return execFileSync(
     MYSQL_CLI,
     ['-u', 'cms_user', '-pcms_pass', 'cms_db', '--default-character-set=utf8mb4', '-N', '-B', '-e', statement],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }
   ).trim();
 }
 
@@ -56,13 +61,17 @@ function sql(statement: string): string {
 function seedOpenComplaint(userId: string): string {
   const complaintNumber = `S4-DEACT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
   sql(
+    // record_version is NOT NULL with NO DEFAULT (JPA @Version, ddl-auto generated it that way), so
+    // omitting it is ERROR 1364 "Field 'record_version' doesn't have a default value" and the seed
+    // never lands. Every other seeder in e2e/ already passes it; this one had drifted.
     `INSERT INTO COMPLAINTS
        (complaint_number, complainant_name, complainant_email, complainant_phone, subject,
-        description, status, assigned_officer, priority, filing_type, created_at, updated_at)
+        description, status, assigned_officer, priority, filing_type, record_version,
+        created_at, updated_at)
      VALUES
        ('${complaintNumber}', 'S4 Deactivation Fixture', 's4deact@example.com', '9876543210',
         'S4 open complaint held by a leaver', 'Seeded by safe-deactivation.spec.ts',
-        'in_progress', '${userId}', 'MEDIUM', 'CEPC_MANUAL', NOW(), NOW())`
+        'in_progress', '${userId}', 'MEDIUM', 'CEPC_MANUAL', 0, NOW(), NOW())`
   );
   return complaintNumber;
 }

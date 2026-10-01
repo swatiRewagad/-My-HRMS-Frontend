@@ -4,6 +4,7 @@ import com.hrms.cms.entity.ClosureClauseMaster;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
+import com.hrms.cms.repository.CategoryMasterRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
@@ -44,6 +45,7 @@ public class WorkflowController {
 
     private final ComplaintRepository complaintRepository;
     private final ComplaintAttachmentRepository complaintAttachmentRepository;
+    private final CategoryMasterRepository categoryMasterRepository;
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
     private final KeycloakUserService keycloakUserService;
@@ -984,7 +986,21 @@ public class WorkflowController {
         return escalation.getOrDefault(currentRole, currentRole);
     }
 
+    /**
+     * The field set every task grid renders.
+     *
+     * <p>{@code category}, {@code modeOfReceipt} and {@code createdAt} are published here because the
+     * grids ASK for them. The CEPC dashboard declared all three as columns and they rendered blank,
+     * because the row the server sent carried no such keys — a column that is always empty is worse
+     * than an absent one, since an officer reads it as "this complaint has no category" rather than
+     * "this screen was never wired". {@code RbioComplaintListService.toListItem} already publishes
+     * modeOfReceipt and createdAt, so this closes a gap between two views of the same complaint.
+     *
+     * <p>Category names are resolved through ONE query for the whole page rather than per row: a
+     * 598-row DO queue would otherwise issue 598 extra selects to render one column.
+     */
     private List<Map<String, Object>> buildTaskList(List<Complaint> complaints) {
+        Map<Long, String> categoryNames = resolveCategoryNames(complaints);
         return complaints.stream().map(c -> {
             Map<String, Object> task = new LinkedHashMap<>();
             task.put("complaintId", c.getId());
@@ -1008,8 +1024,48 @@ public class WorkflowController {
             task.put("assignedOfficer", c.getAssignedOfficer());
             task.put("triageSignal", c.getTriageSignal());
             task.put("hasAttachments", complaintAttachmentRepository.existsByComplaintId(c.getId()));
+            // Mode of receipt IS the filing type — the same mapping RbioComplaintListService uses, so
+            // the column reads identically on the RBIO and CEPC grids.
+            task.put("modeOfReceipt", c.getFilingType() != null ? c.getFilingType() : "");
+            task.put("category", c.getCategoryId() != null
+                    ? categoryNames.getOrDefault(c.getCategoryId(), "") : "");
+            task.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : "");
+            // The STAGE, which is not the status. A meeting being scheduled does not move the complaint
+            // off in_progress — CepcWorkflowService's SCHEDULE_MEETING sets the stage and leaves the
+            // status untouched — so a "Meeting Scheduled" queue bucket cannot be built from status at
+            // all, and the CEPC dashboard had no way to offer one. RBIO's list publishes its milestone
+            // for exactly this reason.
+            task.put("workflowStage", c.getWorkflowStage() != null ? c.getWorkflowStage() : "");
+            // Reopened-complaint bucket. A reopened complaint re-enters in_progress and is otherwise
+            // indistinguishable from one that was never closed; the count is the only thing separating
+            // them.
+            task.put("reopenCount", c.getReopenCount() != null ? c.getReopenCount() : 0);
             return task;
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * Category id → display name for one page of complaints, in a single query.
+     *
+     * <p>Returns an empty map when no complaint on the page carries a category, which is the common
+     * case on this data (34 of 2,316 CEPC rows have one): the grid then renders an empty cell, and an
+     * empty cell is the honest rendering of an unclassified complaint.
+     */
+    private Map<Long, String> resolveCategoryNames(List<Complaint> complaints) {
+        Set<Long> ids = complaints.stream()
+                .map(Complaint::getCategoryId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> names = new HashMap<>();
+        categoryMasterRepository.findAllById(ids).forEach(cat -> {
+            if (cat.getCategoryName() != null) {
+                names.put(cat.getId(), cat.getCategoryName());
+            }
+        });
+        return names;
     }
 
     private ResponseEntity<Map<String, Object>> buildResponse(boolean success, String message, Object data) {

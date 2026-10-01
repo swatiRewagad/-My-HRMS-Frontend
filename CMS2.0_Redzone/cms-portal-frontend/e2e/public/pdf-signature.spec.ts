@@ -41,7 +41,10 @@ test.describe('UST97 — Downloaded PDFs do not claim a digital signature (D5)',
     const button = page.locator('button.btn-download-pdf');
     await expect(button).toBeVisible({ timeout: 20000 });
 
-    const downloadPromise = page.waitForEvent('download');
+    // Bounded deliberately. An unbounded waitForEvent inherits the whole test timeout, so a PDF that
+    // is never generated costs the full 60 s and reports as a generic test timeout with no mention of
+    // the download. 20 s is far longer than jsPDF needs and names the real failure.
+    const downloadPromise = page.waitForEvent('download', { timeout: 20000 });
     await button.click();
     const download = await downloadPromise;
 
@@ -71,7 +74,7 @@ test.describe('UST97 — Downloaded PDFs do not claim a digital signature (D5)',
     await page.goto(`${APP_BASE}/track/${complaint.complaintNumber}`);
     await page.waitForLoadState('networkidle');
 
-    const downloadPromise = page.waitForEvent('download');
+    const downloadPromise = page.waitForEvent('download', { timeout: 20000 });
     await page.locator('button.btn-download-pdf').click();
     const text = pdfText(readFileSync((await (await downloadPromise).path())!));
 

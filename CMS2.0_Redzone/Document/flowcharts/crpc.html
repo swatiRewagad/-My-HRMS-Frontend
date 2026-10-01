@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRPC Intake — How letters and emails become complaints</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html" class="active">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>CRPC — Centralised Receipt &amp; Processing Centre</h1>
+  <p class="sub">How an email, a scanned letter or a phone call becomes a formal complaint on the system</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    Not every grievance arrives through the portal. Emails land in a shared inbox, physical letters are scanned, and
+    the helpdesk takes calls. CRPC is the <strong>single front door</strong> for all of those. Incoming items are
+    first filtered automatically — junk is dropped, duplicates are attached to the original case, and anything the
+    system cannot read is set aside for manual typing. What survives becomes a <strong>draft</strong>, assigned in
+    rotation to a <strong>Data Entry Operator</strong> who reads the document and keys in the complaint details. A
+    <strong>Reviewer</strong> then decides: approve it (which creates a real complaint and sends it to the right
+    office), send it back for correction, or mark it as not a complaint at all.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Who does what</h2>
+  <table class="tbl who-table">
+    <thead><tr><th>Role</th><th>What this person does in the system</th></tr></thead>
+    <tbody>
+      <tr><td>Data Entry Operator</td><td>Reads the incoming email or scanned letter and keys the complaint details into a draft. Corrects whatever the automatic text reading got wrong, then sends the draft for review.</td></tr>
+      <tr><td>Reviewer</td><td>Checks the draft. Approves it — which creates the actual complaint and routes it to an office — or sends it back, or marks it as not a complaint.</td></tr>
+      <tr><td>CRPC In-charge</td><td>Supervises the queues and workload.</td></tr>
+      <tr><td>CRPC Head</td><td>Decides requests from Ombudsman offices to transfer a case to a different office.</td></tr>
+      <tr><td>Helpdesk (toll-free)</td><td>Logs grievances received over the phone.</td></tr>
+      <tr><td>Administrator</td><td>Can reopen a draft that was closed as "not a complaint".</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>2. The intake journey</h2>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Item arrives</span>
+    <span><i class="swatch sw-state"></i>Draft is sitting here</span>
+    <span><i class="swatch sw-dec"></i>A filter or a decision</span>
+    <span><i class="swatch sw-term"></i>Becomes a real complaint</span>
+    <span><i class="swatch sw-bad"></i>Dropped, no draft created</span>
+    <span><i class="swatch sw-gap"></i>Works, but unofficial</span>
+  </div>
+  <div class="diagram" id="dg-crpc-journey">
+    <div class="diagram-bar">
+      <span class="title">Email or letter arrives → filtered → keyed in → reviewed → complaint created</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  subgraph ARR["How things arrive"]
+    direction TB
+    A1["Email to the RBI<br/>complaints inbox"]:::start
+    A2["Physical letter,<br/>scanned and uploaded"]:::start
+    A3["Typed in manually by<br/>an operator or the helpdesk"]:::start
+  end
+
+  A1 --> G0{"Was RBI only<br/>copied in (CC/BCC)?"}:::dec
+  G0 -- yes --> D0["Treated as not a complaint<br/>and closed automatically"]:::bad
+  G0 -- no --> G1{"Is the sender on<br/>the ignore list?"}:::dec
+  G1 -- yes --> D1["Discarded"]:::bad
+  G1 -- no --> G2{"Have we already<br/>seen this exact email?"}:::dec
+  G2 -- yes --> D2["Nothing new is created —<br/>the existing draft is returned"]:::state
+  G2 -- no --> G3{"Is this a repeat of a<br/>complaint we already closed?"}:::dec
+  G3 -- yes --> D3["Attached to the original case<br/>as a duplicate"]:::bad
+  G3 -- no --> G4{"Can the system read<br/>the text automatically?"}:::dec
+
+  G4 -- "no — regional language<br/>or poor scan" --> MAN["Set aside for manual typing"]:::state
+  G4 -- yes --> AUTO["Text extracted and the draft<br/>assigned to the next operator<br/>in rotation"]:::state
+
+  A2 --> SCAN["Text read from the scan.<br/>Anything the operator types<br/>overrides what was read"]:::state
+  A3 --> SCAN
+
+  MAN --> WORK
+  AUTO --> WORK
+  SCAN --> WORK
+
+  WORK["Operator is working on the draft"]:::state
+  WORK --> SENT["Sent to the Reviewer"]:::state
+
+  SENT --> DEC{"Reviewer's decision"}:::dec
+  DEC -- "Approve" --> APP["Approved"]:::state
+  DEC -- "Send back for correction" --> SB["Returned to the operator"]:::gap
+  DEC -- "Not a complaint" --> NC["Closed as not a complaint"]:::gap
+  SB -.-> WORK
+  NC -. "Administrator may reopen" .-> AUTO
+
+  APP --> MADE["A formal complaint is created<br/>with its own reference number<br/>and an opening target date"]:::term
+
+  MADE --> WHERE{"Which office should<br/>handle it?"}:::dec
+  WHERE -- "Ombudsman matter" --> ORB(["Ombudsman office —<br/>see RBIO"]):::ext
+  WHERE -- "Consumer protection matter" --> OCE(["Consumer protection cell —<br/>see CEPC"]):::ext
+
+  TR["CRPC Head also handles requests<br/>from offices wanting to move a case<br/>to a different office"]:::auto
+  MADE -.-> TR
+</div>
+    </div></div>
+    <div class="hint">Pink boxes are outcomes the screens produce that are not part of the official list of draft states — see section 5.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. The same journey as a checklist</h2>
+  <ol class="steps">
+    <li><span class="who">System</span>
+      <strong>Filter the incoming item.</strong> Four checks in order: was RBI only copied in, is the sender on the
+      ignore list, have we seen this exact message before, and is it a repeat of something already closed.</li>
+    <li><span class="who">System</span>
+      <strong>Try to read the document.</strong> The language is detected <em>first</em>; if it is a regional
+      language or the confidence is low, automatic reading is skipped entirely and the item goes to the manual
+      queue. Otherwise text is extracted and the draft is handed to the next operator in rotation.</li>
+    <li><span class="who">Data Entry Operator</span>
+      <strong>Key in the complaint.</strong> Whatever the operator types wins over what was read automatically.</li>
+    <li><span class="who">Data Entry Operator</span>
+      <strong>Send to the Reviewer.</strong></li>
+    <li><span class="who">Reviewer</span>
+      <strong>Approve, send back, or reject.</strong> Approving is the only path that creates a real complaint.</li>
+    <li><span class="who">System</span>
+      <strong>Create and route the complaint.</strong> A reference number is generated and the case is placed with
+      either an Ombudsman office or the consumer protection cell, based on which institution is complained about.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>4. Reminders the system sends</h2>
+  <table class="tbl">
+    <thead><tr><th>When</th><th>If</th><th>Who gets told</th></tr></thead>
+    <tbody>
+      <tr><td>8:00 am, weekdays</td><td>A draft has been waiting 5 days</td><td>CRPC Administrator</td></tr>
+      <tr><td>9:00 am, weekdays</td><td>A draft has been waiting 3 days</td><td>The operator it is assigned to</td></tr>
+      <tr><td>9:30 am, weekdays</td><td>A waiting draft is flagged as a duplicate</td><td>The operator</td></tr>
+      <tr><td>11:00 am, weekdays</td><td>A draft has been with a Reviewer 3 days</td><td>The Reviewer and the CRPC Head</td></tr>
+      <tr><td>10:00 am, weekdays</td><td>A Reviewer's queue is over its limit</td><td>Should re-route the overflow</td></tr>
+    </tbody>
+  </table>
+  <div class="watch">
+    <span class="lbl">Two limitations</span>
+    <strong>1. These are reminders only.</strong> None of them moves, escalates or reassigns a draft — a person must
+    still act.<br/>
+    <strong>2. The overflow re-routing never fires.</strong> It looks for drafts in a state the live system never
+    writes, so it always finds nothing. Reviewer queues are effectively not balanced automatically.
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. Things to know before relying on this</h2>
+  <table class="tbl">
+    <thead><tr><th>What you might assume</th><th>What the code actually does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Only a Reviewer can approve a draft"</td>
+        <td>There is <strong>no role check at all</strong> on the screen that drives drafts. Any signed-in CRPC staff member can move any draft to any state, including approving it and creating a complaint.</td>
+      </tr>
+      <tr>
+        <td>"A draft has to follow the proper order"</td>
+        <td>There is <strong>no order check</strong> either. A draft can jump straight from newly-arrived to approved.</td>
+      </tr>
+      <tr>
+        <td>"There is a rulebook enforcing the draft lifecycle"</td>
+        <td>There is one — with proper role and order checks — but <strong>no screen uses it</strong>. It is unreachable code. The live screens use a different, unguarded path.</td>
+      </tr>
+      <tr>
+        <td>"'Sent back' and 'Not a complaint' are official states"</td>
+        <td>They are not on the official list. The screens write them anyway and they are stored as-is, so reports built on the official list will <strong>not see these drafts</strong>.</td>
+      </tr>
+      <tr>
+        <td>"If something goes wrong the screen shows an error"</td>
+        <td>The intake service <strong>reports failures as successes</strong> with an error message buried inside. A draft that could not be found, or an upload that failed, looks like a normal response — the screen's error handling never triggers.</td>
+      </tr>
+      <tr>
+        <td>"Scanning reads regional-language letters"</td>
+        <td>Language is detected before reading is attempted, and regional-language items skip automatic reading entirely. They land in the manual-typing queue by design.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>Two disjoint state machines; the authoritative-looking one is dead</h4>
+    <div class="grid2">
+      <div>
+        <h4>Vocabulary A — <code>CrpcWorkflowService</code> (DEAD)</h4>
+        <p><code>NEW_COMPLAINT</code>, <code>SENT_FOR_APPROVAL</code>, <code>APPROVED</code>, <code>SENT_BACK</code>, <code>NOT_A_COMPLAINT</code></p>
+        <ul>
+          <li>Enum backing: <strong>none</strong>, bare string literals</li>
+          <li>Transition guard: <span class="badge badge-ok">yes</span> — <code>VALID_TRANSITIONS</code> (lines 27–33) via <code>validateTransition</code> (176–182)</li>
+          <li>Role guard: <span class="badge badge-ok">yes</span> — <code>@PreAuthorize</code></li>
+          <li>Frontend callers: <span class="badge badge-bad">zero</span> in <code>components/crpc/</code></li>
+          <li>Reachable only via <code>/api/v1/crpc/workflow/*</code></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Vocabulary B — <code>EmailSyndicationApiController</code> (LIVE)</h4>
+        <p><code>DRAFT</code> → <code>PENDING_MANUAL_ENTRY</code> → <code>ASSIGNED</code> → <code>IN_PROGRESS</code> →
+           <code>SENT_TO_REVIEWER</code> → <code>APPROVED_ROUTED</code> → <code>CONVERTED</code>;
+           terminals <code>DUPLICATE</code>, <code>IGNORED</code>, <code>REJECTED</code></p>
+        <ul>
+          <li>Enum backing: <code>entity/DraftStatus.java</code></li>
+          <li>Transition guard: <span class="badge badge-bad">none</span></li>
+          <li>Role guard: <span class="badge badge-bad">none</span> beyond the coarse <code>STAFF_ROLES</code> URL grant (<code>SecurityConfig.java:187</code>)</li>
+          <li>Frontend callers: <span class="badge badge-ok">all screens</span></li>
+        </ul>
+      </div>
+    </div>
+    <p>Every live edge is the same call — <code>PUT /api/v1/email-syndication/drafts/{draftId}</code> — with a
+       different <code>status</code> string in the body, written verbatim at <code>:765</code>.</p>
+
+    <h4>Off-enum values the frontend writes</h4>
+    <p><code>SENT_BACK_TO_DEO</code> and <code>CLOSED_NOT_A_COMPLAINT</code>
+       (<code>reviewer-assessment.component.ts:401-402</code>) persist unvalidated.
+       <code>DraftStatus.OPEN</code> = {<code>ASSIGNED</code>, <code>IN_PROGRESS</code>, <code>SENT_TO_REVIEWER</code>,
+       <code>DRAFT</code>, <code>PENDING_MANUAL_ENTRY</code>} and therefore excludes both.</p>
+
+    <h4>Intake gates, in order</h4>
+    <p>CC/BCC-only ⇒ <code>NON_COMPLAINT</code> auto-closed · ignore-list (<code>:186</code>) ⇒ <code>IGNORED</code> ·
+       <code>messageId</code> idempotency ⇒ existing draft returned · duplicate-of-<code>CLOSED</code>-parent
+       (<code>:984</code>) ⇒ <code>DUPLICATE</code> with email and attachment linked to the parent · language
+       detection runs <strong>before</strong> OCR and gates it ⇒ <code>PENDING_MANUAL_ENTRY</code>
+       (<code>:372</code>, <code>:620</code>).</p>
+
+    <h4>Exit</h4>
+    <p><code>APPROVED_ROUTED</code> (<code>:787</code>) triggers <code>createComplaintFromDraft</code>
+       (<code>:794</code>): <code>status='assigned'</code>, <code>stage='INITIAL_REVIEW'</code>, number
+       <code>CMP-yyyyMMdd-######</code>, timeline <code>CREATED_FROM_CRPC</code> by <code>REVIEWER</code>.
+       Routing via <code>routingService.resolveDepartment(entityName)</code>, overridden by a
+       <code>targetOffice</code> prefix: <code>RBIO*</code> ⇒ dept RBIO / role <code>RBIO_OFFICER</code>;
+       <code>CEPC*</code> ⇒ dept CEPC / role <code>CEPC_DO</code>.</p>
+
+    <h4>The only real role guard</h4>
+    <p><code>POST /crpc/drafts/{id}/reopen</code> — <code>@PreAuthorize("hasRole('ADMIN')")</code>
+       (<code>CrpcDraftEnhancementController:85-93</code>).
+       <code>CRPC_ROLES</code> = {<code>CRPC_HEAD</code>, <code>CRPC_ADMIN</code>, <code>CRPC_INCHARGE</code>,
+       <code>DEO</code>, <code>REVIEWER</code>, <code>ADMIN</code>} (<code>SecurityConfig.java:65-67</code>).
+       DEO and REVIEWER routes are themselves unguarded (<code>app.routes.ts:258-280</code>).
+       <code>CRPC_DEO</code> / <code>CRPC_REVIEWER</code> appear in <code>@PreAuthorize</code> on the dead
+       controller but are not in <code>CRPC_ROLES</code>.</p>
+
+    <h4>Scheduled jobs — <code>service/CrpcScheduledTasks.java</code></h4>
+    <p><code>0 0 8 * * MON-FRI</code> ASSIGNED &gt; 5d ⇒ <code>ESCALATION</code> to <code>CRPC_ADMIN</code> (:98) ·
+       <code>0 0 9 * * MON-FRI</code> &gt; 3d ⇒ <code>PENDING_3DAY</code> (:23) ·
+       <code>0 30 9 * * MON-FRI</code> duplicates ⇒ <code>DUPLICATE_ACTIVITY</code> (:47) ·
+       <code>0 0 10 * * MON-FRI</code> ⇒ <code>ThresholdOverflowService.checkAndRouteOverflow</code> (:66) ·
+       <code>0 0 11 * * MON-FRI</code> SENT_TO_REVIEWER &gt; 3d ⇒ notify reviewer + head (:74).
+       <strong>All notify-only.</strong></p>
+    <p><strong>Latent bug:</strong> <code>ThresholdOverflowService:39,58</code> queries
+       <code>"SENT_FOR_APPROVAL"</code> — a Vocabulary A value the live path never writes — so overflow routing
+       always finds zero drafts.</p>
+
+    <h4>Refusal shapes</h4>
+    <p>Global handler <code>GlobalExceptionHandler.buildResponse</code> (:358-365) maps
+       <code>SecurityException</code>⇒403, <code>RuntimeException</code>⇒400 (:304-307),
+       <code>OptimisticLockingFailureException</code>⇒409, generic ⇒500.
+       <strong>But the live CRPC controller bypasses all of it:</strong> draft-not-found returns
+       <strong>HTTP 200</strong> with <code>{"error":"Draft not found"}</code> (:749, :1002, :1017), and
+       <code>createPhysicalLetterDraft</code> catches everything into <code>200 {"error": msg}</code> (:692).</p>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — CRPC intake process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

@@ -72,6 +72,42 @@ public class PastComplaintService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * The same complainant history, but keyed on the complaint being WORKED rather than on an email
+     * address the caller has to supply.
+     *
+     * <h2>Why this exists at all</h2>
+     * The staff sidebar used to read {@code complainantEmail} off the complaint-detail response and send
+     * it back as a lookup key. That response masks PII — the field arrives as {@code q***@example.com} —
+     * so the key could never match a stored address, and the panel showed "No past complaints found" for
+     * every complaint ever opened. The two candidate fixes were to unmask the detail response, or to stop
+     * sending the key over the wire. Unmasking would hand every staff caller the complainant's real
+     * address to render a sidebar heading, re-opening a closed PII finding for no gain; so the identifier
+     * stays on the server, where it was already readable, and the client passes the complaint number it
+     * is already displaying.
+     *
+     * <h2>Matched on email AND phone</h2>
+     * A repeat complainant who filed once by email and once by phone is still one person. Matching on
+     * both fields of the current complaint is what the existing by-complainant path already does when a
+     * caller supplies both; doing it here means the sidebar gets the same answer without having to know
+     * either value.
+     *
+     * @return the prior complaints, or an empty list when the complaint number is unknown — an unknown
+     *         number is reported as "no history" rather than as an error, because this panel is
+     *         decoration on a screen whose primary job is unaffected by it.
+     */
+    public List<Map<String, Object>> findPastComplaintsForComplaint(String complaintNumber) {
+        if (complaintNumber == null || complaintNumber.isBlank()) {
+            return List.of();
+        }
+        Optional<Complaint> current = complaintRepository.findByComplaintNumber(complaintNumber.trim());
+        if (current.isEmpty()) {
+            return List.of();
+        }
+        Complaint c = current.get();
+        return findPastComplaints(c.getComplainantEmail(), c.getComplainantPhone(), c.getComplaintNumber());
+    }
+
     public List<Map<String, Object>> findSimilarCases(String subject, String description, String category, String currentComplaintId) {
         if (groqApiKey == null || groqApiKey.isBlank()) {
             log.warn("Groq API key not configured — using keyword fallback");

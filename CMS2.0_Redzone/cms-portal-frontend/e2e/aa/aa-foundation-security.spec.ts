@@ -1,6 +1,7 @@
 import { test, expect, APIRequestContext } from '../fixtures';
 import { execFileSync } from 'child_process';
 import { identityHeadersFor } from '../utils/test-data';
+import { mintToken, purgeByPrefix } from './aa-shared-fixtures';
 
 /**
  * Server-side enforcement tests for the AA foundation.
@@ -24,7 +25,7 @@ import { identityHeadersFor } from '../utils/test-data';
  */
 
 const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
-const KEYCLOAK_BASE = process.env['KEYCLOAK_BASE_URL'] || 'http://localhost:9090';
+// Keycloak's base URL now lives in aa-shared-fixtures alongside the mintToken that uses it.
 const MYSQL =
   process.env['MYSQL_CLI'] || 'C:\\Program Files\\MySQL\\MySQL Server 8.4\\bin\\mysql.exe';
 
@@ -103,30 +104,22 @@ function seedForwardedComplaint(complaintNumber: string, entityCode: string): vo
          'MEDIUM', 'CEPC_MANUAL', 0, NOW(), NOW(), NOW())`);
 }
 
+/**
+ * Purge via the SHARED helper, which COLLATEs both sides of the `appeal_number IN (...)` comparison.
+ *
+ * This file carried its own copy that did not. appeal_number is utf8mb4_unicode_ci on appeals but
+ * utf8mb4_0900_ai_ci on appeal_attachments, so the uncollated DELETE died with errno 1267
+ * "Illegal mix of collations", threw in beforeAll, and took the rest of the serial file with it.
+ * aa-shared-fixtures.purgeByPrefix already fixed exactly this; the duplicate had simply drifted.
+ */
 function purgeSeedData(): void {
-  sql(`DELETE FROM appeal_timeline WHERE appeal_number IN
-         (SELECT appeal_number FROM appeals WHERE original_complaint_number LIKE '${PREFIX}%')`);
-  sql(`DELETE FROM appeal_attachments WHERE appeal_number IN
-         (SELECT appeal_number FROM appeals WHERE original_complaint_number LIKE '${PREFIX}%')`);
-  sql(`DELETE FROM appeals WHERE original_complaint_number LIKE '${PREFIX}%'`);
-  sql(`DELETE FROM COMPLAINTS WHERE complaint_number LIKE '${PREFIX}%'`);
+  purgeByPrefix(PREFIX);
 }
 
-/** A real Keycloak access token, so the JWT-first resolution paths are exercised for real. */
-async function mintToken(request: APIRequestContext, username: string): Promise<string> {
-  const res = await request.post(`${KEYCLOAK_BASE}/realms/cms/protocol/openid-connect/token`, {
-    form: {
-      client_id: 'cms-portal',
-      username,
-      password: 'test123',
-      grant_type: 'password',
-    },
-  });
-  expect(res.status(), `Keycloak must issue a token for ${username}`).toBe(200);
-  const body = await res.json();
-  expect(body.access_token, `token payload for ${username}`).toBeTruthy();
-  return body.access_token as string;
-}
+// mintToken lived here as a private copy with `password: 'test123'` hardcoded, which 401s for
+// aa_do_001 and re_pno_001 (both Test@123) and took the whole serial file down from beforeAll.
+// It now comes from aa-shared-fixtures, which resolves the password per username. Do not re-add a
+// local copy — that is how the two versions drifted apart in the first place.
 
 function decodeClaims(token: string): Record<string, unknown> {
   const payload = token.split('.')[1];

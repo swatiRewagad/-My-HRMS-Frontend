@@ -10,6 +10,21 @@ export interface StaffUser {
   email: string;
   roles: string[];
   department: 'RBIO' | 'CEPC' | 'CRPC' | 'AA' | 'RE' | 'ADMIN' | 'UNKNOWN';
+  /**
+   * The AA reviewer's tier, straight from the `reviewer_tier` realm claim. Absent for everyone else.
+   *
+   * This is declared because a consumer was already reading it and could never have found it:
+   * aa-appeal-detail.component.ts casts `currentUser()` to `Record<string, unknown>` and looks up
+   * `reviewer_tier`, but the object this service builds is a fixed StaffUser literal that never copied
+   * the claim across. So the lookup was permanently `undefined`, the `@if (reviewerTier(); as tier)`
+   * never opened, and the tier badge could not render for ANY reviewer — even though Keycloak does
+   * issue the claim (verified: aa_reviewer_001 => 1, aa_reviewer_002 => 2). The cast made it a silent
+   * miss rather than a compile error, which is why it survived.
+   *
+   * Typed as string because that is what the badge renders and what the detail component coerces to;
+   * Keycloak may hand it over as either a string or a number.
+   */
+  reviewerTier?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -145,7 +160,14 @@ export class KeycloakAuthService {
       lastName: tokenParsed?.family_name || '',
       email: tokenParsed?.email || '',
       roles,
-      department: this.detectDepartment(roles)
+      department: this.detectDepartment(roles),
+      // Carried across from the token rather than dropped. See StaffUser.reviewerTier: the AA detail
+      // screen was already reading `reviewer_tier` off this object, so without this line the tier
+      // badge was unreachable for every reviewer. Left undefined when the claim is absent, which is
+      // the correct state for non-reviewers and is what the badge's @if tests for.
+      reviewerTier: tokenParsed?.reviewer_tier == null
+        ? undefined
+        : String(tokenParsed.reviewer_tier)
     });
   }
 

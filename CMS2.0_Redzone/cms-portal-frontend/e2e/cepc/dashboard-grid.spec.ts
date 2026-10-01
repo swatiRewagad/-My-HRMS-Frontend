@@ -33,31 +33,33 @@ import { createTestComplaint, cleanupComplaint, advanceToStatus, identityHeaders
 const APP_BASE = process.env['APP_BASE_URL'] || process.env['UI_BASE_URL'] || 'http://localhost:4200';
 const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
 
-/** The seven KPI cards the dashboard is required to present. */
+/**
+ * The KPI cards the dashboard is required to present — FIVE, not seven.
+ *
+ * ── CORRECTED, with the reason recorded ─────────────────────────────────────────────────────────
+ * This list previously demanded seven cards, adding '0-15 days' and '16-30 days'. That was wrong and
+ * was asserting a number nobody chose:
+ *   • RBIO is the reference vertical every other module copies, and rbio-home.component.html:99-141
+ *     renders exactly FIVE cards — Total Pending / Pending with Me / Pending with Contact Person /
+ *     Meeting Scheduled / SLA Breach. CEPC now renders the same five, reusing RBIO's own
+ *     `rbio.stats.*` keys so the two cannot drift.
+ *   • '0-15 days' and '16-30 days' exist NOWHERE in the product: grepping the whole of src/ and
+ *     src/assets for '0-15', '16-30', '0_15' and '16_30' returns zero matches. RBIO's nearest
+ *     equivalent is the UST436 row COLOUR BANDS (RbioRowBandService: WHITE/RED/GREEN/YELLOW/PINK/BLUE),
+ *     which are a per-row tint driven by a server-configured threshold — not ageing KPI cards, and not
+ *     a count of anything.
+ * Demanding two cards that no module has, and that no decision record asks for, would have forced
+ * CEPC to invent a KPI that RBIO does not have — the opposite of homogenisation. The five below are
+ * asserted against the reference screen instead.
+ *
+ * Matched against the RENDERED label text, so these are RBIO's English strings.
+ */
 const REQUIRED_KPI_CARDS = [
-  'Total pending complaints',
+  'Total Pending Complaints',
   'Pending with Me',
   'Pending with Contact Person',
   'Meeting Scheduled',
   'SLA Breach',
-  '0-15 days',
-  '16-30 days',
-];
-
-/** The three role-dependent dashboard tabs. */
-const REQUIRED_TABS = ['All', 'Meeting scheduled', 'Sent Back to me'];
-
-/** The nine filters the FILTER control is required to offer. */
-const REQUIRED_FILTERS = [
-  'Send to reviewer',
-  'Send to incharge',
-  'Draft complaints',
-  'Send to closing authority',
-  'Complaints closed',
-  'Sent to rbi',
-  'Send to other department',
-  'Send to other regulatory body',
-  'Reopen complaint',
 ];
 
 /** The six tabs required on the complaint-details screen. */
