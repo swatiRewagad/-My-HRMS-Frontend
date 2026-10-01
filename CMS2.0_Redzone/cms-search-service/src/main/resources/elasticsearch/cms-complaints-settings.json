@@ -1,0 +1,43 @@
+{
+  "index": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "5s",
+    "mapping": {
+      "total_fields": {
+        "limit": 800
+      },
+      "nested_fields": {
+        "limit": 10
+      }
+    }
+  },
+  "analysis": {
+    "analyzer": {
+      "cms_indic": {
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "indic_normalization",
+          "decimal_digit",
+          "icu_folding"
+        ]
+      },
+      "cms_urdu": {
+        "tokenizer": "icu_tokenizer",
+        "filter": [
+          "decimal_digit",
+          "arabic_normalization",
+          "icu_folding"
+        ]
+      }
+    },
+    "normalizer": {
+      "cms_lowercase": {
+        "type": "custom",
+        "filter": [
+          "lowercase"
+        ]
+      }
+    }
+  }
+}

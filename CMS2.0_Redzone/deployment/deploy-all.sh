@@ -36,8 +36,9 @@ echo "  ✓ Secret: cms-keycloak-secret"
 oc apply -f "$OPENSHIFT_DIR/secret-sms.yaml"
 echo "  ✓ Secret: cms-sms-secret"
 
+# File name is still secret-opensearch.yaml; the Secret it declares is now cms-elasticsearch-secret.
 oc apply -f "$OPENSHIFT_DIR/secret-opensearch.yaml"
-echo "  ✓ Secret: cms-opensearch-secret"
+echo "  ✓ Secret: cms-elasticsearch-secret"
 
 oc apply -f "$OPENSHIFT_DIR/secret-kafka.yaml"
 echo "  ✓ Secret: cms-kafka-secret"

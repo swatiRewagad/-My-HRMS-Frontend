@@ -12,7 +12,15 @@
 
     <artifactId>cms-search-service</artifactId>
     <name>CMS Search Service</name>
-    <description>OpenSearch integration for full text complaint search</description>
+    <description>Elasticsearch integration for full text complaint search</description>
+
+    <properties>
+        <!--
+          Not managed by the Boot 3.4.1 BOM. Pinned here because the Resilience4j guards around the
+          Elasticsearch client are the only thing standing between a hung ES node and the request pool.
+        -->
+        <resilience4j.version>2.2.0</resilience4j.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -28,35 +36,58 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
+
+        <!--
+          Versionless on purpose: spring-boot-dependencies 3.4.1 manages elasticsearch-client.version
+          at 8.15.5, which is wire-compatible with the 8.15.3 server. Declaring a version here would
+          silently diverge from the transport version Boot's own auto-configuration expects.
+        -->
         <dependency>
-            <groupId>org.opensearch.client</groupId>
-            <artifactId>opensearch-rest-high-level-client</artifactId>
-            <version>2.18.0</version>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.opensearch.client</groupId>
-            <artifactId>opensearch-java</artifactId>
-            <version>2.18.0</version>
+            <groupId>org.elasticsearch.client</groupId>
+            <artifactId>elasticsearch-rest-client</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>${resilience4j.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents.client5</groupId>
-            <artifactId>httpclient5</artifactId>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-micrometer</artifactId>
+            <version>${resilience4j.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents.core5</groupId>
-            <artifactId>httpcore5</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents.core5</groupId>
-            <artifactId>httpcore5-h2</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -65,6 +96,27 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <!--
+                          The language tests are named *IT because they need a live Elasticsearch, but
+                          they are still run by surefire: they skip themselves when no node answers,
+                          so they cost nothing on a machine without one and there is no reason to hide
+                          them behind a profile where nobody would run them.
+                        -->
+                        <include>**/*IT.java</include>
+                    </includes>
+                    <!--
+                      Without this the Indic fixture strings are read with the platform charset on
+                      Windows (cp1252) and the assertions compare mojibake against mojibake.
+                    -->
+                    <argLine>-Dfile.encoding=UTF-8</argLine>
+                </configuration>
             </plugin>
         </plugins>
     </build>

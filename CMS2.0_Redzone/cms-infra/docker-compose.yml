@@ -472,13 +472,16 @@ services:
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      OPENSEARCH_HOST: cms-opensearch
-      OPENSEARCH_PORT: 9200
-      OPENSEARCH_SCHEME: http
+      # These names must match SearchProperties / application.yml, which reads ELASTICSEARCH_*.
+      # The old OPENSEARCH_* variables bound to nothing, so the container silently fell back to
+      # the localhost default and reached no search cluster at all.
+      ELASTICSEARCH_HOST: cms-elasticsearch
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_SCHEME: http
       KAFKA_BOOTSTRAP: cms-kafka:9092
       SERVER_PORT: 8091
     depends_on:
-      cms-opensearch:
+      cms-elasticsearch:
         condition: service_healthy
       cms-kafka:
         condition: service_healthy
@@ -494,24 +497,56 @@ services:
   # INFRASTRUCTURE SERVICES
   # ══════════════════════════════════════════════════════════════
 
-  # ── OpenSearch 2.18 (Full-Text Search) ──
-  cms-opensearch:
-    image: opensearchproject/opensearch:2.18.0
-    container_name: cms-opensearch
+  # ── Elasticsearch 8.15.3 (Full-Text Search, 13 languages) ──
+  #
+  # Built, not pulled: the complaint mapping's cms_indic and cms_urdu analyzers are icu_tokenizer +
+  # icu_folding, and analysis-icu is NOT bundled in the stock elasticsearch image. Pulling the plain
+  # image makes every index creation fail with "Unknown tokenizer type [icu_tokenizer]", which is
+  # the entire Indic search capability. See Dockerfile.elasticsearch.
+  #
+  # The server version is pinned to 8.15.3 to match the version this mapping was validated against;
+  # the Java client is 8.15.5 via the Boot 3.4.1 BOM, which is wire-compatible.
+  cms-elasticsearch:
+    build:
+      context: .
+      dockerfile: Dockerfile.elasticsearch
+    image: cms/elasticsearch-icu:8.15.3
+    container_name: cms-elasticsearch
     restart: unless-stopped
     environment:
       discovery.type: single-node
-      DISABLE_SECURITY_PLUGIN: "true"
-      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      cluster.name: cms-es-dev
+      # DEV ONLY. There is no TLS and no authentication on this node, which is why it is bound to a
+      # compose-internal network. A deployed environment must enable xpack.security and populate
+      # ELASTICSEARCH_USERNAME / ELASTICSEARCH_PASSWORD, which ElasticsearchConfig already honours.
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      # Lucene mmaps index files; without this the default 65530 is hit on a real corpus and shards
+      # fail to open with an inscrutable IOException.
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "9200:9200"
     volumes:
-      - cms-opensearch-data:/usr/share/opensearch/data
+      - cms-elasticsearch-data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      # Waits for yellow, not green: this is a single node with replicas=0 on the complaint index,
+      # but system indices ES creates for itself can sit yellow indefinitely on one node, and
+      # requiring green there would hang every dependent service forever.
+      test: ["CMD-SHELL", "curl -sf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' || exit 1"]
       interval: 15s
       timeout: 10s
-      retries: 10
+      # ES needs ~3.5 min to answer on a cold single node, measured on the dev node this mapping was
+      # validated against. start_period stops those first attempts counting as failures.
+      start_period: 120s
+      retries: 20
     networks:
       - cms-network
 
@@ -666,7 +701,7 @@ volumes:
   cms-oracle-data:
   cms-redis-data:
   cms-kafka-data:
-  cms-opensearch-data:
+  cms-elasticsearch-data:
   cms-keycloak-db-data:
   cms-grafana-data:
   cms-attachments:

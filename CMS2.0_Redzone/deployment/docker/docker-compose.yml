@@ -97,38 +97,61 @@ services:
       - cms-network
 
   # ============================================================
-  # OPENSEARCH (Full-text search)
+  # ELASTICSEARCH 8.15.3 (Full-text search, 13 languages)
+  #
+  # Built from cms-infra/Dockerfile.elasticsearch rather than pulled, because the complaint
+  # mapping's cms_indic / cms_urdu analyzers need analysis-icu and the stock image does not
+  # ship it. Elasticsearch has no built-in analyzer for 9 of the 13 languages served, so
+  # without the plugin index creation fails and Indic search does not exist.
   # ============================================================
-  opensearch:
-    image: opensearchproject/opensearch:2.18.0
-    container_name: cms-opensearch
+  elasticsearch:
+    build:
+      context: ../../cms-infra
+      dockerfile: Dockerfile.elasticsearch
+    image: cms/elasticsearch-icu:8.15.3
+    container_name: cms-elasticsearch
     environment:
       discovery.type: single-node
-      DISABLE_SECURITY_PLUGIN: "true"
-      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      cluster.name: cms-es-dev
+      # DEV ONLY — no TLS, no authentication. A deployed environment must turn xpack.security on
+      # and set ELASTICSEARCH_USERNAME / ELASTICSEARCH_PASSWORD, which ElasticsearchConfig reads.
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      bootstrap.memory_lock: "true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "9200:9200"
-      - "9600:9600"
     volumes:
-      - opensearch_data:/usr/share/opensearch/data
+      - elasticsearch_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      # yellow, not green: system indices ES creates for itself stay yellow forever on a single
+      # node, so waiting for green would hang every dependent service permanently.
+      test: ["CMD-SHELL", "curl -sf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s' || exit 1"]
       interval: 15s
       timeout: 10s
-      retries: 10
+      start_period: 120s
+      retries: 20
     networks:
       - cms-network
 
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.18.0
-    container_name: cms-opensearch-dashboards
+  # Kibana replaces OpenSearch Dashboards. Version-locked to the server: Kibana refuses to start
+  # against a node whose version differs from its own.
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: cms-kibana
     environment:
-      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
     ports:
       - "5601:5601"
     depends_on:
-      opensearch:
+      elasticsearch:
         condition: service_healthy
     networks:
       - cms-network
@@ -185,7 +208,7 @@ volumes:
   oracle_data:
   kafka_data:
   keycloak_db_data:
-  opensearch_data:
+  elasticsearch_data:
   grafana_data:
 
 networks:

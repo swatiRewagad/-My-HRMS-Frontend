@@ -12,9 +12,12 @@ data:
   KAFKA_BOOTSTRAP_SERVERS: "kafka-service.rbi-cms.svc.cluster.local:9092"
   KEYCLOAK_ISSUER_URI: "http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms"
   KEYCLOAK_JWK_URI: "http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms/protocol/openid-connect/certs"
-  OPENSEARCH_HOST: "opensearch-service.rbi-cms.svc.cluster.local"
-  OPENSEARCH_PORT: "9200"
-  OPENSEARCH_SCHEME: "http"
+  # Elasticsearch 8.15.3. These key names must match SearchProperties (prefix cms.search), which
+  # binds ELASTICSEARCH_HOST / _PORT / _SCHEME. The previous OPENSEARCH_* keys bound to no property
+  # at all, so every search pod fell back to the localhost default and reached no cluster.
+  ELASTICSEARCH_HOST: "elasticsearch-service.rbi-cms.svc.cluster.local"
+  ELASTICSEARCH_PORT: "9200"
+  ELASTICSEARCH_SCHEME: "http"
   STORAGE_ROOT: "/data/cms/storage"
   SMTP_HOST: "smtp-relay.rbi-cms.svc.cluster.local"
   SMTP_PORT: "587"

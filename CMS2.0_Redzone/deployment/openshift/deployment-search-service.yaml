@@ -30,7 +30,7 @@ spec:
             - secretRef:
                 name: cms-db-secret
             - secretRef:
-                name: cms-opensearch-secret
+                name: cms-elasticsearch-secret
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: "openshift"

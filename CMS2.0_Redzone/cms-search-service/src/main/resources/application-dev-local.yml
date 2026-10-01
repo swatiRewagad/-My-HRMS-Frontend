@@ -3,7 +3,6 @@ spring:
     bootstrap-servers: localhost:9092
     consumer:
       auto-offset-reset: earliest
-      group-id: cms-search-dev
       enable-auto-commit: false
     listener:
       type: single
@@ -11,11 +10,15 @@ spring:
       ack-mode: manual
 
 cms:
-  opensearch:
+  search:
+    enabled: true
     host: localhost
     port: 9200
     scheme: http
-    enabled: true
+    alias: cms-complaints
+    reindex:
+      batch-size: 200
+      pause-between-batches-ms: 50
 
 logging:
   level:
