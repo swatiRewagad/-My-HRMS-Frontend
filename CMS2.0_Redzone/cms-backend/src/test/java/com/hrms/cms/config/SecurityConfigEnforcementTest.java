@@ -118,6 +118,23 @@ class SecurityConfigEnforcementTest {
             return "similar-status";
         }
 
+        // ── Assistance rail: staff only (Brief 21) ──
+        // Tier 1 of the rail reports aggregate facts about OTHER complaints — how many an entity closed
+        // under a given clause, how long a category takes to close — so the matcher is a disclosure
+        // control, not a convenience. Tier 0 is one officer's own last section and unsaved text, which
+        // is additionally scoped to the resolved principal inside AssistanceRailService. Both verbs are
+        // stubbed because the read and the Tier 0 write are separate handlers.
+
+        @GetMapping("/api/v1/assistance/rail")
+        String assistanceRail() {
+            return "rail";
+        }
+
+        @PutMapping("/api/v1/assistance/rail/memory")
+        String assistanceRailMemory() {
+            return "rail-memory";
+        }
+
         // ── Master data: anonymous READ, admin WRITE (UST456) ──
         // Reads and writes are separate handlers on the same paths because the whole point of the fix
         // is that the verb decides. A single handler could not express "GET open, POST closed".
@@ -472,6 +489,104 @@ class SecurityConfigEnforcementTest {
     void similarCasesStatusIsAlsoStaffOnly() throws Exception {
         mockMvc.perform(get("/api/v1/similar-cases/status").with(jwtWithRole("CITIZEN")))
                 .andExpect(status().isForbidden());
+    }
+
+    // ───────────── Assistance rail is staff-only aggregate data (Brief 21) ─────────────
+    //
+    // Written as refusals first, for the reason the similar-cases block above states: a guard that
+    // fails OPEN still passes a happy-path test, because a guard admitting everyone admits the right
+    // role too. Only the denials can detect it.
+    //
+    // These assertions live HERE and not in a controller slice deliberately. A @WebMvcTest of
+    // AssistanceRailController does not import the real SecurityConfig, so it returns 400 where
+    // production returns 403 — it would pass while proving nothing about authorization.
+    //
+    // MUTATION-VERIFIED: deleting "/api/v1/assistance/**" from the STAFF_ROLES matcher in
+    // SecurityConfig makes the four refusal tests below fail with 200 instead of 403 — the request
+    // falls through to anyRequest().authenticated(), which a CITIZEN and an RE_USER both satisfy. The
+    // 401 and staff-200 tests keep passing under that mutation, which is precisely why the refusals
+    // are the ones that matter.
+
+    @Test
+    void assistanceRailAdmitsStaff() throws Exception {
+        mockMvc.perform(get("/api/v1/assistance/rail").param("complaintId", "CMP-1")
+                        .with(jwtWithRole("RBIO_OFFICER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void assistanceRailRefusesAnonymous() throws Exception {
+        mockMvc.perform(get("/api/v1/assistance/rail").param("complaintId", "CMP-1"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * The case the {@code anyRequest().authenticated()} fallback would admit.
+     *
+     * <p>A citizen holding a tracking session is authenticated. If the STAFF_ROLES matcher for
+     * {@code /api/v1/assistance/**} were ever removed or reordered below the fallback, this request
+     * would succeed and one citizen would read staff analytics over the whole register — how many
+     * complaints an entity closed under a clause, how long a category takes.
+     */
+    @Test
+    void assistanceRailRefusesAnAuthenticatedCitizen() throws Exception {
+        mockMvc.perform(get("/api/v1/assistance/rail").param("complaintId", "CMP-1")
+                        .with(jwtWithRole("CITIZEN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void assistanceRailRefusesARegulatedEntityUser() throws Exception {
+        mockMvc.perform(get("/api/v1/assistance/rail").param("complaintId", "CMP-1")
+                        .with(jwtWithRole("RE_USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * The Tier 0 WRITE path needs its own assertions, not just the read's.
+     *
+     * <p>It is a different verb on a different sub-path, and a matcher written as a GET-only rule would
+     * leave it to the authenticated fallback — where a citizen could write rows into an officer's
+     * continuity table.
+     */
+    @Test
+    void assistanceRailMemoryWriteAdmitsStaff() throws Exception {
+        mockMvc.perform(put("/api/v1/assistance/rail/memory").with(jwtWithRole("CEPC_REVIEWER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void assistanceRailMemoryWriteRefusesAnonymous() throws Exception {
+        mockMvc.perform(put("/api/v1/assistance/rail/memory"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void assistanceRailMemoryWriteRefusesAnAuthenticatedCitizen() throws Exception {
+        mockMvc.perform(put("/api/v1/assistance/rail/memory").with(jwtWithRole("CITIZEN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void assistanceRailMemoryWriteRefusesARegulatedEntityUser() throws Exception {
+        mockMvc.perform(put("/api/v1/assistance/rail/memory").with(jwtWithRole("RE_USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Dev identity headers must carry no authority on the rail either.
+     *
+     * <p>Specific to Tier 0: {@code RequestIdentityResolver} honours {@code X-User-Id} when
+     * {@code cms.security.allow-dev-identity-headers} is true, which is exactly the mechanism that
+     * would let a caller name another officer and read their unsaved text. Under the enforcing chain
+     * the request never reaches the resolver at all.
+     */
+    @Test
+    void assistanceRailIgnoresDevIdentityHeadersFromAnAnonymousCaller() throws Exception {
+        mockMvc.perform(get("/api/v1/assistance/rail").param("complaintId", "CMP-1")
+                        .header("X-User-Id", "another.officer")
+                        .header("X-User-Roles", "RBIO_OFFICER"))
+                .andExpect(status().isUnauthorized());
     }
 
     private static org.springframework.test.web.servlet.request.RequestPostProcessor jwtWithRole(String role) {

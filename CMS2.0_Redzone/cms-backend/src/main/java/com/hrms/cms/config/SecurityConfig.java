@@ -194,6 +194,16 @@ public class SecurityConfig {
                         // the caller's own resolved identity, so a broad staff grant here does not let
                         // one officer read another's draft.
                         "/api/v1/staff-drafts/**",
+                        // Assistance rail (Brief 21). MUST be an explicit matcher, not left to the
+                        // anyRequest().authenticated() fallback below: a citizen holding a tracking
+                        // session IS authenticated, and the rail's Tier 1 reports aggregate facts about
+                        // OTHER complaints — how many an entity closed under a given clause, how long a
+                        // category takes to close. That is staff analytics over the whole register, not
+                        // the complainant's own data, so the fallback would be a disclosure hole.
+                        //   Tier 0 (one officer's last-viewed section and unsaved text) is additionally
+                        // scoped to the caller's resolved identity inside AssistanceRailService, so this
+                        // broad staff grant does not let one officer read another's memory row.
+                        "/api/v1/assistance/**",
                         "/api/complaints/**", "/api/dashboard/**", "/api/files/**",
                         "/api/email-simulation/**").hasAnyRole(STAFF_ROLES)
 

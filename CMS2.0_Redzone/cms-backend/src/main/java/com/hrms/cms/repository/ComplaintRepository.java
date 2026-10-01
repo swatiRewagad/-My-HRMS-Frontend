@@ -2,6 +2,7 @@ package com.hrms.cms.repository;
 
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ReActivityStatus;
+import com.hrms.cms.repository.projection.AssistanceRailProjections;
 import com.hrms.cms.repository.projection.DashboardProjections;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -385,4 +386,111 @@ public interface ComplaintRepository
             + "WHERE c.createdAt IS NOT NULL AND c.status NOT IN :closedStatuses")
     @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
     long countActiveForTat(@Param("closedStatuses") Collection<String> closedStatuses);
+
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════
+    // ASSISTANCE RAIL — TIER 1 PRIORS (Brief 21)
+    //
+    // The rail renders on EVERY staff complaint screen load, so these are held to a harder standard
+    // than the dashboard aggregates above: each one must be served by an index seek, and the brief's
+    // own rule is that a prior which cannot be is dropped rather than shipped slow. Every query below
+    // was EXPLAIN-verified against the dev dataset (2769 rows) and the plan is recorded per method.
+    //
+    // ─── WHAT IS NOT HERE, AND WHY ───
+    // No text similarity, no embedding lookup, no per-request scan of description or subject. Those
+    // are the Tier 2 the brief excludes, and a LIKE '%...%' over a TEXT column would be a full table
+    // scan wearing a cheap-looking disguise.
+    //
+    // ─── COLLATION ───
+    // entity_code and closure_clause are compared with plain equality, NOT folded with UPPER(). On
+    // MySQL the utf8mb4_0900_ai_ci collation already folds them, and wrapping the column in UPPER()
+    // would defeat the index on BOTH engines — turning a 461-row seek into a 2509-row scan — for a
+    // normalisation MySQL performs for free. The measured consequence is that on Oracle these counts
+    // are case-SENSITIVE where on MySQL they are not; entity_code was measured at 31/31 distinct
+    // values under CAST(... AS BINARY), i.e. no case collisions exist to merge today.
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * The five columns the rail needs about the complaint being viewed.
+     *
+     * <p>Plan: {@code ref} on {@code idx_complaint_number} (unique), one row. This exists instead of
+     * {@code findByComplaintNumber} because that hydrates all ~105 columns and six {@code TEXT} bodies
+     * to read five scalars, on every staff screen load.
+     */
+    @Query("SELECT new com.hrms.cms.repository.projection.AssistanceRailProjections$RailContext("
+            + "c.complaintNumber, c.complainantEmail, c.entityCode, c.closureClause, c.categoryId) "
+            + "FROM Complaint c WHERE c.complaintNumber = :complaintNumber")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    Optional<AssistanceRailProjections.RailContext> findRailContext(
+            @Param("complaintNumber") String complaintNumber);
+
+    /**
+     * How many OTHER complaints this complainant has filed, matched on email.
+     *
+     * <p>Plan: {@code ref} on {@code idx_complaint_email}, {@code Extra='Using index'} — a covering
+     * index-only seek that never touches the 105-column row.
+     *
+     * <p>Email is the ONLY join key, and phone is deliberately not matched even though it would widen
+     * recall: {@code complainant_phone} CARRIES NO INDEX (verified against
+     * information_schema.STATISTICS), so adding {@code OR c.complainantPhone = :phone} converts this
+     * seek into {@code type=ALL} over the whole table — an OR across two columns cannot be
+     * index-sought even if both were indexed. Measured: 1 row examined with email alone against 2509
+     * with the OR. Per the brief's rule the constraint wins, and the recall gap is reported rather
+     * than quietly paid for.
+     *
+     * <p>The blank-email guard is not cosmetic: 21 rows store {@code ''} rather than NULL, and without
+     * it each of those complainants would be told the other 20 were "their" earlier complaints. The
+     * caller must ALSO refuse to invoke this with a blank email, so the control exists on both sides.
+     */
+    @Query("SELECT COUNT(c) FROM Complaint c "
+            + "WHERE c.complainantEmail = :email AND TRIM(c.complainantEmail) <> '' "
+            + "AND c.complaintNumber <> :excludeComplaintNumber")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    long countOtherComplaintsByComplainantEmail(
+            @Param("email") String email,
+            @Param("excludeComplaintNumber") String excludeComplaintNumber);
+
+    /**
+     * How many complaints against the SAME regulated entity closed under the SAME clause.
+     *
+     * <p>Plan: {@code ref} on {@code idx_arm_clause_entity} (added by V112 / oracle V109),
+     * {@code key_len=606}, both predicates sought, {@code Extra='Using index'}. Without that composite
+     * the plan falls back to {@code idx_complaint_closure_clause} alone and filters 461 rows for the
+     * entity — correct, but 461 row reads instead of a covering seek.
+     *
+     * <p>Precedent, not prediction. It reports what the register already contains; it does not suggest
+     * a clause, which would need the inference the brief excludes.
+     */
+    @Query("SELECT COUNT(c) FROM Complaint c "
+            + "WHERE c.closureClause = :closureClause AND c.entityCode = :entityCode "
+            + "AND c.complaintNumber <> :excludeComplaintNumber")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    long countClosedUnderSameClauseForEntity(
+            @Param("closureClause") String closureClause,
+            @Param("entityCode") String entityCode,
+            @Param("excludeComplaintNumber") String excludeComplaintNumber);
+
+    /**
+     * Filed/closed timestamp pairs for closed complaints in one category, for the median prior.
+     *
+     * <p>Plan: {@code range} on {@code idx_arm_category_closed} (category_id, closed_at, created_at),
+     * {@code Extra='Using where; Using index'} — covering, so the row is never touched. The
+     * {@link Pageable} the caller passes carries a hard cap, so this cannot return an unbounded list
+     * as history grows.
+     *
+     * <p>The pairs come back rather than a pre-computed day count because the subtraction is NOT
+     * portable: MySQL spells it {@code TIMESTAMPDIFF}, Oracle returns an INTERVAL from plain
+     * subtraction, and JPQL has no portable date-difference function. So the arithmetic happens in
+     * Java, over a capped row set.
+     *
+     * <p>MEDIAN and not AVG, forced by measured data: the seeded rows include {@code closed_at} values
+     * that PRECEDE {@code created_at} (category 5 averages -40 days over 3 rows). A mean is dragged by
+     * those; a median over the non-negative subset is not. The caller filters and reports the sample
+     * size, so a figure derived from three rows is not presented as describing the category.
+     */
+    @Query("SELECT new com.hrms.cms.repository.projection.AssistanceRailProjections$ClosureWindow("
+            + "c.createdAt, c.closedAt) FROM Complaint c "
+            + "WHERE c.categoryId = :categoryId AND c.closedAt IS NOT NULL AND c.createdAt IS NOT NULL")
+    @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
+    List<AssistanceRailProjections.ClosureWindow> findClosureWindowsForCategory(
+            @Param("categoryId") Long categoryId, Pageable pageable);
 }
