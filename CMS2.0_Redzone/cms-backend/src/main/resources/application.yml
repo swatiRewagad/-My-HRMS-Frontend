@@ -164,10 +164,15 @@ cms:
   cors:
     allowed-origins: ${CMS_CORS_ORIGINS:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300}
   similar-cases:
-    # Ships DISABLED. This was `true` while the index name below was wrong, so the lookup has been
-    # enabled and non-functional in every deployed profile; turning it on is a new-feature decision,
-    # not a restoration. Enable per environment once the index is known to be populated.
-    enabled: ${SIMILAR_CASES_ENABLED:false}
+    # Ships ENABLED (ruling, Brief 21 open ask 1). It was already `true` before, but pointed at an
+    # index that did not exist and had no timeouts, so it was enabled and inert. Both are fixed, so
+    # this now means what it says.
+    #
+    # Safe to leave on even where the index is empty or Elasticsearch is down: isAvailable() gates on
+    # a cluster health check, every failure path returns an empty list rather than an error, and the
+    # timeouts below bound the cost. Similar cases are decision SUPPORT and sit on no statutory path,
+    # so a search outage degrades the panel and never blocks an officer from acting.
+    enabled: ${SIMILAR_CASES_ENABLED:true}
     elasticsearch-url: ${ELASTICSEARCH_URL:http://localhost:9200}
     # Must match the index cms-search-service actually writes. It read `complaints` while the writer
     # used `cms-complaints`, so every query hit a non-existent index and the empty result was

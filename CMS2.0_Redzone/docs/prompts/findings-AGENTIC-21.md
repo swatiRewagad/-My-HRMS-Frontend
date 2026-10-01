@@ -83,13 +83,20 @@ was there.
 `index: ${SIMILAR_CASES_INDEX:complaints}`, while the search service writes to **`cms-complaints`**.
 The names have never matched. So the similar-cases feature queried an index nothing populated.
 
-### 2.3 …and it is enabled by default (defect)
+### 2.3 …and it was enabled by default (defect, resolved by ruling)
 
-`application.yml:167` reads `enabled: ${SIMILAR_CASES_ENABLED:true}`. The brief implied this was off.
-Combined with §2.2 and with the absence of any timeout on the old client, **every non-dev profile ships
-a similarity lookup that is enabled, points at a non-existent index, and has no timeout.** Per the
-brief's rule to default to the restrictive option, this was flipped to default OFF and the question of
-whether it should ship enabled is raised in §4.
+`application.yml:167` read `enabled: ${SIMILAR_CASES_ENABLED:true}`. The brief implied this was off.
+Combined with §2.2 and with the absence of any timeout on the old client, **every non-dev profile shipped
+a similarity lookup that was enabled, pointed at a non-existent index, and had no timeout** — enabled and
+inert, which is why it never looked broken.
+
+Both halves of that are now fixed (correct index, bounded timeouts). It was briefly flipped to default
+OFF under the brief's "default to the restrictive option" rule, and the question was put to the user as
+§4 open ask 1. **Ruling: it stays ON.** The `true` default therefore remains, but now means what it says.
+The safety argument is recorded alongside it in `application.yml`: `isAvailable()` gates on a cluster
+health check, every failure path returns an empty list rather than an error, the connect/read timeouts
+bound the cost, and similar cases are decision *support* on no statutory path — so a search outage
+degrades the panel and never blocks an officer from acting.
 
 ### 2.4 The listener was destroying indexed text on every status change (defect, fixed)
 
@@ -335,9 +342,11 @@ number in this document is a point-in-time reading, not a fixture.
 
 Each was built the restrictive way per the brief's instruction; each needs a ruling.
 
-1. **Should `cms.similar-cases.enabled` ship enabled?** Shipped **OFF**. It has been enabled and broken
-   (§2.2/§2.3), so nobody has ever seen it work in a deployed profile; turning it on is a new feature
-   decision, not a restoration.
+1. ~~**Should `cms.similar-cases.enabled` ship enabled?**~~ **RULED — ships ON** (2026-09-30). It was
+   shipped OFF on the reasoning that it had been enabled and broken (§2.2/§2.3), so nobody had ever seen
+   it work in a deployed profile, making this a new-feature decision rather than a restoration. The user
+   ruled it stays on. `application.yml` now carries `${SIMILAR_CASES_ENABLED:true}` with the degradation
+   argument written beside it; see §2.3. No further action.
 2. **Stemming for the 9 uncovered languages (§3.2).** Options: accept exact-match-only for those
    languages; buy/build stemmers; or add curated synonym lists per language. Shipped as-is
    (exact-match-only) with the limitation documented. This should be disclosed to anyone promising
