@@ -62,6 +62,21 @@ interface CepcBucket {
   code: string;
   labelKey: string;
   match: (c: CepcComplaint) => boolean;
+  /**
+   * Offered even when the role currently holds nothing in it.
+   *
+   * <p>Occupancy-derivation alone is NOT what the reference vertical does. GET
+   * /api/v1/rbio/status-filters returns a per-role MASTER list (15 entries for RBIO_OFFICER, 17 for
+   * the Supervisor, 34 for the Admin) and rbio-home.component.html:148 renders every one of them
+   * unconditionally — MEETING_SCHEDULED and SENT_BACK_DO are on the strip whether or not a single
+   * complaint sits in them. "Has anything been sent back to me?" is a question whose legitimate
+   * answer is zero, and a strip that hides the bucket cannot answer it.
+   *
+   * <p>So these two are pinned while the rest stay occupancy-derived. The strip is still
+   * role-DEPENDENT, because the derived part differs: the DO holds ASSIGNED / FORWARDED /
+   * INFO_REQUESTED / RE_RESPONDED, the Reviewer holds REVIEWER_REVIEW.
+   */
+  alwaysShow?: boolean;
 }
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
@@ -200,7 +215,7 @@ export class CepcDashboardComponent implements OnInit {
     { code: 'forwarded', labelKey: 'status.forwarded', match: c => c.status === 'forwarded' },
     { code: 'forwarded_external', labelKey: 'status.forwarded_external', match: c => c.status === 'forwarded_external' },
     { code: 'forwarded_to_contact', labelKey: 'status.forwarded_to_contact', match: c => c.status === 'forwarded_to_contact' },
-    { code: 'sent_back', labelKey: 'status.sent_back', match: c => c.status === 'sent_back' },
+    { code: 'sent_back', labelKey: 'status.sent_back', match: c => c.status === 'sent_back', alwaysShow: true },
     { code: 'awaiting_closure', labelKey: 'status.awaiting_closure', match: c => c.status === 'awaiting_closure' },
     { code: 'escalated', labelKey: 'status.escalated', match: c => c.status === 'escalated' },
     { code: 'resolved', labelKey: 'status.resolved', match: c => c.status === 'resolved' },
@@ -211,14 +226,21 @@ export class CepcDashboardComponent implements OnInit {
       code: 'meeting_scheduled',
       labelKey: 'cepc.bucket.meeting_scheduled',
       match: c => c.workflowStage === 'MEETING_SCHEDULED',
+      alwaysShow: true,
     },
     { code: 'reopened', labelKey: 'cepc.bucket.reopened', match: c => c.reopenCount > 0 },
   ];
 
-  /** Only the buckets this role holds work in, so no bucket is offered that returns nothing. */
+  /**
+   * The buckets this role holds work in, PLUS the ones pinned by `alwaysShow`.
+   *
+   * <p>Occupancy decides the long tail so no bucket is offered that returns nothing, which is what
+   * stopped the DO's 445 unreachable complaints. The pinned pair is the deliberate exception — see
+   * {@link CepcBucket.alwaysShow} for why the reference vertical shows them unconditionally.
+   */
   visibleBuckets = computed(() => {
     const all = this.complaints();
-    return this.allBuckets.filter(b => all.some(c => b.match(c)));
+    return this.allBuckets.filter(b => b.alwaysShow || all.some(c => b.match(c)));
   });
 
   bucketCount(bucket: CepcBucket): number {
