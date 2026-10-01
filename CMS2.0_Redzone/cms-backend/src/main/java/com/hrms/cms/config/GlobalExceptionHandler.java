@@ -13,10 +13,12 @@ import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -29,6 +31,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @RestControllerAdvice
@@ -347,6 +350,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException ex) {
         log.warn("No handler for {}", ex.getResourcePath());
         return buildResponse(HttpStatus.NOT_FOUND, "The requested resource does not exist.");
+    }
+
+    /**
+     * A path that exists but does not serve this verb is a 405, not a server fault.
+     *
+     * Same class of mistake as the 404 above, and it hid a real contract question: a PUT against an
+     * append-only resource answered "500 An internal error occurred", which reads as a crash during
+     * an accepted write rather than a refusal to accept the write at all. A caller cannot tell those
+     * apart, and a 500 invites a retry that will never succeed. Spring knows the verbs the path does
+     * serve, so the Allow header is set from them — that is what makes the refusal actionable.
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method {} not supported for this path; supported: {}", ex.getMethod(), ex.getSupportedHttpMethods());
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpStatus.METHOD_NOT_ALLOWED.value());
+        body.put("error", HttpStatus.METHOD_NOT_ALLOWED.getReasonPhrase());
+        body.put("message", "The " + ex.getMethod() + " method is not supported for this resource.");
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED);
+        Set<HttpMethod> supported = ex.getSupportedHttpMethods();
+        if (supported != null && !supported.isEmpty()) {
+            response.allow(supported.toArray(new HttpMethod[0]));
+        }
+        return response.body(body);
     }
 
     @ExceptionHandler(Exception.class)
