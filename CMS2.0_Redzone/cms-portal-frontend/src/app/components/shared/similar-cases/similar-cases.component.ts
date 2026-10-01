@@ -82,7 +82,13 @@ export class SimilarCasesComponent {
   /** Shows the panel's own close affordance. Off for a host that supplies its own chrome. */
   readonly showClose = input(true);
 
-  readonly close = output<void>();
+  /**
+   * Named `closePanel`, not `close`: `close` is a standard DOM event name, so an output called that
+   * trips `@angular-eslint/no-output-native` and — the real hazard — a host's `(close)` binding becomes
+   * ambiguous between this output and the native event once the panel is ever wrapped in a `<dialog>`.
+   * The sibling action bar carries that error already; it is not propagated here.
+   */
+  readonly closePanel = output<void>();
   readonly selectCase = output<SimilarCase>();
 
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
@@ -146,7 +152,7 @@ export class SimilarCasesComponent {
   onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.stopPropagation();
-      this.close.emit();
+      this.closePanel.emit();
     }
   }
 

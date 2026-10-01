@@ -13,6 +13,11 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+
+  // The region carries `tabindex="-1"` so the Escape handler sits on a real focus target. No ring on
+  // it: focus is moved to the heading inside, which has its own indicator, and a ring around the whole
+  // drawer would read as a second selection.
+  &:focus { outline: none; }
 }
 
 .similar-header {

@@ -19,7 +19,16 @@
   nothing, and the lazy search in the component cannot be mistaken for a load-time fetch.
 -->
 @if (open()) {
+  <!--
+    The Escape handler is on the `tabindex="-1"` region rather than on a plain `<section>`: a keydown
+    listener on a non-focusable element only ever fires through bubbling, so it silently depends on
+    something inside being focused, and `@angular-eslint/template/interactive-supports-focus` flags
+    exactly that. `tabindex="-1"` plus `role="region"` makes the panel a real focus target — the
+    component already moves focus to the heading on open, so Escape has somewhere to bubble from.
+  -->
   <section class="similar-cases" data-testid="similar-cases"
+           role="region" tabindex="-1"
+           [attr.aria-label]="'similar.panel_title' | translate"
            [attr.aria-busy]="loading()"
            (keydown)="onKeydown($event)">
 
@@ -35,7 +44,7 @@
       @if (showClose()) {
         <button type="button" class="similar-close" data-testid="similar-close"
                 [attr.aria-label]="'similar.close' | translate"
-                (click)="close.emit()">
+                (click)="closePanel.emit()">
           <i class="pi pi-chevron-right" aria-hidden="true"></i>
         </button>
       }
