@@ -262,10 +262,19 @@ n   MIN(created_at)             MAX(created_at)             spread_ms
 
 The consequence reaches past seeding. Any date-range reporting, ageing bucket or TAT figure computed
 over demo or seeded data is measuring insert time, not complaint time, and will look plausible while
-being meaningless. Left unfixed and reported rather than patched: `Complaint` is a shared entity on
-several sessions' critical path, and changing persistence semantics under them during parallel work is
-how a one-line fix becomes someone else's afternoon. The corpus seeder does not depend on
-`createdAt`.
+being meaningless. Worse, `closedAt` is *not* among the overwritten fields, so it survived while
+`createdAt` did not — closure then preceded filing on **10 of the 11** closed-and-categorised demo
+rows (`CMS-DEMO-1044`: created 2026-08-06, closed 2026-05-31, a window of **-67 days**). The
+closure-window query discards non-negative-window rows, which is one of the two reasons the rail's
+category prior had no sample (§5b). The same field also derives the **statutory appeal window** in
+`AppealClassificationService`.
+
+**Now fixed** (`c83f289`). I initially reported this rather than patching it, on the grounds that
+`Complaint` is a shared entity on several sessions' critical path; the user directed that it be fixed,
+so it was, and the shared-entity risk was discharged by running the full backend suite rather than
+reasoned about (§5c). Defaulting is now per-field and conditional — an unset field still receives
+`now()`, a supplied one is honoured. `ComplaintTimestampTest` covers both halves plus the
+negative-window form that actually caused harm; **5 of its 8 tests fail with the fix reverted.**
 
 ---
 
@@ -480,22 +489,39 @@ Stated per deliverable so nothing here is read as more complete than it is.
 | §5.3.6 template wiring | **Built** | `comment-template-picker` component + `SimilarCasesTranslationSeeder` (`@Order(69)`, 19 keys × 11 locales) in `262d8cd` |
 | Synthetic multilingual corpus seeder | **Built** | `fc28ab3`: 26 `CMS-MLCORPUS-*` rows, dev-local only; `CorpusReindexIT` carries them through the real `ReindexJob`. The measured tally is weaker than the brief implies — see §3.2a |
 | cms-search-service boots | **Fixed** | `3e0c4fc`. It did **not** boot at all until this commit — see §2.14 |
+| `@PrePersist` no longer discards supplied dates | **Fixed** | `c83f289`. 8 `ComplaintTimestampTest` tests; 5 fail when reverted — §2.15 |
+| The category-closure prior can fire | **Fixed** | `cb65c75`. 11 `DemoDataSeederClosureCohortTest` tests; two independent causes, both measured — §5c |
 
-**Backend suite at the gate:** 82/82, 0 failures (48 `SecurityConfigEnforcementTest`, 30
-`AssistanceRailServiceTest`, 4 `SimilarCasesServiceTest`), plus 5 `ElasticsearchConfigWiringTest` and
-4 `MultilingualCorpusSeederProfileTest`.
+**Backend suite at the gate:** the brief-specific classes are 82/82, 0 failures (48
+`SecurityConfigEnforcementTest`, 30 `AssistanceRailServiceTest`, 4 `SimilarCasesServiceTest`), plus 5
+`ElasticsearchConfigWiringTest` and 4 `MultilingualCorpusSeederProfileTest`.
+
+**Full `cms-backend` suite after the shared-entity change:** **1447 tests, 0 failures, 0 errors, 0
+skipped** across 358 report files. This run is the evidence that changing `Complaint.onCreate()` — a
+shared entity on several sessions' critical path — regressed nothing; that risk was discharged by
+measurement, not by argument. The arithmetic ties to the prior baseline exactly: **1428 + 19 new =
+1447** (8 `ComplaintTimestampTest`, 11 `DemoDataSeederClosureCohortTest`).
+
+**A counting trap worth recording.** A naive tally over `target/surefire-reports/*.xml` reported
+**1482 tests and 3 failures**. All three were a *stale* report — `SimilarCasesControllerAuthzTest`,
+mtime 09:16 against a run that finished 12:28, for a class that no longer exists at that path (its
+authorisation coverage lives in `SecurityConfigEnforcementTest`, which `@Import`s the real filter chain
+and so does not hit the 400-vs-403 trap described in §5b). `mvn test` does not clear orphaned reports,
+and its own exit code was 0. **Filter reports by mtime, or `mvn clean`, before quoting a total** —
+otherwise a deleted test fails your gate forever.
 
 **What is still genuinely not built**, and should not be read as oversight:
 
 - **Uploaded-document text extraction** (part of deliverable 2) — blocked on open ask 4.
 - Everything in §5, which was out of scope by instruction.
 
-**Two things verified by unit test but never observed on real data.** Recorded here rather than in a
-passing column, because a green test over absent data proves only the logic:
+**Verified by unit test but not observed on real data:**
 
-- The rail's `category-closure-time` prior **has never fired on real data**: `category_id` is populated
-  on 79 of 2769 rows. A data gap, not a logic gap, but the panel will stay silent on most complaints.
 - Oracle EXPLAIN plans for V109 are **reasoned, not measured** — no Oracle instance was reachable.
+
+The rail's `category-closure-time` prior was in this list too, and is **no longer** — see §5c. The
+figure I first reported for it ("79 of 2769 rows carry a `category_id`") was both stale on
+re-measurement and the wrong diagnosis; §5c carries the corrected numbers and the two real causes.
 
 **A note for whoever picks up frontend work here.** The shared Angular dev server serves the *main*
 checkout, not this worktree, so a browser assertion against a component edited here renders the old
@@ -545,6 +571,54 @@ One related trap worth recording for the next person writing such a test: these 
 controller slice, because `GlobalExceptionHandler` maps bare `RuntimeException` to **HTTP 400** and
 `AccessDeniedException` is a `RuntimeException` — so in a slice test a denial surfaces as 400 and an
 assertion of 403 fails for a reason that has nothing to do with authorisation.
+
+---
+
+## 5c. Why the category-closure prior never fired, measured
+
+I first reported this as a single data gap — "`category_id` is populated on 79 of 2769 rows" — and
+recommended no fix. Measuring it properly before patching showed that diagnosis was wrong twice over,
+and the correction is the useful part of this section.
+
+**The count was stale, and the interpretation was misleading.** Re-measured: **117 of 3027** rows carry
+a `category_id`. But the ~2,634 uncategorised rows are QA and E2E fixtures, not production filings —
+"QA-CEPC Dashboard Grid Fixture" alone accounts for 134 of them. The real filing path **does** set
+`category_id` (`ComplaintApiV1Controller.java:169`). So "the panel will stay silent on most
+complaints" overstated it: the panel stays silent on most *test rows*.
+
+**There were two independent causes, and fixing either alone would not have worked.**
+
+| | Cause | Measured |
+|---|---|---|
+| A | Closure preceded filing, so the window was negative and the rows were discarded | **10 of 11** closed+categorised rows; worst `CMS-DEMO-1044` at **-67 days** |
+| B | Even with correct dates, no category held enough closed rows | **max 3** in any one category, against `MIN_CLOSURE_SAMPLE` of **5** |
+
+Cause A is `@PrePersist` (§2.15). Cause B is independent of it and would have survived that fix
+untouched: one status in six is `"closed"`, spread across eight categories, so 60 random rows cannot
+reach five per category at any seed. This is why the fix is two commits, not one.
+
+**The floor was not lowered to fit the fixture.** Five is a statistical guard on what may be shown to
+an officer as "this category closes in N days"; the fixture was what was inadequate. The cohort is
+sized at six per category and the test *imports* `MIN_CLOSURE_SAMPLE` rather than hardcoding it, so
+raising the guard to 10 fails the test and the fixture gets fixed — rather than the two drifting apart
+silently, which is the failure mode that produced this gap.
+
+**A third defect surfaced underneath.** The seeder's skip guard was `complaintRepo.count() >= 80` over
+the whole table. The shared dev database holds ~3,000 rows, so the guard short-circuited
+**permanently**: the demo series could never be rewritten or extended, which is why the corrupt
+timestamps persisted as long as they did. It now counts only its own `CMS-DEMO-` series.
+
+**One pre-existing quirk recorded rather than silently excluded.** The random generator picks
+`createdAt` as little as 0 days ago and then adds up to 20 days of resolution and closure, so at seed
+42 **2 of 60** rows close *after* now(). That is harmless to the prior — a future closure still yields
+a positive window and is measured, not discarded — but a dashboard showing complaints closed next week
+is worth knowing about before someone reports it as a bug in the rail. The test asserts the quirk
+(`randomRowsCanCloseInTheFuture`) rather than filtering it out of view.
+
+**Still outstanding:** the fix affects new inserts only. The 60 existing `CMS-DEMO-*` rows in the
+shared dev database **remain corrupt** until that series is deleted and reseeded — which the new
+prefix-scoped guard now makes possible. I have not deleted them, because that database is shared with
+six other sessions and is not mine to truncate.
 
 ---
 
