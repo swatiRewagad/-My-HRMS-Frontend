@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Outer circle - dark blue -->
+  <circle cx="100" cy="100" r="96" fill="none" stroke="#1e3a5f" stroke-width="3"/>
+  <circle cx="100" cy="100" r="88" fill="none" stroke="#c8a415" stroke-width="2"/>
+
+  <!-- Top Hindi text -->
+  <defs>
+    <path id="topText" d="M 28,100 A 72,72 0 0,1 172,100"/>
+    <path id="bottomText" d="M 172,108 A 72,72 0 0,1 28,108"/>
+  </defs>
+  <text font-size="11" fill="#1e3a5f" font-family="sans-serif" font-weight="bold">
+    <textPath href="#topText" startOffset="10%">भारतीय रिज़र्व बैंक</textPath>
+  </text>
+  <text font-size="9" fill="#1e3a5f" font-family="sans-serif">
+    <textPath href="#bottomText" startOffset="2%">आर बी - आई ओ एस  RB - IOS</textPath>
+  </text>
+
+  <!-- Central colorful imagery -->
+  <!-- Yellow sun/circle -->
+  <circle cx="100" cy="45" r="12" fill="#f59e0b"/>
+
+  <!-- Green landscape/tree -->
+  <path d="M 60,85 Q 80,50 100,65 Q 120,50 140,85 Z" fill="#16a34a"/>
+
+  <!-- People silhouettes -->
+  <circle cx="80" cy="72" r="6" fill="#2B3990"/>
+  <rect x="76" y="78" width="8" height="12" fill="#2B3990" rx="3"/>
+
+  <circle cx="100" cy="68" r="7" fill="#dc2626"/>
+  <rect x="95" y="75" width="10" height="14" fill="#dc2626" rx="3"/>
+
+  <circle cx="120" cy="72" r="6" fill="#7c3aed"/>
+  <rect x="116" y="78" width="8" height="12" fill="#7c3aed" rx="3"/>
+
+  <!-- Tiger/animal -->
+  <ellipse cx="85" cy="100" rx="12" ry="8" fill="#f97316"/>
+  <circle cx="78" cy="96" r="4" fill="#f97316"/>
+
+  <!-- Ground -->
+  <path d="M 55,105 Q 100,115 145,105 L 145,112 Q 100,120 55,112 Z" fill="#8b5e3c"/>
+</svg>

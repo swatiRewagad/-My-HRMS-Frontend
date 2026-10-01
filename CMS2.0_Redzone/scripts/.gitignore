@@ -1,0 +1,4 @@
+# Python bytecode. i18n_check.py gets imported by an ad-hoc sanity check, which produces a
+# __pycache__ directory next to it; nothing here should ever be committed.
+__pycache__/
+*.pyc

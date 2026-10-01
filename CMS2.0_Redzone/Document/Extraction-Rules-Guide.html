@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS Extraction Rules - User Guide</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; padding: 40px; }
+        .container { max-width: 1100px; margin: 0 auto; }
+        h1 { font-size: 32px; color: #1e1b4b; margin-bottom: 8px; }
+        .subtitle { color: #64748b; font-size: 16px; margin-bottom: 40px; }
+        h2 { font-size: 22px; color: #312e81; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e0e7ff; }
+        h3 { font-size: 18px; color: #4338ca; margin: 24px 0 12px; }
+        p { margin-bottom: 12px; }
+        .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-blue { border-left: 4px solid #4338ca; }
+        .card-green { border-left: 4px solid #059669; }
+        .card-orange { border-left: 4px solid #d97706; }
+        .card-red { border-left: 4px solid #dc2626; }
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+        th { background: #f1f5f9; color: #475569; padding: 12px 16px; text-align: left; font-weight: 600; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 10px 16px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+        tr:hover td { background: #f8fafc; }
+        code { background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-family: 'JetBrains Mono', 'Consolas', monospace; font-size: 13px; color: #7c3aed; }
+        .code-block { background: #1e1b4b; color: #e0e7ff; padding: 16px 20px; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 14px; overflow-x: auto; margin: 12px 0; }
+        .code-block .comment { color: #94a3b8; }
+        .code-block .highlight { color: #fbbf24; font-weight: bold; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .badge-regex { background: #ede9fe; color: #5b21b6; }
+        .badge-keyword { background: #dbeafe; color: #1d4ed8; }
+        .badge-field { background: #ecfdf5; color: #065f46; }
+        .example-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 16px; margin: 12px 0; }
+        .example-box strong { color: #92400e; }
+        .match { background: #bbf7d0; padding: 1px 4px; border-radius: 3px; font-weight: 600; }
+        .no-match { background: #fecaca; padding: 1px 4px; border-radius: 3px; text-decoration: line-through; }
+        .flow-diagram { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 20px 0; }
+        .flow-step { background: #fff; border: 2px solid #c7d2fe; border-radius: 10px; padding: 12px 20px; text-align: center; font-size: 14px; font-weight: 500; }
+        .flow-step.active { background: #4338ca; color: #fff; border-color: #4338ca; }
+        .flow-arrow { font-size: 20px; color: #a5b4fc; }
+        .tip { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 16px; margin: 12px 0; font-size: 14px; }
+        .tip::before { content: "💡 "; }
+        .warning { background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px; margin: 12px 0; font-size: 14px; }
+        .warning::before { content: "⚠️ "; }
+        .breakdown-table td:first-child { font-family: 'JetBrains Mono', monospace; color: #7c3aed; white-space: nowrap; }
+        ul { padding-left: 20px; margin: 8px 0; }
+        li { margin: 6px 0; }
+        .toc { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; }
+        .toc h3 { margin-top: 0; }
+        .toc a { color: #4338ca; text-decoration: none; font-size: 14px; }
+        .toc a:hover { text-decoration: underline; }
+        .toc ul { list-style: none; padding-left: 0; }
+        .toc li { padding: 4px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>Extraction Rules — User Guide</h1>
+    <p class="subtitle">How to configure rules that automatically extract complaint data from emails in CMS 2.0</p>
+
+    <div class="toc">
+        <h3>Contents</h3>
+        <ul>
+            <li><a href="#what">1. What are Extraction Rules?</a></li>
+            <li><a href="#how">2. How It Works (Flow)</a></li>
+            <li><a href="#types">3. Pattern Types: Regex vs Keywords</a></li>
+            <li><a href="#regex-guide">4. Regex Patterns — Explained Simply</a></li>
+            <li><a href="#breakdown">5. Pattern Breakdown: Pincode Example</a></li>
+            <li><a href="#templates">6. Ready-to-Use Templates</a></li>
+            <li><a href="#priority">7. Understanding Priority</a></li>
+            <li><a href="#fields">8. Available Target Fields</a></li>
+            <li><a href="#tips">9. Tips & Best Practices</a></li>
+        </ul>
+    </div>
+
+    <!-- Section 1 -->
+    <h2 id="what">1. What are Extraction Rules?</h2>
+    <div class="card card-blue">
+        <p>Extraction Rules are <strong>pattern-matching definitions</strong> that automatically pull out specific data (like pincode, phone number, bank name) from incoming complaint emails and map them to complaint form fields.</p>
+        <p>Instead of a DEO manually reading every email and typing in details, rules do it automatically — before the email even reaches the DEO's queue.</p>
+    </div>
+
+    <!-- Section 2 -->
+    <h2 id="how">2. How It Works (Flow)</h2>
+    <div class="flow-diagram">
+        <div class="flow-step">Email arrives</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step active">Rules scan text</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">Fields auto-filled</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">AI/OCR fills gaps</div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">DEO reviews</div>
+    </div>
+    <div class="card">
+        <ul>
+            <li><strong>Step 1:</strong> Email arrives in the system</li>
+            <li><strong>Step 2:</strong> All active extraction rules scan the email subject & body</li>
+            <li><strong>Step 3:</strong> Matched data is auto-filled into complaint fields</li>
+            <li><strong>Step 4:</strong> AI/OCR fills any remaining empty fields (from attachments)</li>
+            <li><strong>Step 5:</strong> DEO verifies and submits</li>
+        </ul>
+        <div class="tip">Rules run BEFORE AI. Rule-extracted values take priority over AI-extracted values.</div>
+    </div>
+
+    <!-- Section 3 -->
+    <h2 id="types">3. Pattern Types</h2>
+
+    <div class="card card-green">
+        <h3><span class="badge badge-keyword">KEYWORD LIST</span> — Easiest to use</h3>
+        <p>Just list words/phrases separated by commas. If any of them appear in the email, it's a match.</p>
+        <div class="example-box">
+            <strong>Pattern:</strong> <code>SBI, State Bank of India, HDFC, HDFC Bank, ICICI</code><br><br>
+            <strong>Email says:</strong> "I have a complaint against <span class="match">HDFC Bank</span> regarding my savings account."<br>
+            <strong>Result:</strong> entityName = "HDFC Bank" ✓
+        </div>
+    </div>
+
+    <div class="card card-blue">
+        <h3><span class="badge badge-regex">REGEX</span> — For structured data (numbers, emails, dates)</h3>
+        <p>A pattern language that matches text structures like "any 6 digits" or "text@text.com".</p>
+        <p><strong>Don't worry!</strong> Use the templates in the portal — they auto-fill regex patterns for you.</p>
+    </div>
+
+    <!-- Section 4 -->
+    <h2 id="regex-guide">4. Regex Patterns — Explained Simply</h2>
+    <p>Think of regex as a "search pattern with wildcards". Here are the building blocks:</p>
+
+    <table>
+        <thead>
+            <tr><th>Symbol</th><th>Meaning</th><th>Example</th><th>Matches</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><code>\d</code></td><td>Any single digit (0-9)</td><td><code>\d\d\d</code></td><td>123, 456, 789</td></tr>
+            <tr><td><code>\d{6}</code></td><td>Exactly 6 digits</td><td><code>\d{6}</code></td><td>400001, 110023</td></tr>
+            <tr><td><code>[1-8]</code></td><td>A digit from 1 to 8</td><td><code>[1-8]\d{5}</code></td><td>400001 (not 900001)</td></tr>
+            <tr><td><code>[6-9]</code></td><td>A digit from 6 to 9</td><td><code>[6-9]\d{9}</code></td><td>9876543210 (phone)</td></tr>
+            <tr><td><code>\b</code></td><td>Word boundary (start/end of word)</td><td><code>\b\d{6}\b</code></td><td>"pin 400001" but not "12345678"</td></tr>
+            <tr><td><code>\s</code></td><td>Any whitespace (space, tab)</td><td><code>pin\s*code</code></td><td>pin code, pincode</td></tr>
+            <tr><td><code>*</code></td><td>Zero or more of previous</td><td><code>\s*</code></td><td>Any amount of spaces</td></tr>
+            <tr><td><code>?</code></td><td>Zero or one of previous (optional)</td><td><code>(?:code)?</code></td><td>"code" or nothing</td></tr>
+            <tr><td><code>|</code></td><td>OR</td><td><code>pin|PIN|postal</code></td><td>pin, PIN, or postal</td></tr>
+            <tr><td><code>(...)</code></td><td>Capture group — what gets extracted</td><td><code>(\d{6})</code></td><td>Extracts the 6 digits</td></tr>
+            <tr><td><code>(?:...)</code></td><td>Group but DON'T capture</td><td><code>(?:pin|PIN)</code></td><td>Matches but doesn't extract this part</td></tr>
+            <tr><td><code>[:\s-]*</code></td><td>Any mix of colon, space, dash (optional)</td><td><code>[:\s-]*</code></td><td>": ", "- ", " ", ""</td></tr>
+        </tbody>
+    </table>
+
+    <!-- Section 5 -->
+    <h2 id="breakdown">5. Pattern Breakdown: Pincode Example</h2>
+    <div class="card card-blue">
+        <div class="code-block">
+            <span class="comment">// The full pattern:</span><br>
+            <span class="highlight">(?:pin\s*(?:code)?|PIN|pincode|postal|zip|address)[:\s-]*([1-8]\d{5})\b</span>
+        </div>
+
+        <table class="breakdown-table">
+            <thead>
+                <tr><th>Part</th><th>Meaning</th><th>What it matches</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>(?:</td><td>Start a group (don't capture this part)</td><td></td></tr>
+                <tr><td>pin\s*(?:code)?</td><td>"pin" + optional spaces + optional "code"</td><td>pin, pin code, pincode</td></tr>
+                <tr><td>|PIN</td><td>OR uppercase "PIN"</td><td>PIN</td></tr>
+                <tr><td>|pincode</td><td>OR "pincode"</td><td>pincode</td></tr>
+                <tr><td>|postal</td><td>OR "postal"</td><td>postal code</td></tr>
+                <tr><td>|zip</td><td>OR "zip"</td><td>zip</td></tr>
+                <tr><td>|address</td><td>OR "address"</td><td>address</td></tr>
+                <tr><td>)</td><td>End of keyword group</td><td></td></tr>
+                <tr><td>[:\s-]*</td><td>Optional colon, spaces, or dash after keyword</td><td>": ", "- ", " "</td></tr>
+                <tr><td>(</td><td><strong>START capturing</strong> (this is what gets extracted)</td><td></td></tr>
+                <tr><td>[1-8]</td><td>First digit must be 1-8 (valid Indian pincode)</td><td>4, 1, 7</td></tr>
+                <tr><td>\d{5}</td><td>Followed by exactly 5 more digits</td><td>00001, 10023</td></tr>
+                <tr><td>)</td><td><strong>END capturing</strong></td><td></td></tr>
+                <tr><td>\b</td><td>Word boundary (number must end here)</td><td></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="example-box">
+        <strong>Matches:</strong><br>
+        • "Pincode: <span class="match">400001</span>" ✓<br>
+        • "pin code - <span class="match">110001</span>" ✓<br>
+        • "address <span class="match">560034</span>" ✓<br>
+        • "PIN: <span class="match">700001</span>" ✓<br><br>
+        <strong>Does NOT match:</strong><br>
+        • "amount <span class="no-match">500000</span>" ✗ (no keyword before it)<br>
+        • "transaction <span class="no-match">123456</span>" ✗ (no keyword before it)<br>
+        • "pincode <span class="no-match">900001</span>" ✗ (starts with 9, invalid)
+    </div>
+
+    <!-- Section 6 -->
+    <h2 id="templates">6. Ready-to-Use Templates</h2>
+    <p>These are available in the portal via the "Quick Start" dropdown. No regex knowledge needed — just select and save!</p>
+
+    <table>
+        <thead>
+            <tr><th>Template</th><th>Type</th><th>Target Field</th><th>Pattern</th><th>What it extracts</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>6-digit Pincode</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">complainantPincode</span></td>
+                <td><code>\b(\d{6})\b</code></td>
+                <td>Any 6-digit number</td>
+            </tr>
+            <tr>
+                <td><strong>10-digit Phone</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">complainantPhone</span></td>
+                <td><code>\b([6-9]\d{9})\b</code></td>
+                <td>Indian mobile number</td>
+            </tr>
+            <tr>
+                <td><strong>Email Address</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">complainantEmail</span></td>
+                <td><code>\b([a-zA-Z0-9._%+-]+@...)\b</code></td>
+                <td>Email like user@example.com</td>
+            </tr>
+            <tr>
+                <td><strong>Amount (₹/Rs.)</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">amountInvolved</span></td>
+                <td><code>(?:Rs\.?|₹|INR)\s*([\d,]+)</code></td>
+                <td>Amount after ₹, Rs., INR</td>
+            </tr>
+            <tr>
+                <td><strong>Date (DD/MM/YYYY)</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">transactionDate</span></td>
+                <td><code>\b(\d{2}[/-]\d{2}[/-]\d{4})\b</code></td>
+                <td>Dates like 15/03/2026</td>
+            </tr>
+            <tr>
+                <td><strong>Person Name</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">complainantName</span></td>
+                <td><code>(?:I am|My name is)\s+(...)</code></td>
+                <td>Name after "I am" / "My name is"</td>
+            </tr>
+            <tr>
+                <td><strong>CPGRAMS Number</strong></td>
+                <td><span class="badge badge-regex">Regex</span></td>
+                <td><span class="badge badge-field">cpgramsNumber</span></td>
+                <td><code>(?:CPGRAMS?)[:\s]*([A-Z0-9/-]+)</code></td>
+                <td>CPGRAMS reference</td>
+            </tr>
+            <tr>
+                <td><strong>Bank Names</strong></td>
+                <td><span class="badge badge-keyword">Keywords</span></td>
+                <td><span class="badge badge-field">entityName</span></td>
+                <td><code>SBI, HDFC, ICICI, PNB...</code></td>
+                <td>Indian bank names</td>
+            </tr>
+            <tr>
+                <td><strong>Category - ATM</strong></td>
+                <td><span class="badge badge-keyword">Keywords</span></td>
+                <td><span class="badge badge-field">category</span></td>
+                <td><code>ATM, cash withdrawal...</code></td>
+                <td>ATM-related keywords</td>
+            </tr>
+            <tr>
+                <td><strong>Category - UPI</strong></td>
+                <td><span class="badge badge-keyword">Keywords</span></td>
+                <td><span class="badge badge-field">category</span></td>
+                <td><code>UPI, PhonePe, GPay...</code></td>
+                <td>UPI-related keywords</td>
+            </tr>
+            <tr>
+                <td><strong>Category - Credit Card</strong></td>
+                <td><span class="badge badge-keyword">Keywords</span></td>
+                <td><span class="badge badge-field">category</span></td>
+                <td><code>credit card, VISA...</code></td>
+                <td>Credit card keywords</td>
+            </tr>
+            <tr>
+                <td><strong>Category - Loan</strong></td>
+                <td><span class="badge badge-keyword">Keywords</span></td>
+                <td><span class="badge badge-field">category</span></td>
+                <td><code>loan, EMI, mortgage...</code></td>
+                <td>Loan-related keywords</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Section 7 -->
+    <h2 id="priority">7. Understanding Priority</h2>
+    <div class="card card-orange">
+        <p><strong>Priority</strong> controls which rule runs first. <strong>Higher number = checked first.</strong></p>
+        <table>
+            <thead><tr><th>Priority</th><th>Use For</th><th>Example</th></tr></thead>
+            <tbody>
+                <tr><td><code>200+</code></td><td>Specific/accurate rules (with keywords)</td><td>Pincode with "Pincode:" keyword</td></tr>
+                <tr><td><code>100</code></td><td>Normal rules (default)</td><td>Phone number extraction</td></tr>
+                <tr><td><code>50</code></td><td>Fallback/generic rules</td><td>Any 6-digit number as pincode guess</td></tr>
+            </tbody>
+        </table>
+        <div class="tip"><strong>First match per field wins.</strong> If a priority-200 rule already extracted "complainantPincode", the priority-50 rule is skipped for that field.</div>
+    </div>
+
+    <h3>Example: Two Pincode Rules</h3>
+    <table>
+        <thead><tr><th>Priority</th><th>Rule</th><th>When it matches</th></tr></thead>
+        <tbody>
+            <tr><td><strong>200</strong></td><td>Pincode (with keyword)</td><td>"Pincode: 400001" — definite match</td></tr>
+            <tr><td><strong>50</strong></td><td>Pincode (fallback)</td><td>Any 6-digit number starting 1-8 — best guess</td></tr>
+        </tbody>
+    </table>
+    <p>If the email says "Pincode: 400001", the priority-200 rule catches it. If it just says "Mumbai 400001" without any keyword, the fallback (priority 50) picks it up.</p>
+
+    <!-- Section 8 -->
+    <h2 id="fields">8. Available Target Fields</h2>
+    <p>These are the complaint form fields that rules can auto-fill:</p>
+    <table>
+        <thead><tr><th>Field Name</th><th>Description</th><th>Example Value</th></tr></thead>
+        <tbody>
+            <tr><td><span class="badge badge-field">complainantName</span></td><td>Name of the person filing complaint</td><td>Rajesh Kumar</td></tr>
+            <tr><td><span class="badge badge-field">complainantPhone</span></td><td>10-digit mobile number</td><td>9876543210</td></tr>
+            <tr><td><span class="badge badge-field">complainantEmail</span></td><td>Email address</td><td>rajesh@gmail.com</td></tr>
+            <tr><td><span class="badge badge-field">complainantAddress</span></td><td>Full postal address</td><td>123 MG Road, Mumbai</td></tr>
+            <tr><td><span class="badge badge-field">complainantState</span></td><td>2-letter state code</td><td>MH, DL, KA</td></tr>
+            <tr><td><span class="badge badge-field">complainantDistrict</span></td><td>District name</td><td>Mumbai Suburban</td></tr>
+            <tr><td><span class="badge badge-field">complainantPincode</span></td><td>6-digit PIN code</td><td>400001</td></tr>
+            <tr><td><span class="badge badge-field">entityName</span></td><td>Bank/institution complained about</td><td>HDFC Bank</td></tr>
+            <tr><td><span class="badge badge-field">entityType</span></td><td>Type of entity</td><td>BANK, NBFC</td></tr>
+            <tr><td><span class="badge badge-field">category</span></td><td>Complaint category</td><td>ATM, UPI, LOAN</td></tr>
+            <tr><td><span class="badge badge-field">subject</span></td><td>Brief complaint subject</td><td>ATM did not dispense cash</td></tr>
+            <tr><td><span class="badge badge-field">description</span></td><td>Detailed complaint text</td><td>(full complaint body)</td></tr>
+            <tr><td><span class="badge badge-field">amountInvolved</span></td><td>Disputed amount in rupees</td><td>50000</td></tr>
+            <tr><td><span class="badge badge-field">transactionDate</span></td><td>Date of disputed transaction</td><td>15/03/2026</td></tr>
+            <tr><td><span class="badge badge-field">letterDate</span></td><td>Date on the complaint letter</td><td>20/03/2026</td></tr>
+            <tr><td><span class="badge badge-field">cpgramsNumber</span></td><td>CPGRAMS reference number</td><td>CPGRAM/2026/1234</td></tr>
+            <tr><td><span class="badge badge-field">branchName</span></td><td>Bank branch name</td><td>Andheri West Branch</td></tr>
+        </tbody>
+    </table>
+
+    <!-- Section 9 -->
+    <h2 id="tips">9. Tips & Best Practices</h2>
+    <div class="card card-green">
+        <h3>For Non-Technical Users</h3>
+        <ul>
+            <li>Always use the <strong>template dropdown</strong> — it fills the regex for you</li>
+            <li>Prefer <strong>Keyword List</strong> type for bank names, categories, and entity types</li>
+            <li>Use <strong>Test Rules</strong> button — paste a sample email and verify before saving</li>
+            <li>Set higher priority (200) for rules with specific keywords, lower (50) for generic fallbacks</li>
+        </ul>
+    </div>
+
+    <div class="card card-orange">
+        <h3>Common Mistakes to Avoid</h3>
+        <ul>
+            <li><strong>Don't create overlapping rules for the same field without priority.</strong> Two rules for "complainantPincode" at priority 100 — only the first one in the list will ever fire.</li>
+            <li><strong>Don't use very generic patterns at high priority.</strong> E.g., <code>\d{6}</code> at priority 200 will match amounts and transaction IDs too.</li>
+            <li><strong>Keyword rules are case-insensitive.</strong> "hdfc" will match "HDFC" and "Hdfc".</li>
+        </ul>
+    </div>
+
+    <div class="card card-blue">
+        <h3>Strategy: Specific → Generic</h3>
+        <p>Use a layered approach for best results:</p>
+        <table>
+            <thead><tr><th>Layer</th><th>Priority</th><th>Example</th></tr></thead>
+            <tbody>
+                <tr><td>1. Keyword-confirmed</td><td>200</td><td>"Pincode: 400001" — very accurate</td></tr>
+                <tr><td>2. Standard patterns</td><td>100</td><td>Phone number (always 10 digits starting 6-9)</td></tr>
+                <tr><td>3. Fallback guesses</td><td>50</td><td>Any 6-digit number might be a pincode</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="warning">
+        <strong>Remember:</strong> Rules auto-fill fields but the DEO always reviews before converting to a complaint. Even if a rule makes a wrong guess, the DEO can correct it.
+    </div>
+
+    <hr style="margin: 40px 0; border: none; border-top: 1px solid #e2e8f0;">
+    <p style="text-align: center; color: #94a3b8; font-size: 13px;">
+        CMS 2.0 — Extraction Rules Guide | Portal URL: <code>http://localhost:4200/admin/extraction-rules</code>
+    </p>
+
+</div>
+</body>
+</html>

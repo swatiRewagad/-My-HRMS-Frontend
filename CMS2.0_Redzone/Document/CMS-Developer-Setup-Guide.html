@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Developer Setup Guide (Local PC + OpenShift)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8f9fa; color: #333; line-height: 1.7; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        h1 { color: #1a237e; font-size: 2.2rem; margin-bottom: 0.5rem; }
+        h2 { color: #1565c0; font-size: 1.6rem; margin: 2.5rem 0 1rem; border-bottom: 2px solid #e3f2fd; padding-bottom: 0.5rem; }
+        h3 { color: #0d47a1; font-size: 1.2rem; margin: 1.5rem 0 0.75rem; }
+        h4 { color: #333; font-size: 1rem; margin: 1rem 0 0.5rem; }
+        .subtitle { color: #666; font-size: 1rem; margin-bottom: 2rem; }
+        .card { background: #fff; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border: 1px solid #e0e0e0; }
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th, td { padding: 10px 14px; border: 1px solid #e0e0e0; text-align: left; }
+        th { background: #1a237e; color: #fff; font-weight: 600; }
+        tr:nth-child(even) { background: #f5f5f5; }
+        td code { background: #e8eaf6; padding: 1px 5px; border-radius: 3px; }
+        code { background: #e8eaf6; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85rem; }
+        pre { background: #1a1a2e; color: #e0e0e0; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 1rem 0; }
+        pre .comment { color: #6a9955; }
+        pre .cmd { color: #4ec9b0; }
+        pre .flag { color: #ce9178; }
+        .highlight-box { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .warning-box { background: #fff3e0; border-left: 4px solid #ff9800; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .error-box { background: #fce4ec; border-left: 4px solid #e53935; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .info-box { background: #e3f2fd; border-left: 4px solid #1565c0; padding: 1rem 1.5rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+        .step { counter-increment: step-counter; position: relative; padding-left: 3rem; margin-bottom: 1.5rem; }
+        .step::before { content: counter(step-counter); position: absolute; left: 0; top: 0; width: 2rem; height: 2rem; background: #1565c0; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; }
+        .steps { counter-reset: step-counter; }
+        .port-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .port-item { background: #f5f5f5; padding: 1rem; border-radius: 8px; border-left: 4px solid #1565c0; }
+        .port-item .port { font-size: 1.2rem; font-weight: 700; color: #1565c0; }
+        .port-item .service { font-size: 0.85rem; color: #666; }
+        .toc { background: #fff; padding: 1.5rem; border-radius: 10px; border: 1px solid #e0e0e0; margin-bottom: 2rem; }
+        .toc ul { list-style: none; padding-left: 0; columns: 2; }
+        .toc li { padding: 4px 0; break-inside: avoid; }
+        .toc a { color: #1565c0; text-decoration: none; font-size: 0.9rem; }
+        .toc a:hover { text-decoration: underline; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .badge-required { background: #fce4ec; color: #c62828; }
+        .badge-optional { background: #e8f5e9; color: #2e7d32; }
+        .badge-dev { background: #e3f2fd; color: #1565c0; }
+        .badge-prod { background: #f3e5f5; color: #6a1b9a; }
+        ul, ol { padding-left: 1.5rem; margin: 0.5rem 0; }
+        li { margin: 0.3rem 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>CMS 2.0 - Developer Setup Guide</h1>
+    <p class="subtitle">Prerequisites, Software Installation, Local (IntelliJ) & OpenShift Dev Deployment</p>
+
+    <!-- Quick Start Box -->
+    <div class="card" style="border-left: 4px solid #4caf50; background: #f1f8e9;">
+        <h3 style="color: #2e7d32; margin-bottom: 12px;">⚡ Quick Start (5 minutes)</h3>
+        <p>To run the full CMS 2.0 on your local machine using Docker:</p>
+        <pre>
+<span class="comment"># 1. Clone the repository</span>
+<span class="cmd">git clone</span> https://github.com/swatiRewagad/-My-HRMS-Frontend.git
+<span class="cmd">cd</span> My-HRMS-Frontend/CMS2.0/cms-infra
+
+<span class="comment"># 2. (Optional) Create .env file for API keys</span>
+<span class="cmd">echo</span> "GROQ_API_KEY=your_key_here" > .env
+
+<span class="comment"># 3. Start all services (MySQL, Redis, Backend x2, OCR, Frontend, Nginx)</span>
+<span class="cmd">docker-compose up -d</span>
+
+<span class="comment"># 4. Wait ~2 min, then open http://localhost in browser</span>
+        </pre>
+        <p style="margin-top: 8px;"><strong>For development without Docker</strong> (frontend hot-reload):</p>
+        <pre>
+<span class="comment"># Terminal 1: Start backend (uses H2 in-memory DB - no MySQL needed)</span>
+<span class="cmd">cd</span> CMS2.0/cms-backend
+<span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
+
+<span class="comment"># Terminal 2: Start frontend (hot-reload at http://localhost:4300)</span>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend
+<span class="cmd">npm install</span>
+<span class="cmd">ng serve --port 4300</span>
+        </pre>
+    </div>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#prerequisites">1. Prerequisites & Software</a></li>
+            <li><a href="#versions">2. Version Matrix</a></li>
+            <li><a href="#architecture">3. Architecture Overview</a></li>
+            <li><a href="#ports">4. Port Map</a></li>
+            <li><a href="#local-infra">5. Local Infrastructure Setup</a></li>
+            <li><a href="#backend-setup">6. Backend Setup (IntelliJ)</a></li>
+            <li><a href="#frontend-setup">7. Frontend Setup (VS Code)</a></li>
+            <li><a href="#keycloak-setup">8. Keycloak Configuration</a></li>
+            <li><a href="#kafka-setup">9. Kafka Setup</a></li>
+            <li><a href="#opensearch-setup">10. OpenSearch Setup</a></li>
+            <li><a href="#run-all">11. Running Everything Together</a></li>
+            <li><a href="#openshift">12. OpenShift Deployment</a></li>
+            <li><a href="#env-vars">13. Environment Variables</a></li>
+            <li><a href="#troubleshooting">14. Troubleshooting</a></li>
+            <li><a href="#test-users">15. Test Users & Credentials</a></li>
+            <li><a href="#db-scripts">16. Complete Database Scripts (MySQL)</a></li>
+        </ul>
+    </div>
+
+    <!-- Section 1: Prerequisites -->
+    <h2 id="prerequisites">1. Prerequisites & Software Required</h2>
+
+    <div class="card">
+        <h3>Required Software (Must Install)</h3>
+        <table>
+            <tr><th>Software</th><th>Version</th><th>Purpose</th><th>Download</th></tr>
+            <tr><td><strong>JDK</strong></td><td>21 (LTS)</td><td>Backend microservices</td><td>Eclipse Temurin / Oracle JDK 21</td></tr>
+            <tr><td><strong>Maven</strong></td><td>3.9+</td><td>Build tool for Java</td><td>apache-maven-3.9.x-bin.zip</td></tr>
+            <tr><td><strong>Node.js</strong></td><td>22.x (LTS)</td><td>Frontend build</td><td>nodejs.org</td></tr>
+            <tr><td><strong>Angular CLI</strong></td><td>21.x</td><td>Frontend development</td><td><code>npm install -g @angular/cli</code></td></tr>
+            <tr><td><strong>IntelliJ IDEA</strong></td><td>2024.x Ultimate</td><td>Backend IDE</td><td>JetBrains</td></tr>
+            <tr><td><strong>VS Code</strong></td><td>Latest</td><td>Frontend IDE</td><td>code.visualstudio.com</td></tr>
+            <tr><td><strong>Git</strong></td><td>2.40+</td><td>Version control</td><td>git-scm.com</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Infrastructure Services (Required)</h3>
+        <table>
+            <tr><th>Service</th><th>Version</th><th>Purpose</th><th>Local Mode</th></tr>
+            <tr><td><strong>Keycloak</strong></td><td>26.0.0</td><td>SSO / Identity Management</td><td>Standalone (bin/kc.bat start-dev)</td></tr>
+            <tr><td><strong>Apache Kafka</strong></td><td>3.7.0</td><td>Event streaming</td><td>KRaft mode (no Zookeeper)</td></tr>
+            <tr><td><strong>MySQL</strong></td><td>8.0+</td><td>Primary database (prod)</td><td>H2 in-memory (dev profile) OR MySQL</td></tr>
+            <tr><td><strong>OpenSearch</strong></td><td>2.18.0</td><td>Full-text search</td><td>Standalone</td></tr>
+            <tr><td><strong>Hazelcast</strong></td><td>5.x</td><td>Caching</td><td>Embedded (no external install needed)</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Optional Tools</h3>
+        <table>
+            <tr><th>Tool</th><th>Version</th><th>Purpose</th></tr>
+            <tr><td>Docker Desktop</td><td>Latest</td><td>Run all infra via docker-compose</td></tr>
+            <tr><td>Prometheus</td><td>2.54.0</td><td>Metrics collection</td></tr>
+            <tr><td>Grafana</td><td>11.3.0</td><td>Metrics dashboards</td></tr>
+            <tr><td>Kafka UI</td><td>Latest</td><td>Visual Kafka topic management</td></tr>
+            <tr><td>OpenSearch Dashboards</td><td>2.18.0</td><td>Search index visualization</td></tr>
+            <tr><td>Postman / Insomnia</td><td>Latest</td><td>API testing</td></tr>
+            <tr><td>Camunda Modeler</td><td>5.x</td><td>BPMN workflow editing</td></tr>
+            <tr><td>oc CLI</td><td>4.x</td><td>OpenShift command line</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 2: Version Matrix -->
+    <h2 id="versions">2. Version Matrix</h2>
+    <div class="card">
+        <h3>Backend Stack</h3>
+        <table>
+            <tr><th>Library</th><th>Version</th><th>Notes</th></tr>
+            <tr><td>Java</td><td>21</td><td>Required (virtual threads, pattern matching)</td></tr>
+            <tr><td>Spring Boot</td><td>3.4.1</td><td>Parent POM (microservices)</td></tr>
+            <tr><td>Spring Boot (cms-backend)</td><td>3.2.5</td><td>Standalone backend module</td></tr>
+            <tr><td>Spring Cloud</td><td>2024.0.0</td><td>Gateway, Config</td></tr>
+            <tr><td>Keycloak</td><td>26.0.0</td><td>OAuth2/OIDC provider</td></tr>
+            <tr><td>Drools</td><td>9.44.0.Final</td><td>Business rules engine (assignment)</td></tr>
+            <tr><td>jBPM</td><td>7.74.1.Final</td><td>BPMN workflow execution</td></tr>
+            <tr><td>Lombok</td><td>1.18.36</td><td>Boilerplate reduction</td></tr>
+            <tr><td>MapStruct</td><td>1.6.3</td><td>DTO mapping</td></tr>
+            <tr><td>Oracle JDBC</td><td>23.4.0.24.05</td><td>Production DB driver</td></tr>
+            <tr><td>H2 Database</td><td>2.2.224</td><td>Local dev in-memory DB</td></tr>
+            <tr><td>SpringDoc OpenAPI</td><td>2.7.0</td><td>API documentation (Swagger)</td></tr>
+            <tr><td>Micrometer</td><td>1.14.2</td><td>Metrics/Prometheus export</td></tr>
+            <tr><td>MySQL Connector</td><td>(managed)</td><td>Dev/Staging DB driver</td></tr>
+        </table>
+
+        <h3>Frontend Stack</h3>
+        <table>
+            <tr><th>Library</th><th>Version</th><th>Notes</th></tr>
+            <tr><td>Angular</td><td>21.2.8</td><td>Core framework</td></tr>
+            <tr><td>TypeScript</td><td>5.9.2</td><td>Language</td></tr>
+            <tr><td>PrimeNG</td><td>21.1.6</td><td>UI component library</td></tr>
+            <tr><td>PrimeIcons</td><td>7.0.0</td><td>Icon library</td></tr>
+            <tr><td>keycloak-js</td><td>26.2.4</td><td>Keycloak adapter</td></tr>
+            <tr><td>jsPDF</td><td>4.2.1</td><td>PDF generation (physical letters)</td></tr>
+            <tr><td>RxJS</td><td>7.8.x</td><td>Reactive programming</td></tr>
+            <tr><td>Zone.js</td><td>0.16.1</td><td>Angular change detection</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 3: Architecture -->
+    <h2 id="architecture">3. Architecture Overview</h2>
+    <div class="card">
+        <h3>Microservices</h3>
+        <table>
+            <tr><th>#</th><th>Service</th><th>Port</th><th>Description</th></tr>
+            <tr><td>1</td><td>cms-api-gateway</td><td>8080</td><td>Entry point - authentication, RBAC, rate limiting, routing</td></tr>
+            <tr><td>2</td><td>cms-backend</td><td>8082</td><td>Core module - complaints, email syndication, workflow, OCR</td></tr>
+            <tr><td>3</td><td>cms-ingestion-service</td><td>8083</td><td>Complaint registration, outbox events</td></tr>
+            <tr><td>4</td><td>cms-workflow-service</td><td>8084</td><td>BPMN process management (jBPM)</td></tr>
+            <tr><td>5</td><td>cms-assignment-service</td><td>8085</td><td>Drools rules-based officer assignment</td></tr>
+            <tr><td>6</td><td>cms-search-service</td><td>8086</td><td>OpenSearch indexing and full-text search</td></tr>
+            <tr><td>7</td><td>cms-notification-service</td><td>8087</td><td>SMS/Email notifications</td></tr>
+            <tr><td>8</td><td>cms-sla-monitor-service</td><td>8088</td><td>SLA breach detection and escalation</td></tr>
+            <tr><td>9</td><td>cms-eligibility-service</td><td>8089</td><td>Complaint eligibility check</td></tr>
+            <tr><td>10</td><td>cms-audit-service</td><td>8091</td><td>Audit trail logging</td></tr>
+            <tr><td>11</td><td>cms-outbox-publisher</td><td>8092</td><td>Reliable Kafka event publishing</td></tr>
+            <tr><td>12</td><td>cms-rules-service</td><td>8093</td><td>Rules management UI/API</td></tr>
+            <tr><td>13</td><td>cms-storage-service</td><td>8094</td><td>File/attachment storage</td></tr>
+            <tr><td>14</td><td>cms-portal-frontend</td><td>4300</td><td>Angular SPA - portal UI</td></tr>
+        </table>
+
+        <div class="info-box">
+            <strong>For local development:</strong> You only need to run <code>cms-backend</code> (port 8082) and <code>cms-portal-frontend</code> (port 4300). The other microservices are needed for full integration testing.
+        </div>
+    </div>
+
+    <!-- Section 4: Ports -->
+    <h2 id="ports">4. Port Map</h2>
+    <div class="card">
+        <h3>All Ports Used</h3>
+        <div class="port-map">
+            <div class="port-item"><div class="port">80</div><div class="service">Nginx Gateway (Docker)</div></div>
+            <div class="port-item"><div class="port">4300</div><div class="service">Angular Frontend (dev)</div></div>
+            <div class="port-item"><div class="port">8082</div><div class="service">CMS Backend</div></div>
+            <div class="port-item"><div class="port">8100</div><div class="service">PaddleOCR</div></div>
+            <div class="port-item"><div class="port">8180</div><div class="service">Keycloak</div></div>
+            <div class="port-item"><div class="port">3307</div><div class="service">MySQL (Docker)</div></div>
+            <div class="port-item"><div class="port">6380</div><div class="service">Redis (Docker)</div></div>
+            <div class="port-item"><div class="port">9092</div><div class="service">Kafka (optional)</div></div>
+            <div class="port-item"><div class="port">9200</div><div class="service">OpenSearch (optional)</div></div>
+            <div class="port-item"><div class="port">9090</div><div class="service">Prometheus</div></div>
+            <div class="port-item"><div class="port">3000</div><div class="service">Grafana</div></div>
+        </div>
+    </div>
+
+    <!-- Section 5: Local Infrastructure -->
+    <h2 id="local-infra">5. Local Infrastructure Setup</h2>
+
+    <div class="card">
+        <h3>Option A: Docker Compose (Recommended - All-in-One)</h3>
+        <div class="info-box">
+            <strong>This is the fastest way to get everything running.</strong> A single <code>docker-compose up</code> starts MySQL, Redis, 2 backend instances, PaddleOCR, the Angular frontend, and an Nginx load-balancer gateway.
+        </div>
+
+        <h4>Step 1: Prerequisites</h4>
+        <ul>
+            <li><strong>Docker Desktop</strong> (Windows/Mac) or <strong>Docker Engine + Compose V2</strong> (Linux)</li>
+            <li>At least <strong>8 GB RAM</strong> allocated to Docker (PaddleOCR alone needs ~2 GB)</li>
+            <li>Ports <strong>80, 3307, 6380, 8100</strong> must be free</li>
+        </ul>
+
+        <h4>Step 2: Create <code>.env</code> file (optional overrides)</h4>
+        <pre>
+<span class="comment"># Create CMS2.0/cms-infra/.env with any overrides (all have sensible defaults)</span>
+MYSQL_ROOT_PASSWORD=cms_root_pass
+MYSQL_USER=cms_user
+MYSQL_PASSWORD=cms_pass
+GROQ_API_KEY=your_groq_api_key_here   <span class="comment"># Required for AI suggestions</span>
+        </pre>
+
+        <h4>Step 3: Start all services</h4>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/cms-infra
+<span class="cmd">docker-compose up -d</span>
+
+<span class="comment"># Wait 1-2 minutes for MySQL & Redis health checks to pass</span>
+<span class="cmd">docker-compose ps</span>   <span class="comment"># Verify all are "Up (healthy)"</span>
+        </pre>
+
+        <h4>Services started by Docker Compose</h4>
+        <table>
+            <tr><th>Container</th><th>Image</th><th>Host Port</th><th>Purpose</th></tr>
+            <tr><td>cms-mysql</td><td>mysql:8.0</td><td>3307</td><td>Primary database (utf8mb4, InnoDB optimized)</td></tr>
+            <tr><td>cms-redis</td><td>redis:7-alpine</td><td>6380</td><td>Caching (512 MB, LRU eviction)</td></tr>
+            <tr><td>cms-backend-1</td><td>cms-backend (built)</td><td>—</td><td>Spring Boot instance 1</td></tr>
+            <tr><td>cms-backend-2</td><td>cms-backend (built)</td><td>—</td><td>Spring Boot instance 2</td></tr>
+            <tr><td>cms-paddle-ocr</td><td>cms-paddle-ocr (built)</td><td>8100</td><td>OCR extraction (PaddleOCR)</td></tr>
+            <tr><td>cms-frontend</td><td>cms-frontend (built)</td><td>—</td><td>Angular SPA (served via Nginx)</td></tr>
+            <tr><td>cms-gateway</td><td>nginx:1.27-alpine</td><td>80, 443</td><td>Load balancer, caching, rate limiting</td></tr>
+        </table>
+
+        <h4>Step 4: Verify</h4>
+        <pre>
+<span class="comment"># Application UI</span>
+<span class="cmd">curl</span> http://localhost/health         <span class="comment"># → {"status":"UP"}</span>
+<span class="comment"># Open browser: http://localhost</span>
+
+<span class="comment"># MySQL</span>
+<span class="cmd">mysql</span> -h 127.0.0.1 -P 3307 -u cms_user -pcms_pass cms_db
+
+<span class="comment"># Redis</span>
+<span class="cmd">redis-cli</span> -p 6380 ping              <span class="comment"># → PONG</span>
+
+<span class="comment"># PaddleOCR</span>
+<span class="cmd">curl</span> http://localhost:8100/health    <span class="comment"># OCR service health</span>
+        </pre>
+
+        <h4>Step 5: Useful commands</h4>
+        <pre>
+<span class="comment"># View logs</span>
+<span class="cmd">docker-compose logs -f</span> cms-backend-1
+<span class="cmd">docker-compose logs -f</span> cms-gateway
+
+<span class="comment"># Restart a single service</span>
+<span class="cmd">docker-compose restart</span> cms-backend-1
+
+<span class="comment"># Rebuild after code changes</span>
+<span class="cmd">docker-compose up -d --build</span> cms-backend-1 cms-backend-2 cms-frontend
+
+<span class="comment"># Stop everything (data persists in volumes)</span>
+<span class="cmd">docker-compose down</span>
+
+<span class="comment"># Stop and DELETE all data (fresh start)</span>
+<span class="cmd">docker-compose down -v</span>
+        </pre>
+
+        <div class="warning-box">
+            <strong>Note:</strong> Backend images are built from <code>../cms-backend/Dockerfile</code> and frontend from <code>../cms-frontend/Dockerfile</code>. Make sure you have built these modules first (<code>mvn package -DskipTests</code> for backend, <code>ng build</code> for frontend) or the Dockerfiles handle the build.
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Option B: Manual (Without Docker)</h3>
+
+        <h4>5.1 Keycloak</h4>
+        <pre>
+<span class="comment"># Download: https://github.com/keycloak/keycloak/releases/tag/26.0.0</span>
+<span class="comment"># Extract to C:\tools\keycloak-26.0.0</span>
+
+<span class="cmd">cd</span> C:\tools\keycloak-26.0.0
+<span class="cmd">bin\kc.bat start-dev --http-port=8180</span>
+
+<span class="comment"># First run: access http://localhost:8180</span>
+<span class="comment"># Create admin user: admin / admin</span>
+        </pre>
+
+        <h4>5.2 Apache Kafka (KRaft - No Zookeeper)</h4>
+        <pre>
+<span class="comment"># Download: https://kafka.apache.org/downloads (Binary: kafka_2.13-3.7.0.tgz)</span>
+<span class="comment"># Extract to C:\tools\kafka-3.7.0</span>
+
+<span class="comment"># Generate cluster ID</span>
+<span class="cmd">bin\windows\kafka-storage.bat random-uuid</span>
+
+<span class="comment"># Format storage (replace CLUSTER_ID with output above)</span>
+<span class="cmd">bin\windows\kafka-storage.bat format -t CLUSTER_ID -c config\kraft\server.properties</span>
+
+<span class="comment"># Start Kafka</span>
+<span class="cmd">bin\windows\kafka-server-start.bat config\kraft\server.properties</span>
+
+<span class="comment"># Verify (in another terminal)</span>
+<span class="cmd">bin\windows\kafka-topics.bat --bootstrap-server localhost:9092 --list</span>
+        </pre>
+
+        <h4>5.3 OpenSearch</h4>
+        <pre>
+<span class="comment"># Download: https://opensearch.org/downloads.html (Version 2.18.0)</span>
+<span class="comment"># Extract to C:\tools\opensearch-2.18.0</span>
+
+<span class="comment"># Disable security for local dev (opensearch.yml):</span>
+<span class="comment"># plugins.security.disabled: true</span>
+
+<span class="cmd">bin\opensearch.bat</span>
+
+<span class="comment"># Verify: curl http://localhost:9200</span>
+        </pre>
+
+        <h4>5.4 MySQL (Only if NOT using dev/H2 profile)</h4>
+        <pre>
+<span class="comment"># Download: https://dev.mysql.com/downloads/installer/</span>
+<span class="comment"># Install MySQL 8.0, create database:</span>
+
+<span class="cmd">mysql -u root -p</span>
+CREATE DATABASE cms_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+<span class="comment"># OR skip MySQL entirely - use dev profile with H2 in-memory DB</span>
+        </pre>
+
+        <h4>5.5 Hazelcast (Embedded - No Setup Required)</h4>
+        <pre>
+<span class="comment"># Hazelcast runs embedded within the Spring Boot application</span>
+<span class="comment"># No external installation or Docker container needed</span>
+<span class="comment"># Cache is automatically configured via HazelcastCacheConfig.java</span>
+<span class="comment"># Management port: 5701 (auto-assigned)</span>
+        </pre>
+    </div>
+
+    <!-- Section 6: Backend Setup -->
+    <h2 id="backend-setup">6. Backend Setup (IntelliJ IDEA)</h2>
+
+    <div class="card">
+        <h3>IntelliJ Configuration</h3>
+        <div class="steps">
+            <div class="step">
+                <h4>Install Required Plugins</h4>
+                <ul>
+                    <li><strong>Lombok</strong> - File > Settings > Plugins > search "Lombok" > Install</li>
+                    <li><strong>Spring Boot</strong> (bundled in Ultimate)</li>
+                    <li><strong>MapStruct Support</strong> (optional but helpful)</li>
+                </ul>
+            </div>
+            <div class="step">
+                <h4>Enable Annotation Processing</h4>
+                <p>File > Settings > Build, Execution, Deployment > Compiler > Annotation Processors > <strong>Enable annotation processing</strong> ✓</p>
+            </div>
+            <div class="step">
+                <h4>Set JDK 21</h4>
+                <p>File > Project Structure > Project > SDK: <strong>temurin-21</strong> (or Oracle JDK 21)</p>
+                <p>File > Project Structure > Project > Language Level: <strong>21</strong></p>
+            </div>
+            <div class="step">
+                <h4>Import Project</h4>
+                <p>File > Open > select <code>CMS2.0/</code> folder > Import as Maven project</p>
+                <p>Wait for Maven to resolve all dependencies (may take 5-10 minutes first time)</p>
+            </div>
+            <div class="step">
+                <h4>Configure Run Configuration for cms-backend</h4>
+                <ul>
+                    <li>Run > Edit Configurations > + > Spring Boot</li>
+                    <li>Main class: <code>com.hrms.cms.CmsApplication</code></li>
+                    <li>Active profiles: <code>dev</code></li>
+                    <li>VM options: <code>-Dspring.profiles.active=dev</code></li>
+                    <li>Working directory: <code>CMS2.0/cms-backend</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Running cms-backend (Command Line)</h3>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/cms-backend
+
+<span class="comment"># Build</span>
+<span class="cmd">mvn clean install -DskipTests</span>
+
+<span class="comment"># Run with dev profile (H2 in-memory, no MySQL needed)</span>
+<span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
+
+<span class="comment"># OR with MySQL (default profile)</span>
+<span class="cmd">mvn spring-boot:run</span>
+
+<span class="comment"># Verify: http://localhost:8082/actuator/health</span>
+        </pre>
+
+        <div class="highlight-box">
+            <strong>Dev Profile Benefits:</strong> Uses H2 in-memory DB (no MySQL install needed), auto-creates tables, embedded Hazelcast cache (no external cache needed), includes test data via DataInitializer.
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Running Microservices (Full Stack)</h3>
+        <pre>
+<span class="comment"># Build all modules from parent POM</span>
+<span class="cmd">cd</span> CMS2.0
+<span class="cmd">mvn clean install -DskipTests</span>
+
+<span class="comment"># Run each service with dev-local profile (each in separate terminal)</span>
+<span class="cmd">cd</span> cms-api-gateway && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-ingestion-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-workflow-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-assignment-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-search-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+<span class="cmd">cd</span> cms-notification-service && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev-local</span>
+
+<span class="comment"># Note: dev-local profile uses H2 + localhost Kafka + localhost OpenSearch</span>
+        </pre>
+
+        <div class="warning-box">
+            <strong>Minimum for local dev:</strong> You only NEED <code>cms-backend</code> (dev profile) + frontend. Other microservices are for integration testing.
+        </div>
+    </div>
+
+    <!-- Section 7: Frontend Setup -->
+    <h2 id="frontend-setup">7. Frontend Setup (VS Code / Terminal)</h2>
+
+    <div class="card">
+        <h3>VS Code Extensions (Recommended)</h3>
+        <ul>
+            <li><strong>Angular Language Service</strong> - Intellisense for templates</li>
+            <li><strong>ESLint</strong> - Code quality</li>
+            <li><strong>Prettier</strong> - Formatting</li>
+            <li><strong>SCSS IntelliSense</strong> - Style autocompletion</li>
+        </ul>
+
+        <h3>Setup & Run</h3>
+        <pre>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend
+
+<span class="comment"># Install dependencies</span>
+<span class="cmd">npm install</span>
+
+<span class="comment"># Start dev server (port 4300)</span>
+<span class="cmd">ng serve --port 4300</span>
+<span class="comment"># OR</span>
+<span class="cmd">npm start</span>
+
+<span class="comment"># Access: http://localhost:4300</span>
+        </pre>
+
+        <h3>Environment Configuration</h3>
+        <p>File: <code>src/environments/environment.ts</code></p>
+        <pre>
+export const environment = {
+  production: false,
+  apiBaseUrl: <span class="flag">'http://localhost:8082'</span>,     <span class="comment">// Backend API</span>
+  keycloakUrl: <span class="flag">'http://localhost:8180'</span>,    <span class="comment">// Keycloak server</span>
+  realm: <span class="flag">'cms'</span>,                            <span class="comment">// Keycloak realm name</span>
+};
+        </pre>
+
+        <h3>Production Build</h3>
+        <pre>
+<span class="cmd">ng build --configuration production</span>
+<span class="comment"># Output: dist/cms-portal-frontend/</span>
+<span class="comment"># Deploy this to nginx/Apache on OpenShift</span>
+        </pre>
+    </div>
+
+    <!-- Section 8: Keycloak -->
+    <h2 id="keycloak-setup">8. Keycloak Configuration</h2>
+
+    <div class="card">
+        <h3>Initial Setup (First Time Only)</h3>
+        <div class="steps">
+            <div class="step">
+                <h4>Start Keycloak</h4>
+                <pre><span class="cmd">cd</span> C:\tools\keycloak-26.0.0
+<span class="cmd">bin\kc.bat start-dev --http-port=8180</span></pre>
+            </div>
+            <div class="step">
+                <h4>Access Admin Console</h4>
+                <p>Open <a href="http://localhost:8180/admin">http://localhost:8180/admin</a></p>
+                <p>Login: <code>admin</code> / <code>admin</code></p>
+            </div>
+            <div class="step">
+                <h4>Create Realm: "cms"</h4>
+                <p>Top-left dropdown > Create Realm > Name: <code>cms</code> > Create</p>
+            </div>
+            <div class="step">
+                <h4>Create Realm Roles</h4>
+                <p>Realm Roles > Create Role (for each):</p>
+                <table>
+                    <tr><th>Department</th><th>Roles to Create</th></tr>
+                    <tr><td>RBIO</td><td><code>RBIO_OFFICER</code>, <code>RBIO_SUPERVISOR</code>, <code>RBIO_CONCILIATOR</code>, <code>RBIO_ADJUDICATOR</code></td></tr>
+                    <tr><td>CEPC</td><td><code>CEPC_OFFICER</code>, <code>CEPC_SUPERVISOR</code>, <code>CEPC_CONCILIATOR</code>, <code>CEPC_ADJUDICATOR</code></td></tr>
+                    <tr><td>CRPC</td><td><code>DEO</code>, <code>REVIEWER</code>, <code>CRPC_HEAD</code>, <code>CRPC_ADMIN</code>, <code>CRPC_INCHARGE</code></td></tr>
+                    <tr><td>Other</td><td><code>ADMIN</code>, <code>OFFICER</code>, <code>TOLL_FREE_HELPDESK</code></td></tr>
+                </table>
+            </div>
+            <div class="step">
+                <h4>Create Users & Assign Roles</h4>
+                <p>Users > Add User > Set password (Credentials tab, Temporary = OFF) > Role Mappings > Assign realm role</p>
+                <table>
+                    <tr><th>#</th><th>Username</th><th>Display Name</th><th>Password</th><th>Role</th><th>Department</th></tr>
+                    <tr><td>1</td><td><code>cms.admin</code></td><td>Cms Admin</td><td><code>Test@123</code></td><td>ADMIN</td><td>System</td></tr>
+                    <tr><td>2</td><td><code>deo.user</code></td><td>Deo User</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC</td></tr>
+                    <tr><td>3</td><td><code>deo_001</code></td><td>Amit Verma</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+                    <tr><td>4</td><td><code>deo_002</code></td><td>Sneha Patil</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+                    <tr><td>5</td><td><code>deo_003</code></td><td>Ramesh Iyer</td><td><code>Test@123</code></td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+                    <tr><td>6</td><td><code>reviewer.user</code></td><td>Reviewer User</td><td><code>Test@123</code></td><td>REVIEWER</td><td>CRPC</td></tr>
+                    <tr><td>7</td><td><code>crpc.head</code></td><td>Crpc Head</td><td><code>Test@123</code></td><td>CRPC_HEAD</td><td>CRPC</td></tr>
+                    <tr><td>8</td><td><code>cepc.officer</code></td><td>Cepc Officer</td><td><code>Test@123</code></td><td>CEPC_OFFICER</td><td>CEPC</td></tr>
+                    <tr><td>9</td><td><code>cepc.supervisor</code></td><td>Cepc Supervisor</td><td><code>Test@123</code></td><td>CEPC_SUPERVISOR</td><td>CEPC</td></tr>
+                    <tr><td>10</td><td><code>cepc.conciliator</code></td><td>Cepc Conciliator</td><td><code>Test@123</code></td><td>CEPC_CONCILIATOR</td><td>CEPC</td></tr>
+                    <tr><td>11</td><td><code>cepc.adjudicator</code></td><td>Cepc Adjudicator</td><td><code>Test@123</code></td><td>CEPC_ADJUDICATOR</td><td>CEPC</td></tr>
+                    <tr><td>12</td><td><code>rbio.officer</code></td><td>Rbio Officer</td><td><code>Test@123</code></td><td>RBIO_OFFICER</td><td>RBIO</td></tr>
+                    <tr><td>13</td><td><code>rbio.supervisor</code></td><td>Rbio Supervisor</td><td><code>Test@123</code></td><td>RBIO_SUPERVISOR</td><td>RBIO</td></tr>
+                    <tr><td>14</td><td><code>rbio.conciliator</code></td><td>Rbio Conciliator</td><td><code>Test@123</code></td><td>RBIO_CONCILIATOR</td><td>RBIO</td></tr>
+                    <tr><td>15</td><td><code>rbio.adjudicator</code></td><td>Rbio Adjudicator</td><td><code>Test@123</code></td><td>RBIO_ADJUDICATOR</td><td>RBIO</td></tr>
+                </table>
+                <div class="info-box">
+                    <strong>All user passwords:</strong> <code>Test@123</code><br>
+                    <strong>Keycloak Admin Console:</strong> <a href="http://localhost:8180/admin">http://localhost:8180/admin</a> &mdash; Username: <code>admin</code> / Password: <code>admin</code><br>
+                    <strong>Keycloak Client ID:</strong> <code>cms-frontend</code> (public client, used for token requests)<br>
+                    <strong>Realm:</strong> <code>cms</code>
+                </div>
+            </div>
+            <div class="step">
+                <h4>Create Client: "cms-portal"</h4>
+                <p>Clients > Create > Client ID: <code>cms-portal</code></p>
+                <ul>
+                    <li>Client authentication: OFF (public client)</li>
+                    <li>Valid redirect URIs: <code>http://localhost:4300/*</code></li>
+                    <li>Web origins: <code>http://localhost:4300</code></li>
+                    <li>Post logout redirect URIs: <code>http://localhost:4300/*</code></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 9: Kafka -->
+    <h2 id="kafka-setup">9. Kafka Setup</h2>
+
+    <div class="card">
+        <h3>Create Required Topics</h3>
+        <pre>
+<span class="comment"># After Kafka is running, create all CMS topics:</span>
+
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.ingested --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.assigned --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.inprogress --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.escalated --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.resolved --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.closed --partitions 6 --replication-factor 1</span>
+<span class="cmd">bin\windows\kafka-topics.bat --create --bootstrap-server localhost:9092 --topic complaint.dlq --partitions 3 --replication-factor 1</span>
+
+<span class="comment"># Verify</span>
+<span class="cmd">bin\windows\kafka-topics.bat --bootstrap-server localhost:9092 --list</span>
+        </pre>
+
+        <div class="info-box">
+            <strong>Note:</strong> For local dev with <code>missing-topics-fatal: false</code>, topics are auto-created on first produce. Manual creation is for production/OpenShift.
+        </div>
+    </div>
+
+    <!-- Section 10: OpenSearch -->
+    <h2 id="opensearch-setup">10. OpenSearch Setup</h2>
+
+    <div class="card">
+        <pre>
+<span class="comment"># Start OpenSearch</span>
+<span class="cmd">cd</span> C:\tools\opensearch-2.18.0
+<span class="cmd">bin\opensearch.bat</span>
+
+<span class="comment"># Verify</span>
+<span class="cmd">curl http://localhost:9200</span>
+
+<span class="comment"># The search service auto-creates indices on first complaint indexing</span>
+<span class="comment"># No manual index creation needed for dev</span>
+        </pre>
+    </div>
+
+    <!-- Section 11: Run All -->
+    <h2 id="run-all">11. Running Everything Together</h2>
+
+    <div class="card">
+        <h3>Minimum Setup (Quick Start)</h3>
+        <div class="highlight-box">
+            <strong>Just need 2 terminals + Keycloak:</strong>
+        </div>
+        <pre>
+<span class="comment"># Terminal 1: Keycloak</span>
+<span class="cmd">cd</span> C:\tools\keycloak-26.0.0 && <span class="cmd">bin\kc.bat start-dev --http-port=8180</span>
+
+<span class="comment"># Terminal 2: Backend (dev profile - H2 DB, embedded Hazelcast cache)</span>
+<span class="cmd">cd</span> CMS2.0/cms-backend && <span class="cmd">mvn spring-boot:run -Dspring-boot.run.profiles=dev</span>
+
+<span class="comment"># Terminal 3: Frontend</span>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend && <span class="cmd">npm start</span>
+
+<span class="comment"># Access: http://localhost:4300</span>
+        </pre>
+    </div>
+
+    <div class="card">
+        <h3>Full Stack (All Microservices)</h3>
+        <pre>
+<span class="comment"># Start infrastructure first:</span>
+1. Keycloak (port 8180)
+2. Kafka (port 9092)
+3. OpenSearch (port 9200)
+
+<span class="comment"># Then start services in order:</span>
+4. cms-api-gateway (8080) - first, as it's the entry point
+5. cms-backend (8082) - core module
+6. cms-ingestion-service (8083)
+7. cms-workflow-service (8084)
+8. cms-assignment-service (8085)
+9. cms-search-service (8086)
+10. cms-notification-service (8087)
+11. cms-portal-frontend (4300)
+        </pre>
+    </div>
+
+    <!-- Section 12: OpenShift -->
+    <h2 id="openshift">12. OpenShift Deployment</h2>
+
+    <div class="card">
+        <h3>Prerequisites for OpenShift</h3>
+        <ul>
+            <li><code>oc</code> CLI installed and logged in to cluster</li>
+            <li>Access to internal container registry: <code>registry.rbi.internal/cms/</code></li>
+            <li>Namespace <code>rbi-cms</code> created</li>
+            <li>Oracle DB provisioned on cluster</li>
+            <li>Kafka cluster (AMQ Streams / Strimzi) available</li>
+            <li>Keycloak operator deployed</li>
+        </ul>
+
+        <h3>Step-by-Step Deployment</h3>
+        <div class="steps">
+            <div class="step">
+                <h4>Create Namespace & Configs</h4>
+                <pre>
+<span class="cmd">oc apply -f</span> deployment/openshift/namespace.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/configmap-common.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/secret-db.yaml
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Build & Push Docker Images</h4>
+                <pre>
+<span class="comment"># For each service:</span>
+<span class="cmd">cd</span> CMS2.0/cms-api-gateway
+<span class="cmd">mvn clean package -DskipTests</span>
+<span class="cmd">docker build -t registry.rbi.internal/cms/api-gateway:1.0.0-SNAPSHOT .</span>
+<span class="cmd">docker push registry.rbi.internal/cms/api-gateway:1.0.0-SNAPSHOT</span>
+
+<span class="comment"># Repeat for all services...</span>
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Deploy Services</h4>
+                <pre>
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-api-gateway.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-ingestion-service.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-workflow-service.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-outbox-publisher.yaml
+<span class="cmd">oc apply -f</span> deployment/openshift/deployment-eligibility-service.yaml
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Deploy Frontend (Nginx)</h4>
+                <pre>
+<span class="cmd">cd</span> CMS2.0/cms-portal-frontend
+<span class="cmd">ng build --configuration production</span>
+
+<span class="comment"># Dockerfile for frontend:</span>
+FROM nginx:alpine
+COPY dist/cms-portal-frontend/browser/ /usr/share/nginx/html/
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+<span class="cmd">docker build -t registry.rbi.internal/cms/portal-frontend:1.0.0 .</span>
+<span class="cmd">docker push registry.rbi.internal/cms/portal-frontend:1.0.0</span>
+                </pre>
+            </div>
+            <div class="step">
+                <h4>Verify Deployment</h4>
+                <pre>
+<span class="cmd">oc get pods -n rbi-cms</span>
+<span class="cmd">oc get routes -n rbi-cms</span>
+<span class="comment"># External URL: https://cms.rbi.org.in</span>
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>OpenShift ConfigMap Reference</h3>
+        <table>
+            <tr><th>Key</th><th>Value</th></tr>
+            <tr><td>DB_HOST</td><td><code>oracle-db-service.rbi-cms.svc.cluster.local</code></td></tr>
+            <tr><td>DB_PORT</td><td><code>1521</code></td></tr>
+            <tr><td>DB_SERVICE</td><td><code>CMSDB</code></td></tr>
+            <tr><td>KAFKA_BOOTSTRAP_SERVERS</td><td><code>kafka-service.rbi-cms.svc.cluster.local:9092</code></td></tr>
+            <tr><td>KEYCLOAK_ISSUER_URI</td><td><code>http://keycloak-service.rbi-cms.svc.cluster.local:8180/realms/cms</code></td></tr>
+            <tr><td>OPENSEARCH_HOST</td><td><code>opensearch-service.rbi-cms.svc.cluster.local</code></td></tr>
+            <tr><td>OPENSEARCH_PORT</td><td><code>9200</code></td></tr>
+            <tr><td>STORAGE_ROOT</td><td><code>/data/cms/storage</code></td></tr>
+            <tr><td>SMTP_HOST</td><td><code>smtp-relay.rbi-cms.svc.cluster.local</code></td></tr>
+        </table>
+    </div>
+
+    <!-- Section 13: Environment Variables -->
+    <h2 id="env-vars">13. Environment Variables Reference</h2>
+
+    <div class="card">
+        <table>
+            <tr><th>Variable</th><th>Default (Local)</th><th>Purpose</th><th>Required?</th></tr>
+            <tr><td>DB_URL</td><td>jdbc:mysql://localhost:3306/cms_db</td><td>Database connection</td><td><span class="badge badge-dev">Dev: No (H2)</span></td></tr>
+            <tr><td>DB_USERNAME</td><td>root</td><td>DB user</td><td><span class="badge badge-prod">Prod: Yes</span></td></tr>
+            <tr><td>DB_PASSWORD</td><td>root</td><td>DB password</td><td><span class="badge badge-prod">Prod: Yes</span></td></tr>
+            <tr><td>KAFKA_BOOTSTRAP</td><td>localhost:9092</td><td>Kafka broker</td><td><span class="badge badge-required">Yes (for full stack)</span></td></tr>
+            <tr><td>HAZELCAST_CLUSTER</td><td>cms-cache</td><td>Hazelcast cluster name</td><td><span class="badge badge-dev">Embedded (auto)</span></td></tr>
+            <tr><td>SESSION_TIMEOUT_MIN</td><td>15</td><td>Session timeout (minutes)</td><td><span class="badge badge-optional">Configurable</span></td></tr>
+            <tr><td>OCR_PROVIDER</td><td>gemini</td><td>OCR engine (gemini/openai/groq/azure)</td><td><span class="badge badge-optional">Optional</span></td></tr>
+            <tr><td>GEMINI_API_KEY</td><td>(empty)</td><td>Google Gemini API key</td><td><span class="badge badge-optional">For OCR</span></td></tr>
+            <tr><td>GROQ_API_KEY</td><td>(empty)</td><td>Groq API key (free)</td><td><span class="badge badge-optional">For OCR</span></td></tr>
+            <tr><td>CMS_ATTACHMENTS_PATH</td><td>C:/cms-attachments</td><td>File storage root</td><td><span class="badge badge-dev">Create folder</span></td></tr>
+        </table>
+    </div>
+
+    <!-- Section 14: Troubleshooting -->
+    <h2 id="troubleshooting">14. Troubleshooting</h2>
+
+    <div class="card">
+        <h3>Common Issues</h3>
+
+        <div class="error-box">
+            <strong>Port already in use (8082)</strong><br>
+            <code>netstat -ano | findstr :8082</code> then <code>taskkill /PID &lt;pid&gt; /F</code>
+        </div>
+
+        <div class="error-box">
+            <strong>MySQL not running / Connection refused</strong><br>
+            Use dev profile: <code>mvn spring-boot:run -Dspring-boot.run.profiles=dev</code> (uses H2 in-memory DB)
+        </div>
+
+        <div class="error-box">
+            <strong>Lombok not working in IntelliJ</strong><br>
+            1. Install Lombok plugin<br>
+            2. Enable annotation processing (Settings > Build > Compiler > Annotation Processors)<br>
+            3. Rebuild project (Build > Rebuild Project)
+        </div>
+
+        <div class="error-box">
+            <strong>Angular CLI version mismatch</strong><br>
+            <code>npm install -g @angular/cli@21</code> (must match project version)
+        </div>
+
+        <div class="error-box">
+            <strong>Keycloak "invalid redirect_uri"</strong><br>
+            In Keycloak admin > Clients > cms-portal > Valid Redirect URIs: add <code>http://localhost:4300/*</code>
+        </div>
+
+        <div class="error-box">
+            <strong>Kafka connection refused</strong><br>
+            Services with <code>missing-topics-fatal: false</code> will start without Kafka. For full flow, ensure Kafka is running on 9092.
+        </div>
+
+        <div class="error-box">
+            <strong>CORS errors on API calls</strong><br>
+            Backend has CORS configured for <code>localhost:4300</code>. If using different port, update backend CORS config.
+        </div>
+
+        <div class="error-box">
+            <strong>Maven build fails on cms-common</strong><br>
+            Build parent first: <code>cd CMS2.0 && mvn clean install -DskipTests</code> (installs all modules to local .m2)
+        </div>
+    </div>
+
+    <!-- Section 15: Test Users -->
+    <h2 id="test-users">15. Test Users & Credentials</h2>
+
+    <div class="card">
+        <h3>CRPC Login (Mock - No Keycloak Needed)</h3>
+        <p>URL: <code>http://localhost:4300/crpc/login</code></p>
+        <table>
+            <tr><th>Username</th><th>Password</th><th>Role</th><th>Name</th></tr>
+            <tr><td>amit</td><td>deo123</td><td>DEO</td><td>Amit Verma</td></tr>
+            <tr><td>sneha</td><td>deo123</td><td>DEO</td><td>Sneha Patil</td></tr>
+            <tr><td>ramesh</td><td>deo123</td><td>DEO</td><td>Ramesh Iyer</td></tr>
+            <tr><td>reviewer1</td><td>rev123</td><td>REVIEWER</td><td>A.K. Singh</td></tr>
+            <tr><td>reviewer2</td><td>rev123</td><td>REVIEWER</td><td>Priya Gupta</td></tr>
+            <tr><td>crpchead</td><td>head123</td><td>CRPC_HEAD</td><td>Dr. S. Menon</td></tr>
+            <tr><td>crpcadmin</td><td>admin123</td><td>CRPC_ADMIN</td><td>R. Sharma</td></tr>
+            <tr><td>incharge</td><td>ic123</td><td>CRPC_INCHARGE</td><td>M. Krishnan</td></tr>
+            <tr><td>helpdesk</td><td>hd123</td><td>TOLL_FREE_HELPDESK</td><td>Support Agent</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Staff Portal (Keycloak SSO)</h3>
+        <p>URL: <code>http://localhost:4300/staff/login</code> (redirects to Keycloak)</p>
+        <p>Keycloak Client ID: <code>cms-frontend</code> | Realm: <code>cms</code></p>
+        <table>
+            <tr><th>#</th><th>Username</th><th>Password</th><th>Display Name</th><th>Role</th><th>Department</th></tr>
+            <tr><td>1</td><td><code>cms.admin</code></td><td><code>Test@123</code></td><td>Cms Admin</td><td>ADMIN</td><td>System</td></tr>
+            <tr><td>2</td><td><code>deo.user</code></td><td><code>Test@123</code></td><td>Deo User</td><td>DEO</td><td>CRPC</td></tr>
+            <tr><td>3</td><td><code>deo_001</code></td><td><code>Test@123</code></td><td>Amit Verma</td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+            <tr><td>4</td><td><code>deo_002</code></td><td><code>Test@123</code></td><td>Sneha Patil</td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+            <tr><td>5</td><td><code>deo_003</code></td><td><code>Test@123</code></td><td>Ramesh Iyer</td><td>DEO</td><td>CRPC (Email Syndication Pool)</td></tr>
+            <tr><td>6</td><td><code>reviewer.user</code></td><td><code>Test@123</code></td><td>Reviewer User</td><td>REVIEWER</td><td>CRPC</td></tr>
+            <tr><td>7</td><td><code>crpc.head</code></td><td><code>Test@123</code></td><td>Crpc Head</td><td>CRPC_HEAD</td><td>CRPC</td></tr>
+            <tr><td>8</td><td><code>cepc.officer</code></td><td><code>Test@123</code></td><td>Cepc Officer</td><td>CEPC_OFFICER</td><td>CEPC</td></tr>
+            <tr><td>9</td><td><code>cepc.supervisor</code></td><td><code>Test@123</code></td><td>Cepc Supervisor</td><td>CEPC_SUPERVISOR</td><td>CEPC</td></tr>
+            <tr><td>10</td><td><code>cepc.conciliator</code></td><td><code>Test@123</code></td><td>Cepc Conciliator</td><td>CEPC_CONCILIATOR</td><td>CEPC</td></tr>
+            <tr><td>11</td><td><code>cepc.adjudicator</code></td><td><code>Test@123</code></td><td>Cepc Adjudicator</td><td>CEPC_ADJUDICATOR</td><td>CEPC</td></tr>
+            <tr><td>12</td><td><code>rbio.officer</code></td><td><code>Test@123</code></td><td>Rbio Officer</td><td>RBIO_OFFICER</td><td>RBIO</td></tr>
+            <tr><td>13</td><td><code>rbio.supervisor</code></td><td><code>Test@123</code></td><td>Rbio Supervisor</td><td>RBIO_SUPERVISOR</td><td>RBIO</td></tr>
+            <tr><td>14</td><td><code>rbio.conciliator</code></td><td><code>Test@123</code></td><td>Rbio Conciliator</td><td>RBIO_CONCILIATOR</td><td>RBIO</td></tr>
+            <tr><td>15</td><td><code>rbio.adjudicator</code></td><td><code>Test@123</code></td><td>Rbio Adjudicator</td><td>RBIO_ADJUDICATOR</td><td>RBIO</td></tr>
+        </table>
+        <div class="highlight-box">
+            <strong>All Keycloak user passwords are: <code>Test@123</code></strong>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Infrastructure Admin Consoles</h3>
+        <table>
+            <tr><th>Service</th><th>URL</th><th>Credentials</th></tr>
+            <tr><td>Keycloak Admin</td><td><a href="http://localhost:8180/admin">http://localhost:8180/admin</a></td><td>admin / admin</td></tr>
+            <tr><td>H2 Console (dev profile)</td><td><a href="http://localhost:8082/h2-console">http://localhost:8082/h2-console</a></td><td>JDBC URL: jdbc:h2:mem:cms_db, User: sa</td></tr>
+            <tr><td>Kafka UI</td><td><a href="http://localhost:8090">http://localhost:8090</a></td><td>No auth</td></tr>
+            <tr><td>OpenSearch</td><td><a href="http://localhost:9200">http://localhost:9200</a></td><td>No auth (security disabled)</td></tr>
+            <tr><td>OpenSearch Dashboards</td><td><a href="http://localhost:5601">http://localhost:5601</a></td><td>No auth</td></tr>
+            <tr><td>Prometheus</td><td><a href="http://localhost:9090">http://localhost:9090</a></td><td>No auth</td></tr>
+            <tr><td>Grafana</td><td><a href="http://localhost:3000">http://localhost:3000</a></td><td>admin / admin</td></tr>
+            <tr><td>Swagger (Backend)</td><td><a href="http://localhost:8082/swagger-ui.html">http://localhost:8082/swagger-ui.html</a></td><td>No auth</td></tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h3>Quick Verification Checklist</h3>
+        <table>
+            <tr><th>#</th><th>Check</th><th>Command / URL</th><th>Expected</th></tr>
+            <tr><td>1</td><td>Java version</td><td><code>java -version</code></td><td>openjdk 21.x</td></tr>
+            <tr><td>2</td><td>Maven version</td><td><code>mvn -version</code></td><td>Apache Maven 3.9.x</td></tr>
+            <tr><td>3</td><td>Node version</td><td><code>node -v</code></td><td>v22.x</td></tr>
+            <tr><td>4</td><td>Angular CLI</td><td><code>ng version</code></td><td>Angular CLI: 21.x</td></tr>
+            <tr><td>5</td><td>Keycloak</td><td><code>curl http://localhost:8180</code></td><td>Redirect (302)</td></tr>
+            <tr><td>6</td><td>Backend health</td><td><code>curl http://localhost:8082/actuator/health</code></td><td>{"status":"UP"}</td></tr>
+            <tr><td>7</td><td>Frontend</td><td>Open http://localhost:4300</td><td>Landing page loads</td></tr>
+            <tr><td>8</td><td>Kafka</td><td><code>kafka-topics.bat --bootstrap-server localhost:9092 --list</code></td><td>Topic list</td></tr>
+            <tr><td>9</td><td>OpenSearch</td><td><code>curl http://localhost:9200</code></td><td>Cluster info JSON</td></tr>
+        </table>
+    </div>
+
+    <!-- Section 16: Database Scripts -->
+    <h2 id="db-scripts">16. Complete Database Scripts (MySQL)</h2>
+
+    <div class="card">
+        <div class="info-box">
+            <strong>Note:</strong> Spring Boot <code>ddl-auto: update</code> auto-creates all tables on startup. These scripts are for <strong>manual setup, production migration, or reference only</strong>. The DataInitializer class seeds sample data on first run.
+        </div>
+
+        <h3>16.1 Database &amp; Schema Setup</h3>
+        <pre>
+<span class="comment">-- ============================================================================</span>
+<span class="comment">-- CMS 2.0 - COMPLETE DATABASE SCHEMA</span>
+<span class="comment">-- Database: MySQL 8.0+</span>
+<span class="comment">-- Tables: 10 | Updated: June 2026</span>
+<span class="comment">-- ============================================================================</span>
+
+<span class="cmd">CREATE DATABASE IF NOT EXISTS</span> cms_db
+    <span class="cmd">CHARACTER SET</span> utf8mb4
+    <span class="cmd">COLLATE</span> utf8mb4_unicode_ci;
+
+<span class="cmd">USE</span> cms_db;
+        </pre>
+
+        <h3>16.2 Table: BANKS</h3>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>name</td><td>VARCHAR(300)</td><td>NOT NULL</td></tr>
+            <tr><td>code</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>type</td><td>VARCHAR(100)</td><td>INDEXED</td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td>DEFAULT 'active', INDEXED</td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> BANKS (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    name        VARCHAR(300) NOT NULL,
+    code        VARCHAR(50),
+    type        VARCHAR(100),
+    status      VARCHAR(20)  DEFAULT 'active',
+    created_at  DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_bank_type   (type),
+    INDEX idx_bank_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.3 Table: COMPLAINT_CATEGORIES</h3>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>name</td><td>VARCHAR(200)</td><td>NOT NULL</td></tr>
+            <tr><td>description</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>parent_id</td><td>BIGINT</td><td>INDEXED, SELF-REF FK</td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td>DEFAULT 'active', INDEXED</td></tr>
+            <tr><td>sort_order</td><td>INT</td><td>DEFAULT 0</td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> COMPLAINT_CATEGORIES (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    name        VARCHAR(200) NOT NULL,
+    description VARCHAR(500),
+    parent_id   BIGINT,
+    status      VARCHAR(20)  DEFAULT 'active',
+    sort_order  INT          DEFAULT 0,
+    created_at  DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_category_parent (parent_id),
+    INDEX idx_category_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.4 Table: REGULATED_ENTITIES</h3>
+        <div class="highlight-box"><strong>NEW in CMS 2.0:</strong> Stores banks, NBFCs, payment system operators and other RBI-regulated entities for entity-based complaint routing.</div>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>name</td><td>VARCHAR(500)</td><td>NOT NULL, INDEXED</td></tr>
+            <tr><td>name_normalized</td><td>VARCHAR(500)</td><td>Uppercase stripped for fuzzy search</td></tr>
+            <tr><td>department</td><td>VARCHAR(10)</td><td>NOT NULL, INDEXED (CRPC/CEPC/RBIO)</td></tr>
+            <tr><td>entity_type</td><td>VARCHAR(100)</td><td>INDEXED (SCB/UCB/NBFC/PSO)</td></tr>
+            <tr><td>city</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>state</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td>DEFAULT 'active'</td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> REGULATED_ENTITIES (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    name            VARCHAR(500) NOT NULL,
+    name_normalized VARCHAR(500),
+    department      VARCHAR(10)  NOT NULL,
+    entity_type     VARCHAR(100),
+    city            VARCHAR(100),
+    state           VARCHAR(50),
+    status          VARCHAR(20)  DEFAULT 'active',
+    created_at      DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_re_department  (department),
+    INDEX idx_re_name        (name),
+    INDEX idx_re_entity_type (entity_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.5 Table: COMPLAINTS (Core Entity)</h3>
+        <div class="warning-box"><strong>Updated:</strong> Includes new workflow fields: <code>department</code>, <code>assigned_role</code>, <code>entity_code</code>, <code>workflow_stage</code>.</div>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>complaint_number</td><td>VARCHAR(50)</td><td>NOT NULL, UNIQUE</td></tr>
+            <tr><td>complainant_name</td><td>VARCHAR(200)</td><td>NOT NULL</td></tr>
+            <tr><td>complainant_email</td><td>VARCHAR(200)</td><td>INDEXED</td></tr>
+            <tr><td>complainant_phone</td><td>VARCHAR(20)</td><td></td></tr>
+            <tr><td>complainant_address</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>bank_id</td><td>BIGINT</td><td>INDEXED, FK &rarr; BANKS</td></tr>
+            <tr><td>bank_branch</td><td>VARCHAR(300)</td><td></td></tr>
+            <tr><td>account_number</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>category_id</td><td>BIGINT</td><td>INDEXED, FK &rarr; CATEGORIES</td></tr>
+            <tr><td>subject</td><td>VARCHAR(500)</td><td>NOT NULL</td></tr>
+            <tr><td>description</td><td>TEXT</td><td></td></tr>
+            <tr><td>relief_sought</td><td>TEXT</td><td></td></tr>
+            <tr><td>status</td><td>VARCHAR(30)</td><td>NOT NULL, DEFAULT 'pending', INDEXED</td></tr>
+            <tr><td>priority</td><td>VARCHAR(20)</td><td>DEFAULT 'medium', INDEXED</td></tr>
+            <tr><td>filing_type</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>bank_complaint_reference</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>bank_complaint_date</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>assigned_officer</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>department</td><td>VARCHAR(20)</td><td>NEW - CRPC/CEPC/RBIO</td></tr>
+            <tr><td>assigned_role</td><td>VARCHAR(50)</td><td>NEW - Role of current assignee</td></tr>
+            <tr><td>entity_code</td><td>VARCHAR(50)</td><td>NEW - Regulated entity code</td></tr>
+            <tr><td>workflow_stage</td><td>VARCHAR(50)</td><td>NEW - Current BPMN stage</td></tr>
+            <tr><td>filed_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>resolved_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>closed_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>escalated_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td>INDEXED</td></tr>
+            <tr><td>updated_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> COMPLAINTS (
+    id                        BIGINT       NOT NULL AUTO_INCREMENT,
+    complaint_number          VARCHAR(50)  NOT NULL,
+    complainant_name          VARCHAR(200) NOT NULL,
+    complainant_email         VARCHAR(200),
+    complainant_phone         VARCHAR(20),
+    complainant_address       VARCHAR(500),
+    bank_id                   BIGINT,
+    bank_branch               VARCHAR(300),
+    account_number            VARCHAR(100),
+    category_id               BIGINT,
+    subject                   VARCHAR(500) NOT NULL,
+    description               TEXT,
+    relief_sought             TEXT,
+    status                    VARCHAR(30)  NOT NULL DEFAULT 'pending',
+    priority                  VARCHAR(20)  DEFAULT 'medium',
+    filing_type               VARCHAR(50),
+    bank_complaint_reference  VARCHAR(200),
+    bank_complaint_date       DATETIME(6),
+    assigned_officer          VARCHAR(200),
+    department                VARCHAR(20),
+    assigned_role             VARCHAR(50),
+    entity_code               VARCHAR(50),
+    workflow_stage             VARCHAR(50),
+    filed_at                  DATETIME(6),
+    resolved_at               DATETIME(6),
+    closed_at                 DATETIME(6),
+    escalated_at              DATETIME(6),
+    created_at                DATETIME(6),
+    updated_at                DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY  idx_complaint_number         (complaint_number),
+    INDEX       idx_complaint_status         (status),
+    INDEX       idx_complaint_priority       (priority),
+    INDEX       idx_complaint_email          (complainant_email),
+    INDEX       idx_complaint_category       (category_id),
+    INDEX       idx_complaint_bank           (bank_id),
+    INDEX       idx_complaint_created        (created_at),
+    INDEX       idx_complaint_status_created (status, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.6 Table: COMPLAINT_ATTACHMENTS</h3>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>complaint_id</td><td>BIGINT</td><td>NOT NULL, INDEXED, FK &rarr; COMPLAINTS</td></tr>
+            <tr><td>file_name</td><td>VARCHAR(500)</td><td>NOT NULL</td></tr>
+            <tr><td>original_name</td><td>VARCHAR(500)</td><td>NOT NULL</td></tr>
+            <tr><td>content_type</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>file_size</td><td>BIGINT</td><td></td></tr>
+            <tr><td>storage_path</td><td>VARCHAR(1000)</td><td></td></tr>
+            <tr><td>uploaded_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> COMPLAINT_ATTACHMENTS (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    complaint_id  BIGINT       NOT NULL,
+    file_name     VARCHAR(500) NOT NULL,
+    original_name VARCHAR(500) NOT NULL,
+    content_type  VARCHAR(100),
+    file_size     BIGINT,
+    storage_path  VARCHAR(1000),
+    uploaded_at   DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_attachment_complaint (complaint_id),
+    CONSTRAINT fk_attachment_complaint FOREIGN KEY (complaint_id) REFERENCES COMPLAINTS(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.7 Table: COMPLAINT_TIMELINE (Audit Trail)</h3>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>complaint_id</td><td>BIGINT</td><td>NOT NULL, INDEXED</td></tr>
+            <tr><td>action</td><td>VARCHAR(50)</td><td>NOT NULL</td></tr>
+            <tr><td>performed_by</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>remarks</td><td>TEXT</td><td></td></tr>
+            <tr><td>from_status</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>to_status</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>performed_at</td><td>DATETIME(6)</td><td>INDEXED</td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> COMPLAINT_TIMELINE (
+    id            BIGINT       NOT NULL AUTO_INCREMENT,
+    complaint_id  BIGINT       NOT NULL,
+    action        VARCHAR(50)  NOT NULL,
+    performed_by  VARCHAR(200),
+    remarks       TEXT,
+    from_status   VARCHAR(30),
+    to_status     VARCHAR(30),
+    performed_at  DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_timeline_complaint   (complaint_id),
+    INDEX idx_timeline_performed_at (performed_at),
+    CONSTRAINT fk_timeline_complaint FOREIGN KEY (complaint_id) REFERENCES COMPLAINTS(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.8 Table: FORM_CONFIGS</h3>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>form_key</td><td>VARCHAR(100)</td><td>NOT NULL, UNIQUE</td></tr>
+            <tr><td>form_name</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>schema_json</td><td>JSON</td><td>Dynamic form schema</td></tr>
+            <tr><td>active</td><td>BOOLEAN</td><td>NOT NULL, DEFAULT TRUE</td></tr>
+            <tr><td>version</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>updated_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> FORM_CONFIGS (
+    id          BIGINT       NOT NULL AUTO_INCREMENT,
+    form_key    VARCHAR(100) NOT NULL,
+    form_name   VARCHAR(200),
+    schema_json JSON,
+    active      BOOLEAN      NOT NULL DEFAULT TRUE,
+    version     VARCHAR(50),
+    created_at  DATETIME(6),
+    updated_at  DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_form_key (form_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.9 Table: SIMULATED_EMAILS</h3>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>message_id</td><td>VARCHAR(100)</td><td>NOT NULL, UNIQUE</td></tr>
+            <tr><td>thread_id</td><td>VARCHAR(100)</td><td>NOT NULL, INDEXED</td></tr>
+            <tr><td>from_email</td><td>VARCHAR(200)</td><td>NOT NULL</td></tr>
+            <tr><td>to_email</td><td>VARCHAR(200)</td><td>NOT NULL</td></tr>
+            <tr><td>subject</td><td>VARCHAR(500)</td><td>NOT NULL</td></tr>
+            <tr><td>body</td><td>TEXT</td><td></td></tr>
+            <tr><td>direction</td><td>VARCHAR(10)</td><td>NOT NULL, INDEXED (inbound/outbound)</td></tr>
+            <tr><td>status</td><td>VARCHAR(20)</td><td>NOT NULL, DEFAULT 'UNREAD'</td></tr>
+            <tr><td>complaint_id</td><td>BIGINT</td><td>INDEXED</td></tr>
+            <tr><td>complaint_number</td><td>VARCHAR(50)</td><td>INDEXED</td></tr>
+            <tr><td>attachment_url</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>sent_at</td><td>DATETIME(6)</td><td>INDEXED</td></tr>
+            <tr><td>received_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>processed_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> SIMULATED_EMAILS (
+    id               BIGINT       NOT NULL AUTO_INCREMENT,
+    message_id       VARCHAR(100) NOT NULL,
+    thread_id        VARCHAR(100) NOT NULL,
+    from_email       VARCHAR(200) NOT NULL,
+    to_email         VARCHAR(200) NOT NULL,
+    subject          VARCHAR(500) NOT NULL,
+    body             TEXT,
+    direction        VARCHAR(10)  NOT NULL,
+    status           VARCHAR(20)  NOT NULL DEFAULT 'UNREAD',
+    complaint_id     BIGINT,
+    complaint_number VARCHAR(50),
+    attachment_url   VARCHAR(500),
+    sent_at          DATETIME(6),
+    received_at      DATETIME(6),
+    processed_at     DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_email_message_id      (message_id),
+    INDEX      idx_email_thread          (thread_id),
+    INDEX      idx_email_direction       (direction),
+    INDEX      idx_email_complaint       (complaint_id),
+    INDEX      idx_email_complaint_number (complaint_number),
+    INDEX      idx_email_sent_at         (sent_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.10 Table: EMAIL_DRAFTS</h3>
+        <div class="highlight-box"><strong>NEW in CMS 2.0:</strong> Stores email-based draft complaints for DEO processing — includes OCR extraction results, entity detection, language translation, and workflow decisions.</div>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>draft_id</td><td>VARCHAR(100)</td><td>NOT NULL, UNIQUE</td></tr>
+            <tr><td>thread_id</td><td>VARCHAR(100)</td><td>INDEXED</td></tr>
+            <tr><td>message_id</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>sender_email</td><td>VARCHAR(200)</td><td>INDEXED</td></tr>
+            <tr><td>subject</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>body</td><td>TEXT</td><td></td></tr>
+            <tr><td>complainant_name</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>complainant_phone</td><td>VARCHAR(20)</td><td></td></tr>
+            <tr><td>complainant_address</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>complainant_state</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>complainant_district</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>complainant_pincode</td><td>VARCHAR(10)</td><td></td></tr>
+            <tr><td>cpgrams_number</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>complaint_summary</td><td>VARCHAR(500)</td><td></td></tr>
+            <tr><td>category</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>mode_of_receipt</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>status</td><td>VARCHAR(30)</td><td>INDEXED, DEFAULT 'ASSIGNED'</td></tr>
+            <tr><td>assigned_to</td><td>VARCHAR(200)</td><td>INDEXED</td></tr>
+            <tr><td>parent_complaint_id</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>is_duplicate</td><td>BOOLEAN</td><td>DEFAULT FALSE</td></tr>
+            <tr><td>ocr_processed</td><td>BOOLEAN</td><td>DEFAULT FALSE</td></tr>
+            <tr><td>ocr_confidence</td><td>INT</td><td>0-100</td></tr>
+            <tr><td>ocr_extracted_fields_json</td><td>TEXT</td><td>JSON of extracted fields</td></tr>
+            <tr><td>entity_name</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>entity_type</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>amount_involved</td><td>DOUBLE</td><td></td></tr>
+            <tr><td>processed_by</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>deo_decision</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>deo_remarks</td><td>TEXT</td><td></td></tr>
+            <tr><td>non_maintainable_reason</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>reviewer_assigned_to</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>reviewer_decision</td><td>VARCHAR(30)</td><td></td></tr>
+            <tr><td>reviewer_remarks</td><td>TEXT</td><td></td></tr>
+            <tr><td>target_office</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>converted_complaint_id</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>detected_language</td><td>VARCHAR(50)</td><td></td></tr>
+            <tr><td>language_name</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>is_vernacular</td><td>BOOLEAN</td><td>DEFAULT FALSE</td></tr>
+            <tr><td>translation_confidence</td><td>DOUBLE</td><td></td></tr>
+            <tr><td>translated_body</td><td>TEXT</td><td></td></tr>
+            <tr><td>received_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+            <tr><td>updated_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> EMAIL_DRAFTS (
+    id                        BIGINT       NOT NULL AUTO_INCREMENT,
+    draft_id                  VARCHAR(100) NOT NULL,
+    thread_id                 VARCHAR(100),
+    message_id                VARCHAR(200),
+    sender_email              VARCHAR(200),
+    subject                   VARCHAR(500),
+    body                      TEXT,
+    complainant_name          VARCHAR(200),
+    complainant_phone         VARCHAR(20),
+    complainant_address       VARCHAR(500),
+    complainant_state         VARCHAR(100),
+    complainant_district      VARCHAR(100),
+    complainant_pincode       VARCHAR(10),
+    cpgrams_number            VARCHAR(50),
+    complaint_summary         VARCHAR(500),
+    category                  VARCHAR(50),
+    mode_of_receipt           VARCHAR(30),
+    status                    VARCHAR(30)  DEFAULT 'ASSIGNED',
+    assigned_to               VARCHAR(200),
+    parent_complaint_id       VARCHAR(50),
+    is_duplicate              BOOLEAN      DEFAULT FALSE,
+    ocr_processed             BOOLEAN      DEFAULT FALSE,
+    ocr_confidence            INT          DEFAULT 0,
+    ocr_extracted_fields_json TEXT,
+    entity_name               VARCHAR(100),
+    entity_type               VARCHAR(30),
+    amount_involved           DOUBLE,
+    processed_by              VARCHAR(200),
+    deo_decision              VARCHAR(30),
+    deo_remarks               TEXT,
+    non_maintainable_reason   VARCHAR(100),
+    reviewer_assigned_to      VARCHAR(200),
+    reviewer_decision         VARCHAR(30),
+    reviewer_remarks          TEXT,
+    target_office             VARCHAR(100),
+    converted_complaint_id    VARCHAR(50),
+    detected_language         VARCHAR(50),
+    language_name             VARCHAR(100),
+    is_vernacular             BOOLEAN      DEFAULT FALSE,
+    translation_confidence    DOUBLE,
+    translated_body           TEXT,
+    received_at               DATETIME(6),
+    created_at                DATETIME(6),
+    updated_at                DATETIME(6),
+    PRIMARY KEY (id),
+    UNIQUE KEY idx_draft_id       (draft_id),
+    INDEX      idx_draft_thread   (thread_id),
+    INDEX      idx_draft_status   (status),
+    INDEX      idx_draft_assigned (assigned_to),
+    INDEX      idx_draft_sender   (sender_email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+
+        <h3>16.11 Table: EMAIL_DRAFT_ATTACHMENTS</h3>
+        <div class="highlight-box"><strong>NEW in CMS 2.0:</strong> Stores attachments linked to email drafts with OCR text extraction results.</div>
+        <table>
+            <tr><th>Column</th><th>Type</th><th>Constraints</th></tr>
+            <tr><td>id</td><td>BIGINT</td><td>PK, AUTO_INCREMENT</td></tr>
+            <tr><td>draft_id</td><td>VARCHAR(100)</td><td>NOT NULL, INDEXED</td></tr>
+            <tr><td>file_name</td><td>VARCHAR(500)</td><td>NOT NULL</td></tr>
+            <tr><td>file_type</td><td>VARCHAR(100)</td><td></td></tr>
+            <tr><td>file_size</td><td>BIGINT</td><td></td></tr>
+            <tr><td>storage_path</td><td>VARCHAR(1000)</td><td></td></tr>
+            <tr><td>ocr_text</td><td>TEXT</td><td>Extracted OCR text</td></tr>
+            <tr><td>ocr_confidence</td><td>INT</td><td>0-100</td></tr>
+            <tr><td>uploaded_by</td><td>VARCHAR(200)</td><td></td></tr>
+            <tr><td>created_at</td><td>DATETIME(6)</td><td></td></tr>
+        </table>
+        <pre>
+<span class="cmd">CREATE TABLE IF NOT EXISTS</span> EMAIL_DRAFT_ATTACHMENTS (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+    draft_id        VARCHAR(100) NOT NULL,
+    file_name       VARCHAR(500) NOT NULL,
+    file_type       VARCHAR(100),
+    file_size       BIGINT,
+    storage_path    VARCHAR(1000),
+    ocr_text        TEXT,
+    ocr_confidence  INT          DEFAULT 0,
+    uploaded_by     VARCHAR(200),
+    created_at      DATETIME(6),
+    PRIMARY KEY (id),
+    INDEX idx_draft_att_draft (draft_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        </pre>
+    </div>
+
+    <div class="card">
+        <h3>16.12 Seed Data - Banks</h3>
+        <pre>
+<span class="comment">-- Seed banks (auto-created by DataInitializer on first run)</span>
+<span class="cmd">INSERT INTO</span> BANKS (name, code, type, status, created_at) VALUES
+('State Bank of India', 'SBI', 'public', 'active', NOW()),
+('Punjab National Bank', 'PNB', 'public', 'active', NOW()),
+('Bank of Baroda', 'BOB', 'public', 'active', NOW()),
+('Canara Bank', 'CANARA', 'public', 'active', NOW()),
+('Union Bank of India', 'UBI', 'public', 'active', NOW()),
+('Bank of India', 'BOI', 'public', 'active', NOW()),
+('HDFC Bank', 'HDFC', 'private', 'active', NOW()),
+('ICICI Bank', 'ICICI', 'private', 'active', NOW()),
+('Axis Bank', 'AXIS', 'private', 'active', NOW()),
+('Kotak Mahindra Bank', 'KOTAK', 'private', 'active', NOW()),
+('Yes Bank', 'YES', 'private', 'active', NOW()),
+('IndusInd Bank', 'INDUSIND', 'private', 'active', NOW());
+        </pre>
+
+        <h3>16.13 Seed Data - Complaint Categories</h3>
+        <pre>
+<span class="comment">-- Root categories</span>
+<span class="cmd">INSERT INTO</span> COMPLAINT_CATEGORIES (name, description, parent_id, status, sort_order, created_at) VALUES
+('ATM / Debit Card', 'Issues related to ATM transactions and debit cards', NULL, 'active', 1, NOW()),
+('Credit Card', 'Credit card billing, charges and services', NULL, 'active', 2, NOW()),
+('Internet Banking', 'Net banking, UPI and digital payment issues', NULL, 'active', 3, NOW()),
+('Loan / Advance', 'Loan processing, EMI, foreclosure issues', NULL, 'active', 4, NOW()),
+('Deposit Account', 'Savings, current, FD account issues', NULL, 'active', 5, NOW()),
+('Pension', 'Pension disbursement and account issues', NULL, 'active', 6, NOW()),
+('Remittance', 'NEFT, RTGS, fund transfer issues', NULL, 'active', 7, NOW()),
+('Mobile Banking', 'Mobile app and mobile banking issues', NULL, 'active', 8, NOW()),
+('Insurance', 'Mis-selling, claim rejection issues', NULL, 'active', 9, NOW()),
+('Others', 'Other banking complaints not covered above', NULL, 'active', 10, NOW());
+        </pre>
+
+        <h3>16.14 Seed Data - Regulated Entities (Sample)</h3>
+        <pre>
+<span class="comment">-- Sample regulated entities for CRPC/CEPC/RBIO departments</span>
+<span class="cmd">INSERT INTO</span> REGULATED_ENTITIES (name, name_normalized, department, entity_type, city, state, status, created_at) VALUES
+('State Bank of India', 'STATE BANK OF INDIA', 'CRPC', 'SCB', 'Mumbai', 'Maharashtra', 'active', NOW()),
+('HDFC Bank Limited', 'HDFC BANK LIMITED', 'CRPC', 'SCB', 'Mumbai', 'Maharashtra', 'active', NOW()),
+('ICICI Bank Limited', 'ICICI BANK LIMITED', 'CRPC', 'SCB', 'Mumbai', 'Maharashtra', 'active', NOW()),
+('Saraswat Co-operative Bank', 'SARASWAT CO OPERATIVE BANK', 'CEPC', 'UCB', 'Mumbai', 'Maharashtra', 'active', NOW()),
+('Cosmos Co-operative Bank', 'COSMOS CO OPERATIVE BANK', 'CEPC', 'UCB', 'Pune', 'Maharashtra', 'active', NOW()),
+('Bajaj Finance Limited', 'BAJAJ FINANCE LIMITED', 'RBIO', 'NBFC', 'Pune', 'Maharashtra', 'active', NOW()),
+('PhonePe Private Limited', 'PHONEPE PRIVATE LIMITED', 'RBIO', 'PSO', 'Bangalore', 'Karnataka', 'active', NOW()),
+('Google Pay (Google India)', 'GOOGLE PAY GOOGLE INDIA', 'RBIO', 'PSO', 'Bangalore', 'Karnataka', 'active', NOW());
+        </pre>
+    </div>
+
+    <div class="card">
+        <h3>16.15 Schema Summary</h3>
+        <table>
+            <tr><th>#</th><th>Table Name</th><th>Columns</th><th>Indexes</th><th>Purpose</th></tr>
+            <tr><td>1</td><td><code>BANKS</code></td><td>6</td><td>2</td><td>Financial institutions (public/private)</td></tr>
+            <tr><td>2</td><td><code>COMPLAINT_CATEGORIES</code></td><td>7</td><td>2</td><td>Hierarchical complaint classification</td></tr>
+            <tr><td>3</td><td><code>REGULATED_ENTITIES</code></td><td>9</td><td>3</td><td>RBI-regulated entities for routing</td></tr>
+            <tr><td>4</td><td><code>COMPLAINTS</code></td><td>26</td><td>8</td><td>Core complaint records</td></tr>
+            <tr><td>5</td><td><code>COMPLAINT_ATTACHMENTS</code></td><td>8</td><td>1</td><td>File attachments per complaint</td></tr>
+            <tr><td>6</td><td><code>COMPLAINT_TIMELINE</code></td><td>8</td><td>2</td><td>Audit trail / status history</td></tr>
+            <tr><td>7</td><td><code>FORM_CONFIGS</code></td><td>7</td><td>1</td><td>Dynamic form JSON schemas</td></tr>
+            <tr><td>8</td><td><code>SIMULATED_EMAILS</code></td><td>15</td><td>5</td><td>Email threads (intake simulation)</td></tr>
+            <tr><td>9</td><td><code>EMAIL_DRAFTS</code></td><td>40</td><td>4</td><td>Draft complaints from email syndication</td></tr>
+            <tr><td>10</td><td><code>EMAIL_DRAFT_ATTACHMENTS</code></td><td>10</td><td>1</td><td>Attachments with OCR data</td></tr>
+        </table>
+
+        <div class="warning-box">
+            <strong>Production Note:</strong> In production, use <code>ddl-auto: validate</code> and apply schema changes via migration scripts (Flyway/Liquibase). The <code>ddl-auto: update</code> is only for development convenience.
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 3rem; padding: 1.5rem; background: #e8eaf6; border-radius: 10px;">
+        <p style="color: #1a237e; font-weight: 600;">CMS 2.0 - Developer Setup Guide</p>
+        <p style="color: #666; font-size: 0.85rem;">Generated: June 2026 | RBI Complaint Management System</p>
+        <p style="color: #888; font-size: 0.8rem;">For support: Contact CMS Development Team</p>
+    </div>
+
+</div>
+</body>
+</html>

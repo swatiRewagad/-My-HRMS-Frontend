@@ -1,0 +1,104 @@
+package com.rbi.cms.workflow.rules;
+
+import com.rbi.cms.workflow.model.RoutingFact;
+import com.rbi.cms.workflow.service.RoundRobinAssignmentService;
+
+global RoundRobinAssignmentService assignmentService;
+
+// ═══════════════════════════════════════════════════════════════
+// DEPARTMENT ROUTING RULES
+// Determines RBIO vs CEPC based on entity attributes
+// ═══════════════════════════════════════════════════════════════
+
+rule "Route to CEPC - Large Private Sector Banks"
+    ruleflow-group "department-routing"
+    salience 100
+    when
+        $fact : RoutingFact(
+            entitySize == "LARGE" || entityType == "PRIVATE_SECTOR",
+            entityName in ("HDFC", "ICICI", "AXIS", "KOTAK", "INDUSIND", "YES",
+                          "IDFC", "BANDHAN", "RBL", "FEDERAL", "SOUTH_INDIAN",
+                          "KARUR_VYSYA", "CITY_UNION", "DCB", "DHANLAXMI",
+                          "LAKSHMI_VILAS", "NAINITAL", "TAMILNAD_MERCANTILE")
+        )
+    then
+        $fact.setDepartment("CEPC");
+end
+
+rule "Route to RBIO - Public Sector Banks"
+    ruleflow-group "department-routing"
+    salience 90
+    when
+        $fact : RoutingFact(
+            entityName in ("SBI", "PNB", "BOB", "CANARA", "UNION", "IOB",
+                          "CENTRAL_BANK", "UCO", "BANK_OF_INDIA", "INDIAN_BANK",
+                          "PUNJAB_SIND", "BANK_OF_MAHARASHTRA", "IDBI")
+        )
+    then
+        $fact.setDepartment("RBIO");
+end
+
+rule "Route to RBIO - Default Fallback"
+    ruleflow-group "department-routing"
+    salience 10
+    when
+        $fact : RoutingFact(department == null || department == "")
+    then
+        $fact.setDepartment("RBIO");
+end
+
+// ═══════════════════════════════════════════════════════════════
+// DEO ASSIGNMENT (CRPC)
+// Round-robin across active DEOs not on leave
+// ═══════════════════════════════════════════════════════════════
+
+rule "Assign DEO - Round Robin"
+    ruleflow-group "deo-assignment"
+    when
+        $fact : RoutingFact(assignedDeo == null || assignedDeo == "")
+    then
+        String userId = assignmentService.assignNext("CRPC_DEO");
+        $fact.setAssignedDeo(userId);
+end
+
+// ═══════════════════════════════════════════════════════════════
+// REVIEWER ASSIGNMENT (CRPC)
+// Round-robin across active Reviewers not on leave
+// ═══════════════════════════════════════════════════════════════
+
+rule "Assign Reviewer - Round Robin"
+    ruleflow-group "reviewer-assignment"
+    when
+        $fact : RoutingFact(assignedReviewer == null || assignedReviewer == "")
+    then
+        String userId = assignmentService.assignNext("CRPC_REVIEWER");
+        $fact.setAssignedReviewer(userId);
+end
+
+// ═══════════════════════════════════════════════════════════════
+// RBIO OFFICER ASSIGNMENT
+// Round-robin within regional office, fallback to all RBIO officers
+// ═══════════════════════════════════════════════════════════════
+
+rule "Assign RBIO Officer - Round Robin"
+    ruleflow-group "rbio-officer-assignment"
+    when
+        $fact : RoutingFact(department == "RBIO", assignedOfficer == null || assignedOfficer == "")
+    then
+        String userId = assignmentService.assignNext("RBIO_OFFICER", $fact.getRegionalOffice());
+        $fact.setAssignedOfficer(userId);
+end
+
+// ═══════════════════════════════════════════════════════════════
+// CEPC OFFICER ASSIGNMENT
+// Round-robin within regional office, fallback to all CEPC officers
+// ═══════════════════════════════════════════════════════════════
+
+rule "Assign CEPC Officer - Round Robin"
+    ruleflow-group "cepc-officer-assignment"
+    when
+        $fact : RoutingFact(department == "CEPC", assignedOfficer == null || assignedOfficer == "")
+    then
+        String userId = assignmentService.assignNext("CEPC_OFFICER", $fact.getRegionalOffice());
+        $fact.setAssignedOfficer(userId);
+end

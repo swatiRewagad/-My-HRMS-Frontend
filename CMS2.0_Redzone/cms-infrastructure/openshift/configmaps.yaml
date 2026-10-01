@@ -1,0 +1,1001 @@
+# ============================================================
+# CMS 2.0 — OpenShift ConfigMaps for All Microservices
+# Namespace: rbi-cms
+# ============================================================
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rbi-cms
+  labels:
+    app.kubernetes.io/part-of: rbi-cms
+
+---
+# ============================================================
+# 1. SHARED CONFIG — Common across all services
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-common-config
+  namespace: rbi-cms
+  labels:
+    app.kubernetes.io/part-of: rbi-cms
+data:
+  SPRING_PROFILES_ACTIVE: "openshift"
+  TZ: "Asia/Kolkata"
+
+  # Oracle Database
+  DB_HOST: "oracle-db.rbi-cms.svc.cluster.local"
+  DB_PORT: "1521"
+  DB_SERVICE: "CMSDB"
+  DB_URL: "jdbc:oracle:thin:@oracle-db.rbi-cms.svc.cluster.local:1521/CMSDB"
+  DB_DRIVER: "oracle.jdbc.OracleDriver"
+  DB_HIBERNATE_DIALECT: "org.hibernate.dialect.OracleDialect"
+  DB_DDL_AUTO: "validate"
+  DB_POOL_SIZE: "10"
+  DB_MAX_POOL_SIZE: "20"
+
+  # Kafka
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-cluster-kafka-bootstrap.rbi-cms.svc.cluster.local:9092"
+  KAFKA_SECURITY_PROTOCOL: "PLAINTEXT"
+  KAFKA_AUTO_OFFSET_RESET: "earliest"
+  KAFKA_ENABLE_AUTO_COMMIT: "false"
+
+  # Keycloak
+  KEYCLOAK_URL: "http://keycloak.rbi-cms.svc.cluster.local:8080"
+  KEYCLOAK_REALM: "rbi-cms"
+  KEYCLOAK_ISSUER_URI: "http://keycloak.rbi-cms.svc.cluster.local:8080/realms/rbi-cms"
+  KEYCLOAK_JWK_SET_URI: "http://keycloak.rbi-cms.svc.cluster.local:8080/realms/rbi-cms/protocol/openid-connect/certs"
+
+  # OpenSearch
+  OPENSEARCH_HOST: "opensearch.rbi-cms.svc.cluster.local"
+  OPENSEARCH_PORT: "9200"
+  OPENSEARCH_SCHEME: "http"
+
+  # Nexus (for Maven builds)
+  NEXUS_URL: "http://nexus.rbi-cms.svc.cluster.local:8081/repository/maven-public/"
+
+---
+# ============================================================
+# 2. KAFKA TOPICS CONFIG
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-kafka-topics-config
+  namespace: rbi-cms
+data:
+  TOPIC_COMPLAINT_INGESTED: "complaint.ingested"
+  TOPIC_COMPLAINT_ASSIGNED: "complaint.assigned"
+  TOPIC_COMPLAINT_IN_PROGRESS: "complaint.inprogress"
+  TOPIC_COMPLAINT_ESCALATED: "complaint.escalated"
+  TOPIC_COMPLAINT_RESOLVED: "complaint.resolved"
+  TOPIC_COMPLAINT_CLOSED: "complaint.closed"
+  TOPIC_COMPLAINT_DLQ: "complaint.dlq"
+  KAFKA_PARTITIONS: "6"
+  KAFKA_REPLICATION_FACTOR: "3"
+
+---
+# ============================================================
+# 3. CMS API GATEWAY
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-api-gateway-config
+  namespace: rbi-cms
+  labels:
+    app: cms-api-gateway
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-api-gateway"
+
+  # Rate Limiting
+  RATE_LIMIT_REQUESTS_PER_SECOND: "100"
+  RATE_LIMIT_BURST: "200"
+
+  # Routing — internal service URLs
+  ROUTE_INGESTION_URI: "http://cms-ingestion-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_ELIGIBILITY_URI: "http://cms-eligibility-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_WORKFLOW_URI: "http://cms-workflow-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_ASSIGNMENT_URI: "http://cms-assignment-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_SEARCH_URI: "http://cms-search-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_NOTIFICATION_URI: "http://cms-notification-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_AUDIT_URI: "http://cms-audit-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_STORAGE_URI: "http://cms-storage-service.rbi-cms.svc.cluster.local:8080"
+  ROUTE_SLA_URI: "http://cms-sla-monitor-service.rbi-cms.svc.cluster.local:8080"
+
+  # CORS
+  CORS_ALLOWED_ORIGINS: "https://cms-portal.rbi.org.in,https://cms-officer.rbi.org.in"
+  CORS_ALLOWED_METHODS: "GET,POST,PUT,DELETE,OPTIONS"
+  CORS_ALLOWED_HEADERS: "*"
+
+  # JWT Validation
+  JWT_ISSUER_URI: "http://keycloak.rbi-cms.svc.cluster.local:8080/realms/rbi-cms"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-api-gateway
+      cloud:
+        gateway:
+          default-filters:
+            - DedupeResponseHeader=Access-Control-Allow-Origin
+          globalcors:
+            corsConfigurations:
+              '[/**]':
+                allowedOrigins: ${CORS_ALLOWED_ORIGINS}
+                allowedMethods: ${CORS_ALLOWED_METHODS}
+                allowedHeaders: ${CORS_ALLOWED_HEADERS}
+                allowCredentials: true
+          routes:
+            - id: ingestion-service
+              uri: ${ROUTE_INGESTION_URI}
+              predicates:
+                - Path=/api/complaints/**
+            - id: eligibility-service
+              uri: ${ROUTE_ELIGIBILITY_URI}
+              predicates:
+                - Path=/api/eligibility/**
+            - id: search-service
+              uri: ${ROUTE_SEARCH_URI}
+              predicates:
+                - Path=/api/search/**
+            - id: workflow-service
+              uri: ${ROUTE_WORKFLOW_URI}
+              predicates:
+                - Path=/api/workflow/**
+            - id: storage-service
+              uri: ${ROUTE_STORAGE_URI}
+              predicates:
+                - Path=/api/documents/**
+            - id: audit-service
+              uri: ${ROUTE_AUDIT_URI}
+              predicates:
+                - Path=/api/audit/**
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${JWT_ISSUER_URI}
+
+---
+# ============================================================
+# 4. CMS ELIGIBILITY SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-eligibility-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-eligibility-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-eligibility-service"
+
+  # MRE Check Config
+  MRE_REQUIRED: "true"
+  MRE_WAITING_PERIOD_DAYS: "30"
+  MRE_COMPLAINT_AMOUNT_THRESHOLD: "2000000"
+
+  # Eligibility Rules
+  ELIGIBLE_ENTITY_TYPES: "BANK,NBFC,PPI"
+  MAX_COMPLAINT_AMOUNT: "20000000"
+  FILING_WINDOW_DAYS: "365"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-eligibility-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    eligibility:
+      mre:
+        required: ${MRE_REQUIRED}
+        waiting-period-days: ${MRE_WAITING_PERIOD_DAYS}
+        amount-threshold: ${MRE_COMPLAINT_AMOUNT_THRESHOLD}
+      filing-window-days: ${FILING_WINDOW_DAYS}
+      max-amount: ${MAX_COMPLAINT_AMOUNT}
+
+---
+# ============================================================
+# 5. CMS INGESTION SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-ingestion-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-ingestion-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-ingestion-service"
+  KAFKA_PRODUCER_ACKS: "all"
+  KAFKA_PRODUCER_RETRIES: "3"
+  MAX_ATTACHMENT_SIZE_MB: "10"
+  COMPLAINT_ID_PREFIX: "CMP"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-ingestion-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        producer:
+          acks: ${KAFKA_PRODUCER_ACKS}
+          retries: ${KAFKA_PRODUCER_RETRIES}
+          key-serializer: org.apache.kafka.common.serialization.StringSerializer
+          value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      servlet:
+        multipart:
+          max-file-size: ${MAX_ATTACHMENT_SIZE_MB}MB
+          max-request-size: ${MAX_ATTACHMENT_SIZE_MB}MB
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    complaint:
+      id-prefix: ${COMPLAINT_ID_PREFIX}
+
+---
+# ============================================================
+# 6. CMS WORKFLOW SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-workflow-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-workflow-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-workflow-service"
+  WORKFLOW_ENGINE: "jbpm"
+  BPMN_PROCESS_ID: "com.rbi.cms.complaint-lifecycle"
+  KAFKA_CONSUMER_GROUP: "cms-workflow-group"
+  KIESESSION_STRATEGY: "PER_PROCESS_INSTANCE"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-workflow-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+          key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+          value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        producer:
+          acks: all
+          key-serializer: org.apache.kafka.common.serialization.StringSerializer
+          value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    workflow:
+      engine: ${WORKFLOW_ENGINE}
+      process-id: ${BPMN_PROCESS_ID}
+      kiesession-strategy: ${KIESESSION_STRATEGY}
+
+---
+# ============================================================
+# 7. CMS RULES SERVICE (Drools)
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-rules-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-rules-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-rules-service"
+  KAFKA_CONSUMER_GROUP: "cms-rules-group"
+  RULES_RELOAD_INTERVAL_MINUTES: "30"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-rules-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    rules:
+      reload-interval-minutes: ${RULES_RELOAD_INTERVAL_MINUTES}
+
+---
+# ============================================================
+# 8. CMS ASSIGNMENT SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-assignment-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-assignment-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-assignment-service"
+  KAFKA_CONSUMER_GROUP: "cms-assignment-group"
+  ASSIGNMENT_STRATEGY: "ROUND_ROBIN"
+  MAX_CASES_PER_OFFICER: "50"
+  AUTO_REASSIGN_ON_ESCALATION: "true"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-assignment-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+        producer:
+          acks: all
+          key-serializer: org.apache.kafka.common.serialization.StringSerializer
+          value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    assignment:
+      strategy: ${ASSIGNMENT_STRATEGY}
+      max-cases-per-officer: ${MAX_CASES_PER_OFFICER}
+      auto-reassign-on-escalation: ${AUTO_REASSIGN_ON_ESCALATION}
+
+---
+# ============================================================
+# 9. CMS SLA MONITOR SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-sla-monitor-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-sla-monitor-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-sla-monitor-service"
+  KAFKA_CONSUMER_GROUP: "cms-sla-group"
+
+  # SLA Timelines (in hours)
+  SLA_ACKNOWLEDGEMENT_HOURS: "24"
+  SLA_RESOLUTION_DAYS: "30"
+  SLA_ESCALATION_LEVEL1_DAYS: "15"
+  SLA_ESCALATION_LEVEL2_DAYS: "25"
+  SLA_CHECK_CRON: "0 0 */2 * * *"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-sla-monitor-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+        producer:
+          acks: all
+          key-serializer: org.apache.kafka.common.serialization.StringSerializer
+          value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    sla:
+      acknowledgement-hours: ${SLA_ACKNOWLEDGEMENT_HOURS}
+      resolution-days: ${SLA_RESOLUTION_DAYS}
+      escalation:
+        level1-days: ${SLA_ESCALATION_LEVEL1_DAYS}
+        level2-days: ${SLA_ESCALATION_LEVEL2_DAYS}
+      check-cron: ${SLA_CHECK_CRON}
+
+---
+# ============================================================
+# 10. CMS NOTIFICATION SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-notification-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-notification-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-notification-service"
+  KAFKA_CONSUMER_GROUP: "cms-notification-group"
+
+  # Email Config
+  SMTP_HOST: "smtp.rbi.org.in"
+  SMTP_PORT: "587"
+  SMTP_FROM: "noreply-cms@rbi.org.in"
+  SMTP_STARTTLS: "true"
+
+  # SMS Config
+  SMS_GATEWAY_URL: "https://sms-gateway.rbi.org.in/api/send"
+  SMS_SENDER_ID: "RBICMS"
+  SMS_ENABLED: "true"
+
+  # Template
+  NOTIFICATION_ENABLED_CHANNELS: "EMAIL,SMS"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-notification-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+      mail:
+        host: ${SMTP_HOST}
+        port: ${SMTP_PORT}
+        properties:
+          mail:
+            smtp:
+              starttls:
+                enable: ${SMTP_STARTTLS}
+              auth: true
+    notification:
+      email:
+        from: ${SMTP_FROM}
+      sms:
+        gateway-url: ${SMS_GATEWAY_URL}
+        sender-id: ${SMS_SENDER_ID}
+        enabled: ${SMS_ENABLED}
+      channels: ${NOTIFICATION_ENABLED_CHANNELS}
+
+---
+# ============================================================
+# 11. CMS AUDIT SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-audit-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-audit-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-audit-service"
+  KAFKA_CONSUMER_GROUP: "cms-audit-group"
+  AUDIT_RETENTION_DAYS: "2555"
+  AUDIT_LOG_LEVEL: "FULL"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-audit-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    audit:
+      retention-days: ${AUDIT_RETENTION_DAYS}
+      log-level: ${AUDIT_LOG_LEVEL}
+
+---
+# ============================================================
+# 12. CMS STORAGE SERVICE
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-storage-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-storage-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-storage-service"
+
+  # Storage Config
+  STORAGE_TYPE: "filesystem"
+  STORAGE_BASE_PATH: "/data/cms-documents"
+  MAX_FILE_SIZE_MB: "25"
+  ALLOWED_EXTENSIONS: "pdf,jpg,jpeg,png,doc,docx,xls,xlsx"
+  VIRUS_SCAN_ENABLED: "true"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-storage-service
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      servlet:
+        multipart:
+          max-file-size: ${MAX_FILE_SIZE_MB}MB
+          max-request-size: ${MAX_FILE_SIZE_MB}MB
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    storage:
+      type: ${STORAGE_TYPE}
+      base-path: ${STORAGE_BASE_PATH}
+      allowed-extensions: ${ALLOWED_EXTENSIONS}
+      virus-scan-enabled: ${VIRUS_SCAN_ENABLED}
+
+---
+# ============================================================
+# 13. CMS SEARCH SERVICE (OpenSearch)
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-search-service-config
+  namespace: rbi-cms
+  labels:
+    app: cms-search-service
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-search-service"
+  KAFKA_CONSUMER_GROUP: "cms-search-group"
+
+  # OpenSearch
+  OPENSEARCH_INDEX_COMPLAINTS: "cms-complaints"
+  OPENSEARCH_INDEX_AUDIT: "cms-audit-logs"
+  OPENSEARCH_REPLICAS: "1"
+  OPENSEARCH_SHARDS: "3"
+  OPENSEARCH_REFRESH_INTERVAL: "5s"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-search-service
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        consumer:
+          group-id: ${KAFKA_CONSUMER_GROUP}
+          auto-offset-reset: ${KAFKA_AUTO_OFFSET_RESET}
+          enable-auto-commit: ${KAFKA_ENABLE_AUTO_COMMIT}
+      security:
+        oauth2:
+          resourceserver:
+            jwt:
+              issuer-uri: ${KEYCLOAK_ISSUER_URI}
+              jwk-set-uri: ${KEYCLOAK_JWK_SET_URI}
+    opensearch:
+      host: ${OPENSEARCH_HOST}
+      port: ${OPENSEARCH_PORT}
+      scheme: ${OPENSEARCH_SCHEME}
+      index:
+        complaints: ${OPENSEARCH_INDEX_COMPLAINTS}
+        audit: ${OPENSEARCH_INDEX_AUDIT}
+      replicas: ${OPENSEARCH_REPLICAS}
+      shards: ${OPENSEARCH_SHARDS}
+      refresh-interval: ${OPENSEARCH_REFRESH_INTERVAL}
+
+---
+# ============================================================
+# 14. CMS OUTBOX PUBLISHER
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-outbox-publisher-config
+  namespace: rbi-cms
+  labels:
+    app: cms-outbox-publisher
+data:
+  SERVER_PORT: "8080"
+  APPLICATION_NAME: "cms-outbox-publisher"
+
+  # Outbox Polling
+  OUTBOX_POLL_INTERVAL_MS: "5000"
+  OUTBOX_BATCH_SIZE: "100"
+  OUTBOX_MAX_RETRIES: "5"
+  OUTBOX_CLEANUP_CRON: "0 0 2 * * *"
+  OUTBOX_RETENTION_DAYS: "7"
+
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: cms-outbox-publisher
+      datasource:
+        url: ${DB_URL}
+        username: ${DB_USERNAME}
+        password: ${DB_PASSWORD}
+        driver-class-name: ${DB_DRIVER}
+      jpa:
+        hibernate:
+          ddl-auto: ${DB_DDL_AUTO}
+        properties:
+          hibernate:
+            dialect: ${DB_HIBERNATE_DIALECT}
+      kafka:
+        bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+        producer:
+          acks: all
+          retries: 3
+          key-serializer: org.apache.kafka.common.serialization.StringSerializer
+          value-serializer: org.apache.kafka.common.serialization.StringSerializer
+          properties:
+            enable.idempotence: true
+            max.in.flight.requests.per.connection: 1
+    outbox:
+      poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS}
+      batch-size: ${OUTBOX_BATCH_SIZE}
+      max-retries: ${OUTBOX_MAX_RETRIES}
+      cleanup:
+        cron: ${OUTBOX_CLEANUP_CRON}
+        retention-days: ${OUTBOX_RETENTION_DAYS}
+
+---
+# ============================================================
+# 15. CMS PORTAL FRONTEND
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-portal-frontend-config
+  namespace: rbi-cms
+  labels:
+    app: cms-portal-frontend
+data:
+  nginx.conf: |
+    server {
+      listen 8080;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+
+      # Angular routing — fallback to index.html
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+
+      # API proxy to gateway
+      location /api/ {
+        proxy_pass http://cms-api-gateway.rbi-cms.svc.cluster.local:8080/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      }
+
+      # Health check
+      location /health {
+        return 200 'OK';
+        add_header Content-Type text/plain;
+      }
+
+      # Cache static assets
+      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+      }
+
+      # Security headers
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    }
+
+  # Runtime env vars for config-template.json (injected via envsubst at container start)
+  API_BASE_URL: "/api"
+  KEYCLOAK_URL: "https://keycloak.rbi.org.in"
+  KEYCLOAK_REALM: "rbi-cms"
+  KEYCLOAK_CLIENT_ID: "cms-portal"
+
+---
+# ============================================================
+# 16. CMS OFFICER FRONTEND (cms-frontend)
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-officer-frontend-config
+  namespace: rbi-cms
+  labels:
+    app: cms-officer-frontend
+data:
+  nginx.conf: |
+    server {
+      listen 8080;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+
+      # Angular routing — fallback to index.html
+      location / {
+        try_files $uri $uri/ /index.html;
+      }
+
+      # API proxy to backend (monolith)
+      location /api/ {
+        proxy_pass http://cms-backend.rbi-cms.svc.cluster.local:8082/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+        proxy_send_timeout 60s;
+      }
+
+      # Health check
+      location /health {
+        return 200 'OK';
+        add_header Content-Type text/plain;
+      }
+
+      # Cache static assets
+      location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+      }
+
+      # Security headers
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header X-XSS-Protection "1; mode=block" always;
+      add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://keycloak.rbi.org.in;" always;
+    }
+
+  # Runtime env vars for config-template.json (injected via envsubst at container start)
+  API_BASE_URL: "/api"
+  KEYCLOAK_URL: "https://keycloak.rbi.org.in"
+  KEYCLOAK_REALM: "rbi-cms"
+  KEYCLOAK_CLIENT_ID: "cms-officer-portal"
+
+---
+# ============================================================
+# 17. CMS BACKEND (Monolith — RBIO Officer Backend)
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cms-backend-config
+  namespace: rbi-cms
+  labels:
+    app: cms-backend
+data:
+  SERVER_PORT: "8082"
+  APPLICATION_NAME: "cms-backend"
+  SPRING_PROFILES_ACTIVE: "openshift"
+
+  # Tomcat tuning
+  TOMCAT_MAX_THREADS: "400"
+  TOMCAT_MIN_SPARE: "50"
+  TOMCAT_MAX_CONNECTIONS: "10000"
+
+  # HikariCP
+  DB_MAX_POOL_SIZE: "50"
+  DB_POOL_SIZE: "10"
+
+  # Cache
+  CACHE_TYPE: "hazelcast"
+
+  # OCR
+  OCR_CHAIN: "groq, paddle"
+  PADDLE_OCR_URL: "http://cms-paddle-ocr.rbi-cms.svc.cluster.local:8100"
+
+  # Attachments
+  CMS_ATTACHMENTS_PATH: "/data/cms/attachments"
+  CMS_MAX_FILE_SIZE: "52428800"
+  CMS_CHUNK_SIZE: "5242880"
+  CMS_MAX_FILES: "10"
+
+  # Rate Limiting
+  RATE_LIMIT_CPM: "10"
+  RATE_LIMIT_RPS: "100"
+
+  # Anti-Automation
+  ANTI_AUTO_VELOCITY_WINDOW: "60"
+  ANTI_AUTO_VELOCITY_THRESHOLD: "30"
+  ANTI_AUTO_MIN_FORM_MS: "3000"
+  ANTI_AUTO_REQUIRE_HEADERS: "true"
+
+  # MRE
+  MRE_VERSION: "1"
+  MRE_RE_WINDOW: "30"
+  MRE_NPCI_WINDOW: "30"
+  MRE_CARD_WINDOW: "60"
+  MRE_FILING_DEADLINE: "90"
+  MRE_LIMITATION_YEARS: "3"
+  MRE_WINDOW_BASIS: "BUSINESS"
+
+  # CORS
+  CMS_CORS_ORIGINS: "https://cms-portal.rbi.org.in,https://cms-officer.rbi.org.in"
+
+  # Similar Cases
+  SIMILAR_CASES_ENABLED: "true"
+  SIMILAR_CASES_INDEX: "complaints"
+
+  # TAT
+  TAT_HOUR_START: "9"
+  TAT_HOUR_END: "18"
+  TAT_TIMEZONE: "Asia/Kolkata"
+  TAT_DEFAULT_SLA: "240"
+
+  # Auth
+  OTP_LENGTH: "6"
+  OTP_EXPIRY_MINUTES: "5"
+  OTP_MAX_RESEND_PER_HOUR: "5"
+  OTP_MAX_VERIFY_ATTEMPTS: "3"
+  CAPTCHA_LENGTH: "6"
+  CAPTCHA_EXPIRY_MINUTES: "5"
+  COOLOFF_PROGRESSION: "30,60,120,300,600"
+  COOLOFF_MAX: "600"
+  COOLOFF_RESET_MINUTES: "60"
+  OTP_RATE_MOBILE_HOUR: "5"
+  OTP_RATE_IP_HOUR: "20"
+  LOGIN_RATE_IP_MINUTE: "10"
+
+  # CRPC
+  CRPC_MAX_PER_REVIEWER: "30"
+  CRPC_OVERFLOW_TARGET: "CRPC_HEAD"
+
+  # Logging
+  LOG_LEVEL_APP: "INFO"
+  LOG_LEVEL_SQL: "WARN"
