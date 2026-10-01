@@ -212,6 +212,61 @@ analyzer — not a fix for total failure. The distinction matters because it bou
 subfield change actually buys: everything for hi/bn/ur inflections, nothing for the 9 ICU-only
 languages, which remain surface-form-only no matter which field is queried.
 
+### 2.14 `cms-search-service` could not boot at all (defect in this session's own code, fixed)
+
+Reported by the corpus-seeder agent and then verified directly, because it sat in the ES-migration code
+this session wrote. `ElasticsearchConfig` published **two** `RestClient` beans and **two**
+`ElasticsearchClient` beans, separated only by socket timeout, with **no `@Primary` between either
+pair**. Three injection points take the type without qualifying it:
+
+| Injection point | Declares | Qualified? |
+|---|---|---|
+| `ElasticsearchConfig.elasticsearchClient` parameter | `RestClient restClient` | **No** |
+| `ComplaintIndexManager:43` | `private final ElasticsearchClient client` | **No** (Lombok ctor) |
+| `ComplaintSearchService:68` | `private final ElasticsearchClient client` | **No** (Lombok ctor) |
+| `ReindexJob:103` | `ElasticsearchClient bulkClient` | Yes — `bulkElasticsearchClient` |
+
+Two candidates against an unqualified injection point is `NoUniqueBeanDefinitionException` at context
+refresh, so the service never served a request. **The `RestClient` clash fires first** — before the
+`ElasticsearchClient` one that was originally reported — so there were two ambiguities, not one.
+
+Two points worth keeping:
+
+1. **A compile is no evidence here.** The ambiguity is invisible to javac and `mvn compile` passed
+   throughout; it only appears when the context refreshes. `ElasticsearchConfigWiringTest` therefore
+   refreshes a real context. No Elasticsearch node is needed — `RestClient.builder(...).build()`
+   resolves no host and opens no socket — so the wiring is testable with the cluster down. Removing
+   either `@Primary` fails 4 of its 5 tests, which is how the test was confirmed to detect the defect
+   rather than merely to pass alongside it.
+2. **Which bean is primary is a safety choice, not a coin toss.** The short-timeout search pair is
+   primary, so a future consumer that forgets to qualify inherits the **2 s** read timeout that guards
+   user-facing search rather than the **30 s** bulk one. The cost of the wrong default is then a
+   timed-out query; the other way round it is a pinned request thread, which `SearchProperties` itself
+   documents as the failure mode the kill switch exists to stop.
+
+This is the clearest instance in this brief of why "it compiles" and "the tests pass" were not
+sufficient evidence: both were true of a service that could not start.
+
+### 2.15 `Complaint.onCreate()` silently discards any caller-supplied `createdAt`
+
+Found while seeding. `Complaint.onCreate()` (`Complaint.java:502`) assigns `createdAt`, `updatedAt`,
+`filedAt` and `lastStatusChangeDate` unconditionally, so the `@PrePersist` overwrite beats anything the
+caller set. This is not theoretical — it has **already broken `DemoDataSeeder`**: its 60 rows are
+written with a deliberate 90-day spread, and measured in the live database all 60 land inside
+**121.68 ms**:
+
+```
+n   MIN(created_at)             MAX(created_at)             spread_ms
+60  2026-08-06 13:02:39.927311  2026-08-06 13:02:40.048995  121.6840
+```
+
+The consequence reaches past seeding. Any date-range reporting, ageing bucket or TAT figure computed
+over demo or seeded data is measuring insert time, not complaint time, and will look plausible while
+being meaningless. Left unfixed and reported rather than patched: `Complaint` is a shared entity on
+several sessions' critical path, and changing persistence semantics under them during parallel work is
+how a one-line fix becomes someone else's afternoon. The corpus seeder does not depend on
+`createdAt`.
+
 ---
 
 ## 3. Measured evidence for the language work (§2.3 / §6.3)
@@ -241,6 +296,24 @@ for the 9 uncovered languages a search for the root form will not find the infle
 versa. This is a real functional limitation, not a configuration mistake — Lucene ships no stemmer for
 these languages. It is recorded as an open ask in §4 because it is a product decision, not an
 engineering one.
+
+### 3.2a The honest per-language tally (corrects an earlier 4/9 framing)
+
+Measured by the seeder's root/inflected pairs (`fc28ab3`) across all 13 languages, not inferred from
+which analyzer is configured:
+
+| Behaviour | Count | Languages |
+|---|---|---|
+| **Stems** — root query finds the inflected form | **3** | `en` (english), `hi` (hindi), `bn` (bengali) |
+| **Normalises only** — folds script variants, no stemming | **1** | `ur` (cms_urdu, arabic_normalization) |
+| **Surface form only** — exact match or nothing | **9** | `mr`, `te`, `ta`, `ml`, `kn`, `gu`, `pa`, `or`, `as` |
+
+An earlier draft of this document framed this as 4 stemming languages. **That was wrong, and the error
+is worth naming:** `mr` routes to `.hi` and `as` routes to `.bn`, so both *borrow a subfield that has a
+stemmer*. Borrowing the subfield is not the same as being stemmed — the Hindi stemmer's rules do not
+describe Marathi morphology, and sharing the field buys tokenisation and folding but no reliable
+stemming. Counting them as covered would have overstated coverage for two of the languages with the
+largest speaker populations in scope.
 
 ### 3.3 End-to-end retrieval against the live index
 
@@ -401,24 +474,77 @@ Stated per deliverable so nothing here is read as more complete than it is.
 |---|---|---|
 | 1. ELK replaces OpenSearch, language-aware | **Built** | 19 `MultilingualSearchIT` tests pass against a live 8.15.3 node; mappings/settings validated; §3 probes |
 | 2. Index the text that matters | **Partly built** | 29-field `dynamic: strict` mapping with per-language subfields and nested timeline. Uploaded-document text extraction is **not** built — see open ask 4, it needs a sizing and PII ruling first |
-| 3. One "find similar cases" path | **Backend built, frontend not** | Provider rewritten onto ES `more_like_this` with timeouts; wrong-index and enabled-by-default defects fixed; 5 denial tests. The single shared Angular component and retirement of the phantom `/api/v1/complaints/{id}/similar` callers did **not** land |
-| 4. Assistance rail (Tier 0 + Tier 1) | **Not built** | No code written. The `context-rail` extraction, Tier 0 server-side preferences table and Tier 1 rollups all remain |
+| 3. One "find similar cases" path | **Built** | Provider on ES `more_like_this` with timeouts; wrong-index and enabled-by-default defects fixed; 5 denial tests. Shared Angular component + service landed in `262d8cd`, both phantom callers retired, `tsc --noEmit` and `ng build` clean, ESLint clean on all new files |
+| 4. Assistance rail (Tier 0 + Tier 1) | **Built** | `c81bc5b`, 12 files. 30 `AssistanceRailServiceTest` tests across 4 nested classes; the `/api/v1/assistance/**` guard is mutation-proven (§5b) |
 | §6.1 prerequisites | **Built** | §3a: two composite indexes chosen by the optimiser, five `findAll()` hydrates removed, 21 dashboard tests pass |
-| §5.3.6 template wiring | **Not built** | Nothing landed in `workflow-action-bar` |
-| Synthetic multilingual corpus seeder | **Not built** | Script-coverage for all 12 Indic scripts was verified, but no seeder code was written |
+| §5.3.6 template wiring | **Built** | `comment-template-picker` component + `SimilarCasesTranslationSeeder` (`@Order(69)`, 19 keys × 11 locales) in `262d8cd` |
+| Synthetic multilingual corpus seeder | **Built** | `fc28ab3`: 26 `CMS-MLCORPUS-*` rows, dev-local only; `CorpusReindexIT` carries them through the real `ReindexJob`. The measured tally is weaker than the brief implies — see §3.2a |
+| cms-search-service boots | **Fixed** | `3e0c4fc`. It did **not** boot at all until this commit — see §2.14 |
 
-**Why the gaps.** Three build agents were dispatched in parallel across the three independent subtrees.
-The first set died on an expired AWS SSO token; the second set stalled (no stream progress for 600 s)
-after landing the backend dashboard work and the infra cutover but before the frontend agent made any
-edit. The backend and search work was then verified and completed in the main session. The frontend
-deliverables (3-frontend, 4, §5.3.6) have no partial state in the tree — they are cleanly unstarted,
-not half-applied, so they can be picked up without untangling anything.
+**Backend suite at the gate:** 82/82, 0 failures (48 `SecurityConfigEnforcementTest`, 30
+`AssistanceRailServiceTest`, 4 `SimilarCasesServiceTest`), plus 5 `ElasticsearchConfigWiringTest` and
+4 `MultilingualCorpusSeederProfileTest`.
 
-**A note for whoever picks up the frontend work.** The shared Angular dev server serves the *main*
+**What is still genuinely not built**, and should not be read as oversight:
+
+- **Uploaded-document text extraction** (part of deliverable 2) — blocked on open ask 4.
+- Everything in §5, which was out of scope by instruction.
+
+**Two things verified by unit test but never observed on real data.** Recorded here rather than in a
+passing column, because a green test over absent data proves only the logic:
+
+- The rail's `category-closure-time` prior **has never fired on real data**: `category_id` is populated
+  on 79 of 2769 rows. A data gap, not a logic gap, but the panel will stay silent on most complaints.
+- Oracle EXPLAIN plans for V109 are **reasoned, not measured** — no Oracle instance was reachable.
+
+**A note for whoever picks up frontend work here.** The shared Angular dev server serves the *main*
 checkout, not this worktree, so a browser assertion against a component edited here renders the old
 code and fails for an unrelated reason. Assert frontend source changes by reading the file from disk
 and reserve DOM assertions for pages the session has not modified. Do not restart the shared dev
-server — six other sessions depend on it.
+server — six other sessions depend on it. Consequently **no part of this UI work has been exercised in
+a browser**, and the portal app has no unit-test infrastructure at all (`angular.json` has no `test`
+target; `src/` contains zero `.spec.ts`). The frontend evidence above is compile-time and static only.
+
+---
+
+## 5b. Proving the rail's authorisation does not fail open
+
+The brief asks for the test, not the assertion — "'the panel renders' is not evidence that
+authorisation holds". A passing authorisation test is weak evidence on its own, because it passes
+identically whether the guard works or whether the test never exercised it. So the guard was
+**mutation-tested**: the `/api/v1/assistance/**` matcher was deleted from `SecurityConfig`, the suite
+re-run, and the file restored from backup.
+
+| | Result |
+|---|---|
+| Guard present | 48/48 `SecurityConfigEnforcementTest` pass |
+| Guard deleted | **exactly 4 failures**, all `Status expected:<403> but was:<200>` |
+| Failing cases | CITIZEN and RE_USER × both rail endpoints |
+| Guard restored | 48/48 pass again |
+
+Removing the matcher does **not** produce a 403 from some other layer — it produces a **200**. That is
+the finding worth keeping: there is no second line of defence behind it. Specifically:
+
+- `@EnableMethodSecurity` is **not enabled anywhere in this application**, so all 31 `@PreAuthorize`
+  annotations in the codebase are inert. `AssistanceRailController` documents its own absence of one for
+  that reason, rather than carrying an annotation that would read as protection and provide none.
+- The `.anyRequest().authenticated()` fallback is **not** a safety net here: a citizen holding a tracking
+  session *is* authenticated, and the rail's Tier 1 signals aggregate facts about **other** complaints
+  (how many an entity closed under a clause, how long a category takes). The fallback would have been a
+  disclosure hole, which is precisely why the matcher is explicit.
+
+Tier 0 isolation is enforced **structurally** rather than procedurally:
+`AssistanceRailMemoryRepository` declares exactly one finder,
+`findByOwnerUserIdAndComplaintNumber`, and no `findByComplaintNumber` or `findAll` wrapper exists. An
+unscoped read of another officer's memory row cannot be written by accident because the query to write
+it does not exist. The caller is resolved through `RequestIdentityResolver` and **never** from a request
+parameter.
+
+One related trap worth recording for the next person writing such a test: these assertions must live in
+`SecurityConfigEnforcementTest`, which `@Import`s the real filter chain. They cannot live in a
+controller slice, because `GlobalExceptionHandler` maps bare `RuntimeException` to **HTTP 400** and
+`AccessDeniedException` is a `RuntimeException` — so in a slice test a denial surfaces as 400 and an
+assertion of 403 fails for a reason that has nothing to do with authorisation.
 
 ---
 
