@@ -10,9 +10,13 @@
 
 .loading, .error-state { text-align: center; padding: 60px; color: var(--text-muted); font-size: 16px; }
 
-.detail-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+// The three-region reference layout: facts | actions | rail. The rail column is a fixed 48px because
+// app-context-rail overlays its body leftward rather than widening the column — see that component.
+// `.detail-layout` is kept as the class name (the AA workflow/hearing/order specs wait on
+// `.aa-detail .detail-layout`); `.detail-content` is the reference layout's name for the same element.
+.detail-layout { display: grid; grid-template-columns: 1fr 1fr 48px; gap: 20px; align-items: start; }
 
-// -- Detail Panel --
+// -- Detail Panel (LEFT region) --
 .detail-panel { display: flex; flex-direction: column; gap: 16px; }
 
 .appeal-header {
@@ -153,8 +157,12 @@
   p { margin: 0; color: var(--text-muted); font-size: 13px; }
 }
 
+// The rail keeps its own 48px column even when the two working regions stack: it is an icon strip, not
+// a panel, so there is nothing to reflow and collapsing it to full width would put two icons across
+// the screen.
 @media (max-width: 1024px) {
-  .detail-layout { grid-template-columns: 1fr; }
+  .detail-layout { grid-template-columns: 1fr 48px; }
+  .detail-panel, .action-panel { grid-column: 1; }
   .action-panel { position: static; }
 }
 

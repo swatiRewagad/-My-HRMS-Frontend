@@ -10,30 +10,52 @@
     </div>
   </div>
 
-  <!-- Stats Cards -->
-  <div class="stats-grid">
-    <div class="stat-card total">
+  <!--
+    ═══ KPI CARDS ═══
+    Clickable, and each one filters the grid below to the rows it counts — the canonical pattern CEPC
+    and RBIO already use. Previously these were four inert tiles, so an entity could read "39 pending"
+    and then had to find the dropdown to see which 39.
+
+    Every figure here comes from GET /api/v1/re-portal/dashboard (totalForwarded / pending / responded
+    / breached), which is served by RePortalController.getDashboard. Nothing is derived client-side and
+    no card points at an endpoint that does not exist.
+
+    `aria-pressed` rather than a bare class, because these ARE toggles and a sighted user sees the
+    active tint while a screen-reader user otherwise would not.
+  -->
+  <div class="stats-grid" role="group" aria-label="Complaint totals — select one to filter the queue">
+    <button type="button" class="stat-card total" [class.active]="filterStatus() === ''"
+            [attr.aria-pressed]="filterStatus() === ''" (click)="selectCard('')">
       <div class="stat-icon"><i class="pi pi-inbox"></i></div>
       <div class="stat-content">
         <span class="stat-value">{{ stats().totalForwarded }}</span>
         <span class="stat-label">Total Forwarded</span>
       </div>
-    </div>
-    <div class="stat-card pending">
+    </button>
+    <button type="button" class="stat-card pending" [class.active]="filterStatus() === 'pending'"
+            [attr.aria-pressed]="filterStatus() === 'pending'" (click)="selectCard('pending')">
       <div class="stat-icon"><i class="pi pi-clock"></i></div>
       <div class="stat-content">
         <span class="stat-value">{{ stats().pendingResponse }}</span>
-        <span class="stat-label">Pending Response</span>
+        <span class="stat-label">Awaiting Our Response</span>
       </div>
-    </div>
-    <div class="stat-card responded">
+    </button>
+    <button type="button" class="stat-card responded" [class.active]="filterStatus() === 'responded'"
+            [attr.aria-pressed]="filterStatus() === 'responded'" (click)="selectCard('responded')">
       <div class="stat-icon"><i class="pi pi-check-circle"></i></div>
       <div class="stat-content">
         <span class="stat-value">{{ stats().responded }}</span>
         <span class="stat-label">Responded</span>
       </div>
-    </div>
-    <div class="stat-card breached">
+    </button>
+    <!--
+      Not clickable as a filter, and deliberately so. `breached` is a DEADLINE property on the response
+      tracker, not a complaint status, and GET /re-portal/complaints emits no deadline — so there is no
+      row predicate that could select the breached rows. A card that filtered to an empty grid would
+      tell the entity it had nothing overdue, which is the opposite of what the number says. It stays a
+      read-only indicator until the list endpoint carries the deadline.
+    -->
+    <div class="stat-card breached" [attr.title]="'Overdue responses. The complaint list carries no deadline yet, so this total cannot be filtered to its rows.'">
       <div class="stat-icon"><i class="pi pi-exclamation-triangle"></i></div>
       <div class="stat-content">
         <span class="stat-value">{{ stats().breached }}</span>
@@ -42,68 +64,36 @@
     </div>
   </div>
 
-  <!-- Complaints Table -->
-  <div class="complaints-section">
-    <div class="section-header">
-      <h3 class="section-title">Forwarded Complaints</h3>
-      <div class="filter-bar">
-        <select class="status-filter" (change)="onFilterChange($event)" aria-label="Filter by status">
-          <option value="">All Status</option>
-          <option value="pending">Pending Response</option>
-          <option value="responded">Responded</option>
-          <option value="breached">Breached</option>
-          <option value="extension_requested">Extension Requested</option>
-          <option value="clarification_requested">Clarification Requested</option>
-        </select>
-      </div>
-    </div>
+  <!--
+    ═══ THE QUEUE ═══
+    The shared app-task-grid, which is the one grid every role in this application meets. The RE portal
+    was the last module still rendering a hand-rolled table, so it had no column filters, no sorting and
+    no paging; an entity with 54 forwarded complaints had to scroll all of them.
 
-    @if (loading()) {
-      <div class="loading-state">
-        <div class="spinner"></div>
-        <p>Loading complaints...</p>
-      </div>
-    } @else if (filteredComplaints().length === 0) {
-      <div class="empty-state">
-        <i class="pi pi-inbox"></i>
-        <p>No complaints found</p>
-      </div>
-    } @else {
-      <div class="table-wrapper">
-        <table class="complaints-table" aria-label="Complaints list">
-          <thead>
-            <tr>
-              <th>Complaint No.</th>
-              <th>Subject</th>
-              <th>Forwarded Date</th>
-              <th>Response Deadline</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (complaint of filteredComplaints(); track complaint.complaintNumber) {
-              <tr class="complaint-row" [class]="getUrgencyClass(complaint)" (click)="openComplaint(complaint)">
-                <td class="complaint-number">{{ complaint.complaintNumber }}</td>
-                <td class="complaint-subject">{{ complaint.subject }}</td>
-                <td>{{ complaint.forwardedDate | date:'dd MMM yyyy' }}</td>
-                <td>
-                  <span class="deadline-text">{{ complaint.responseDeadline | date:'dd MMM yyyy' }}</span>
-                  <span class="days-remaining" [class]="getUrgencyClass(complaint)">{{ getDaysRemaining(complaint.responseDeadline) }}</span>
-                </td>
-                <td>
-                  <app-status-badge [status]="complaint.status" />
-                </td>
-                <td>
-                  <button class="action-btn" (click)="openComplaint(complaint); $event.stopPropagation()">
-                    <i class="pi pi-eye"></i> View
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
-  </div>
+    The status dropdown stays — it expresses the RE's OWN view of the work ("pending a reply from us"),
+    which is a mapping over several stored statuses rather than one column's value, so the grid's own
+    per-column filter cannot express it. It is projected into the grid's headerActions slot so the
+    screen has ONE header bar rather than the grid's plus its own.
+  -->
+  <ng-template #queueActions>
+    <select class="status-filter" [value]="filterStatus()" (change)="onFilterChange($event)"
+            aria-label="Filter by status">
+      <option value="">All Status</option>
+      <option value="pending">Pending Response</option>
+      <option value="responded">Responded</option>
+      <option value="extension_requested">Extension Requested</option>
+      <option value="clarification_requested">Clarification Requested</option>
+    </select>
+  </ng-template>
+
+  <app-task-grid
+    [rows]="filteredComplaints()"
+    [columns]="gridColumns"
+    [titleKey]="'ui.grid.complaints'"
+    rowKey="complaintNumber"
+    [loading]="loading()"
+    [headerActions]="queueActions"
+    [rowClass]="urgencyClass"
+    [pageSizeOptions]="[10, 25, 50]"
+    (rowClick)="openComplaint($event)" />
 </div>

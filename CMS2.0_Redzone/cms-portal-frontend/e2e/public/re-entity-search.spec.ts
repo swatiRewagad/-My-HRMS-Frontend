@@ -34,6 +34,24 @@ import { seedCitizenSession } from '../utils/test-data';
  * the two shared helpers) now drives the combobox. Selection is asserted on the recorded answer —
  * see expectRecordedAnswer below — never on the box's text, which a citizen can fill without choosing.
  *
+ * ── D-B4, THE COST OF REMOVING THE <select>, IS FIXED ──────────────────────────────────────────────
+ * Removing the select had one consequence worth keeping on record, because it is the non-obvious part:
+ * the select was keyboard-operable for free (browsers give that to every native select), and the
+ * combobox was not — its options bound `(mousedown)` and nothing else, with no keydown handler, no
+ * active-descendant tracking and no tabindex. While both controls stood side by side that was a
+ * degraded experience; once the select was gone it meant a keyboard-only citizen could not answer the
+ * one question that gates the entire Scheme, and therefore could not file at all. D-B4, raised to
+ * blocking for that reason.
+ *
+ * Now FIXED: the input carries role="combobox" / aria-autocomplete="list" / aria-expanded /
+ * aria-controls / aria-activedescendant, each option carries a stable id and an `.active` highlight,
+ * and the input's own (keydown) drives ArrowDown/ArrowUp (wrapping), Home/End, Enter (via the same
+ * selectEntityFromSearch the mouse calls) and Escape (closes without touching the recorded answer).
+ * Focus stays on the input throughout, so typing to narrow the list still works. `(mousedown)` is
+ * retained deliberately — it must fire before the input's blur closes the list.
+ * Acceptance evidence lives in re-details-cascading-dropdowns.spec.ts (block 1), which owns the
+ * arrow-key case; this file continues to cover the search/filter surface.
+ *
  * ── WHAT WAS BROKEN AND IS NOW FIXED (all three verified in a real browser first) ───────────────────
  *   1. There was NO search box. filterEntities/selectEntityFromSearch/clearEntitySelection/
  *      closeEntityDropdown/getSelectedEntityLabel existed in the component and were referenced by

@@ -94,54 +94,11 @@
 }
 
 // ═══ RIGHT CONTEXT RAIL ═══
-// The rail occupies a FIXED 48px in the grid whether open or closed, and its body OVERLAYS the panels
-// rather than widening the column. An earlier version let the column grow to 360px and a layout test
-// measured the left panel losing 151px on every toggle — which would move assessment fields under the
-// officer's cursor mid-edit. The rail is context an officer glances at, so covering the panels for the
-// moment it is open costs less than reflowing them.
-.context-rail {
-  position: relative;
-  display: flex; align-items: stretch; gap: 0; width: 48px; flex-shrink: 0;
-  border-left: 1px solid var(--border-subtle);
-}
-
-.rail-icons {
-  display: flex; flex-direction: column; gap: 4px; padding: 8px 6px; width: 48px; flex-shrink: 0;
-  background: var(--surface-card); border-right: 1px solid var(--border-subtle);
-}
-
-.rail-icon {
-  background: none; border: 1px solid transparent; border-radius: 6px; padding: 8px;
-  cursor: pointer; color: var(--text-muted); font-size: 14px;
-  &:hover { background: var(--surface-page); color: var(--brand-primary); }
-  &.active { background: var(--brand-primary-bg); border-color: var(--brand-primary); color: var(--brand-primary); }
-}
-
-// Anchored to the icon strip's right edge and pulled LEFTWARD over the panels, so opening it adds no
-// width to the grid. Bounded height with its own scroll: the rail must not stretch the row and push the
-// panels' shared scroll container taller than the viewport.
-.rail-body {
-  position: absolute; top: 0; right: 48px; z-index: 20;
-  width: 340px; max-height: 100%;
-  display: flex; flex-direction: column; gap: 12px;
-  padding: 12px; overflow-y: auto;
-  background: var(--surface-card);
-  border: 1px solid var(--border-subtle); border-radius: 8px 0 0 8px;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.08);
-}
-
-.rail-header {
-  display: flex; align-items: center; justify-content: space-between;
-  h4 { margin: 0; font-size: 13px; font-weight: 700; color: var(--text-heading); }
-}
-
-.rail-close {
-  background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 4px;
-  &:hover { color: var(--brand-primary); }
-}
-
-// The rail's own attachment list is gone: app-rbio-attachments is the single list, and its own
-// (view-encapsulated) styles cannot be reached from here — so .rail-doc* rules would be dead weight.
+// The rail is now the shared app-context-rail, which owns its own 48px width contract and its overlaying
+// body. Nothing for it is left here: its DOM is inside that component's view encapsulation, so rules
+// written from this stylesheet could not reach it anyway.
+//
+// The rail's own attachment list is likewise gone: app-rbio-attachments is the single list.
 
 // ═══ COMPLAINT STRIP ACTIONS ═══
 // The strip itself is now app-complaint-summary. Only this screen's own buttons stay here, and they are

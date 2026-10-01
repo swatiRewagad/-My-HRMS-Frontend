@@ -150,6 +150,8 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
   entitySearchText = '';
   entityDropdownOpen = false;
   filteredEntityOptions: { label: string; value: string; entityType?: string }[] = [];
+  /** Index into filteredEntityOptions of the keyboard-highlighted row; -1 = nothing highlighted. */
+  entityActiveIndex = -1;
 
   // FR-G-020: Duplicate detection
   showDuplicatePopup = signal(false);
@@ -1251,6 +1253,9 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
                         !!o.entityType?.toLowerCase().includes(term))
       : all;
     this.entityDropdownOpen = true;
+    // Every re-filter and every re-open drops the highlight, so Enter can never activate a row the
+    // citizen can no longer see.
+    this.entityActiveIndex = -1;
   }
 
   /** True only once the citizen has typed something that matches nothing — never on an empty box. */
@@ -1292,6 +1297,7 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
     this.entitySearchText = opt.label;
     this.entityDropdownOpen = false;
     this.filteredEntityOptions = [];
+    this.entityActiveIndex = -1;
   }
 
   getSelectedEntityLabel(): string {
@@ -1314,6 +1320,82 @@ export class PublicFileComplaintComponent implements OnInit, OnDestroy {
 
   closeEntityDropdown() {
     setTimeout(() => this.entityDropdownOpen = false, 200);
+  }
+
+  /** Stable per-row id so aria-activedescendant has something to point at. */
+  entityOptionId(index: number): string {
+    return `entity-search-option-${index}`;
+  }
+
+  get entityActiveDescendantId(): string | null {
+    return this.entityDropdownOpen && this.entityActiveIndex >= 0
+      ? this.entityOptionId(this.entityActiveIndex)
+      : null;
+  }
+
+  /**
+   * D-B4: the searchable entity list is the ONLY control for the question that gates the whole Scheme,
+   * so it has to be operable without a mouse. ARIA combobox-with-listbox pattern:
+   *
+   *   ArrowDown / ArrowUp  move the highlight, WRAPPING at both ends (down from the last row lands on
+   *                        the first, up from the first lands on the last). If the list is closed they
+   *                        open it first and land on the first / last row respectively.
+   *   Home / End           first / last row.
+   *   Enter                activates the highlighted row through selectEntityFromSearch — the same
+   *                        method the mouse path calls, so there is one selection code path.
+   *   Escape               closes the list and drops the highlight. It deliberately does NOT touch
+   *                        eligibilityAnswers: dismissing a popup is not un-answering a question.
+   *
+   * DOM focus stays on the input throughout — the pattern requires it, because moving focus into the
+   * list would stop the citizen typing to narrow it, and would break the (blur) close.
+   */
+  onEntitySearchKeydown(event: KeyboardEvent) {
+    const key = event.key;
+    if (key === 'Escape') {
+      if (!this.entityDropdownOpen) return;
+      event.preventDefault();
+      this.entityDropdownOpen = false;
+      this.entityActiveIndex = -1;
+      return;
+    }
+
+    if (key === 'Enter') {
+      const opt = this.entityDropdownOpen ? this.filteredEntityOptions[this.entityActiveIndex] : undefined;
+      if (!opt) return;
+      // Prevented so the Enter that picks an entity cannot also submit or advance the wizard.
+      event.preventDefault();
+      this.selectEntityFromSearch(opt);
+      return;
+    }
+
+    if (key !== 'ArrowDown' && key !== 'ArrowUp' && key !== 'Home' && key !== 'End') return;
+    event.preventDefault();
+
+    const wasClosed = !this.entityDropdownOpen;
+    if (wasClosed) this.filterEntities();
+    const count = this.filteredEntityOptions.length;
+    if (count === 0) return;
+
+    if (key === 'Home') this.entityActiveIndex = 0;
+    else if (key === 'End') this.entityActiveIndex = count - 1;
+    else if (key === 'ArrowDown') {
+      this.entityActiveIndex = wasClosed || this.entityActiveIndex < 0
+        ? 0
+        : (this.entityActiveIndex + 1) % count;
+    } else {
+      this.entityActiveIndex = wasClosed || this.entityActiveIndex < 0
+        ? count - 1
+        : (this.entityActiveIndex - 1 + count) % count;
+    }
+    this.scrollActiveEntityIntoView();
+  }
+
+  /** After the highlight moves, the row it moved to has to be on screen in a 145-row popup. */
+  private scrollActiveEntityIntoView() {
+    const id = this.entityActiveDescendantId;
+    if (!id) return;
+    // Deferred by a turn: the <li> for a newly opened list does not exist until Angular has rendered.
+    setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'nearest' }));
   }
 
   eligibilityFieldError = '';

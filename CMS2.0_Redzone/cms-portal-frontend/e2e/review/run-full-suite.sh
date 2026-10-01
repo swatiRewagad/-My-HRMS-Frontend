@@ -11,6 +11,12 @@ set -uo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
 
+# Sourced here, as capture-screens.sh already does. Without it the specs that SSO through Keycloak
+# fall back to their hardcoded defaults and report a failure that looks like a broken redirect — the
+# staff-dashboard specs were "failing" for exactly this reason while passing in isolation.
+# shellcheck disable=SC1091
+source e2e/review/credentials.env
+
 export UI_BASE_URL="${UI_BASE_URL:-http://localhost:4202}"
 export APP_BASE_URL="${APP_BASE_URL:-$UI_BASE_URL}"
 export API_BASE_URL="${API_BASE_URL:-http://localhost:8092}"

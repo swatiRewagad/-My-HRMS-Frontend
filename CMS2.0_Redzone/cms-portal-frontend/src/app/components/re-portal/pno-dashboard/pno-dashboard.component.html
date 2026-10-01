@@ -2,10 +2,6 @@
 
   <!-- ═══ Team workload (UST838) ═══ -->
   <section class="panel">
-    <div class="section-header">
-      <h3 class="section-title">{{ 're.pno.dashboard_title' | translate }}</h3>
-    </div>
-
     <!--
       UST838: the definition of "open records" is not guessable from the number, and a PNO comparing it
       against a raw record count would conclude the dashboard was wrong. So the exclusion is stated
@@ -16,6 +12,17 @@
       <span>{{ 're.pno.workload_definition_notice' | translate }}</span>
     </p>
 
+    <!--
+      ═══ KPI CARDS ═══
+      Both figures come from endpoints that are served: the total from GET /re-portal/reassignment/
+      workload (`totalActiveRecords`, the server's own total — never a sum of the rows, see the class
+      doc), and the approvals tally from GET /re-portal/reassignment/requests/pending
+      (`totalElements`).
+
+      The approvals card is now a LINK to the queue it counts. It was previously an inert tile with a
+      text hint naming the screen, because no route existed for it; `re-portal/reassignment/approvals`
+      is registered now, so the number takes the PNO to the records.
+    -->
     <div class="stats-grid">
       <div class="stat-card total">
         <div class="stat-icon"><i class="pi pi-inbox"></i></div>
@@ -25,12 +32,7 @@
         </div>
       </div>
 
-      <!--
-        A hint rather than a link: no route is registered for the approvals screen in app.routes.ts, and
-        a routerLink to an unregistered path would fail silently on click. The queue is named by its own
-        title so the PNO knows which screen to open.
-      -->
-      <div class="stat-card pending">
+      <button type="button" class="stat-card pending" (click)="openApprovals()">
         <div class="stat-icon"><i class="pi pi-clock"></i></div>
         <div class="stat-content">
           <span class="stat-value">
@@ -43,6 +45,20 @@
           <span class="stat-label">{{ 're.pno.pending_approvals' | translate }}</span>
           <span class="stat-hint">{{ 're.reassign.approvals_title' | translate }}</span>
         </div>
+      </button>
+
+      <div class="stat-card moves">
+        <div class="stat-icon"><i class="pi pi-sync"></i></div>
+        <div class="stat-content">
+          <span class="stat-value">{{ totalMoves() }}</span>
+          <!--
+            Labelled with the history section's own heading, which is what it counts. It was previously
+            an EMPTY label, on the grounds that summary_inbound/summary_outbound would both state the
+            wrong thing — true, but the heading key states the right thing, and an unlabelled number on
+            a dashboard is not readable at all.
+          -->
+          <span class="stat-label">{{ 're.reassign.history_title' | translate }}</span>
+        </div>
       </div>
     </div>
 
@@ -53,106 +69,47 @@
       </div>
     }
 
-    @if (workloadLoading()) {
-      <div class="loading-state">
-        <div class="spinner"></div>
-      </div>
-    } @else if (workloadError()) {
-      <!-- A non-PNO landing here reads the server's own reason, translated, instead of a blank page. -->
-      <div class="banner banner-error" role="alert">
-        <i class="pi pi-exclamation-triangle"></i>
-        <span>{{ workloadError() | translate }}</span>
-      </div>
-    } @else if (sortedOfficers().length === 0) {
-      <div class="empty-state">
-        <i class="pi pi-users"></i>
-        <p>{{ 're.pno.no_officers' | translate }}</p>
-      </div>
-    } @else {
-      <div class="table-wrapper">
-        <table class="workload-table">
-          <thead>
-            <tr>
-              <th>{{ 're.pno.officer_column' | translate }}</th>
-              <th class="col-workload">{{ 're.pno.workload_column' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!--
-              The workload endpoint returns ids only; the id is shown as-is rather than resolved to a
-              name, because no name is available here and a guessed one would label a real number with
-              the wrong person.
-            -->
-            @for (officer of sortedOfficers(); track officer.userId) {
-              <tr>
-                <td class="col-officer">{{ officer.userId }}</td>
-                <!-- Rendered verbatim: this must equal what the reassignment popup shows (UST838). -->
-                <td class="col-workload">{{ officer.workload }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
+    <!--
+      ═══ WORKLOAD, on the shared task grid ═══
+      The hand-rolled table this replaces had no sorting, no column filter and no paging, so a PNO at a
+      large entity could not find one officer among dozens. The grid supplies all three; the rows are
+      still passed in the server's most-loaded-first order and the workload figure is still rendered
+      verbatim, because it must equal the reassignment popup's (UST838).
+
+      The grid's own error and empty states carry the translated reason, so the three hand-rolled
+      branches below it are gone. A non-PNO landing here reads the server's own `messageKey`.
+    -->
+    <app-task-grid
+      [rows]="sortedOfficers()"
+      [columns]="workloadColumns"
+      [titleKey]="'re.pno.dashboard_title'"
+      rowKey="userId"
+      [loading]="workloadLoading()"
+      [errorKey]="workloadError() || null"
+      [retryable]="true"
+      [emptyState]="noOfficers"
+      (retry)="loadWorkload()" />
+
+    <ng-template #noOfficers>{{ 're.pno.no_officers' | translate }}</ng-template>
   </section>
 
   <!-- ═══ Reassignment history summary (UST844) ═══ -->
   <section class="panel">
-    <div class="section-header">
-      <h3 class="section-title">{{ 're.reassign.history_title' | translate }}</h3>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card moves">
-        <div class="stat-icon"><i class="pi pi-sync"></i></div>
-        <div class="stat-content">
-          <span class="stat-value">{{ totalMoves() }}</span>
-          <!--
-            Deliberately unlabelled: no seeded key names a "total moves" figure, and labelling it with
-            summary_inbound or summary_outbound would state the wrong thing — this counts both
-            directions. The section heading above gives it its context.
-          -->
-          <span class="stat-label"></span>
-        </div>
-      </div>
-    </div>
-
-    @if (historyLoading()) {
-      <div class="loading-state">
-        <div class="spinner"></div>
-      </div>
-    } @else if (historyError()) {
-      <div class="banner banner-error" role="alert">
-        <i class="pi pi-exclamation-triangle"></i>
-        <span>{{ historyError() | translate }}</span>
-      </div>
-    } @else if (hasHistory()) {
-      <div class="table-wrapper">
-        <table class="history-table">
-          <thead>
-            <tr>
-              <th>{{ 're.pno.officer_column' | translate }}</th>
-              <th class="col-count">{{ 're.reassign.summary_inbound' | translate }}</th>
-              <th class="col-count">{{ 're.reassign.summary_outbound' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- The summary endpoint does carry display names, so these rows name people. -->
-            @for (row of historyRows(); track row.userId) {
-              <tr>
-                <td class="col-officer">{{ row.displayName || row.userId }}</td>
-                <td class="col-count">{{ row.inbound }}</td>
-                <td class="col-count">{{ row.outbound }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
     <!--
-      No table and no empty-state text when there is no history: the seeded key set available to this
-      screen has no "nothing recorded yet" wording, and the total-moves tile above already reads 0,
-      which says the same thing without inventing a string.
+      Also the shared grid. The summary endpoint does carry display names, so these rows name people;
+      the formatter falls back to the id when it does not, which is what the old table did inline.
+
+      Its empty state is the grid's generic "no records" — the seeded key set for this screen has no
+      "nothing recorded yet" wording, and the total-moves tile above already reads 0.
     -->
+    <app-task-grid
+      [rows]="historyRows()"
+      [columns]="historyColumns"
+      [titleKey]="'re.reassign.history_title'"
+      rowKey="userId"
+      [loading]="historyLoading()"
+      [errorKey]="historyError() || null"
+      [retryable]="true"
+      (retry)="loadHistorySummary()" />
   </section>
 </div>

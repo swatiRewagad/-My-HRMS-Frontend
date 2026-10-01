@@ -13,6 +13,10 @@ import { CommentThreadComponent } from '../../shared/comment-thread/comment-thre
 import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
 import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
+import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
+import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { ContextRailComponent } from '../../shared/context-rail/context-rail.component';
+import { ContextRailPanel } from '../../shared/context-rail/context-rail.types';
 import { ToastService } from '../../../services/toast.service';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
 
@@ -27,6 +31,9 @@ interface TimelineEntry {
 
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
 
+/** The rail panels this screen can populate. The audit trail is NOT one; see the template. */
+type RailKey = 'documents' | 'comments';
+
 /** The shared action contract plus the target picker only this module renders. */
 interface ActionDef extends WorkflowAction {
   label: string;
@@ -40,7 +47,7 @@ interface ActionDef extends WorkflowAction {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent],
+  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent, ComplaintSummaryComponent, ContextRailComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })
@@ -98,6 +105,40 @@ export class CepcComplaintDetailComponent implements OnInit {
   // Document upload
   documents = signal<{ id: string; name: string; size: string; uploadedBy: string; uploadedAt: string }[]>([]);
   uploadingDoc = signal(false);
+
+  /**
+   * The shared summary strip's facts, the same band RBIO and the CRPC screens lead with.
+   *
+   * No SLA item: the strip's 'sla' kind wants a remaining-time string and a severity, and this screen's
+   * SLA is owned by app-cepc-sla-indicator, which computes both from the due date and renders a progress
+   * bar besides. Reproducing that arithmetic here would be a second place for it to drift, so the
+   * indicator stays in the left header and the strip carries the due date as plain text.
+   */
+  readonly summaryItems = computed<readonly ComplaintSummaryItem[]>(() => {
+    const c = this.complaint();
+    if (!c) return [];
+    return [
+      { labelKey: 'ui.col.complaint_number', value: c.complaintNumber || c.complaintId, icon: 'pi-file' },
+      { labelKey: 'ui.col.complainant_name', value: c.complainantName, icon: 'pi-user', tone: 'owner' },
+      { labelKey: 'ui.col.entity_name', value: c.entityName, icon: 'pi-building' },
+      { labelKey: 'ui.col.status', value: c.status, kind: 'status', icon: 'pi-flag' },
+      { labelKey: 'ui.col.category', value: c.category, icon: 'pi-tag' },
+      // assigned_officer, not an invented assigned_to: an unseeded key renders as the key itself.
+      { labelKey: 'ui.col.assigned_officer', value: c.assignedTo || c.assignedTeam, icon: 'pi-users' }
+    ];
+  });
+
+  // ═══ Right context rail ════════════════════════════════════════════════════════════════════════
+  // Documents and the comment thread are material an officer CONSULTS; the action cards are what they
+  // work in. Both used to be full-width blocks stacked under the complaint facts, so a complaint with
+  // any documents at all pushed the actions below the fold.
+
+  railOpen = signal<RailKey | null>(null);
+
+  readonly railPanels: readonly ContextRailPanel<RailKey>[] = [
+    { key: 'documents', label: 'Documents', icon: 'pi-paperclip' },
+    { key: 'comments', label: 'Comments', icon: 'pi-comments' }
+  ];
 
   availableActions = computed<ActionDef[]>(() => {
     const role = this.userRole();

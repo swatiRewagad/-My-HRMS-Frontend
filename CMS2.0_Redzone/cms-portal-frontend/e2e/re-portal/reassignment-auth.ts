@@ -20,10 +20,26 @@ const KEYCLOAK_URL = process.env['KEYCLOAK_URL'] || 'http://localhost:9090';
 const KEYCLOAK_REALM = process.env['KEYCLOAK_REALM'] || 'cms';
 
 /**
- * Own env var rather than the shared API_BASE_URL, so a global override pointing at another
- * session's backend cannot silently redirect these tests.
+ * REASSIGNMENT_BASE_URL is kept as a DEDICATED override, deliberately: a global API_BASE_URL
+ * pointing at another parallel session's backend must not be able to silently redirect these tests.
+ * Set it explicitly to pin them somewhere.
+ *
+ * The FALLBACK, however, used to be http://localhost:8095, and port 8095 never existed. There is no
+ * cms-reassignment-service: the endpoints under /api/v1/re-portal/reassignment are served by
+ * cms-backend itself —
+ *   cms-backend/src/main/java/com/hrms/cms/controller/ReassignmentController.java
+ *     @RequestMapping("/api/v1/re-portal/reassignment")
+ *   plus siblings ReassignmentAdminController and AaReassignmentController.
+ * Verified against the test backend: GET :8092/api/v1/re-portal/reassignment/candidates?complaintId=1
+ * answers 400 (route exists, bad args), not 404. No application.yml or script in the repo mentions
+ * 8095. The old default produced ECONNREFUSED in beforeAll and reported all 34 tests in
+ * reassignment.spec.ts as "did not run" — a harness fiction, not a product failure.
+ *
+ * So the fallback now follows API_BASE_URL (the backend the rest of the suite already uses), and only
+ * then the 8082 default, matching every other helper in e2e/.
  */
-export const API_BASE = process.env['REASSIGNMENT_BASE_URL'] || 'http://localhost:8095';
+export const API_BASE =
+  process.env['REASSIGNMENT_BASE_URL'] || process.env['API_BASE_URL'] || 'http://localhost:8082';
 export const REASSIGN = `${API_BASE}/api/v1/re-portal/reassignment`;
 export const REPORT = `${API_BASE}/api/v1/re-portal/reassignment-report`;
 

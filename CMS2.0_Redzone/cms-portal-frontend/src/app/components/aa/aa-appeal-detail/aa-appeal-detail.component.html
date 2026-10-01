@@ -16,9 +16,25 @@
     } @else if (!appeal()) {
       <div class="error-state" data-testid="detail-not-found">{{ 'aa.detail.not_found' | translate }}</div>
     } @else {
-      <div class="detail-layout">
+      <!-- Appeal Summary Strip — shared app-complaint-summary, as on RBIO, CEPC and the CRPC screens.
+           This screen had no strip: the identifying facts were spread across .appeal-header and three
+           field sections, so the same appeal read differently here and on the queue that linked to it. -->
+      <app-complaint-summary [items]="summaryItems()" (back)="goBack()" />
+
+      <!--
+        ═══ MAIN CONTENT: THREE REGIONS ═══
+        LEFT is the appeal as filed (read-only facts), CENTER is the actions and the hearing/order forms,
+        RIGHT is a thin rail holding the timeline and the comment thread — material a bench officer
+        CONSULTS rather than works in. Both were previously stacked full-width in the left column, so
+        reading the timeline scrolled the action cards out of sight.
+
+        `.detail-layout` is a SPEC CONTRACT: `e2e/aa/{workflow,hearing,order}.spec.ts` all wait on
+        `.aa-detail .detail-layout` as their "screen has loaded" signal, and `.detail-panel` /
+        `.action-panel` name the regions those specs reach into. The new region classes are ADDITIVE.
+      -->
+      <div class="detail-layout detail-content">
         <!-- Left: Appeal Details -->
-        <div class="detail-panel">
+        <div class="detail-panel left-panel">
           <!-- Header -->
           <div class="appeal-header">
             <div class="header-left">
@@ -235,60 +251,14 @@
             </section>
           }
 
-          <!-- Timeline -->
-          <section class="detail-section">
-            <div class="timeline-header">
-              <h4>{{ 'aa.detail.timeline' | translate }}</h4>
-            </div>
-            @if (timelineLoading()) {
-              <div class="loading-inline" data-testid="timeline-loading">{{ 'aa.detail.timeline_loading' | translate }}</div>
-            } @else if (timeline().length === 0) {
-              <p class="empty-timeline" data-testid="timeline-empty">{{ 'aa.detail.timeline_empty' | translate }}</p>
-            } @else {
-              <div class="timeline" data-testid="timeline">
-                @for (entry of timeline(); track entry.timestamp) {
-                  <div class="timeline-item">
-                    <div class="timeline-dot">
-                      <span class="action-icon" aria-hidden="true">{{ getTimelineIcon(entry.action) }}</span>
-                    </div>
-                    <div class="timeline-content">
-                      <div class="timeline-main">
-                        <span class="timeline-action">{{ getTimelineLabelKey(entry.action) | translate }}</span>
-                        <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
-                      </div>
-                      @if (entry.performedBy) {
-                        <span class="timeline-actor">{{ entry.performedBy }}</span>
-                      }
-                      @if (entry.remarks) {
-                        <p class="timeline-remarks">{{ entry.remarks }}</p>
-                      }
-                      <span class="timeline-flow">
-                        {{ entry.fromStatus }} <span aria-hidden="true">&rarr;</span> {{ entry.toStatus }}
-                      </span>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-          </section>
-
-          <!-- ═══ Comments — shared app-comment-thread ═══ -->
-          <!--
-            Keyed on the ORIGINAL COMPLAINT, not the appeal. The complaint is the one entity every
-            officer works around, so an RBIO note written before the appeal was filed is exactly the
-            context a bench officer needs; a thread scoped to the appeal number would hide it.
-            Absent when the appeal carries no complaint reference — an appeal against an order with no
-            originating complaint has nothing to thread on.
-          -->
-          @if (appeal().originalComplaintNumber) {
-            <app-comment-thread
-              [complaintNumber]="appeal().originalComplaintNumber"
-              [audienceRoles]="commentAudienceRoles" />
-          }
         </div>
 
-        <!-- Right: Action Panel -->
-        <div class="action-panel">
+        <!-- Center: the actions -->
+        <!-- `.action-panel` is the class the AA specs reach the action region through. `.right-panel` is
+             the region name the reference layout uses for the CENTER column — misleading, but it is what
+             the RBIO screen and its layout spec already call it, and one vocabulary beats an accurate
+             one nobody else shares. -->
+        <div class="action-panel right-panel">
           <!--
             OUTSIDE the terminal/actions branches, because the outcome of an action must outlive the
             actions. Reject and Dismiss both move the appeal to a terminal state, so the re-fetch that
@@ -366,6 +336,77 @@
 
           }
         </div>
+
+        <!--
+          ═══ RIGHT RAIL ═══
+          The timeline and the comment thread. Both were full-width blocks at the bottom of the left
+          column, which is what pushed the action cards below the fold on an appeal with any history.
+
+          TWO panels, not three: this screen has NO attachments panel because there is no data source for
+          one. The appeal detail payload carries no attachment list, and the only AA attachment endpoint
+          is the DRAFT assessment's (app-aa-draft-assessment reads draft().attachments), which is a
+          different entity on a different screen. An attachments icon here would open a panel that could
+          only ever say "none" — indistinguishable from an appeal genuinely filed without documents, and
+          exactly the kind of UI-complete-but-wired-to-nothing panel this pass exists to remove. It wants
+          a `GET /api/v1/appeals/{n}/attachments` first.
+        -->
+        <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+
+        <ng-template #railBody let-open>
+          @switch (open) {
+            @case ('timeline') {
+              @if (timelineLoading()) {
+                <div class="loading-inline" data-testid="timeline-loading">{{ 'aa.detail.timeline_loading' | translate }}</div>
+              } @else if (timeline().length === 0) {
+                <p class="empty-timeline" data-testid="timeline-empty">{{ 'aa.detail.timeline_empty' | translate }}</p>
+              } @else {
+                <div class="timeline" data-testid="timeline">
+                  @for (entry of timeline(); track entry.timestamp) {
+                    <div class="timeline-item">
+                      <div class="timeline-dot">
+                        <span class="action-icon" aria-hidden="true">{{ getTimelineIcon(entry.action) }}</span>
+                      </div>
+                      <div class="timeline-content">
+                        <div class="timeline-main">
+                          <span class="timeline-action">{{ getTimelineLabelKey(entry.action) | translate }}</span>
+                          <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
+                        </div>
+                        @if (entry.performedBy) {
+                          <span class="timeline-actor">{{ entry.performedBy }}</span>
+                        }
+                        @if (entry.remarks) {
+                          <p class="timeline-remarks">{{ entry.remarks }}</p>
+                        }
+                        <span class="timeline-flow">
+                          {{ entry.fromStatus }} <span aria-hidden="true">&rarr;</span> {{ entry.toStatus }}
+                        </span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+            @case ('comments') {
+              <!--
+                Keyed on the ORIGINAL COMPLAINT, not the appeal. The complaint is the one entity every
+                officer works around, so an RBIO note written before the appeal was filed is exactly the
+                context a bench officer needs; a thread scoped to the appeal number would hide it.
+                Absent when the appeal carries no complaint reference — an appeal against an order with
+                no originating complaint has nothing to thread on.
+              -->
+              @if (appeal().originalComplaintNumber) {
+                <app-comment-thread
+                  [complaintNumber]="appeal().originalComplaintNumber"
+                  [audienceRoles]="commentAudienceRoles" />
+              } @else {
+                <!-- `not_available` rather than a new comments-specific key: TranslationService returns an
+                     unseeded key VERBATIM, so inventing one would print "aa.detail.comments_unavailable"
+                     to a bench officer in all eleven locales. -->
+                <p class="empty-timeline">{{ 'aa.detail.not_available' | translate }}</p>
+              }
+            }
+          }
+        </ng-template>
       </div>
     }
   </div>

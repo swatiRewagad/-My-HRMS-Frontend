@@ -167,4 +167,8 @@ export const SCREENS: ScreenDef[] = [
   // actually lands on, and reviewing only the closed state hides the panel's entire content.
   { id: 'STA-001', area: 'Panel states', name: 'RBIO complaint detail — context rail open (history)', route: '/rbio/complaint/:complaintNumber', actor: 'RBIO_OFFICER', needs: ['complaintNumber'], openFirst: '.context-rail .rail-icon' },
   { id: 'STA-002', area: 'Panel states', name: 'RBIO complaint detail — attachments rail open', route: '/rbio/complaint/:complaintNumber', actor: 'RBIO_OFFICER', needs: ['complaintNumber'], openFirst: '.tab-bar .tab-add' },
+  // CEPC and AA now render the same shared rail, so their open states need capturing too — the whole
+  // point of the review is whether an officer meets the same screen in every module.
+  { id: 'STA-003', area: 'Panel states', name: 'CEPC complaint detail — context rail open', route: '/cepc/complaint/:complaintNumber', actor: 'CEPC_DO', needs: ['complaintNumber'], openFirst: '.context-rail .rail-icon' },
+  { id: 'STA-004', area: 'Panel states', name: 'AA appeal detail — context rail open', route: '/aa/appeal/:appealNumber', actor: 'AA_DO', needs: ['appealNumber'], openFirst: '.context-rail .rail-icon' },
 ];

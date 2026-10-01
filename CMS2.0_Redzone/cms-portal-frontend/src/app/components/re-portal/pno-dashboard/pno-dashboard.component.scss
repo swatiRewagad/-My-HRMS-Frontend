@@ -15,19 +15,9 @@ $border-color: var(--border-subtle);
   &:last-child { margin-bottom: 0; }
 }
 
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: $text-dark;
-  margin: 0;
-}
+// The section headings are the grid's own now (its `titleKey` input), so the `.section-header` /
+// `.section-title` pair that used to sit above each hand-rolled table has no element to match and is
+// gone rather than kept as a second definition of a heading.
 
 // The "open records exclude drafts and closed work" line — kept visually attached to the numbers it
 // qualifies rather than styled as a dismissible aside.
@@ -54,6 +44,8 @@ $border-color: var(--border-subtle);
   margin-bottom: 20px;
 }
 
+// The approvals tile is a <button> now, so the UA reset lives here: a button brings a centred,
+// UA-styled box that would otherwise sit visibly differently from the two div tiles beside it.
 .stat-card {
   background: var(--surface-card);
   border-radius: 12px;
@@ -63,9 +55,25 @@ $border-color: var(--border-subtle);
   gap: 16px;
   border: 1px solid $border-color;
   transition: box-shadow 0.2s;
+  width: 100%;
+  text-align: left;
+  font: inherit;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+// Only the approvals card navigates. The other two are read-only figures, and a pointer on them
+// would promise a click that does nothing.
+button.stat-card {
+  cursor: pointer;
+
+  // A visible ring, because this card is now the PNO's route into the approvals queue and a
+  // keyboard-only officer has to be able to see they are on it.
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
   }
 }
 
@@ -108,7 +116,7 @@ $border-color: var(--border-subtle);
   margin-top: 2px;
 }
 
-// Points at the approvals screen without pretending to be a working link.
+// Names the screen the card now actually opens.
 .stat-hint {
   font-size: 11px;
   font-weight: 600;
@@ -135,88 +143,23 @@ $border-color: var(--border-subtle);
   color: var(--state-danger-fg);
 }
 
-// Tables
-.table-wrapper {
-  background: var(--surface-card);
-  border: 1px solid $border-color;
-  border-radius: 12px;
-  overflow-x: auto;
-}
-
-.workload-table,
-.history-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th {
-    text-align: left;
-    padding: 12px 16px;
-    font-size: 11px;
-    font-weight: 600;
-    color: $text-muted;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    background: var(--surface-subtle);
-    border-bottom: 1px solid $border-color;
-    white-space: nowrap;
-  }
-
-  td {
-    padding: 12px 16px;
-    font-size: 13px;
-    color: $text-dark;
-    border-bottom: 1px solid var(--surface-subtle);
-  }
-
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover td { background: var(--surface-page); }
-}
-
-.col-officer {
-  font-weight: 600;
-  color: $text-dark;
-}
-
-.col-workload,
-.col-count {
-  text-align: right;
-  width: 140px;
-  font-variant-numeric: tabular-nums;
-}
-
-.col-workload { font-weight: 700; }
-
-// Loading / Empty
-.loading-state, .empty-state {
-  padding: 44px;
-  text-align: center;
-  color: $text-muted;
-  background: var(--surface-card);
-  border: 1px solid $border-color;
-  border-radius: 12px;
-
-  i { font-size: 30px; margin-bottom: 10px; opacity: 0.4; }
-  p { font-size: 14px; margin: 8px 0 0; }
-}
-
-.spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid $border-color;
-  border-top-color: $primary;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
+// ═══ THE TWO GRIDS ═══
+// Both tables, their wrappers, their headers, their row hover, their loading spinner and their empty
+// state belong to the shared app-task-grid now, so the rules that styled `.workload-table` and
+// `.history-table` here are deleted rather than kept as a second, divergable definition of a grid.
+// Nothing PNO-specific needs overriding: unlike the RE dashboard, this screen projects no DOM into
+// the grid's slots and tints no rows, so there is no ::ng-deep block.
+//
+// The one thing lost is the right-aligned, tabular-nums treatment the count columns had. The grid
+// has no per-column alignment input, and adding one would change a shared component's public API —
+// which this pass is explicitly not allowed to do. The columns carry fixed widths instead, so the
+// numbers still form a readable column.
 
 @media (max-width: 768px) {
   .stats-grid { grid-template-columns: 1fr; gap: 12px; }
 
   .stat-card { padding: 16px; }
   .stat-value { font-size: 22px; }
-
-  .col-workload,
-  .col-count { width: auto; }
+  // The grid handles its own narrow-screen layout, so the column rules that used to be here would
+  // have had nothing to match.
 }

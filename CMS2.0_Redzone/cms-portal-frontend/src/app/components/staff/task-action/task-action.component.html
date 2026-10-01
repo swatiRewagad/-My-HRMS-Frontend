@@ -572,6 +572,17 @@
                 }
               </div>
 
+              <!-- ═══ Comments — shared app-comment-thread ═══ -->
+              <!--
+                complaintId, not the route's :id. The two are usually the same string, but the route
+                param is whatever the task grid linked with, whereas complaintId is echoed by
+                /api/v1/complaints/{id} from COMPLAINTS.complaint_number — which is the key the
+                comment API resolves. Threading on the loaded record cannot drift from it.
+              -->
+              <app-comment-thread
+                [complaintNumber]="complaint()!.complaintId || complaint()!.complaintNumber"
+                [audienceRoles]="commentAudienceRoles()" />
+
               <!-- Timeline Section -->
               @if (complaint()!.timeline?.length) {
                 <div class="form-section" [class.open]="sectionOpen.timeline">
