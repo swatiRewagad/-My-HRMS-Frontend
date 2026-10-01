@@ -1,0 +1,618 @@
+<app-shell [titleKey]="'aa.register.heading'">
+  <div shell-actions>
+    <span class="subtitle">{{ complaintNumber() }}</span>
+    <button class="back-btn" type="button" (click)="goBack()">&larr;</button>
+  </div>
+
+  <div class="aa-register">
+    @if (loading()) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>{{ 'aa.search.loading' | translate }}</span>
+      </div>
+    } @else if (loadError()) {
+      <!-- A failed load must never be able to look like a blank-but-working form. -->
+      <div class="error-panel" data-testid="aa-register-error" role="alert">
+        <h3>{{ (errorMessageKey() ?? 'aa.search.error_failed') | translate }}</h3>
+        @if (errorMessage()) {
+          <p class="error-detail">{{ errorMessage() }}</p>
+        }
+        <button class="primary-btn" type="button" (click)="retry()">
+          {{ 'aa.register.button_retry' | translate }}
+        </button>
+      </div>
+    } @else if (result(); as created) {
+      <div class="success-panel" role="status">
+        <h3>{{ 'aa.register.success' | translate }}</h3>
+        <p class="appeal-number">{{ created.appealNumber }}</p>
+
+        <dl class="summary">
+          <dt>{{ 'aa.search.col_status' | translate }}</dt>
+          <dd>{{ created.status }}</dd>
+          <dt>{{ 'aa.register.mode_of_receipt' | translate }}</dt>
+          <dd>{{ created.modeOfReceipt }}</dd>
+          @if (created.assignedOfficer) {
+            <dt>{{ 'aa.register.parent_complaint' | translate }}</dt>
+            <dd>{{ created.assignedOfficer }}</dd>
+          }
+        </dl>
+
+        @if (created.promptLegalCaseEntry) {
+          <!--
+            Story 11: a prompt only. There is no Legal Cases backend, so nothing is filed from here —
+            the officer is told to record it there, and this screen must not imply it already happened.
+          -->
+          <div class="legal-prompt" data-testid="aa-register-legal-case-prompt" role="alert">
+            {{ (created.promptLegalCaseEntryKey ?? 'aa.register.prompt_log_legal_case') | translate }}
+          </div>
+        }
+
+        <button class="primary-btn" type="button" (click)="goToAppeal()">
+          {{ 'home.ways_view_details' | translate }}
+        </button>
+      </div>
+    } @else {
+      @if (!appealEligible()) {
+        <div class="error-panel" data-testid="aa-register-error" role="alert">
+          <h3>{{ 'aa.register.error_parent_not_appealable' | translate }}</h3>
+        </div>
+      }
+
+      @if (appealEligible() && errorMessageKey()) {
+        <div class="error-panel inline" data-testid="aa-register-error" role="alert">
+          <h3>{{ errorMessageKey()! | translate }}</h3>
+          @if (errorMessage()) {
+            <p class="error-detail">{{ errorMessage() }}</p>
+          }
+          @if (missingFields().length > 0) {
+            <ul class="missing-list">
+              @for (field of missingFields(); track field) {
+                <li>{{ field }}</li>
+              }
+            </ul>
+          }
+          @if (errorRetryable()) {
+            <!--
+              The 503 clause-not-configured path. Retry is the only correct action: the classification
+              is undecidable until the clause is in the master, and guessing it is never a fallback.
+            -->
+            <button class="primary-btn" type="button" (click)="retry()">
+              {{ 'aa.register.button_retry' | translate }}
+            </button>
+          }
+        </div>
+      }
+
+      <form class="register-form" data-testid="aa-register-form" (ngSubmit)="submit()">
+
+        <section class="card">
+          <h3>{{ 'aa.register.milestone_heading' | translate }}</h3>
+          <p class="mandatory-note">{{ 'form.mandatory_note' | translate }}</p>
+
+          <div class="field-grid">
+            <div class="field" [class.has-error]="isMissing('appealFiledBy')">
+              <label for="appealFiledBy">{{ 'aa.register.appeal_filed_by' | translate }} *</label>
+              <select id="appealFiledBy" name="appealFiledBy"
+                      data-testid="aa-register-appeal-filed-by"
+                      [ngModel]="form().appealFiledBy"
+                      (ngModelChange)="setField('appealFiledBy', $event)">
+                <option value="">{{ 'common.select_option' | translate }}</option>
+                @for (option of filedByOptions(); track option.value) {
+                  <option [value]="option.value">{{ option.labelKey | translate }}</option>
+                }
+              </select>
+              @if (isMissing('appealFiledBy')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field" [class.has-error]="isMissing('sourceOfAppeal')">
+              <label for="sourceOfAppeal">{{ 'aa.register.source_of_appeal' | translate }} *</label>
+              <input id="sourceOfAppeal" name="sourceOfAppeal" type="text"
+                     data-testid="aa-register-source-of-appeal"
+                     [ngModel]="form().sourceOfAppeal"
+                     (ngModelChange)="setField('sourceOfAppeal', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (isMissing('sourceOfAppeal')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="modeOfReceipt">{{ 'aa.register.mode_of_receipt' | translate }}</label>
+              <!--
+                Story 10: derived from the intake channel server-side and always read-only, so it is a
+                readonly input rather than a select. The POST deliberately omits it entirely.
+              -->
+              <input id="modeOfReceipt" type="text" class="readonly-input" readonly
+                     data-testid="aa-register-mode-of-receipt"
+                     [value]="modeOfReceipt()" />
+            </div>
+
+            <div class="field" [class.has-error]="isMissing('appealGround')">
+              <label for="appealGround">{{ 'aa.register.appeal_ground' | translate }} *</label>
+              <select id="appealGround" name="appealGround"
+                      data-testid="aa-register-appeal-ground"
+                      [ngModel]="form().appealGround"
+                      (ngModelChange)="setField('appealGround', $event)">
+                <option value="">{{ 'common.select_option' | translate }}</option>
+                @for (ground of grounds(); track ground.id) {
+                  <option [value]="ground.groundCode">{{ groundLabel(ground) | translate }}</option>
+                }
+              </select>
+              @if (isMissing('appealGround')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field wide">
+              <label for="reliefSought">{{ 'aa.register.relief_sought' | translate }}</label>
+              <textarea id="reliefSought" name="reliefSought" rows="3"
+                        [ngModel]="form().reliefSought"
+                        (ngModelChange)="setField('reliefSought', $event)"
+                        [placeholder]="'form.write_detail' | translate"></textarea>
+            </div>
+
+            <div class="field wide">
+              <label for="reasonForDelay">{{ 'aa.register.reason_for_delay' | translate }}</label>
+              <textarea id="reasonForDelay" name="reasonForDelay" rows="2"
+                        [ngModel]="form().reasonForDelay"
+                        (ngModelChange)="setField('reasonForDelay', $event)"
+                        [placeholder]="'form.write_detail' | translate"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>{{ 'aa.register.complainant_heading' | translate }}</h3>
+
+          <div class="field-grid">
+            <div class="field" [class.has-error]="isMissing('appellantName')">
+              <label for="appellantName">{{ 'aa.search.appellant_name' | translate }} *</label>
+              <input id="appellantName" name="appellantName" type="text"
+                     data-testid="aa-register-appellant-name"
+                     [ngModel]="form().appellantName"
+                     (ngModelChange)="setField('appellantName', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantName'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+              @if (isMissing('appellantName')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field" [class.has-error]="isMissing('appellantPhone')">
+              <label for="appellantPhone">{{ 'aa.search.appellant_mobile' | translate }} *</label>
+              <input id="appellantPhone" name="appellantPhone" type="tel"
+                     data-testid="aa-register-appellant-phone"
+                     [ngModel]="form().appellantPhone"
+                     (ngModelChange)="setField('appellantPhone', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantPhone'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+              @if (isMissing('appellantPhone')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="appellantEmail">{{ 'aa.search.appellant_email' | translate }}</label>
+              <input id="appellantEmail" name="appellantEmail" type="email"
+                     [ngModel]="form().appellantEmail"
+                     (ngModelChange)="setField('appellantEmail', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantEmail'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field wide" [class.has-error]="isMissing('appellantAddress1')">
+              <label for="appellantAddress1">{{ 'aa.register.appellant_address1' | translate }} 1 *</label>
+              <input id="appellantAddress1" name="appellantAddress1" type="text"
+                     data-testid="aa-register-appellant-address1"
+                     [ngModel]="form().appellantAddress1"
+                     (ngModelChange)="setField('appellantAddress1', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantAddress1'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+              @if (isMissing('appellantAddress1')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field wide">
+              <label for="appellantAddress2">{{ 'aa.register.appellant_address1' | translate }} 2</label>
+              <input id="appellantAddress2" name="appellantAddress2" type="text"
+                     [ngModel]="form().appellantAddress2"
+                     (ngModelChange)="setField('appellantAddress2', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantAddress2'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <!--
+              City, Country and Pincode have no source in the complaint record, so the server returns
+              null and lists them in unresolvedFields. They render EMPTY and EDITABLE with the server's
+              reason attached: an unexplained blank reads as a broken page, and a plausible guessed
+              value would be written into a legal document as though it were data.
+            -->
+            <div class="field" [class.has-error]="isMissing('appellantCity')">
+              <label for="appellantCity">{{ 'aa.register.appellant_city' | translate }} *</label>
+              <input id="appellantCity" name="appellantCity" type="text"
+                     data-testid="aa-register-appellant-city"
+                     [ngModel]="form().appellantCity"
+                     (ngModelChange)="setField('appellantCity', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantCity'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+              @if (isMissing('appellantCity')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="appellantDistrict">{{ 'aa.register.appellant_district' | translate }}</label>
+              <input id="appellantDistrict" name="appellantDistrict" type="text"
+                     [ngModel]="form().appellantDistrict"
+                     (ngModelChange)="setField('appellantDistrict', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantDistrict'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field" [class.has-error]="isMissing('appellantState')">
+              <label for="appellantState">{{ 'aa.register.appellant_state' | translate }} *</label>
+              <input id="appellantState" name="appellantState" type="text"
+                     data-testid="aa-register-appellant-state"
+                     [ngModel]="form().appellantState"
+                     (ngModelChange)="setField('appellantState', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantState'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+              @if (isMissing('appellantState')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="appellantCountry">{{ 'aa.register.appellant_country' | translate }}</label>
+              <input id="appellantCountry" name="appellantCountry" type="text"
+                     [ngModel]="form().appellantCountry"
+                     (ngModelChange)="setField('appellantCountry', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantCountry'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="appellantPincode">{{ 'aa.register.appellant_pincode' | translate }}</label>
+              <input id="appellantPincode" name="appellantPincode" type="text"
+                     [ngModel]="form().appellantPincode"
+                     (ngModelChange)="setField('appellantPincode', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('appellantPincode'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field" [class.has-error]="isMissing('categoryId')">
+              <label for="categoryId">{{ 'aa.search.category' | translate }} *</label>
+              <input id="categoryId" name="categoryId" type="number" min="1"
+                     data-testid="aa-register-category"
+                     [ngModel]="form().categoryId"
+                     (ngModelChange)="setCategoryId($event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('categoryId'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+              @if (isMissing('categoryId')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>{{ 'aa.register.entity_heading' | translate }}</h3>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="entityName">{{ 'aa.register.entity_name' | translate }}</label>
+              <input id="entityName" name="entityName" type="text"
+                     [ngModel]="form().entityName"
+                     (ngModelChange)="setField('entityName', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('entityName'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <!-- entityRegion, bsrIfscCode and cardNumber have no source either; same rule as above. -->
+            <div class="field">
+              <label for="entityRegion">{{ 'aa.register.entity_region' | translate }}</label>
+              <input id="entityRegion" name="entityRegion" type="text"
+                     [ngModel]="form().entityRegion"
+                     (ngModelChange)="setField('entityRegion', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('entityRegion'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="entityCategory">{{ 'aa.search.category' | translate }}</label>
+              <input id="entityCategory" name="entityCategory" type="text"
+                     [ngModel]="form().entityCategory"
+                     (ngModelChange)="setField('entityCategory', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('entityCategory'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="entityBranch">{{ 'aa.register.entity_branch' | translate }}</label>
+              <input id="entityBranch" name="entityBranch" type="text"
+                     [ngModel]="form().entityBranch"
+                     (ngModelChange)="setField('entityBranch', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('entityBranch'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="bsrIfscCode">{{ 'aa.register.bsr_ifsc_code' | translate }}</label>
+              <input id="bsrIfscCode" name="bsrIfscCode" type="text"
+                     [ngModel]="form().bsrIfscCode"
+                     (ngModelChange)="setField('bsrIfscCode', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('bsrIfscCode'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="accountNumber">{{ 'aa.register.account_number' | translate }}</label>
+              <input id="accountNumber" name="accountNumber" type="text"
+                     [ngModel]="form().accountNumber"
+                     (ngModelChange)="setField('accountNumber', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('accountNumber'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="cardNumber">{{ 'aa.register.card_number' | translate }}</label>
+              <input id="cardNumber" name="cardNumber" type="text"
+                     [ngModel]="form().cardNumber"
+                     (ngModelChange)="setField('cardNumber', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('cardNumber'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+
+            <div class="field">
+              <label for="nodalOfficerName">{{ 'aa.register.nodal_officer_name' | translate }}</label>
+              <input id="nodalOfficerName" name="nodalOfficerName" type="text"
+                     [ngModel]="form().nodalOfficerName"
+                     (ngModelChange)="setField('nodalOfficerName', $event)"
+                     [placeholder]="'form.enter_value' | translate" />
+              @if (unresolvedReason('nodalOfficerName'); as reason) {
+                <span class="unresolved-hint" data-testid="aa-register-unresolved-hint">
+                  {{ reason | translate }}
+                </span>
+              }
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <h3>{{ 'aa.register.declarations_heading' | translate }}</h3>
+
+          <!--
+            Both declarations are tri-state and start with NEITHER radio selected. Pre-selecting "No"
+            would record an answer the officer never gave, and the server treats only null as missing.
+          -->
+          <div class="declaration" [class.has-error]="isMissing('isComplainantAdvocate')">
+            <span class="declaration-label">
+              {{ 'aa.register.is_complainant_advocate' | translate }} *
+            </span>
+            <div class="radio-row">
+              <label>
+                <input type="radio" name="isComplainantAdvocate"
+                       data-testid="aa-register-advocate-yes"
+                       [checked]="form().isComplainantAdvocate === true"
+                       (change)="setField('isComplainantAdvocate', true)" />
+                {{ 'aa.register.yes' | translate }}
+              </label>
+              <label>
+                <input type="radio" name="isComplainantAdvocate"
+                       data-testid="aa-register-advocate-no"
+                       [checked]="form().isComplainantAdvocate === false"
+                       (change)="setField('isComplainantAdvocate', false)" />
+                {{ 'aa.register.no' | translate }}
+              </label>
+            </div>
+            @if (isMissing('isComplainantAdvocate')) {
+              <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+            }
+          </div>
+
+          <div class="declaration" [class.has-error]="isMissing('hasRelatedCourtTrial')">
+            <span class="declaration-label">
+              {{ 'aa.register.has_related_court_trial' | translate }} *
+            </span>
+            <div class="radio-row">
+              <label>
+                <input type="radio" name="hasRelatedCourtTrial"
+                       data-testid="aa-register-court-trial-yes"
+                       [checked]="form().hasRelatedCourtTrial === true"
+                       (change)="setField('hasRelatedCourtTrial', true)" />
+                {{ 'aa.register.yes' | translate }}
+              </label>
+              <label>
+                <input type="radio" name="hasRelatedCourtTrial"
+                       data-testid="aa-register-court-trial-no"
+                       [checked]="form().hasRelatedCourtTrial === false"
+                       (change)="setField('hasRelatedCourtTrial', false)" />
+                {{ 'aa.register.no' | translate }}
+              </label>
+            </div>
+            @if (form().hasRelatedCourtTrial === true) {
+              <div class="legal-prompt inline">
+                {{ 'aa.register.prompt_log_legal_case' | translate }}
+              </div>
+            }
+            @if (isMissing('hasRelatedCourtTrial')) {
+              <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+            }
+          </div>
+        </section>
+
+        @if (edApprovalRequired()) {
+          <!-- Stories 15/16: this block exists only for the RE/PNO channel, per edApprovalRequired. -->
+          <section class="card">
+            <h3>{{ 'aa.register.ed_approval_given' | translate }}</h3>
+
+            <div class="declaration" [class.has-error]="isMissing('edApprovalGiven')">
+              <span class="declaration-label">
+                {{ 'aa.register.ed_approval_given' | translate }} *
+              </span>
+              <div class="radio-row">
+                <label>
+                  <input type="radio" name="edApprovalGiven"
+                         data-testid="aa-register-ed-approval-yes"
+                         [checked]="form().edApprovalGiven === true"
+                         (change)="setField('edApprovalGiven', true)" />
+                  {{ 'aa.register.yes' | translate }}
+                </label>
+                <label>
+                  <input type="radio" name="edApprovalGiven"
+                         data-testid="aa-register-ed-approval-no"
+                         [checked]="form().edApprovalGiven === false"
+                         (change)="setField('edApprovalGiven', false)" />
+                  {{ 'aa.register.no' | translate }}
+                </label>
+              </div>
+              @if (isMissing('edApprovalGiven')) {
+                <span class="field-error">{{ 'aa.register.field_required' | translate }}</span>
+              }
+            </div>
+
+            <div class="field-grid">
+              <div class="field">
+                <label for="edApprovalDate">{{ 'aa.register.ed_approval_date' | translate }}</label>
+                <input id="edApprovalDate" name="edApprovalDate" type="date"
+                       [ngModel]="form().edApprovalDate"
+                       (ngModelChange)="setField('edApprovalDate', $event)" />
+              </div>
+
+              <div class="field wide">
+                <label for="edApprovalComments">
+                  {{ 'aa.register.ed_approval_comments' | translate }}
+                </label>
+                <textarea id="edApprovalComments" name="edApprovalComments" rows="2"
+                          [ngModel]="form().edApprovalComments"
+                          (ngModelChange)="setField('edApprovalComments', $event)"
+                          [placeholder]="'form.write_detail' | translate"></textarea>
+              </div>
+
+              <div class="field wide">
+                <label for="edApprovalDocument">
+                  {{ 'aa.register.ed_approval_document' | translate }}
+                </label>
+                <input id="edApprovalDocument" type="file" multiple
+                       (change)="onFilesSelected($event)" />
+                <span class="upload-hint">{{ 'form.upload_hint' | translate }}</span>
+
+                @if (selectedFiles().length > 0) {
+                  <ul class="file-list">
+                    @for (file of selectedFiles(); track file.name) {
+                      <li>{{ file.name }}</li>
+                    }
+                  </ul>
+                }
+                @if (uploadErrorKey(); as key) {
+                  <!-- Mirrors the server's limits as an early hint; the server still enforces them.
+                       The params are NOT optional: these keys carry size/total/count placeholders and
+                       without them the placeholder itself reached the registrar in all ten locales. -->
+                  <span class="field-error">{{ key | translate:uploadErrorParams() }}</span>
+                }
+              </div>
+            </div>
+          </section>
+        }
+
+        <div class="actions">
+          <button type="button" class="secondary-btn" (click)="goBack()">
+            {{ 'form.cancel' | translate }}
+          </button>
+          <!-- Disabled purely as a convenience; the server revalidates every mandatory field. -->
+          <button type="submit" class="primary-btn" data-testid="aa-register-submit"
+                  [disabled]="!canSubmit()">
+            {{ 'aa.register.button_save_proceed' | translate }}
+          </button>
+        </div>
+      </form>
+
+      <!-- ═══ Comments — shared app-comment-thread ═══ -->
+      <!--
+        OUTSIDE the form, not inside it: the registration form posts the whole appeal, and a composer
+        nested in it would put a second set of controls inside the submit boundary.
+        Keyed on the PARENT COMPLAINT, which is this route's own param — the registrar needs the
+        handling office's notes on the complaint they are about to raise an appeal against, and at this
+        point no appeal number exists to thread on.
+      -->
+      <app-comment-thread
+        [complaintNumber]="complaintNumber()"
+        [audienceRoles]="commentAudienceRoles" />
+    }
+  </div>
+</app-shell>

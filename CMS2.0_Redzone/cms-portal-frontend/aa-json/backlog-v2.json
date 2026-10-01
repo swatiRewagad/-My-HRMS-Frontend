@@ -1,0 +1,162 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/aa/backlog-traceable.spec.ts",
+      "--project=chromium",
+      "--workers=1",
+      "-g",
+      "TC-00401",
+      "--reporter=json"
+    ],
+    "configFile": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\playwright.config.ts",
+    "rootDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "aa\\backlog-traceable.spec.ts",
+      "file": "aa/backlog-traceable.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "AA-US-004: Multi-channel registration",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 338,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00401: Happy path — PNO creates appeal with CMD approval fields",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 17608,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('aa-register-ed-approval-yes')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('aa-register-ed-approval-yes') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('aa-register-ed-approval-yes')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('aa-register-ed-approval-yes')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('aa-register-ed-approval-yes') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('aa-register-ed-approval-yes')\u001b[22m\n\n    at C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts:384:67",
+                        "location": {
+                          "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                          "column": 67,
+                          "line": 384
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 382 |\u001b[39m\n \u001b[90m 383 |\u001b[39m     \u001b[90m// The CMD/ED approval declaration this story is named for.\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 384 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m'aa-register-ed-approval-yes'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                                   \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 385 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByTestId(\u001b[32m'aa-register-ed-approval-no'\u001b[39m))\u001b[33m.\u001b[39mtoBeVisible()\u001b[33m;\u001b[39m\n \u001b[90m 386 |\u001b[39m\n \u001b[90m 387 |\u001b[39m     \u001b[90m// A registration form with no mandatory field would accept an empty statutory appeal.\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "column": 67,
+                            "line": 384
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByTestId('aa-register-ed-approval-yes')\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByTestId('aa-register-ed-approval-yes') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByTestId('aa-register-ed-approval-yes')\u001b[22m\n\n\n  382 |\n  383 |     // The CMD/ED approval declaration this story is named for.\n> 384 |     await expect(page.getByTestId('aa-register-ed-approval-yes')).toBeVisible();\n      |                                                                   ^\n  385 |     await expect(page.getByTestId('aa-register-ed-approval-no')).toBeVisible();\n  386 |\n  387 |     // A registration form with no mandatory field would accept an empty statutory appeal.\n    at C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts:384:67"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:32:42.544Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\test-results\\aa-backlog-traceable-AA-US-ad2cc-al-with-CMD-approval-fields-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\test-results\\aa-backlog-traceable-AA-US-ad2cc-al-with-CMD-approval-fields-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "column": 67,
+                        "line": 384
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-8a44a44480fe72093468",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 369,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T11:32:41.969Z",
+    "duration": 18733.693,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

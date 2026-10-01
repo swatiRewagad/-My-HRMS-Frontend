@@ -1,0 +1,411 @@
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { ToastService } from '../../../services/toast.service';
+import { environment } from '../../../../environments/environment';
+
+interface Officer {
+  id: number;
+  userId: string;
+  displayName: string;
+  roleGroup: string;
+  regionalOffice: string;
+  active: boolean;
+  onLeave: boolean;
+  currentWorkload: number;
+  maxWorkload: number;
+}
+
+@Component({
+  selector: 'app-team-management',
+  standalone: true,
+  imports: [CommonModule, FormsModule, TranslatePipe],
+  templateUrl: './team-management.component.html',
+  styleUrl: './team-management.component.scss'
+})
+export class TeamManagementComponent implements OnInit {
+  private router = inject(Router);
+  private http = inject(HttpClient);
+  private toast = inject(ToastService);
+  auth = inject(KeycloakAuthService);
+
+  officers = signal<Officer[]>([]);
+  loading = signal(true);
+  selectedRoleGroup = signal('CRPC_DEO');
+  searchTerm = signal('');
+  showAddModal = signal(false);
+  sidebarItem = signal('team');
+
+  syncing = signal(false);
+
+  // UST887 safe-deactivation dialog state
+  showDeactivateModal = signal(false);
+  deactivateTarget = signal<Officer | null>(null);
+  openRecords = signal<string[]>([]);
+  loadingOpenRecords = signal(false);
+  reassignTo = signal('');
+  alsoRevokeAccess = signal(false);
+  deactivating = signal(false);
+  deactivateError = signal('');
+
+  roleGroups = [
+    { value: 'CRPC_DEO', label: 'CRPC - DEO', keycloakRole: 'DEO' },
+    { value: 'CRPC_REVIEWER', label: 'CRPC - Reviewer', keycloakRole: 'REVIEWER' },
+    { value: 'RBIO_OFFICER', label: 'RBIO - Officer', keycloakRole: 'RBIO_OFFICER' },
+    { value: 'RBIO_SUPERVISOR', label: 'RBIO - Supervisor', keycloakRole: 'RBIO_SUPERVISOR' },
+    { value: 'RBIO_CONCILIATOR', label: 'RBIO - Conciliator', keycloakRole: 'RBIO_CONCILIATOR' },
+    { value: 'RBIO_ADJUDICATOR', label: 'RBIO - Adjudicator', keycloakRole: 'RBIO_ADJUDICATOR' },
+    { value: 'CEPC_OFFICER', label: 'CEPC - Officer', keycloakRole: 'CEPC_OFFICER' },
+    { value: 'CEPC_SUPERVISOR', label: 'CEPC - Supervisor', keycloakRole: 'CEPC_SUPERVISOR' },
+  ];
+
+  newOfficer: Partial<Officer> = {
+    userId: '',
+    displayName: '',
+    roleGroup: 'CRPC_DEO',
+    regionalOffice: '',
+    maxWorkload: 40
+  };
+
+  filteredOfficers = computed(() => {
+    const term = this.searchTerm().toLowerCase();
+    return this.officers().filter(o =>
+      o.displayName.toLowerCase().includes(term) ||
+      o.userId.toLowerCase().includes(term) ||
+      o.regionalOffice?.toLowerCase().includes(term)
+    );
+  });
+
+  activeCount = computed(() => this.officers().filter(o => o.active && !o.onLeave).length);
+  onLeaveCount = computed(() => this.officers().filter(o => o.onLeave).length);
+  totalWorkload = computed(() => this.officers().reduce((sum, o) => sum + o.currentWorkload, 0));
+
+  async ngOnInit() {
+    const authenticated = await this.auth.init();
+    if (!authenticated) {
+      this.router.navigate(['/staff/login']);
+      return;
+    }
+    this.loadOfficers();
+  }
+
+  loadOfficers() {
+    this.loading.set(true);
+    this.http.get<any>(`${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool?roleGroup=${this.selectedRoleGroup()}`).subscribe({
+      next: (res) => {
+        this.officers.set(res.data || res || []);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.officers.set(this.getMockData());
+        this.loading.set(false);
+      }
+    });
+  }
+
+  onRoleGroupChange(group: string) {
+    this.selectedRoleGroup.set(group);
+    this.loadOfficers();
+  }
+
+  toggleLeave(officer: Officer) {
+    const newStatus = !officer.onLeave;
+    this.http.put<any>(
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/leave?onLeave=${newStatus}`,
+      {}
+    ).subscribe({
+      next: () => {
+        this.officers.update(list =>
+          list.map(o => o.id === officer.id ? { ...o, onLeave: newStatus } : o)
+        );
+      },
+      error: () => {
+        this.officers.update(list =>
+          list.map(o => o.id === officer.id ? { ...o, onLeave: newStatus } : o)
+        );
+      }
+    });
+  }
+
+  /**
+   * UST887: opens the safe-deactivation dialog.
+   *
+   * The old flow was a native confirm() followed by an optimistic update that ran in BOTH the
+   * success and error handlers, so a failed deactivation still looked deactivated on screen. The
+   * server decides here, and open records must be transferred first.
+   */
+  openDeactivateDialog(officer: Officer) {
+    this.deactivateTarget.set(officer);
+    this.deactivateError.set('');
+    this.reassignTo.set('');
+    this.alsoRevokeAccess.set(false);
+    this.openRecords.set([]);
+    this.loadingOpenRecords.set(true);
+    this.showDeactivateModal.set(true);
+
+    this.http.get<any>(
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/open-records`
+    ).subscribe({
+      next: (res) => {
+        this.openRecords.set(res?.data?.openComplaints ?? []);
+        this.loadingOpenRecords.set(false);
+      },
+      error: () => {
+        // Failing to load must not imply "nothing to reassign" — the server still enforces it,
+        // but the operator is told the check could not run.
+        this.loadingOpenRecords.set(false);
+        this.deactivateError.set(
+          'Could not check whether this officer still holds open complaints. Try again.');
+      }
+    });
+  }
+
+  closeDeactivateDialog() {
+    this.showDeactivateModal.set(false);
+    this.deactivateTarget.set(null);
+    this.deactivateError.set('');
+  }
+
+  confirmDeactivate() {
+    const officer = this.deactivateTarget();
+    if (!officer) return;
+
+    if (this.openRecords().length > 0 && !this.reassignTo()) {
+      this.deactivateError.set('Choose an officer to receive the open complaints.');
+      return;
+    }
+
+    this.deactivating.set(true);
+    this.deactivateError.set('');
+
+    this.http.put<any>(
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool/${officer.id}/deactivate`,
+      { reassignTo: this.reassignTo() || null }
+    ).subscribe({
+      next: (res) => {
+        this.officers.update(list =>
+          list.map(o => o.id === officer.id ? { ...o, active: false, currentWorkload: 0 } : o)
+        );
+        this.deactivating.set(false);
+
+        if (this.alsoRevokeAccess()) {
+          this.revokeAccess(officer);
+        } else {
+          this.closeDeactivateDialog();
+        }
+        this.loadOfficers();
+      },
+      error: (err) => {
+        this.deactivating.set(false);
+        // 409 carries the open-record list, so the dialog can ask for a successor instead of
+        // failing opaquely.
+        if (err?.status === 409 && err?.error?.data?.openComplaints) {
+          this.openRecords.set(err.error.data.openComplaints);
+        }
+        this.deactivateError.set(
+          err?.error?.message || 'The team member could not be deactivated.');
+      }
+    });
+  }
+
+  /** UST877: stops the officer signing in again, not just receiving new assignments. */
+  private revokeAccess(officer: Officer) {
+    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/admin/security/revocations`, {
+      username: officer.userId,
+      reason: 'DEACTIVATION',
+      notes: `Access revoked alongside pool deactivation of ${officer.displayName}`
+    }).subscribe({
+      next: () => this.closeDeactivateDialog(),
+      error: (err) => this.deactivateError.set(
+        err?.error?.message
+        || 'The officer was deactivated, but sign-in access could not be revoked. Revoke it from the security console.')
+    });
+  }
+
+  /** Candidate successors: same role group, active, and available. */
+  reassignCandidates = computed(() => {
+    const target = this.deactivateTarget();
+    if (!target) return [];
+    return this.officers().filter(o =>
+      o.id !== target.id && o.active && !o.onLeave && o.roleGroup === target.roleGroup);
+  });
+
+  openAddModal() {
+    this.newOfficer = {
+      userId: '',
+      displayName: '',
+      roleGroup: this.selectedRoleGroup(),
+      regionalOffice: '',
+      maxWorkload: 40
+    };
+    this.showAddModal.set(true);
+  }
+
+  addOfficer() {
+    if (!this.newOfficer.userId || !this.newOfficer.displayName) return;
+    this.http.post<any>(
+      `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool`,
+      this.newOfficer
+    ).subscribe({
+      next: (res) => {
+        const added = res.data || res;
+        this.officers.update(list => [...list, added]);
+        this.showAddModal.set(false);
+      },
+      error: () => {
+        const mock: Officer = {
+          id: Date.now(),
+          userId: this.newOfficer.userId!,
+          displayName: this.newOfficer.displayName!,
+          roleGroup: this.newOfficer.roleGroup!,
+          regionalOffice: this.newOfficer.regionalOffice || '',
+          active: true,
+          onLeave: false,
+          currentWorkload: 0,
+          maxWorkload: this.newOfficer.maxWorkload || 40
+        };
+        this.officers.update(list => [...list, mock]);
+        this.showAddModal.set(false);
+      }
+    });
+  }
+
+  syncFromKeycloak() {
+    const group = this.roleGroups.find(r => r.value === this.selectedRoleGroup());
+    if (!group) return;
+
+    this.syncing.set(true);
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/keycloak/users/by-role?role=${group.keycloakRole}`).subscribe({
+      next: (users: any[]) => {
+        const existingIds = new Set(this.officers().map(o => o.userId));
+        let added = 0;
+
+        for (const user of users) {
+          const userId = user.username || user.userId;
+          if (existingIds.has(userId)) continue;
+
+          const officer: Partial<Officer> = {
+            userId: userId,
+            displayName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || userId,
+            roleGroup: this.selectedRoleGroup(),
+            regionalOffice: user.attributes?.regionalOffice?.[0] || '',
+            maxWorkload: 40
+          };
+
+          this.http.post<any>(
+            `${environment.workflowBaseUrl}/cms-workflow/api/v1/assignment/pool`,
+            officer
+          ).subscribe({
+            next: (res) => {
+              const saved = res.data || res;
+              this.officers.update(list => [...list, saved]);
+            },
+            error: () => {
+              const mock: Officer = {
+                id: Date.now() + added,
+                userId: userId,
+                displayName: officer.displayName!,
+                roleGroup: this.selectedRoleGroup(),
+                regionalOffice: officer.regionalOffice || '',
+                active: true,
+                onLeave: user.attributes?.isOnLeave?.[0] === 'true',
+                currentWorkload: 0,
+                maxWorkload: 40
+              };
+              this.officers.update(list => [...list, mock]);
+            }
+          });
+          added++;
+        }
+
+        this.syncing.set(false);
+        if (added === 0) {
+          this.toast.info('ui.toast.officers_already_synced');
+        } else {
+          this.toast.success('ui.toast.officers_synced', { count: String(added) });
+        }
+      },
+      error: () => {
+        this.syncing.set(false);
+        this.toast.error('ui.toast.officer_sync_failed');
+      }
+    });
+  }
+
+  getWorkloadPercent(officer: Officer): number {
+    if (officer.maxWorkload <= 0) return 0;
+    return Math.round((officer.currentWorkload / officer.maxWorkload) * 100);
+  }
+
+  getWorkloadColor(officer: Officer): string {
+    const pct = this.getWorkloadPercent(officer);
+    if (pct >= 90) return '#ef4444';
+    if (pct >= 70) return '#f59e0b';
+    return '#22c55e';
+  }
+
+  navigateTo(item: string) {
+    this.sidebarItem.set(item);
+    if (item === 'dashboard') this.router.navigate(['/admin/dashboard']);
+    else if (item === 'complaints') this.router.navigate(['/crpc/home']);
+    else if (item === 'rules') this.router.navigate(['/admin/rules']);
+  }
+
+  async logout() {
+    await this.auth.logout();
+  }
+
+  private getMockData(): Officer[] {
+    const group = this.selectedRoleGroup();
+    if (group === 'CRPC_DEO') {
+      return [
+        { id: 1, userId: 'deo.user', displayName: 'Siddharth Joshi', roleGroup: 'CRPC_DEO', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 12, maxWorkload: 50 },
+        { id: 2, userId: 'deo_001', displayName: 'Amit Verma', roleGroup: 'CRPC_DEO', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 8, maxWorkload: 50 },
+        { id: 3, userId: 'deo_002', displayName: 'Sneha Patil', roleGroup: 'CRPC_DEO', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 15, maxWorkload: 50 },
+        { id: 4, userId: 'deo_003', displayName: 'Ramesh Iyer', roleGroup: 'CRPC_DEO', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 22, maxWorkload: 50 },
+      ];
+    } else if (group === 'CRPC_REVIEWER') {
+      return [
+        { id: 5, userId: 'reviewer.user', displayName: 'A.K. Singh', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 10, maxWorkload: 30 },
+        { id: 6, userId: 'reviewer1', displayName: 'Meera Krishnan', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 5, maxWorkload: 30 },
+        { id: 7, userId: 'cepc_reviewer1', displayName: 'Anuradha Patel', roleGroup: 'CRPC_REVIEWER', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 18, maxWorkload: 30 },
+      ];
+    } else if (group === 'RBIO_OFFICER') {
+      return [
+        { id: 8, userId: 'rbio.officer', displayName: 'Rajesh Kumar', roleGroup: 'RBIO_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 20, maxWorkload: 40 },
+        { id: 9, userId: 'rbio_officer_002', displayName: 'Anita Sharma', roleGroup: 'RBIO_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 35, maxWorkload: 40 },
+        { id: 10, userId: 'rbio_officer_003', displayName: 'Rahul Verma', roleGroup: 'RBIO_OFFICER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 15, maxWorkload: 40 },
+      ];
+    } else if (group === 'RBIO_SUPERVISOR') {
+      return [
+        { id: 11, userId: 'rbio.supervisor', displayName: 'Suresh Pillai', roleGroup: 'RBIO_SUPERVISOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 18, maxWorkload: 30 },
+      ];
+    } else if (group === 'RBIO_CONCILIATOR') {
+      return [
+        { id: 18, userId: 'rbio.conciliator', displayName: 'Kavita Reddy', roleGroup: 'RBIO_CONCILIATOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 6, maxWorkload: 20 },
+      ];
+    } else if (group === 'RBIO_ADJUDICATOR') {
+      return [
+        { id: 19, userId: 'rbio.adjudicator', displayName: 'Deepak Mishra', roleGroup: 'RBIO_ADJUDICATOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 4, maxWorkload: 15 },
+      ];
+    } else if (group === 'CEPC_OFFICER') {
+      return [
+        { id: 12, userId: 'cepc.officer', displayName: 'Neha Saxena', roleGroup: 'CEPC_OFFICER', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 14, maxWorkload: 40 },
+        { id: 13, userId: 'cepc_do1', displayName: 'Sunita Mehta', roleGroup: 'CEPC_OFFICER', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 20, maxWorkload: 40 },
+        { id: 14, userId: 'cepc_do2', displayName: 'Vikram Sharma', roleGroup: 'CEPC_OFFICER', regionalOffice: 'CHENNAI', active: true, onLeave: false, currentWorkload: 10, maxWorkload: 40 },
+      ];
+    } else if (group === 'CEPC_SUPERVISOR') {
+      return [
+        { id: 15, userId: 'cepc.supervisor', displayName: 'Manoj Tiwari', roleGroup: 'CEPC_SUPERVISOR', regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 12, maxWorkload: 30 },
+        { id: 16, userId: 'cepc_incharge1', displayName: 'Rajesh Nair', roleGroup: 'CEPC_SUPERVISOR', regionalOffice: 'DELHI', active: true, onLeave: false, currentWorkload: 8, maxWorkload: 30 },
+      ];
+    }
+    return [
+      { id: 17, userId: 'cepc.officer', displayName: 'Neha Saxena', roleGroup: group, regionalOffice: 'MUMBAI', active: true, onLeave: false, currentWorkload: 14, maxWorkload: 40 },
+    ];
+  }
+}

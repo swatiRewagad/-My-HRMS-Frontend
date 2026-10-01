@@ -1,0 +1,40 @@
+<div class="pno-create-appeal" data-testid="pno-create-appeal">
+  <button class="back-btn" (click)="goBack()">&larr;</button>
+
+  <h2>{{ 'aa.register.heading' | translate }}</h2>
+
+  <dl class="parent-summary">
+    <dt>{{ 'aa.register.parent_complaint' | translate }}</dt>
+    <dd data-testid="pno-parent-number">{{ complaintNumber() }}</dd>
+    @if (closureClause()) {
+      <dt>{{ 'aa.register.closure_clause' | translate }}</dt>
+      <dd data-testid="pno-closure-clause">{{ closureClause() }}</dd>
+    }
+  </dl>
+
+  @if (loading()) {
+    <p class="state-loading" data-testid="pno-loading">{{ 'aa.search.loading' | translate }}</p>
+  } @else if (loadError()) {
+    <p class="state-error" data-testid="pno-error">
+      {{ (errorMessageKey() ?? 'aa.search.error_failed') | translate }}
+    </p>
+    <button type="button" class="btn-secondary" data-testid="pno-retry" (click)="retry()">
+      {{ 'aa.register.button_retry' | translate }}
+    </button>
+  } @else if (!appealEligible()) {
+    <!-- The server decided this, and says why. Never a guess, and never a silently missing button. -->
+    <p class="state-blocked" data-testid="pno-not-appealable">
+      {{ (ineligibleKey() ?? 'aa.register.error_parent_not_appealable') | translate }}
+    </p>
+  } @else {
+    <!-- Appeal vs Representation follows the clause's appealable_by_entity flag: an entity may appeal
+         only 15(1)(b); against any other clause the same action is a Representation. -->
+    <button type="button" class="btn-primary" data-testid="pno-create-appeal-action" (click)="proceed()">
+      @if (entityMayAppeal()) {
+        {{ 'aa.register.create_appeal' | translate }}
+      } @else {
+        {{ 'aa.register.create_representation' | translate }}
+      }
+    </button>
+  }
+</div>

@@ -1,0 +1,24 @@
+<div class="cepc-timeline">
+  <div class="timeline-header">
+    <h4>Audit Trail</h4>
+    <button class="refresh-btn" (click)="loadTimeline()" [disabled]="loading()">
+      &#x21bb; Refresh
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">Loading timeline...</div>
+  } @else if (error()) {
+    <!-- Reported, not swallowed. "This complaint has no recorded actions" and "we could not read the
+         audit trail" are very different facts when deciding whether to act. -->
+    <div class="error-state" role="alert">
+      <span>Could not load the audit trail.</span>
+      <button class="refresh-btn" (click)="loadTimeline()">Retry</button>
+    </div>
+  } @else {
+    <app-workflow-timeline
+      mode="inline"
+      [entries]="entries()"
+      emptyText="No timeline entries yet." />
+  }
+</div>

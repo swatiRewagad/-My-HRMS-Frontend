@@ -1,0 +1,2 @@
+Screen ID,Area,Screen name,Role used,URL,Status,Detail,Console errors
+STF-005,Staff,Senior dashboard,CEPC_INCHARGE,http://localhost:4202/staff/senior-dashboard,CAPTURED,,0

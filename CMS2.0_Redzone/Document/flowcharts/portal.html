@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citizen Portal — How a complaint is filed</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html" class="active">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>Citizen Portal — filing and tracking a complaint</h1>
+  <p class="sub">What a member of the public goes through, from logging in to watching their case progress</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    A citizen signs in with their <strong>mobile number and a one-time password</strong> — there is no username, no
+    password and no anonymous filing. Before they are allowed to type a single complaint detail, the portal runs an
+    <strong>eligibility interview</strong>: a set of yes/no questions that establish whether the Ombudsman may hear
+    this grievance at all. Failing a question ends the journey there with an explanation. Passing it opens a
+    <strong>six-step form</strong>. On submission the citizen gets a reference number immediately, and can come back
+    at any time — even without logging in — to see one of <strong>four plain-language stages</strong>.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Getting in</h2>
+  <ol class="steps">
+    <li><strong>Enter a 10-digit Indian mobile number.</strong> It must begin with 6, 7, 8 or 9.</li>
+    <li><strong>Solve a CAPTCHA.</strong> Either a picture code or, for accessibility, an audio arithmetic question.</li>
+    <li><strong>Agree to the consent statement.</strong> Filing cannot proceed without it.</li>
+    <li><strong>Receive and enter the one-time password.</strong> It is valid for five minutes.</li>
+    <li><strong>You are in for 15 minutes of inactivity.</strong> After that the session drops and you sign in again.</li>
+  </ol>
+  <div class="watch mild">
+    <span class="lbl">Rate limits, in the order they are applied</span>
+    The portal refuses an OTP request if: the number is malformed · the number is inside a cool-off period after too
+    many attempts · the CAPTCHA is wrong · the hourly request limit for that number is used up · or a previous code
+    was requested too recently. Each gives a distinct message.
+  </div>
+  <div class="watch good">
+    <span class="lbl">Tracking does not need a login</span>
+    Anyone holding a reference number can look up a case's stage without signing in. Filing, however,
+    <strong>always</strong> requires the OTP login.
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. The filing journey</h2>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Citizen starts here</span>
+    <span><i class="swatch sw-state"></i>A screen or step</span>
+    <span><i class="swatch sw-dec"></i>A check the portal makes</span>
+    <span><i class="swatch sw-term"></i>Complaint accepted</span>
+    <span><i class="swatch sw-bad"></i>Journey stops here</span>
+  </div>
+  <div class="diagram" id="dg-portal-journey">
+    <div class="diagram-bar">
+      <span class="title">Login → eligibility interview → six-step form → reference number</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  START(["Citizen visits the RBI complaint portal"]):::start
+  START --> LOGIN{"Mobile number + CAPTCHA<br/>+ consent, then OTP"}:::dec
+  LOGIN -- "any check fails" --> STOP1["Cannot proceed —<br/>a specific reason is shown"]:::bad
+  LOGIN -- "signed in" --> ELIG
+
+  subgraph ELIGS["Part 1 — the eligibility interview"]
+    direction TB
+    ELIG["Questions are pulled from a<br/>master list the business can edit.<br/>Which ones appear depends on<br/>the type of institution complained about"]:::state
+    ELIG --> Q1{"Have you already complained<br/>to the bank itself?"}:::dec
+    Q1 -- no --> NM1["Not maintainable — you must<br/>approach the bank first"]:::bad
+    Q1 -- yes --> Q2{"Is the same matter already<br/>before a court or another forum?"}:::dec
+    Q2 -- yes --> NM2["Not maintainable — the matter<br/>is already under adjudication"]:::bad
+    Q2 -- no --> Q3{"Is the complaint within<br/>the time limits?"}:::dec
+    Q3 -- no --> NM3["Not maintainable — too late<br/>under the Scheme"]:::bad
+    Q3 -- yes --> Q4{"Is this a commercial dispute<br/>or otherwise excluded?"}:::dec
+    Q4 -- yes --> NM4["Not maintainable —<br/>outside the Scheme"]:::bad
+    Q4 -- no --> PASS["Eligible to file"]:::state
+  end
+
+  PASS --> FORM
+
+  subgraph FORMS["Part 2 — the six-step complaint form"]
+    direction TB
+    FORM["Step 1 · Your details"]:::state
+    F2["Step 2 · Which bank or institution"]:::state
+    F3["Step 3 · What happened<br/>loss claimed up to ₹30 lakh<br/>compensation sought up to ₹3 lakh"]:::state
+    F4["Step 4 · If someone is filing<br/>on your behalf, their authorisation"]:::state
+    F5["Step 5 · Declaration"]:::state
+    F6["Step 6 · Review everything<br/>and submit"]:::state
+    FORM --> F2 --> F3 --> F4 --> F5 --> F6
+    F6 -. "go back and edit any<br/>step already completed" .-> FORM
+  end
+
+  F6 --> DUP{"Have you already filed<br/>this same complaint?"}:::dec
+  DUP -- "yes, or the check cannot run" --> STOP2["Submission refused"]:::bad
+  DUP -- no --> WIN{"Is the filing window open?"}:::dec
+  WIN -- no --> STOP3["Submission refused, with the<br/>applicable time limit explained"]:::bad
+  WIN -- yes --> OK["Complaint registered<br/>reference number issued immediately<br/>30-day disposal target set"]:::term
+
+  OK --> ROUTE(["Routed to the right office —<br/>Ombudsman office or the<br/>consumer protection cell"]):::ext
+  OK --> TRACK(["Citizen can now track it<br/>by reference number"]):::ext
+</div>
+    </div></div>
+    <div class="hint">You cannot skip forward in the form — only back to steps you have already reached.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. The time limits the portal enforces</h2>
+  <div class="timebox">
+    <div><b>30 days</b><span>the bank gets this long to reply before you may come to the Ombudsman</span></div>
+    <div><b>310 days</b><span>window to approach the Ombudsman when the bank never replied</span></div>
+    <div><b>90 days</b><span>window to approach the Ombudsman after the bank's reply or rejection</span></div>
+    <div><b>5 minutes</b><span>validity of the login OTP</span></div>
+    <div><b>15 minutes</b><span>idle time before the session ends</span></div>
+  </div>
+  <p>All of these come from the server, not the browser, so they cannot be bypassed by editing the page. The
+     same limits are re-checked on submission even if the interview was passed earlier.</p>
+</div>
+
+<div class="card">
+  <h2>4. What the citizen sees afterwards</h2>
+  <p>Internally a case passes through dozens of situations. The citizen is shown only four:</p>
+  <div class="diagram" id="dg-portal-stages">
+    <div class="diagram-bar">
+      <span class="title">The four stages a citizen can see</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view"><div class="pan">
+<div class="mermaid">
+flowchart LR
+  S1["Stage 1<br/>Registered"]:::start
+  S2["Stage 2<br/>Under review by RBI"]:::state
+  S3["Stage 3<br/>With the bank"]:::dec
+  S4["Stage 4<br/>Closed"]:::term
+  S1 --> S2 --> S3 --> S4
+  S3 -. "can go backwards" .-> S2
+  UNK["Any situation the portal<br/>does not recognise<br/>is shown as Stage 1"]:::bad
+  UNK --> S1
+</div>
+    </div></div>
+  </div>
+  <div class="watch">
+    <span class="lbl">Two behaviours to expect support calls about</span>
+    <strong>1. Stages can go backwards.</strong> A case that was "With the bank" can return to "Under review by RBI".<br/>
+    <strong>2. Unrecognised situations show as Stage 1.</strong> Many genuine internal states — conciliation, formal
+    notice, awaiting documents, and the whole consumer-protection-cell review chain — are not in the citizen
+    mapping, so those citizens see "Registered" even though real work is under way.
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. Features that look present but do not work</h2>
+  <table class="tbl">
+    <thead><tr><th>What the screen offers</th><th>What actually happens</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Attaching documents during the eligibility interview</td>
+        <td>The upload is validated and marked mandatory, but the files are <strong>never sent to the server</strong>. They are silently lost when the complaint is submitted.</td>
+      </tr>
+      <tr>
+        <td>Adding an attachment to an existing complaint</td>
+        <td>The endpoint the screen calls <strong>does not exist</strong> on the server.</td>
+      </tr>
+      <tr>
+        <td>Listing your complaints by mobile number</td>
+        <td>Also calls a route that <strong>does not exist</strong>.</td>
+      </tr>
+      <tr>
+        <td>The "not maintainable" outcome reference</td>
+        <td>A reference number is shown to the citizen but <strong>nothing is stored</strong> — it cannot be looked up later.</td>
+      </tr>
+      <tr>
+        <td>An older eligibility check screen</td>
+        <td>Still reachable and carries a <strong>hard-coded 365-day limit</strong> that contradicts the live rules. It is not part of the current journey.</td>
+      </tr>
+      <tr>
+        <td>Automatic routing on registration</td>
+        <td>It runs, but if it fails the error is <strong>swallowed</strong> — the complaint is still registered, just possibly unrouted.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>Routes and guards</h4>
+    <p>Declared in <code>app.routes.ts:400-425</code>. <code>/public/file-complaint</code> sits behind
+       <code>publicAuthGuard</code> — <strong>no anonymous filing</strong>. Tracking by reference number is open.</p>
+
+    <h4>Authentication</h4>
+    <p>Mobile pattern <code>^[6-9]\d{9}$</code> + CAPTCHA (<code>VISUAL</code> image or <code>MATH</code> audio) +
+       consent → <code>POST /api/v1/citizen/auth/send-otp</code>. Gate order: mobile present → format →
+       cool-off (429) → CAPTCHA → hourly limit → resend cooldown. Then
+       <code>POST …/verify-otp</code>; token held in <code>sessionStorage</code> and sent as
+       <code>X-Citizen-Token</code>. OTP window 300s in every profile; idle timeout 15 min.</p>
+
+    <h4>Two-phase wizard</h4>
+    <p><code>phase = signal&lt;'eligibility'|'form'|'success'|'non-maintainable'&gt;</code>.
+       Phase A reads 14 questions from <code>EligibilityQuestionMasterSeeder</code>, filtered by
+       <code>applicableEntityType</code> (<code>ALL</code>/<code>RBIO</code>/<code>CEPC</code>/<code>NON_CEPC</code>)
+       so the <strong>step count is dynamic</strong>. Block clauses: 10(1)(j), 10(2)(b)(ii), 10(2)(a), 10(1)(g).
+       Phase B is fixed at six steps. Forward navigation guarded by
+       <code>goToStep(n)</code> only when <code>n &lt;= highestStepReached()</code>.</p>
+
+    <h4>Submission</h4>
+    <p><code>check-duplicate</code> <strong>fails closed</strong>. Windows (RE 30d, grievance 310d, filing 90d) are
+       server-served and re-asserted in <code>ComplaintApiV1Controller.filingWindowRefusal()</code>.
+       <code>POST /api/v1/complaints</code> → <strong>201</strong>, status <code>REGISTERED</code>,
+       <code>slaDueDate = +30d</code>. <code>IntakeTriageService.triageOnRegistration</code> runs next with
+       <strong>exceptions swallowed</strong>.</p>
+
+    <h4>Citizen stage mapping</h4>
+    <p><code>CitizenStageMapper</code>: 1 = <code>pending,new</code> · 2 = <code>assigned,in_progress,under_review,escalated</code> ·
+       3 = <code>approved,sent_back</code> · 4 = <code>resolved,rejected,closed,withdrawn</code>; unknown ⇒ 1.
+       <strong>Not monotonic.</strong></p>
+
+    <h4>Confirmed dead ends</h4>
+    <ul>
+      <li><code>POST /complaints/{id}/attachments</code> — no server mapping.</li>
+      <li><code>GET /complaints/by-phone/{phone}</code> — no server mapping.</li>
+      <li>Eligibility-phase uploads: payload build at lines 2158–2196 contains no multipart part.</li>
+      <li>Orphaned <code>wizard-check</code> with a contradictory hard-coded 365-day rule.</li>
+      <li>Non-maintainable reference <code>NM-&lt;timestamp&gt;</code> is never persisted.</li>
+      <li>A second, duplicate eligibility-wizard implementation still exists in the tree.</li>
+    </ul>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — Citizen portal process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

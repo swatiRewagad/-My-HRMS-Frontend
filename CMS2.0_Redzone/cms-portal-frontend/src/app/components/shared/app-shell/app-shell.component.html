@@ -1,0 +1,83 @@
+<div class="app-shell" data-testid="app-shell">
+  <header class="shell-header" data-testid="shell-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="" class="rbi-logo" aria-hidden="true" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">{{ 'ui.shell.rbi_hindi' | translate }}</span>
+        <span class="rbi-english">{{ 'ui.shell.rbi_english' | translate }}</span>
+      </div>
+      <div class="header-divider-v" aria-hidden="true"></div>
+      <span class="cms-title">{{ 'ui.shell.cms_short' | translate }}</span>
+      <span class="cms-subtitle">{{ 'ui.shell.cms_full' | translate }}</span>
+    </div>
+
+    <div class="header-right">
+      <app-language-switcher data-testid="shell-language-switcher"></app-language-switcher>
+
+      @if (user()) {
+        <div class="user-info-block">
+          <span class="user-avatar" aria-hidden="true">{{ initial() }}</span>
+          <div class="user-details">
+            <span class="user-name" data-testid="shell-user-name">{{ displayName() }}</span>
+            @if (roleKey()) {
+              <span class="user-role" data-testid="shell-user-role">{{ roleKey()! | translate }}</span>
+            }
+          </div>
+          <button type="button"
+                  class="btn-logout"
+                  data-testid="shell-logout"
+                  [attr.aria-label]="'ui.shell.logout' | translate"
+                  (click)="logout()">
+            <i class="pi pi-sign-out" aria-hidden="true"></i>
+          </button>
+        </div>
+      }
+    </div>
+  </header>
+
+  <div class="main-layout">
+    <aside class="shell-sidebar"
+           [class.collapsed]="collapsed()"
+           data-testid="shell-sidebar"
+           [attr.aria-label]="'ui.shell.primary_navigation' | translate">
+      <nav>
+        <ul class="nav-list">
+          @for (item of navItems(); track item.route) {
+            <li>
+              <a class="sidebar-item"
+                 [class.active]="isActive(item.route)"
+                 [attr.aria-current]="isActive(item.route) ? 'page' : null"
+                 [routerLink]="item.route"
+                 data-testid="shell-nav-item">
+                <i [class]="item.icon" aria-hidden="true"></i>
+                <span class="sidebar-label">{{ item.labelKey | translate }}</span>
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+
+      <button type="button"
+              class="sidebar-collapse"
+              data-testid="shell-sidebar-toggle"
+              [attr.aria-expanded]="!collapsed()"
+              (click)="toggleSidebar()">
+        <i class="pi" [class.pi-angle-double-left]="!collapsed()" [class.pi-angle-double-right]="collapsed()" aria-hidden="true"></i>
+        <span class="sidebar-label">{{ 'ui.shell.collapse' | translate }}</span>
+      </button>
+    </aside>
+
+    <main class="shell-content" id="main-content">
+      <div class="content-header">
+        <h1 data-testid="shell-page-title">{{ titleKey() | translate }}</h1>
+        <div class="header-actions">
+          <ng-content select="[shell-actions]"></ng-content>
+        </div>
+      </div>
+
+      <ng-content></ng-content>
+    </main>
+  </div>
+
+  <app-toast-host></app-toast-host>
+</div>

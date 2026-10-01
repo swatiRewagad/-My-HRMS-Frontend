@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RBIO — How a complaint is handled</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html" class="active">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>RBIO — Office of the RBI Ombudsman</h1>
+  <p class="sub">What happens to a complaint from the day it reaches the Ombudsman's office to the day it is closed</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    A complaint arrives at an Ombudsman office either directly from the citizen portal or handed over by the
+    central intake centre. A <strong>Dealing Official</strong> picks it up and first decides whether the Ombudsman is
+    even allowed to hear it. If yes, the official gathers facts — usually by asking the bank for a written reply.
+    Once the file is ready the official proposes an outcome and sends it <strong>up the ladder</strong>: Reviewer →
+    Deputy Ombudsman → Ombudsman. Anyone higher up can push it back down for more work. Most cases end in
+    <strong>settlement or conciliation</strong>. If the bank will not settle, the case moves to
+    <strong>adjudication</strong>, where the Ombudsman issues a formal award or rejects the complaint. Either way the
+    citizen gets a closure letter, and may appeal.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Who does what</h2>
+  <table class="tbl who-table">
+    <thead><tr><th>Role</th><th>What this person does in the system</th></tr></thead>
+    <tbody>
+      <tr><td>Dealing Official</td><td>Owns the case day to day. Decides maintainability, asks the bank for its reply, chases documents, records the citizen's rejoinder, drafts the proposed outcome and sends it up for review.</td></tr>
+      <tr><td>Reviewer</td><td>Quality-checks the Dealing Official's file. Approves it upward, or sends it back with comments.</td></tr>
+      <tr><td>Deputy Ombudsman</td><td>Second level of approval. Can approve upward, send back, or take conciliation and adjudication decisions.</td></tr>
+      <tr><td>Ombudsman</td><td>Final authority. Signs awards, rejects complaints, and approves closures.</td></tr>
+      <tr><td>Bank / Regulated Entity</td><td>Not an RBIO user. Receives the complaint on its own portal and files a reply. <a href="re.html">See the bank's side →</a></td></tr>
+      <tr><td>Office Administrator</td><td>Housekeeping only — reassign a case to a different officer, or reopen a closed one. Cannot hold a case.</td></tr>
+    </tbody>
+  </table>
+  <div class="watch mild">
+    <span class="lbl">Worth knowing</span>
+    The system carries <em>two</em> sets of role names at the same time — the modern ladder above, and an older set
+    (Officer, Supervisor, Conciliator, Adjudicator) still used by parts of the code. In practice "Conciliator" and
+    "Adjudicator" are not seniority levels; they are <strong>stages of the same case</strong> that a Deputy Ombudsman
+    or Ombudsman works through.
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. The main journey</h2>
+  <p>Read this top to bottom. Green means the case is finished; amber is a decision point; purple means the case
+     stays where it is and only a note is added.</p>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Case arrives</span>
+    <span><i class="swatch sw-state"></i>Case is sitting here</span>
+    <span><i class="swatch sw-dec"></i>Someone must decide</span>
+    <span><i class="swatch sw-term"></i>Case is closed</span>
+    <span><i class="swatch sw-auto"></i>Recorded, case does not move</span>
+  </div>
+  <div class="diagram" id="dg-rbio-journey">
+    <div class="diagram-bar">
+      <span class="title">Complaint arrives → examined → reviewed → settled or decided → closed</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  IN(["Complaint reaches the Ombudsman office<br/>from the citizen portal, or handed over<br/>by the central intake centre"]):::start
+  NEW["Waiting to be picked up"]:::state
+  IN --> NEW
+
+  NEW --> ACC{"Dealing Official<br/>opens the case"}:::dec
+  ACC --> MNT{"Can the Ombudsman<br/>hear this complaint at all?"}:::dec
+
+  MNT -- "No — outside the Scheme" --> NM["Closed as not maintainable<br/>a Scheme clause must be quoted<br/>and a letter goes to the citizen"]:::term
+  MNT -- "Yes" --> EXAM["Under examination by the<br/>Dealing Official"]:::state
+
+  subgraph GATHER["Gathering the facts"]
+    direction TB
+    EXAM --> ASKRE{"Ask the bank<br/>for its reply?"}:::dec
+    ASKRE -- yes --> WITHRE["With the bank<br/>bank has 15 days to reply"]:::state
+    WITHRE --> REREP["Bank's reply received"]:::state
+    REREP --> EXAM
+    ASKRE -- "no reply came in time" --> EXP["Proceed without the bank<br/>(ex-parte)"]:::state
+    EXP --> EXAM
+    EXAM --> DOCS["Ask the citizen or the bank<br/>for more documents"]:::state
+    DOCS --> EXAM
+    EXAM --> REJ["Record the citizen's comments<br/>on the bank's reply"]:::state
+    REJ --> EXAM
+    MEET["Hold a meeting or hearing —<br/>minutes are recorded, the case<br/>stays where it is"]:::auto
+    EXAM -.-> MEET
+  end
+
+  EXAM --> UP{"Dealing Official is ready<br/>and proposes an outcome"}:::dec
+
+  subgraph LADDER["Going up the ladder — each level can send it back"]
+    direction TB
+    UP --> RV["With the Reviewer"]:::state
+    RV --> DY["With the Deputy Ombudsman"]:::state
+    DY --> OM["With the Ombudsman"]:::state
+    RV -. "send back with comments" .-> EXAM
+    DY -. "send back" .-> RV
+    OM -. "send back" .-> DY
+  end
+
+  OM --> ROUTE{"How should this case end?"}:::dec
+
+  ROUTE -- "The bank agrees to put it right" --> SET["Settled by mutual agreement"]:::term
+  ROUTE -- "Bring both sides together" --> CONC{"Conciliation"}:::dec
+  CONC -- "agreement reached" --> CSUCC["Closed as conciliated"]:::term
+  CONC -- "no agreement" --> ADJ["Moves to formal adjudication"]:::state
+  ROUTE -- "No settlement possible" --> ADJ
+
+  subgraph ADJU["Formal adjudication"]
+    direction TB
+    ADJ --> NOTICE["Formal notice issued to the bank<br/>under the Scheme"]:::state
+    NOTICE --> JOIN["Another bank may be<br/>brought into the case"]:::auto
+    JOIN --> NOTICE
+    NOTICE --> DECIDE{"Ombudsman decides"}:::dec
+    DECIDE -- "complaint upheld" --> AWARD["Award issued —<br/>compensation is capped by the Scheme"]:::term
+    DECIDE -- "complaint not upheld" --> REJECT["Complaint rejected<br/>with reasons"]:::term
+  end
+
+  ROUTE -- "Belongs to another RBI office" --> XFER["Transfer requested —<br/>waits for central approval"]:::state
+  XFER --> XOUT(["Approved: the other office takes over<br/>Rejected: comes back here"]):::ext
+
+  AWARD --> LETTER["Closure letter prepared<br/>and sent to the citizen"]:::term
+  REJECT --> LETTER
+  SET --> LETTER
+  CSUCC --> LETTER
+  NM --> LETTER
+
+  LETTER --> APPEAL(["Citizen or bank may appeal<br/>within 30 days"]):::ext
+  APPEAL --> AA(["Appellate Authority"]):::ext
+
+  REOPEN["Administrator may reopen<br/>a closed case"]:::auto
+  LETTER -.-> REOPEN
+  REOPEN -.-> EXAM
+</div>
+    </div></div>
+    <div class="hint">Drag to move, scroll to zoom, or use Full screen. Dotted lines are things that can happen at any point.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. The same journey as a checklist</h2>
+  <ol class="steps">
+    <li><span class="who">Dealing Official</span>
+      <strong>Open the case.</strong> The case moves out of the waiting queue and a target date is set.
+      <span class="sees">Citizen sees: "Under review by RBI"</span></li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Decide maintainability.</strong> If the complaint is outside the Scheme it is closed here and a
+      Scheme clause must be recorded — the system will not let it close without one. If it is maintainable the
+      case simply continues; nothing visible changes for the citizen.</li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Send it to the bank.</strong> The bank gets 15 days. If the bank does not reply, the office can
+      proceed without it.
+      <span class="sees">Citizen sees: "With the bank"</span></li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Work the file.</strong> Chase documents, record the citizen's response to the bank's reply, hold a
+      meeting if needed. Meetings and document requests do not change where the case stands — they are recorded
+      against it.</li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Propose an outcome and send it up.</strong> The case leaves the official's desk and lands with the
+      Reviewer.</li>
+    <li><span class="who">Reviewer → Deputy Ombudsman → Ombudsman</span>
+      <strong>Approve upward, or send back.</strong> A send-back goes to whoever held the case before. Each level
+      must leave a comment when sending back.</li>
+    <li><span class="who">Deputy Ombudsman / Ombudsman</span>
+      <strong>Close it the right way</strong> — settled, conciliated, awarded, or rejected. Every closure needs a
+      reason recorded, and the closure letter is generated from it.</li>
+    <li><span class="who">System</span>
+      <strong>Tell the citizen.</strong> The closure letter is issued; the appeal window opens.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>4. Clocks and deadlines</h2>
+  <div class="timebox">
+    <div><b>15 days</b><span>for the bank to reply after the complaint is forwarded</span></div>
+    <div><b>30 days</b><span>standard target to dispose of a complaint</span></div>
+    <div><b>60 days</b><span>target once a case enters conciliation</span></div>
+    <div><b>120 days</b><span>target once a case enters adjudication</span></div>
+    <div><b>30 days</b><span>appeal window after the closure letter</span></div>
+  </div>
+  <div class="watch">
+    <span class="lbl">Important limitation</span>
+    <strong>Nothing in RBIO moves on its own.</strong> These targets are calculated and displayed, and breaches show
+    up on dashboards and reports — but there is no background job that escalates, reassigns or closes an overdue
+    case. Every single movement of an RBIO case is a person clicking a button. If a case is forgotten, it stays
+    where it is indefinitely.
+  </div>
+  <div class="watch mild">
+    <span class="lbl">One exception, and it comes from elsewhere</span>
+    The <strong>bank's 15-day clock</strong> is genuinely monitored by a nightly job. When it lapses, the case is
+    flagged as eligible to proceed without the bank. Even then an officer still has to act — the flag only unlocks
+    the option. <a href="re.html">Details on the bank's side →</a>
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. What the citizen actually sees</h2>
+  <p>The citizen's tracking page does not show the internal ladder. Everything collapses into four stages:</p>
+  <table class="tbl">
+    <thead><tr><th>Citizen sees</th><th>Which internal situations map to it</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-info">1 · Registered</span></td><td>Just filed, not yet picked up</td></tr>
+      <tr><td><span class="badge badge-info">2 · Under review by RBI</span></td><td>Being examined, anywhere on the review ladder, or escalated</td></tr>
+      <tr><td><span class="badge badge-warn">3 · With the bank</span></td><td>Sent to the bank for its reply, or sent back internally</td></tr>
+      <tr><td><span class="badge badge-ok">4 · Closed</span></td><td>Settled, conciliated, awarded, rejected, withdrawn or closed</td></tr>
+    </tbody>
+  </table>
+  <div class="watch">
+    <span class="lbl">Known gap</span>
+    Several real situations — conciliation in progress, formal notice issued, awaiting documents, transfer pending —
+    are <strong>not recognised by the citizen view and silently show as "Registered"</strong>. A citizen whose case is
+    deep in adjudication can therefore see Stage 1. The citizen stage can also move <em>backwards</em>, for example
+    when a case is sent back internally after having been with the bank.
+  </div>
+</div>
+
+<div class="card">
+  <h2>6. Things to know before relying on this</h2>
+  <table class="tbl">
+    <thead><tr><th>What you might assume</th><th>What the code actually does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Only a Reviewer can approve a review"</td>
+        <td>The role check runs against the case record, and is <strong>skipped entirely if the caller's role is not supplied</strong>. In that situation the action goes through regardless of who is asking.</td>
+      </tr>
+      <tr>
+        <td>"An action is only offered when the case is at the right stage"</td>
+        <td>The screens hide actions that do not apply, but the server does <strong>not verify</strong> that the case was in a valid state. A case can be driven out of order if the action is invoked directly.</td>
+      </tr>
+      <tr>
+        <td>"A rejected action shows an error"</td>
+        <td>Most refusals come back looking like a <strong>successful response</strong> carrying a failure flag. Screens that do not read that flag will appear to have succeeded. This is the most repeated defect in the module.</td>
+      </tr>
+      <tr>
+        <td>"Transferring to another office moves the case"</td>
+        <td>It only <strong>requests</strong> a transfer. The case parks in a holding state until the central intake head approves or rejects it.</td>
+      </tr>
+      <tr>
+        <td>"Send-back always works"</td>
+        <td>If the previous holder is no longer active, the send-back is <strong>refused</strong> and the officer has to nominate a person explicitly.</td>
+      </tr>
+      <tr>
+        <td>"Compensation limits are enforced"</td>
+        <td>Yes — the award amount is checked against the Scheme cap <strong>before</strong> anything is saved, and an over-cap award is rejected.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>Five sources decide what an action does — first hit wins</h4>
+    <ol>
+      <li><code>RBIO_WORKFLOW_TRANSITION</code> database rows where <code>isActive='Y'</code></li>
+      <li><code>RbioTransitionRegistry</code> — 24 actions (Wave 0)</li>
+      <li><code>RbioLadderActions</code> — 17 actions (Stage 3)</li>
+      <li><code>RbioMeetingTransferActions</code> — 5 actions (Stage 5)</li>
+      <li><code>effectOf()</code> fallback — resolves by <strong>action name alone, ignoring role</strong></li>
+    </ol>
+
+    <h4>Four fields make up "where the case is"</h4>
+    <p><code>status</code> (legacy lowercase) · <code>workflowStage</code> · <code>milestone</code> ·
+       <code>assignedRole</code> + <code>assignedOfficer</code>.
+       A transition row with <code>TO_STATUS = NULL</code> means <em>leave the status unchanged</em> — around ten
+       actions (meetings, document requests, maintainable-decision) rely on this.</p>
+
+    <h4>Guard order inside <code>applyTransition</code> (line 598)</h4>
+    <p class="mono" style="font-size:12.5px">
+      requireParams → requireComment → uploadLinkGuard → closureCommunicationGuard →
+      implead-incomplete check (<em>only if this is a closure transition</em>) → <strong>[nothing persisted yet]</strong> →
+      resolveAssignedRole → applySideEffects → write status &amp; stage (<em>both skipped when the effect is
+      APPROVE_LADDER</em>) → milestone → applyAssignee → closureCause → SLA → applyClosureCommunication
+    </p>
+    <p>The role check is <em>earlier</em>, in <code>performAction</code> (line 248), and is bypassed when
+       <code>userRole</code> is blank.</p>
+
+    <h4>Role vocabularies</h4>
+    <p>Rank ladder: <code>DEALING_OFFICIAL</code> → <code>REVIEWER</code> → <code>DEPUTY_OMBUDSMAN</code> →
+       <code>OMBUDSMAN</code>. Legacy: <code>OFFICER</code> / <code>SUPERVISOR</code> / <code>CONCILIATOR</code> /
+       <code>ADJUDICATOR</code> — the last two are stages, not ranks. <code>ADMIN</code> is excluded from
+       <code>CASE_HOLDING_ROLES</code>.</p>
+
+    <h4>Selected action semantics</h4>
+    <ul>
+      <li><code>DECIDE_MAINTAINABLE</code> — status unchanged; <code>DECIDE_NON_MAINTAINABLE</code> → <code>closed</code>, requires <code>closureClause</code>.</li>
+      <li>Send-back targets <code>PREVIOUS_HOLDER</code>; no active holder ⇒ refused, client must re-POST with <code>targetUser</code>. HTTP 422 distinguishes "inactive holder" from "no history".</li>
+      <li><code>CONCILIATION_SUCCESS</code> → <code>conciliated</code>; <code>CONCILIATION_FAILED</code> → status <code>escalated</code>, routed to the adjudication role.</li>
+      <li>Meetings are a status-unchanged loop, blocked by <code>RBIO_STATUS_MASTER.BLOCKS_MEETING</code>, not by from-status.</li>
+      <li><code>FORWARD_TO_OTHER_OFFICE</code> parks at <code>sent_to_other</code> pending the CRPC Head decision.</li>
+      <li>Legal-case tracking is a side channel with no transition row at all.</li>
+    </ul>
+
+    <h4>SLA</h4>
+    <p><code>RbioSlaService</code> has <strong>no <code>@Scheduled</code> method</strong> and performs no transition.
+       Business-day targets: 30 / 30 / 60 / 120.</p>
+
+    <h4>Refusal shape</h4>
+    <p><code>IllegalArgumentException</code> is mapped to <strong>HTTP 200</strong> with
+       <code>{success:false}</code> — refusals do not reach Angular's error branch.</p>
+
+    <h4>Citizen projection</h4>
+    <p><code>CitizenStageMapper</code>: stage 1 = <code>pending,new</code>; 2 = <code>assigned,in_progress,under_review,escalated</code>;
+       3 = <code>approved,sent_back</code>; 4 = <code>resolved,rejected,closed,withdrawn</code>. Unknown status ⇒ 1.
+       The mapping is <strong>not monotonic</strong>.</p>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — RBIO process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

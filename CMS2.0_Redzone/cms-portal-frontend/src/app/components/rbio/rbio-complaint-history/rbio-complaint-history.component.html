@@ -1,0 +1,35 @@
+<!-- `.rbio-history`, not `.history-panel`: that class names the fixed slide-in panel on the staff task
+     screen, and having one selector mean both a slide-in and an inline tab body is how these two trails
+     drifted apart in the first place. -->
+<div class="rbio-history">
+
+  <div class="history-header">
+    <h3 class="section-title">{{ 'complaint.history.section_title' | translate }}</h3>
+    <label class="filter-toggle">
+      <input type="checkbox" [checked]="showAutomatic()" (change)="toggleAutomatic()" />
+      {{ 'complaint.history.show_automatic' | translate }}
+    </label>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-state">{{ 'complaint.history.loading' | translate }}</div>
+  }
+
+  <!-- A failed load is reported, never rendered as an empty history. -->
+  @if (error()) {
+    <div class="error-state" role="alert">
+      <span>{{ error()! | translate }}</span>
+      <button type="button" class="retry-btn" (click)="load()">
+        {{ 'complaint.history.retry' | translate }}
+      </button>
+    </div>
+  }
+
+  @if (!loading() && !error()) {
+    <app-workflow-timeline
+      mode="history"
+      [entries]="visibleEntries()"
+      [labelFor]="translateAction"
+      [emptyText]="'complaint.history.empty' | translate" />
+  }
+</div>

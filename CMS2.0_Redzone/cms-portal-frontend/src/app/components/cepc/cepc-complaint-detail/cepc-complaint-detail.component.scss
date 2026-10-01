@@ -1,0 +1,173 @@
+.cepc-detail { min-height: 100vh; background: var(--surface-sunken); }
+
+.topbar {
+  background: var(--brand-primary-strong); color: white; padding: 12px 24px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar h2 { margin: 0; font-size: 18px; }
+.back-btn { background: none; border: none; color: white; font-size: 20px; cursor: pointer; }
+.topbar-right { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.role-badge { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+
+.content { max-width: 1300px; margin: 0 auto; padding: 24px 20px; }
+.loading, .error-state { text-align: center; padding: 60px; color: var(--text-muted); font-size: 16px; }
+
+// The three-region reference layout: facts | actions | rail. The rail column is a fixed 48px because
+// app-context-rail overlays its body leftward rather than widening the column — see that component.
+// `.detail-layout` is kept as the class name (seven CEPC specs wait on `.cepc-detail .detail-layout`);
+// `.detail-content` is the reference layout's name for the same element.
+.detail-layout { display: grid; grid-template-columns: 1fr 1fr 48px; gap: 20px; align-items: start; }
+
+// ── Detail Panel (LEFT region) ──
+.detail-panel { display: flex; flex-direction: column; gap: 16px; }
+
+// The one audit trail, below the grid rather than in the rail. See the template for the two specs that
+// require it visible without a click.
+.trail-section { margin-top: 20px; }
+
+.complaint-header {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid var(--border-subtle);
+  display: flex; justify-content: space-between; align-items: center;
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  h3 { margin: 0; font-size: 18px; color: var(--brand-primary-strong); }
+  .header-meta { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); text-align: right; }
+}
+
+.detail-section {
+  background: white; border-radius: 8px; padding: 20px; border: 1px solid var(--border-subtle);
+  h4 { margin: 0 0 16px; font-size: 14px; color: var(--text-heading); border-bottom: 1px solid var(--surface-subtle); padding-bottom: 8px; }
+}
+
+.field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.field {
+  label { display: block; font-size: 11px; text-transform: uppercase; color: #888; font-weight: 600; margin-bottom: 4px; }
+  span, p { font-size: 14px; color: var(--text-body); margin: 0; }
+  &.full-width { grid-column: span 2; }
+}
+.description-text { white-space: pre-wrap; line-height: 1.5; background: var(--surface-subtle); padding: 12px; border-radius: 6px; font-size: 13px; }
+
+.dept-badge { display: inline-block; padding: 2px 8px; background: #e3f2fd; color: var(--brand-primary-strong); border-radius: 4px; font-weight: 600; font-size: 12px; }
+
+.priority-badge {
+  padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;
+  &[data-priority="HIGH"], &[data-priority="high"] { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+  &[data-priority="MEDIUM"], &[data-priority="medium"] { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &[data-priority="LOW"], &[data-priority="low"] { background: var(--state-success-bg); color: var(--state-success-fg); }
+}
+// Status badge styling moved to the shared app-status-badge component (UST847).
+
+// ── Timeline ──
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.timeline-item {
+  display: flex; gap: 12px; padding: 10px 0; border-left: 2px solid var(--border-subtle); margin-left: 8px; padding-left: 16px;
+  position: relative;
+}
+.timeline-dot {
+  position: absolute; left: -7px; top: 14px;
+  width: 12px; height: 12px; border-radius: 50%; background: var(--brand-primary-strong); border: 2px solid white;
+}
+.timeline-content { flex: 1; }
+.timeline-header { display: flex; justify-content: space-between; align-items: center; }
+.timeline-action { font-weight: 600; font-size: 13px; color: var(--text-body); }
+.timeline-time { font-size: 11px; color: #999; }
+.timeline-remarks { font-size: 12px; color: var(--text-secondary); margin: 4px 0; font-style: italic; }
+.timeline-flow { font-size: 11px; color: #888; }
+
+// ── Action Panel ──
+.action-panel {
+  background: white; border-radius: 8px; padding: 20px; border: 2px solid #e3f2fd;
+  position: sticky; top: 24px;
+  h4 { margin: 0 0 4px; color: var(--brand-primary-strong); font-size: 16px; }
+  .action-hint { font-size: 12px; color: var(--text-muted); margin: 0 0 16px; }
+}
+
+// The action cards and the confirm form are styled by app-workflow-action-bar. The ~25 lines that used to
+// live here were one of three divergent copies; the five border-left hexes are now --action-* tokens.
+
+// Kept for BOTH the inline edit block above and the target picker this template declares and projects
+// into the shared bar — projected content is styled by the declaring component, not the consumer.
+.form-field {
+  margin-bottom: 12px;
+  label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; }
+  select, textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; font-family: inherit;
+    &:focus { outline: none; border-color: var(--brand-primary-strong); }
+  }
+  textarea { resize: vertical; }
+}
+.form-actions { display: flex; gap: 10px; }
+.submit-btn {
+  padding: 10px 20px; background: var(--brand-primary-strong); color: white; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 13px; font-weight: 600;
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.cancel-btn {
+  padding: 10px 20px; background: white; border: 1px solid var(--border-subtle); border-radius: 6px;
+  cursor: pointer; font-size: 13px;
+}
+
+.result-msg {
+  margin-top: 16px; padding: 12px; border-radius: 6px; font-size: 13px;
+  &.success { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &.error { background: #fbe9e7; color: #d32f2f; }
+}
+
+.closed-banner {
+  text-align: center; padding: 24px;
+  .closed-icon { font-size: 40px; color: var(--state-success-fg); display: block; margin-bottom: 8px; }
+  h4 { margin: 0 0 8px; color: var(--state-success-fg); }
+  p { margin: 0; color: var(--text-muted); font-size: 13px; }
+}
+
+// ─── Document Upload Section ───
+.documents-area {
+  .doc-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .doc-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; background: var(--surface-page); border: 1px solid var(--border-subtle); border-radius: 6px;
+    .doc-icon { font-size: 18px; }
+    .doc-info { display: flex; flex-direction: column;
+      .doc-name { font-size: 13px; font-weight: 500; color: var(--text-heading); }
+      .doc-meta { font-size: 11px; color: var(--text-muted); }
+    }
+  }
+  .no-docs { color: var(--text-subtle); font-size: 13px; font-style: italic; margin: 8px 0; }
+  .upload-area { margin-top: 8px;
+    .upload-btn {
+      display: inline-block; padding: 6px 14px; background: var(--surface-subtle);
+      border: 1px dashed var(--text-subtle); border-radius: 6px; cursor: pointer;
+      font-size: 13px; color: var(--text-secondary);
+      &:hover { background: var(--border-subtle); border-color: var(--text-muted); }
+    }
+    .uploading { font-size: 12px; color: var(--text-muted); margin-left: 8px; }
+  }
+}
+
+// The rail keeps its own 48px column even when the two working regions stack: it is an icon strip, not
+// a panel, so there is nothing to reflow and collapsing it to full width would put three icons across
+// the screen.
+@media (max-width: 1024px) {
+  .detail-layout { grid-template-columns: 1fr 48px; }
+  .detail-panel, .action-panel { grid-column: 1; }
+  .action-panel { position: static; }
+}
+
+.cepc-detail {
+  .btn-edit {
+    padding: 4px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+    background: var(--surface-subtle); color: var(--text-secondary);
+    border: 1px solid var(--border-subtle); border-radius: 6px;
+    &:hover { background: var(--border-subtle); color: var(--text-heading); }
+  }
+
+  .edit-section {
+    select, input[type="text"], textarea {
+      width: 100%; padding: 6px 10px; font-size: 13px; font-family: inherit;
+      color: var(--text-heading); background: var(--surface-page);
+      border: 1px solid var(--border-subtle); border-radius: 6px;
+    }
+    .edit-error { margin: 8px 0 0; font-size: 12px; color: var(--state-danger-text, #b3261e); }
+    .form-actions { display: flex; gap: 8px; margin-top: 12px; }
+  }
+}

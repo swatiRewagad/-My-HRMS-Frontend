@@ -1,0 +1,44 @@
+<div class="meta-row">
+
+  @if (showBack()) {
+    <button class="back-arrow" type="button" [attr.aria-label]="'common.back' | translate" (click)="back.emit()">
+      <i class="pi pi-arrow-left"></i>
+    </button>
+  }
+
+  @for (item of items(); track item.labelKey) {
+    <div class="meta-item">
+      @if (item.icon) {
+        <span class="meta-icon" [class]="toneClass(item)"><i class="pi {{ item.icon }}"></i></span>
+      }
+      <div class="meta-text">
+        <span class="meta-label">
+          {{ item.labelKey | translate }}
+          @if (item.hintKey) {
+            <i class="pi pi-info-circle" [title]="item.hintKey | translate"></i>
+          }
+        </span>
+
+        @switch (item.kind) {
+          @case ('status') {
+            <span class="meta-value"><app-status-badge [status]="item.value || ''" /></span>
+          }
+          @case ('sla') {
+            <span class="meta-value">
+              <span class="sla-badge" [class]="item.severity ?? 'ok'">{{ item.value }}</span>
+            </span>
+          }
+          @default {
+            <span class="meta-value">{{ item.value }}</span>
+          }
+        }
+      </div>
+    </div>
+  }
+
+  @if (actions()) {
+    <div class="meta-actions">
+      <ng-container [ngTemplateOutlet]="actions()!" />
+    </div>
+  }
+</div>

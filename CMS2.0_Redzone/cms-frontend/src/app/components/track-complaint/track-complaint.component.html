@@ -1,0 +1,317 @@
+@if (!showDetail) {
+<section class="dashboard-section">
+  <div class="dashboard-container">
+    <div class="dashboard-header">
+      <h1>Track or Withdraw Complaint</h1>
+      <a routerLink="/file-complaint" class="file-new-btn">File a New Complaint <i class="pi pi-arrow-right"></i></a>
+    </div>
+
+    <!-- Complaint History Table -->
+    <div class="complaint-history-card">
+      <div class="history-header">
+        <i class="pi pi-list"></i>
+        <h3>Complaint History</h3>
+      </div>
+
+      <div class="history-table-wrapper">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>
+                <div class="th-content">
+                  <span>ID</span>
+                  <button class="sort-btn" (click)="sortBy('id')"><i class="pi pi-sort-alt"></i></button>
+                </div>
+                <div class="th-filter">
+                  <input type="text" placeholder="CMS-..." [(ngModel)]="filterIdSearch" />
+                </div>
+              </th>
+              <th>
+                <div class="th-content">
+                  <span>Complaint Against</span>
+                  <button class="sort-btn" (click)="sortBy('complaintAgainst')"><i class="pi pi-sort-alt"></i></button>
+                </div>
+                <div class="th-filter">
+                  <input type="text" placeholder="Search" [(ngModel)]="filterAgainstSearch" />
+                </div>
+              </th>
+              <th>
+                <div class="th-content">
+                  <span>Complaint Date</span>
+                  <button class="sort-btn" (click)="sortBy('complaintDate')"><i class="pi pi-sort-alt"></i></button>
+                </div>
+                <div class="th-filter">
+                  <input type="text" placeholder="DD-MM-YYYY" [(ngModel)]="filterDateSearch" />
+                </div>
+              </th>
+              <th>
+                <div class="th-content">
+                  <span>Status</span>
+                  <button class="sort-btn" (click)="sortBy('status')"><i class="pi pi-sort-alt"></i></button>
+                </div>
+                <div class="th-filter">
+                  <select [(ngModel)]="filterStatusSearch">
+                    <option value="">All</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="request_sent_back">Request Sent Back</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </div>
+              </th>
+              <th>
+                <div class="th-content">
+                  <span>Comments</span>
+                  <button class="sort-btn" (click)="sortBy('comments')"><i class="pi pi-sort-alt"></i></button>
+                </div>
+                <div class="th-filter">
+                  <input type="text" placeholder="Search" [(ngModel)]="filterCommentsSearch" />
+                </div>
+              </th>
+              <th class="th-action-center">
+                <div class="th-content">
+                  <span>Action</span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (complaint of filteredComplaints; track complaint.id + $index) {
+              <tr (click)="viewComplaint(complaint)" class="clickable-row">
+                <td><a class="complaint-id-link" (click)="viewComplaint(complaint); $event.stopPropagation()">{{ complaint.id }}</a></td>
+                <td>{{ complaint.complaintAgainst }}</td>
+                <td>{{ complaint.complaintDate }}</td>
+                <td>
+                  <span class="status-badge" [class]="'status-badge status-' + complaint.status">
+                    <span class="status-dot"></span>
+                    {{ complaint.statusLabel }}
+                  </span>
+                </td>
+                <td>{{ complaint.comments }}</td>
+                <td class="action-cell">
+                  <button class="view-details-btn" (click)="viewComplaint(complaint); $event.stopPropagation()">
+                    View Details
+                  </button>
+                  <button class="action-btn" [class]="'action-btn action-' + complaint.action" (click)="$event.stopPropagation()">
+                    {{ complaint.action === 'withdraw' ? 'Withdraw' : complaint.action === 'appeal' ? 'Appeal' : 'Act' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating buttons -->
+  <div class="dashboard-fab">
+    <button class="need-help-fab">
+      <span class="dot-indicator"></span>
+      <span>Need help ?</span>
+    </button>
+    <button class="accessibility-fab"><i class="pi pi-user"></i></button>
+  </div>
+</section>
+}
+
+<!-- ══════ Complaint Detail View ══════ -->
+@if (showDetail && selectedComplaint) {
+<section class="dashboard-section">
+  <div class="dashboard-container">
+    <button class="back-btn" (click)="goBack()">
+      <i class="pi pi-arrow-left"></i> Back to Complaints
+    </button>
+
+    <div class="detail-card">
+      <div class="detail-header">
+        <div class="detail-title-row">
+          <h2>Complaint Details</h2>
+          <span class="status-badge" [class]="'status-badge status-' + selectedComplaint.status">
+            <span class="status-dot"></span>
+            {{ selectedComplaint.statusLabel }}
+          </span>
+        </div>
+        <p class="detail-id">Complaint ID: <strong>{{ selectedComplaint.id }}</strong></p>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Complaint Against</label>
+          <span>{{ selectedComplaint.complaintAgainst }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Complaint Date</label>
+          <span>{{ selectedComplaint.complaintDate }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Status</label>
+          <span>{{ selectedComplaint.statusLabel }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Comments</label>
+          <span>{{ selectedComplaint.comments }}</span>
+        </div>
+      </div>
+
+      <!-- Complaint Information Section -->
+      <div class="detail-section">
+        <h3>Complaint Information</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Regulated Entity</label>
+            <span>{{ selectedComplaint.complaintAgainst }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Category</label>
+            <span>Banking Services</span>
+          </div>
+          <div class="detail-item">
+            <label>Filed On</label>
+            <span>{{ selectedComplaint.complaintDate }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Reference Number</label>
+            <span>CMS-{{ selectedComplaint.id }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline Section -->
+      <div class="detail-section">
+        <h3>Activity Timeline</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot active"></div>
+            <div class="timeline-content">
+              <div class="timeline-row">
+                <span class="timeline-action">Complaint Filed</span>
+                <span class="timeline-date">{{ selectedComplaint.complaintDate }}</span>
+              </div>
+              <p class="timeline-remarks">Complaint registered successfully against {{ selectedComplaint.complaintAgainst }}</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot" [class.active]="selectedComplaint.status !== 'in_progress'"></div>
+            <div class="timeline-content">
+              <div class="timeline-row">
+                <span class="timeline-action">Under Review</span>
+                <span class="timeline-date">—</span>
+              </div>
+              <p class="timeline-remarks">Complaint is being reviewed by the concerned authority</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot" [class.active]="selectedComplaint.status === 'resolved' || selectedComplaint.status === 'rejected'"></div>
+            <div class="timeline-content">
+              <div class="timeline-row">
+                <span class="timeline-action">Resolution</span>
+                <span class="timeline-date">—</span>
+              </div>
+              <p class="timeline-remarks">Pending resolution</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Uploaded Files Section -->
+      <div class="detail-section">
+        <h3>Uploaded Documents</h3>
+        @if (loadingAttachments) {
+          <div class="attachments-loading">
+            <i class="pi pi-spin pi-spinner"></i> Loading attachments...
+          </div>
+        } @else if (attachments.length === 0) {
+          <p class="no-attachments">No documents uploaded for this complaint.</p>
+        } @else {
+          <div class="attachments-grid">
+            @for (att of attachments; track att.id) {
+              <div class="attachment-card">
+                <div class="attachment-card-icon">
+                  <i class="pi" [class]="getFileIcon(att.fileName || att.originalFileName)"></i>
+                </div>
+                <div class="attachment-card-info">
+                  <span class="attachment-card-name">{{ att.fileName || att.originalFileName || 'Untitled' }}</span>
+                  <span class="attachment-card-size">{{ formatFileSize(att.fileSize || att.size) }}</span>
+                </div>
+                <div class="attachment-card-actions">
+                  @if (att.isLocal && !att.hasCachedFile) {
+                    <span class="local-file-tag">Metadata only</span>
+                  } @else {
+                    <button class="att-btn att-preview" (click)="previewFile(att)" title="Preview">
+                      <i class="pi pi-eye"></i>
+                    </button>
+                    <button class="att-btn att-download" (click)="downloadFile(att)" [disabled]="downloadingId === att.id" title="Download">
+                      @if (downloadingId === att.id) {
+                        <i class="pi pi-spin pi-spinner"></i>
+                      } @else {
+                        <i class="pi pi-download"></i>
+                      }
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="detail-actions">
+        @if (selectedComplaint.action === 'withdraw') {
+          <button class="btn-withdraw">
+            <i class="pi pi-times-circle"></i> Withdraw Complaint
+          </button>
+        }
+        @if (selectedComplaint.action === 'appeal') {
+          <button class="btn-appeal">
+            <i class="pi pi-refresh"></i> File an Appeal
+          </button>
+        }
+        <button class="btn-download" (click)="downloadPDF()">
+          <i class="pi pi-download"></i> Download PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating buttons -->
+  <div class="dashboard-fab">
+    <button class="need-help-fab">
+      <span class="dot-indicator"></span>
+      <span>Need help ?</span>
+    </button>
+    <button class="accessibility-fab"><i class="pi pi-user"></i></button>
+  </div>
+</section>
+}
+
+<!-- ══════ File Preview Modal ══════ -->
+@if (previewOpen) {
+  <div class="preview-overlay" (click)="closePreview()">
+    <div class="preview-modal" (click)="$event.stopPropagation()">
+      <div class="preview-header">
+        <span class="preview-title">{{ previewFileName }}</span>
+        <button class="preview-close" (click)="closePreview()">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+      <div class="preview-body">
+        @if (previewType === 'image') {
+          <img [src]="previewUrl" [alt]="previewFileName" class="preview-image" />
+        } @else if (previewType === 'video') {
+          <video [src]="previewUrl" controls autoplay class="preview-video">
+            Your browser does not support video playback.
+          </video>
+        } @else if (previewType === 'audio') {
+          <div class="preview-audio-wrapper">
+            <i class="pi pi-volume-up preview-audio-icon"></i>
+            <audio [src]="previewUrl" controls autoplay class="preview-audio"></audio>
+          </div>
+        } @else if (previewType === 'pdf') {
+          <iframe [src]="previewUrl" class="preview-pdf"></iframe>
+        }
+      </div>
+    </div>
+  </div>
+}

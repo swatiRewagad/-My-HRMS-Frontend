@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appellate Authority — How an appeal is decided</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html" class="active">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>Appellate Authority — appeals against an Ombudsman decision</h1>
+  <p class="sub">Who may appeal, within what time, and how the appeal is heard and decided</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    Once an Ombudsman closes a complaint, the losing side may appeal. The system is strict about who and when:
+    the complaint must already be closed, the closure must have been made under a clause that
+    <strong>the Scheme allows an appeal against</strong>, and <strong>who you are decides what you may appeal</strong>
+    — a citizen has broader grounds than a bank. Inside <strong>30 days</strong> the appeal is filed freely; between
+    31 and 60 days a written reason for the delay is required; after 60 days it is refused. An accepted appeal is
+    registered, allocated to a bench, a hearing is scheduled, and the Appellate Authority passes a final order. The
+    order can uphold the Ombudsman, modify the decision, set it aside, dismiss the appeal, or
+    <strong>send the case back</strong> to the Ombudsman to look at again.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Who does what</h2>
+  <table class="tbl who-table">
+    <thead><tr><th>Role</th><th>What this person does in the system</th></tr></thead>
+    <tbody>
+      <tr><td>Registrar's office</td><td>Receives the appeal. Accepts or rejects it on admission, allocates it to a bench, and asks the parties for documents.</td></tr>
+      <tr><td>Bench officer</td><td>Prepares the case brief, schedules the hearing, escalates to a higher bench, or sends the file back to the Registrar.</td></tr>
+      <tr><td>Secretariat of the Appellate Authority</td><td>Schedules hearings, and issues the final order — upholding, modifying, setting aside, dismissing, or remanding.</td></tr>
+      <tr><td>Administrator</td><td>Reassign, close, or reopen an appeal.</td></tr>
+      <tr><td>Appellant</td><td>Either the citizen, or the bank's Principal Nodal Officer. Files the appeal and attends the hearing.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>2. Can this appeal even be filed?</h2>
+  <p>Five gates, in this order. Failing any one stops the appeal.</p>
+  <ol class="steps">
+    <li><strong>Does the complaint exist?</strong></li>
+    <li><strong>Is it actually finished?</strong> It must be closed, resolved, rejected, adjudicated or conciliated.
+      A complaint the citizen <em>withdrew</em> is deliberately excluded — you cannot appeal your own withdrawal.</li>
+    <li><strong>Is there already an appeal running on it?</strong> Only one live appeal per complaint.</li>
+    <li><strong>How long ago was it closed?</strong>
+      <span class="sees">0–30 days: file freely · 31–60 days: allowed, but a reason for the delay is mandatory · beyond 60 days: refused</span></li>
+    <li><strong>Was it closed on a ground that can be appealed, by <em>you</em>?</strong> The closure clause is looked
+      up and matched against who is asking. A citizen may appeal on two grounds; a bank on only one. If the closure
+      clause was never recorded, or is not on the list, <strong>no appeal is possible</strong>.</li>
+  </ol>
+  <div class="watch">
+    <span class="lbl">This last gate blocks real cases today</span>
+    Thousands of already-closed complaints in the database <strong>have no closure clause recorded</strong>. For
+    every one of them the appeal cannot be filed — the system refuses with a service error rather than a polite
+    explanation. Worse, the "can I appeal?" pre-check on the screen <strong>answers optimistically</strong> and the
+    actual filing then fails. This needs a data clean-up, not a code change.
+  </div>
+  <div class="watch mild">
+    <span class="lbl">You cannot claim to be the other side</span>
+    Which grounds apply is worked out from the <strong>signed-in user's own roles</strong>, not from anything sent by
+    the browser. A bank user cannot file an appeal pretending to be the complainant.
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. The appeal journey</h2>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Appeal filed</span>
+    <span><i class="swatch sw-state"></i>Appeal is sitting here</span>
+    <span><i class="swatch sw-dec"></i>Someone must decide</span>
+    <span><i class="swatch sw-term"></i>Appeal is finished</span>
+    <span><i class="swatch sw-auto"></i>Recorded, appeal does not move</span>
+    <span><i class="swatch sw-bad"></i>Refused</span>
+  </div>
+  <div class="diagram" id="dg-aa-journey">
+    <div class="diagram-bar">
+      <span class="title">Filed → admitted → allocated → heard → order passed</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  CL(["An Ombudsman office closes<br/>a complaint and issues<br/>the closure letter"]):::start
+  CL --> WHO{"Who is appealing?"}:::dec
+  WHO -- "the citizen" --> GATE
+  WHO -- "the bank, through its<br/>Principal Nodal Officer" --> GATE
+
+  GATE{"The five admission gates —<br/>see section 2"}:::dec
+  GATE -- "any gate fails" --> NO["Appeal refused, with<br/>the reason given"]:::bad
+  GATE -- "all gates pass" --> FILED["Filed — with the Registrar"]:::state
+
+  FILED --> ADM{"Registrar examines it"}:::dec
+  ADM -- "reject on admission" --> REJ["Rejected"]:::term
+  ADM -- "ask the parties<br/>for documents" --> DOCS["Documents requested —<br/>the appeal stays with the Registrar"]:::auto
+  DOCS -.-> FILED
+  ADM -- "accept" --> REVIEW["Under review"]:::state
+  ADM -- "allocate to a bench" --> REVIEW
+
+  subgraph PREP["Preparing the case"]
+    direction TB
+    REVIEW --> BRIEF["Case brief prepared<br/>by the bench officer"]:::auto
+    BRIEF -.-> REVIEW
+    REVIEW --> ESC["Escalated to a<br/>higher bench"]:::auto
+    ESC -.-> REVIEW
+    REVIEW -. "send the file back<br/>to the Registrar" .-> FILED
+  end
+
+  REVIEW --> SCH["Hearing scheduled<br/>at least 7 days' notice is expected"]:::state
+
+  subgraph HEAR["The hearing"]
+    direction TB
+    SCH --> H1{"On the day"}:::dec
+    H1 -- "postponed to a new date" --> SCH
+    H1 -- "adjourned" --> SCH
+    H1 -- "held" --> HELD["Hearing completed"]:::state
+  end
+
+  HELD --> ORD{"The Appellate Authority<br/>passes its order"}:::dec
+  ORD -- "the Ombudsman was right" --> O1["Order passed — upheld"]:::term
+  ORD -- "the decision is changed" --> O2["Order passed — modified"]:::term
+  ORD -- "the decision is cancelled" --> O3["Order passed — set aside"]:::term
+  ORD -- "the appeal has no merit" --> O4["Dismissed"]:::term
+  ORD -- "the Ombudsman must<br/>look at it again" --> O5["Remanded"]:::term
+
+  O5 --> SEND(["The original complaint is reopened<br/>at the Ombudsman office: it goes back<br/>to in-progress, is marked as remanded,<br/>and its closure details are cleared"]):::ext
+
+  subgraph NOTIF["Telling the parties"]
+    direction TB
+    N1["Every order and hearing date creates<br/>a notice obligation for the citizen<br/>and the bank"]:::auto
+    N2["Duplicate notices are prevented —<br/>the same notice can only be<br/>raised once"]:::auto
+  end
+  SCH -.-> N1
+  O1 -.-> N1
+  O5 -.-> N1
+
+  RO["An administrator can reopen a<br/>finished appeal — this is the only way<br/>back from any final outcome"]:::auto
+  O1 -.-> RO
+  REJ -.-> RO
+  RO -.-> REVIEW
+</div>
+    </div></div>
+    <div class="hint">Purple boxes are recorded against the appeal without moving it forward.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>4. Clocks and deadlines</h2>
+  <div class="timebox">
+    <div><b>30 days</b><span>to appeal freely after the complaint is closed</span></div>
+    <div><b>31–60 days</b><span>appeal still allowed, but a written reason for the delay is required</span></div>
+    <div><b>Over 60 days</b><span>appeal refused outright</span></div>
+    <div><b>7 days</b><span>expected minimum notice before a hearing</span></div>
+    <div><b>7 days</b><span>internal target to admit a newly filed appeal</span></div>
+    <div><b>30 days</b><span>internal target once under review, and again once a hearing is fixed</span></div>
+  </div>
+  <div class="watch mild">
+    <span class="lbl">Two caveats on these numbers</span>
+    <strong>1. The 7-day hearing notice is advisory.</strong> The system warns but does not refuse a
+    shorter-notice hearing.<br/>
+    <strong>2. The internal targets (7 / 30 / 30 working days) are flagged in the code itself as operational
+    estimates</strong>, not figures taken from the Scheme. They should be confirmed before being quoted externally.
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. How appeals are allocated to officers</h2>
+  <p>Allocation is automatic and follows a strict order:</p>
+  <ol class="steps">
+    <li><strong>Reserve the rotation marker</strong> so two appeals arriving at the same moment cannot be given to
+      the same officer.</li>
+    <li><strong>Find the pool of eligible officers.</strong> If nobody is eligible the appeal is left
+      <strong>deliberately unassigned</strong> — the system never invents an assignee.</li>
+    <li><strong>Language override.</strong> If the appeal is in a regional language and an officer speaks it, they get
+      it regardless of workload, and the rotation marker is not advanced.</li>
+    <li><strong>Remove officers who are at capacity.</strong></li>
+    <li><strong>Pick the next in rotation</strong>, breaking ties by who has the lightest chargeable workload.</li>
+    <li><strong>If everyone is at capacity</strong> the appeal is left unassigned and flagged. There is a
+      configurable allowance to exceed capacity in an emergency, but it is <strong>switched off by default</strong>.</li>
+    <li><strong>Notify the officer only after the allocation is safely saved</strong> — never before.</li>
+  </ol>
+  <div class="watch good">
+    <span class="lbl">Safe under load</span>
+    Two servers cannot assign the same appeal twice — the database itself enforces uniqueness, and the second
+    attempt is rejected cleanly rather than creating a duplicate.
+  </div>
+</div>
+
+<div class="card">
+  <h2>6. Things to know before relying on this</h2>
+  <div class="watch good">
+    <span class="lbl">This is the best-enforced module in the system</span>
+    Unlike the other workflow modules, the Appellate Authority genuinely checks both the caller's role and the
+    appeal's current state on every action. A wrong-role attempt is properly refused, and an out-of-order attempt is
+    refused with a list of the actions that <em>are</em> valid right now. The list of available actions shown on
+    screen is read from the same single table that enforces them, so the screen and the server cannot drift apart.
+  </div>
+  <table class="tbl">
+    <thead><tr><th>What you might assume</th><th>What the code actually does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"An appeal can be saved as a draft first"</td>
+        <td>There is <strong>no draft state</strong>. An appeal either exists as filed, or it does not exist.</td>
+      </tr>
+      <tr>
+        <td>"A rejected or closed appeal is truly final"</td>
+        <td>An administrator can <strong>reopen any finished appeal</strong>. This is the only route out of a final
+            outcome and it is not restricted by which outcome it was.</td>
+      </tr>
+      <tr>
+        <td>"Orders are issued as signed PDF documents"</td>
+        <td>Orders are stored and served as <strong>text only</strong>. No document is generated.</td>
+      </tr>
+      <tr>
+        <td>"An order can be corrected"</td>
+        <td>Yes, but only as a <strong>new revision</strong> — the original is never overwritten. Attempting to issue
+            a second original order is refused.</td>
+      </tr>
+      <tr>
+        <td>"Notices are sent to the citizen"</td>
+        <td><strong>They are not.</strong> The system records an <em>obligation</em> to notify, and nothing in the code
+            ever marks a notice as actually sent. Dispatch is not built. Every notice sits permanently as pending.</td>
+      </tr>
+      <tr>
+        <td>"Award limits and the court-case block are enforced"</td>
+        <td>Yes — both are <strong>active by default</strong>. An award above the Scheme cap is refused, and an appeal
+            on a matter already before a court is blocked.</td>
+      </tr>
+      <tr>
+        <td>"A remand just informs the Ombudsman"</td>
+        <td>It genuinely <strong>reopens the original complaint</strong>: back to in-progress, marked as remanded, and
+            its closure date and clause are <strong>wiped</strong>. If the original complaint cannot be found the
+            remand fails outright rather than silently proceeding.</td>
+      </tr>
+      <tr>
+        <td>"A CEPC case can be appealed here"</td>
+        <td><strong>No.</strong> Nothing in the consumer protection cell module leads to an appeal. Only Ombudsman
+            closures are appealable.</td>
+      </tr>
+      <tr>
+        <td>"There is one path to a hearing"</td>
+        <td>There are <strong>two</strong> — a bench officer and the Secretariat can each schedule one, and they are
+            not reconciled with each other.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>Status vocabulary</h4>
+    <p><code>entity/AppealStatus.java</code> — exactly six, <strong>no DRAFT</strong>:
+       <code>filed</code> → <code>under_review</code> → <code>hearing_scheduled</code> →
+       {<code>order_passed</code> | <code>closed</code> | <code>rejected</code>}.</p>
+
+    <h4>Single source of truth for transitions</h4>
+    <p><code>AaWorkflowTransition.java</code> is read by <strong>both</strong> <code>performAction</code> and
+       <code>getAvailableActions</code>, so advertisement cannot drift from enforcement.</p>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Action</th><th>Role</th><th>From</th><th>To</th></tr></thead>
+      <tbody>
+        <tr><td>ACCEPT</td><td><span class="badge badge-role">AA_DO</span></td><td>filed</td><td>under_review</td></tr>
+        <tr><td>REJECT</td><td><span class="badge badge-role">AA_DO</span></td><td>filed</td><td>rejected</td></tr>
+        <tr><td>ASSIGN_TO_BENCH</td><td><span class="badge badge-role">AA_DO</span></td><td>filed</td><td>under_review</td></tr>
+        <tr><td>REQUEST_DOCUMENTS</td><td><span class="badge badge-role">AA_DO</span></td><td>filed</td><td><em>unchanged</em></td></tr>
+        <tr><td>PREPARE_BRIEF</td><td><span class="badge badge-role">AA_REVIEWER</span></td><td>under_review</td><td><em>unchanged</em></td></tr>
+        <tr><td>ESCALATE_TO_TIER2</td><td><span class="badge badge-role">AA_REVIEWER</span></td><td>under_review</td><td><em>unchanged</em></td></tr>
+        <tr><td>FORWARD_TO_AUTHORITY</td><td><span class="badge badge-role">AA_REVIEWER</span></td><td>under_review</td><td><em>unchanged</em></td></tr>
+        <tr><td>SEND_BACK_REGISTRAR</td><td><span class="badge badge-role">AA_REVIEWER</span></td><td>under_review</td><td>filed</td></tr>
+        <tr><td>SCHEDULE_HEARING</td><td><span class="badge badge-role">AA_REVIEWER</span> <span class="badge badge-role">AA_SECRETARIAT</span></td><td>under_review</td><td>hearing_scheduled</td></tr>
+        <tr><td>PASS_ORDER</td><td><span class="badge badge-role">AA_SECRETARIAT</span></td><td>hearing_scheduled</td><td>order_passed</td></tr>
+        <tr><td>REMAND_TO_OMBUDSMAN</td><td><span class="badge badge-role">AA_SECRETARIAT</span></td><td>hearing_scheduled</td><td>order_passed</td></tr>
+        <tr><td>DISMISS</td><td><span class="badge badge-role">AA_SECRETARIAT</span></td><td>hearing_scheduled</td><td>order_passed</td></tr>
+        <tr><td>REASSIGN</td><td><span class="badge badge-role">AA_ADMIN</span></td><td>any non-terminal</td><td><em>unchanged</em></td></tr>
+        <tr><td>CLOSE</td><td><span class="badge badge-role">AA_ADMIN</span></td><td>order_passed</td><td>closed</td></tr>
+        <tr><td>REOPEN</td><td><span class="badge badge-role">AA_ADMIN</span></td><td>any terminal</td><td>under_review</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p><code>REOPEN</code> is the <strong>only edge out of a terminal node</strong> and is not special-cased.</p>
+
+    <h4>Refusal shapes</h4>
+    <p>Role mismatch ⇒ <strong>403</strong> <code>AaAccessDeniedException</code>.
+       From-status mismatch ⇒ <strong>409</strong> <code>AaIllegalTransitionException</code>, body carries
+       <code>availableActions</code>.</p>
+
+    <h4>Filing gates</h4>
+    <p>complaint exists → status ∈ {<code>closed</code>, <code>resolved</code>, <code>rejected</code>,
+       <code>adjudicated</code>, <code>conciliated</code>} (<code>withdrawn</code> <strong>deliberately
+       excluded</strong>) → no active appeal → days since closure: <strong>0–30</strong> eligible /
+       <strong>31–60</strong> <code>delayedFiling</code> with mandatory reason / <strong>&gt;60</strong> ineligible →
+       appealability from the closure clause.</p>
+    <p><code>isAppealableBy(party)</code>: complainant ⇒ 15(1)(a) + 15(1)(b); entity ⇒ <strong>15(1)(b) only</strong>.
+       Null, blank or unmapped clause ⇒ not appealable. The party is derived from the
+       <strong>caller's own roles</strong>.</p>
+    <div class="note bad">
+      <strong>Check path fails OPEN, filing path fails CLOSED.</strong> The pre-check returns
+      <code>200 {appealable:false}</code>, but filing raises <code>UnmappedClauseException</code> from
+      <code>AppealClassificationService.classify</code>, rethrown at <code>AppealController:182</code> as a
+      <strong>503</strong>. Clause-less closed complaints therefore cannot be appealed at all.
+    </div>
+
+    <h4>Assignment engine, in order</h4>
+    <ol>
+      <li>Lock the pointer row — <code>ensureExists</code> in its <strong>own committed transaction</strong> to avoid
+          an InnoDB gap-lock self-deadlock, then <code>findByRoleGroupForUpdate</code>.</li>
+      <li>Build the pool. Empty ⇒ <code>UNASSIGNED_POOL_EMPTY</code>; <strong>never fabricate an assignee</strong>.</li>
+      <li>Vernacular override — threshold-exempt, and the pointer is <strong>not</strong> advanced.</li>
+      <li>Capacity filter.</li>
+      <li>Rotation sorted by <code>(chargeableWorkload, userId)</code>. The pointer stores a
+          <strong>user id, not an index</strong>.</li>
+      <li>Exhaustion ⇒ <code>UNASSIGNED_POOL_EXHAUSTED</code>. <code>assignment.grace_allowance</code> defaults to
+          <strong>0 = disabled</strong>.</li>
+      <li><code>place()</code> — a <strong>DB unique index is the multi-pod lock</strong>; violation ⇒ 409.
+          Notification is sent <strong>after commit only</strong>.</li>
+    </ol>
+
+    <h4>Hearings</h4>
+    <p><code>SCHEDULED</code> → (<code>RESCHEDULED</code>* | <code>ADJOURNED</code>) → <code>COMPLETED</code>.
+       Append-only; the service chooses the event type, not the caller; supersede chain maintained.
+       <code>min_notice_days</code> = 7 is <strong>advisory only</strong>.</p>
+
+    <h4>Orders</h4>
+    <p>Append-only. Revision 1, then <code>correct</code> creates N+1. A second original issue ⇒ <strong>409</strong>.
+       Outcomes: <code>UPHELD</code>, <code>MODIFIED</code>, <code>SET_ASIDE</code>, <code>REMANDED</code>,
+       <code>DISMISSED</code>. <strong>Text only — no PDF generation.</strong></p>
+
+    <h4>Remand side-effects on the parent complaint</h4>
+    <p><code>status</code> → <code>in_progress</code>; <code>stage</code> → <code>REMANDED_BY_AA</code>;
+       <code>closedAt</code> and <code>closureClause</code> <strong>nulled</strong>; <code>reopenCount</code>++.
+       A missing parent <strong>hard-fails</strong>.</p>
+
+    <h4>Notices</h4>
+    <p>Created as <strong>PENDING obligations</strong>. <strong>No code path sets SENT.</strong> Idempotency lock is
+       the unique key <code>(appealNumber, eventCode, recipientRole, dedupeKey)</code>.</p>
+
+    <h4>Configuration</h4>
+    <p><strong>Armed by default:</strong> award cap ₹33,00,000 (₹30L + ₹3L) and the sub-judice block.<br/>
+       <strong>Off by default:</strong> <code>require_ed_approval</code>, <code>hearing.reminder_enabled</code>,
+       <code>assignment.grace_allowance</code>, <code>auto_rebalance</code>.</p>
+
+    <h4>SLA</h4>
+    <p><code>filed</code> 7 / <code>under_review</code> 30 / <code>hearing_scheduled</code> 30 working days —
+       <strong>explicitly flagged in the code as operational guesses, not Scheme figures</strong>.</p>
+
+    <h4>Open interface gap</h4>
+    <p><code>SCHEDULE_HEARING</code> is granted to both <code>AA_REVIEWER</code> and <code>AA_SECRETARIAT</code>,
+       producing two hearing-creation paths that are not reconciled.</p>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — Appellate Authority process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

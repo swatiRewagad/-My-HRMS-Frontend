@@ -1,0 +1,162 @@
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router, ActivatedRoute } from '@angular/router';
+import { ComplaintService } from '../../../services/complaint.service';
+import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { TranslatePipe } from '../../../pipes/translate.pipe';
+import { UploadLimitsService } from '../../../services/upload-limits.service';
+
+@Component({
+  selector: 'app-withdraw-complaint',
+  standalone: true,
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, TranslatePipe],
+  templateUrl: './withdraw-complaint.component.html',
+  styleUrl: './withdraw-complaint.component.scss'
+})
+export class WithdrawComplaintComponent implements OnInit {
+
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private complaintService = inject(ComplaintService);
+  // Public: the templates render the configured limit in their upload hints.
+  uploadLimits = inject(UploadLimitsService);
+
+  // FR-G-027: Withdraw complaint
+  phase = signal<'search' | 'confirm' | 'success'>('search');
+  complaintId = '';
+  reason = '';
+  additionalRemarks = '';
+  loading = signal(false);
+  error = '';
+  withdrawnRef = '';
+
+  // FR-G-028: Withdrawal reasons
+  reasons = [
+    'Issue resolved by the Regulated Entity',
+    'Complaint filed by mistake',
+    'Duplicate complaint filed',
+    'Want to approach a different forum',
+    'Personal reasons',
+    'Other',
+  ];
+
+  // FR-G-036: Supporting documents (optional)
+  withdrawalDocs: File[] = [];
+  isDragOver = false;
+  fileUploadError = '';
+
+  ngOnInit() {
+    const id = this.route.snapshot.paramMap.get('id');
+    if (id) {
+      this.complaintId = id;
+    }
+  }
+
+  searchComplaint() {
+    if (!this.complaintId.trim()) {
+      this.error = 'Please enter your complaint reference number.';
+      return;
+    }
+    this.error = '';
+    this.loading.set(true);
+
+    this.complaintService.trackComplaint(this.complaintId.trim()).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.phase.set('confirm');
+      },
+      error: () => {
+        this.loading.set(false);
+        this.error = 'No complaint found with this reference number, or it is not eligible for withdrawal.';
+      }
+    });
+  }
+
+  // FR-G-029: Confirm withdrawal
+  confirmWithdraw() {
+    if (!this.reason) {
+      this.error = 'Please select a reason for withdrawal.';
+      return;
+    }
+    this.error = '';
+    this.loading.set(true);
+
+    this.complaintService.withdrawComplaint(this.complaintId, this.reason, this.additionalRemarks).subscribe({
+      next: () => {
+        this.withdrawnRef = this.complaintId;
+        this.loading.set(false);
+        this.phase.set('success');
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.error = err.error?.message || 'Failed to withdraw complaint. Please try again.';
+      }
+    });
+  }
+
+  onWithdrawalFilesSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files) return;
+    this.fileUploadError = '';
+    for (let i = 0; i < input.files.length; i++) {
+      const file = input.files[i];
+      // Configured limit (cms.upload.max_file_size). The hardcoded 2 MB rejected files the server
+      // accepts, and hardcoding 5 would drift the next time the limit is retuned.
+      if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+        this.fileUploadError = `File size exceeds limit (${this.uploadLimits.maxFileSizeMb()}MB).`;
+        continue;
+      }
+      if (![
+        'application/pdf', 'image/jpeg', 'image/png',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ].includes(file.type)) {
+        this.fileUploadError = 'Invalid file type. Supported: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG.';
+        continue;
+      }
+      this.withdrawalDocs.push(file);
+    }
+    input.value = '';
+  }
+
+  onFileDrop(event: DragEvent) {
+    event.preventDefault();
+    if (!event.dataTransfer?.files?.length) return;
+    this.fileUploadError = '';
+    for (let i = 0; i < event.dataTransfer.files.length; i++) {
+      const file = event.dataTransfer.files[i];
+      // Configured limit (cms.upload.max_file_size). The hardcoded 2 MB rejected files the server
+      // accepts, and hardcoding 5 would drift the next time the limit is retuned.
+      if (file.size > this.uploadLimits.maxFileSizeBytes()) {
+        this.fileUploadError = `File size exceeds limit (${this.uploadLimits.maxFileSizeMb()}MB).`;
+        continue;
+      }
+      if (![
+        'application/pdf', 'image/jpeg', 'image/png',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ].includes(file.type)) {
+        this.fileUploadError = 'Invalid file type. Supported: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG.';
+        continue;
+      }
+      this.withdrawalDocs.push(file);
+    }
+  }
+
+  removeWithdrawalDoc(index: number) {
+    this.withdrawalDocs.splice(index, 1);
+  }
+
+  goHome() {
+    this.router.navigate(['/public']);
+  }
+
+  trackComplaint() {
+    this.router.navigate(['/public/track', this.withdrawnRef]);
+  }
+}

@@ -1,0 +1,386 @@
+<app-session-timeout></app-session-timeout>
+<app-shell [titleKey]="'ui.page.crpc_complaints'" [roleKey]="'ui.role.crpc_deo'">
+  <div shell-actions>
+    <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'ui.common.advanced_search' | translate }}</button>
+    @if (advSearchActive()) {
+      <button class="btn btn-link btn-link-danger" (click)="clearAdvancedSearch()">{{ 'ui.common.clear_filters' | translate }}</button>
+    }
+    @if (userRoles().length > 1) {
+      <select class="queue-select role-select" [value]="selectedRoleModule()" (change)="onRoleModuleChange($any($event.target).value)">
+        @for (role of userRoles(); track role.value) {
+          <option [value]="role.value">{{ role.label }}</option>
+        }
+      </select>
+    }
+    <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+      <option value="">{{ 'ui.nav.crpc_complaints' | translate }}</option>
+      <option value="DRAFT">{{ 'status.draft' | translate }}</option>
+      <option value="IN_PROGRESS">{{ 'status.in_progress' | translate }}</option>
+      <option value="REJECTED_BY_REVIEWER">{{ 'status.sent_back' | translate }}</option>
+      <option value="APPROVED">{{ 'crpc.status.assessment_complete' | translate }}</option>
+    </select>
+    <select class="queue-select" [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
+      <option value="ASSIGNED_TO_ME">{{ 'crpc.queue.assigned_to_me' | translate }}</option>
+      <option value="ALL">{{ 'cepc.queue.all_complaints' | translate }}</option>
+    </select>
+    <button class="filters-btn" (click)="showAdvancedSearch.set(true)">
+      <i class="pi pi-filter"></i> {{ 'ui.common.filters' | translate }}
+    </button>
+    <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
+      <i class="pi pi-plus"></i> {{ 'cepc.action.create_complaint' | translate }}
+    </button>
+  </div>
+
+  <div class="deo-home">
+
+      <!-- Stats Cards -->
+      <div class="stats-bar">
+        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ALL')">
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Total Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().total }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('DIRECT')">
+          <div class="stat-icon orange"><i class="pi pi-file"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Direct Complaints <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().direct }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('ABR')">
+          <div class="stat-icon agr"><span class="icon-letter">A</span></div>
+          <div class="stat-content">
+            <span class="stat-label">Complaints via AGR <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().viaAbr }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set(''); filterMode.set('RBI_DOMAIN')">
+          <div class="stat-icon rbi-domain"><span class="icon-letter">R</span></div>
+          <div class="stat-content">
+            <span class="stat-label">Complaints via RBI Domain <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().viaRbiDomain }}</span>
+          </div>
+        </div>
+        <div class="stat-card pending-card">
+          <div class="stat-icon purple"><i class="pi pi-clock"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">Pending <i class="pi pi-info-circle"></i></span>
+            <span class="stat-value">{{ stats().draft + stats().inProgress }}</span>
+          </div>
+          <div class="pending-breakdown">
+            <div class="pending-col">
+              <span class="pending-range">0-3 Days</span>
+              <span class="pending-count">{{ stats().pending0to3 }}</span>
+            </div>
+            <div class="pending-col">
+              <span class="pending-range">4-6 Days</span>
+              <span class="pending-count">{{ stats().pending4to6 }}</span>
+            </div>
+            <div class="pending-col">
+              <span class="pending-range">>6 Days</span>
+              <span class="pending-count">{{ stats().pendingOver6 }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Tabs -->
+      <div class="status-tabs">
+        <button class="tab" [class.active]="filterStatus() === '' && filterMode() === 'ALL'" (click)="filterStatus.set(''); filterMode.set('ALL')">
+          All
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT'); filterMode.set('ALL')">
+          Draft <span class="tab-count">{{ stats().draft }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'IN_PROGRESS'" (click)="filterStatus.set('IN_PROGRESS'); filterMode.set('ALL')">
+          In Progress
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'REJECTED_BY_REVIEWER'" (click)="filterStatus.set('REJECTED_BY_REVIEWER'); filterMode.set('ALL')">
+          Sent Back @if (stats().rejected > 0) { <span class="tab-count">{{ stats().rejected }}</span> }
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
+          Assessment Complete
+        </button>
+      </div>
+
+      <!-- Complaints Table -->
+      <div class="table-section">
+        <div class="table-header-row">
+          <h3>Complaints</h3>
+          <div class="table-actions">
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterUnread()">
+                <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Unread
+            </label>
+            <label class="toggle-filter">
+              <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+                <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+                <span class="toggle-slider"></span>
+              </span>
+              Without Attachments
+            </label>
+            @if (selectedIds().size > 0) {
+              <button class="btn btn-danger-sm" (click)="openNotAComplaintDialog()">
+                Not-a-Complaint ({{ selectedIds().size }})
+              </button>
+            }
+            <button class="btn btn-icon" (click)="showColumnConfig.set(true)" title="Column Selection">
+              <i class="pi pi-cog"></i>
+            </button>
+          </div>
+        </div>
+
+        @if (loading()) {
+          <div class="loading-overlay">
+            <div class="spinner"></div>
+            <span>Loading...</span>
+          </div>
+        }
+
+        <div class="table-wrapper">
+          <table class="data-grid">
+            <thead>
+              <tr>
+                <th class="checkbox-col">
+                  <input type="checkbox"
+                    [checked]="selectedIds().size === filteredDrafts().length && filteredDrafts().length > 0"
+                    (change)="toggleSelectAll()" />
+                </th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th (click)="sortBy(col.key)">
+                    {{ col.label }}
+                    @if (sortColumn === col.key) {
+                      <i class="pi" [class.pi-sort-amount-up]="sortDirection === 'asc'" [class.pi-sort-amount-down]="sortDirection === 'desc'"></i>
+                    }
+                  </th>
+                }
+              </tr>
+              <!-- Column Search Row -->
+              <tr class="filter-row">
+                <th></th>
+                @for (col of visibleColumns(); track col.key) {
+                  <th>
+                    <input type="text" class="col-search" placeholder="Search"
+                      [(ngModel)]="columnFilters[col.key]" />
+                  </th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (draft of paginatedDrafts(); track draft.draftId; let i = $index) {
+                <tr [class.selected]="selectedIds().has(draft.draftId)" [class.visited]="visitedIds().has(draft.draftId)" (click)="openDraft(draft.draftId)">
+                  <td class="checkbox-col" (click)="$event.stopPropagation()">
+                    <input type="checkbox"
+                      [checked]="selectedIds().has(draft.draftId)"
+                      (change)="toggleSelect(draft.draftId)" />
+                  </td>
+                  @for (col of visibleColumns(); track col.key) {
+                    <td [class]="'cell-' + col.key">
+                      @if (col.key === 'status') {
+                        <span class="status-badge" [attr.data-status]="draft.status">{{ getStatusLabel(draft.status) }}</span>
+                      } @else if (col.key === 'modeOfReceipt') {
+                        <span class="mode-badge" [attr.data-mode]="draft.modeOfReceipt">{{ draft.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Letter' : 'Email' }}</span>
+                      } @else if (col.key === 'ageing') {
+                        <span class="ageing-badge" [class.green]="draft.ageing <= 1" [class.orange]="draft.ageing > 1 && draft.ageing <= 3" [class.red]="draft.ageing > 3">{{ draft.ageing }} {{ draft.ageing === 1 ? 'day' : 'days' }}</span>
+                      } @else if (col.key === 'priority') {
+                        <span class="priority-dot" [attr.data-priority]="draft.priority"></span>
+                      } @else {
+                        {{ getCellValue(draft, col.key) }}
+                      }
+                    </td>
+                  }
+                </tr>
+              } @empty {
+                <tr>
+                  <td [attr.colspan]="visibleColumns().length + 1" class="empty-state">
+                    No complaints found.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+          <span class="page-info">Showing {{ paginationStart() }} to {{ paginationEnd() }} of {{ filteredDrafts().length }} entries</span>
+          <div class="page-controls">
+            <button class="page-btn" (click)="currentPage.set(1)" [disabled]="currentPage() === 1">&laquo;</button>
+            <button class="page-btn" (click)="currentPage.set(currentPage() - 1)" [disabled]="currentPage() === 1">&lsaquo;</button>
+            @for (p of pageNumbers(); track p) {
+              <button class="page-btn" [class.active]="p === currentPage()" (click)="currentPage.set(p)">{{ p }}</button>
+            }
+            <button class="page-btn" (click)="currentPage.set(currentPage() + 1)" [disabled]="currentPage() === totalPages()">&rsaquo;</button>
+            <button class="page-btn" (click)="currentPage.set(totalPages())" [disabled]="currentPage() === totalPages()">&raquo;</button>
+            <select class="page-size-select" [(ngModel)]="pageSize">
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
+        </div>
+      </div>
+  </div>
+</app-shell>
+
+<!-- Column Selection Dialog -->
+@if (showColumnConfig()) {
+  <div class="modal-overlay" (click)="showColumnConfig.set(false)">
+    <div class="modal-dialog column-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        <i class="pi pi-th-large"></i> Choose columns to see in "Complaints" Table
+        <button class="modal-close" (click)="showColumnConfig.set(false)">&times;</button>
+      </div>
+      <p class="modal-subtitle">Select and manage visible columns</p>
+      <input type="text" class="column-search" placeholder="Search Column Name" [ngModel]="columnSearchText()" (ngModelChange)="columnSearchText.set($event)" />
+      <div class="column-list">
+        @for (col of filteredColumns(); track col.key; let i = $index) {
+          <label class="column-option"
+            draggable="true"
+            (dragstart)="onColumnDragStart(i)"
+            (dragover)="onColumnDragOver($event, i)"
+            (drop)="onColumnDrop(i)"
+            (dragend)="onColumnDragEnd()"
+            [class.dragging]="dragIndex === i"
+            [class.drag-over]="dragOverIndex === i">
+            <i class="pi pi-bars drag-handle"></i>
+            <input type="checkbox" [checked]="col.visible" (change)="toggleColumnVisibility(col.key)" />
+            {{ col.label }}
+          </label>
+        }
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="showColumnConfig.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="showColumnConfig.set(false)">Save</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Advanced Search Dialog -->
+@if (showAdvancedSearch()) {
+  <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
+    <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Advanced Search
+        <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
+      </div>
+      <div class="search-grid">
+        <div class="search-field">
+          <label>Complaint Number</label>
+          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complaint Id</label>
+          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Status Code</label>
+          <select [(ngModel)]="advSearch.statusCode">
+            <option value="">Select a Value</option>
+            <option value="DRAFT">Draft</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="SENT_TO_REVIEWER">Sent to Reviewer</option>
+            <option value="APPROVED">Approved</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>Complainant Name</label>
+          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complainant Mobile Number</label>
+          <input type="text" [(ngModel)]="advSearch.mobileNumber" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complainant Email</label>
+          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>From Email Id</label>
+          <input type="text" [(ngModel)]="advSearch.fromEmailId" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Mode of Receipt</label>
+          <select [(ngModel)]="advSearch.modeOfReceipt">
+            <option value="">Select a Value</option>
+            <option value="EMAIL">Email</option>
+            <option value="PHYSICAL_LETTER">Physical Letter</option>
+            <option value="PORTAL">Portal</option>
+            <option value="CPGRAMS">CPGRAMS</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>Entity Name</label>
+          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Select a Value" />
+        </div>
+        <div class="search-field full-width">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>NDI Contact Person</label>
+          <input type="text" [(ngModel)]="advSearch.ndiContactPerson" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complaint Main Category</label>
+          <select [(ngModel)]="advSearch.category">
+            <option value="">Select a Value</option>
+            <option value="ATM">ATM</option>
+            <option value="CREDIT_CARD">Credit Card</option>
+            <option value="UPI">UPI</option>
+            <option value="LOAN">Loan</option>
+            <option value="DEPOSIT">Deposit</option>
+            <option value="INSURANCE">Insurance</option>
+            <option value="NEFT_RTGS">NEFT/RTGS</option>
+            <option value="GENERAL">General</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Not-a-Complaint Dialog -->
+@if (showNotAComplaintDialog()) {
+  <div class="modal-overlay" (click)="showNotAComplaintDialog.set(false)">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Mark as Not-a-Complaint
+        <button class="modal-close" (click)="showNotAComplaintDialog.set(false)">&times;</button>
+      </div>
+      <p class="modal-subtitle">{{ selectedIds().size }} item(s) selected</p>
+      <div class="form-field">
+        <label>Reason</label>
+        <select [(ngModel)]="notAComplaintReason" class="full-width-input">
+          <option value="">Select a reason (optional)</option>
+          @for (reason of notAComplaintReasons; track reason) {
+            <option [value]="reason">{{ reason.replace('_', ' ') }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Remarks (max 150 characters)</label>
+        <textarea [(ngModel)]="notAComplaintRemarks" maxlength="150" rows="3" class="full-width-input"
+                  placeholder="Optional remarks..."></textarea>
+        <span class="char-count">{{ notAComplaintRemarks.length }} / 150</span>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="showNotAComplaintDialog.set(false)">Cancel</button>
+        <button class="btn btn-danger" (click)="confirmNotAComplaint()">
+          Confirm Not-a-Complaint
+        </button>
+      </div>
+    </div>
+  </div>
+}

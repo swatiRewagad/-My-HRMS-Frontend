@@ -1,0 +1,437 @@
+import { Routes } from '@angular/router';
+import { publicAuthGuard } from './guards/public-auth.guard';
+import { staffAuthGuard, staffRoleGuard } from './guards/staff-auth.guard';
+
+/**
+ * Roles admitted to the Appellate Authority module. ADMIN is included because it is the
+ * cross-module superuser already accepted by every other staff route in this file.
+ */
+const AA_ROLES = ['AA_DO', 'AA_REVIEWER', 'AA_SECRETARIAT', 'AA_ADMIN', 'ADMIN'];
+
+/**
+ * Roles admitted to the RBIO module: the four ranks, the two stage roles, the two legacy ranks, and
+ * ADMIN as the cross-module superuser already accepted by every other staff route here.
+ *
+ * Conciliator and Adjudicator are STAGES, not ranks — they appear in this list because they hold case
+ * files, not because they sit above the Reviewer in a hierarchy.
+ */
+const RBIO_ROLES = [
+  'RBIO_DEALING_OFFICIAL', 'RBIO_REVIEWER', 'RBIO_DEPUTY_OMBUDSMAN', 'RBIO_OMBUDSMAN',
+  'RBIO_OFFICER', 'RBIO_SUPERVISOR', 'RBIO_CONCILIATOR', 'RBIO_ADJUDICATOR',
+  'RBIO_ADMIN', 'ADMIN'
+];
+
+export const routes: Routes = [
+  {
+    path: '',
+    loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent)
+  },
+  {
+    path: 'file-complaint',
+    loadComponent: () => import('./components/complaint-form/complaint-form.component').then(m => m.ComplaintFormComponent)
+  },
+  {
+    path: 'track',
+    loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent)
+  },
+  {
+    path: 'track/:id',
+    loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent)
+  },
+  {
+    path: 'search',
+    loadComponent: () => import('./components/search/search.component').then(m => m.SearchComponent)
+  },
+  {
+    path: 'email-syndication',
+    loadComponent: () => import('./components/email-syndication/email-queue/email-queue.component').then(m => m.EmailQueueComponent)
+  },
+  {
+    path: 'email-syndication/draft/:draftId',
+    loadComponent: () => import('./components/email-syndication/draft-detail/draft-detail.component').then(m => m.DraftDetailComponent)
+  },
+  {
+    path: 'email-syndication/ignore-list',
+    loadComponent: () => import('./components/email-syndication/ignore-list/ignore-list.component').then(m => m.IgnoreListComponent)
+  },
+  {
+    path: 'email-syndication/simulator',
+    loadComponent: () => import('./components/email-syndication/email-simulator/email-simulator.component').then(m => m.EmailSimulatorComponent)
+  },
+  {
+    path: 'admin/dashboard',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/admin-dashboard/admin-dashboard.component').then(m => m.AdminDashboardComponent)
+  },
+  {
+    path: 'admin/rules',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/rules-management/rules-management.component').then(m => m.RulesManagementComponent)
+  },
+  {
+    path: 'admin/extraction-rules',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/extraction-rules/extraction-rules.component').then(m => m.ExtractionRulesComponent)
+  },
+  {
+    path: 'admin/rules/new',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/rule-editor/rule-editor.component').then(m => m.RuleEditorComponent)
+  },
+  {
+    path: 'admin/rules/edit/:id',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/rule-editor/rule-editor.component').then(m => m.RuleEditorComponent)
+  },
+  {
+    path: 'admin/rules/test',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/rule-tester/rule-tester.component').then(m => m.RuleTesterComponent)
+  },
+  // Both of these carried NO canActivate at all, which is worse than the too-broad guard the RBIO
+  // screens had: nothing on the route calls KeycloakAuthService.init() (only the guards do), so the
+  // page rendered for an anonymous visitor and every request it made went out unauthenticated. The
+  // complaint-action screen shows a named complainant and now hosts the internal comment thread, so
+  // it needs the same role guard as its /staff/rbio/task/:id equivalent.
+  {
+    path: 'officer',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/officer/officer-dashboard/officer-dashboard.component').then(m => m.OfficerDashboardComponent)
+  },
+  {
+    path: 'officer/complaint/:id',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/officer/complaint-action/complaint-action.component').then(m => m.ComplaintActionComponent)
+  },
+  // ── Staff Portal (Keycloak SSO) ──
+  {
+    path: 'staff/login',
+    loadComponent: () => import('./components/staff/staff-login/staff-login.component').then(m => m.StaffLoginComponent)
+  },
+  {
+    path: 'staff/dashboard',
+    canActivate: [staffAuthGuard],
+    runGuardsAndResolvers: 'always',
+    loadComponent: () => import('./components/staff/staff-dashboard/staff-dashboard.component').then(m => m.StaffDashboardComponent)
+  },
+  {
+    path: 'staff/unauthorized',
+    loadComponent: () => import('./components/staff/staff-unauthorized/staff-unauthorized.component').then(m => m.StaffUnauthorizedComponent)
+  },
+  // These four are RBIO case-working screens and carried only staffAuthGuard, which admits EVERY
+  // authenticated staff member — a CEPC officer, a CRPC DEO, an RE nodal officer. staff/rbio/task/:id
+  // renders a named complainant's details, so this was cross-module PII exposure rather than merely an
+  // untidy guard. The note above the /rbio routes below already said to use a role guard here; these
+  // four were missed when it was applied.
+  {
+    path: 'staff/rbio/tasks',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    runGuardsAndResolvers: 'always',
+    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  },
+  {
+    path: 'staff/rbio/task/:id',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/staff/task-action/task-action.component').then(m => m.TaskActionComponent)
+  },
+  {
+    path: 'staff/rbio/history',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    runGuardsAndResolvers: 'always',
+    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  },
+  {
+    path: 'staff/rbio/escalations',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/staff/rbio-tasks/rbio-tasks.component').then(m => m.RbioTasksComponent)
+  },
+  // ── RBIO Module ──
+  // These three had NO canActivate at all: the RBIO home, the complaint-creation screen and the
+  // complaint DETAIL view were reachable by anyone who knew the URL, with no login. The detail view is
+  // the serious one — it renders a named citizen's complaint, so this was an unauthenticated PII
+  // disclosure, not merely an unguarded dashboard. A role guard, not just staffAuthGuard: any
+  // authenticated staff member (a CEPC officer, an RE nodal officer) could otherwise read RBIO case files.
+  {
+    path: 'rbio',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/rbio/rbio-home/rbio-home.component').then(m => m.RbioHomeComponent)
+  },
+  {
+    path: 'rbio/create-complaint',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/rbio/rbio-create-complaint/rbio-create-complaint.component').then(m => m.RbioCreateComplaintComponent)
+  },
+  {
+    path: 'rbio/complaint/:id',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/rbio/rbio-complaint-detail/rbio-complaint-detail.component').then(m => m.RbioComplaintDetailComponent)
+  },
+  {
+    path: 'rbio/supervisor-dashboard',
+    canActivate: [staffRoleGuard(RBIO_ROLES)],
+    loadComponent: () => import('./components/rbio/rbio-supervisor-dashboard/rbio-supervisor-dashboard.component').then(m => m.RbioSupervisorDashboardComponent)
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+  // RBIO parallel-session route blocks (S1-S7).
+  //
+  // Each session adds its routes ONLY between its own markers and edits nothing outside them.
+  // Concurrent edits to a shared route table silently lose work, and the loser finds out only when
+  // their component 404s at demo time.
+  //
+  // Use `canActivate: [staffRoleGuard(RBIO_ROLES)]` unless the story genuinely needs a narrower list;
+  // bare staffAuthGuard admits every authenticated staff member, including non-RBIO ones.
+  // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+  // <<< S1 START >>>
+  // <<< S1 END >>>
+
+  // <<< S2 START >>>
+  // <<< S2 END >>>
+
+  // <<< S3 START >>>
+  // <<< S3 END >>>
+
+  // <<< S4 START >>>
+  // <<< S4 END >>>
+
+  // <<< S5 START >>>
+  // <<< S5 END >>>
+
+  // <<< S6 START >>>
+  // <<< S6 END >>>
+
+  // <<< S7 START >>>
+  // <<< S7 END >>>
+
+  {
+    path: 'staff/cepc/tasks',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
+  },
+  {
+    path: 'staff/cepc/task/:id',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/task-action/task-action.component').then(m => m.TaskActionComponent)
+  },
+  {
+    path: 'staff/cepc/history',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
+  },
+  {
+    path: 'staff/cepc/escalations',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/staff/cepc-tasks/cepc-tasks.component').then(m => m.CepcTasksComponent)
+  },
+  // ── CEPC Module ──
+  {
+    path: 'cepc/dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-dashboard/cepc-dashboard.component').then(m => m.CepcDashboardComponent)
+  },
+  {
+    path: 'cepc/complaint/:id',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-complaint-detail/cepc-complaint-detail.component').then(m => m.CepcComplaintDetailComponent)
+  },
+  {
+    path: 'cepc/sla-dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/cepc/cepc-sla-dashboard/cepc-sla-dashboard.component').then(m => m.CepcSlaDashboardComponent)
+  },
+  // ── Report Builder & Senior Dashboard ──
+  {
+    path: 'staff/reports',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/report-builder/report-builder.component').then(m => m.ReportBuilderComponent)
+  },
+  {
+    path: 'admin/report-access',
+    canActivate: [staffRoleGuard(['ADMIN', 'RBIO_ADMIN'])],
+    loadComponent: () => import('./components/report-builder/report-builder.component').then(m => m.ReportBuilderComponent)
+  },
+  {
+    path: 'staff/senior-dashboard',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/senior-dashboard/senior-dashboard.component').then(m => m.SeniorDashboardComponent)
+  },
+  // ── CRPC (DEO / Reviewer) ──
+  {
+    path: 'crpc/login',
+    loadComponent: () => import('./components/crpc/crpc-login/crpc-login.component').then(m => m.CrpcLoginComponent)
+  },
+  {
+    path: 'crpc/home',
+    loadComponent: () => import('./components/crpc/deo-home/deo-home.component').then(m => m.DeoHomeComponent)
+  },
+  {
+    path: 'crpc/physical-letter',
+    loadComponent: () => import('./components/crpc/physical-letter/physical-letter.component').then(m => m.PhysicalLetterComponent)
+  },
+  {
+    path: 'crpc/draft/:id',
+    loadComponent: () => import('./components/crpc/draft-assessment/draft-assessment.component').then(m => m.DraftAssessmentComponent)
+  },
+  {
+    path: 'crpc/ops-head',
+    loadComponent: () => import('./components/crpc/ops-head/ops-head.component').then(m => m.OpsHeadComponent)
+  },
+  {
+    path: 'crpc/reviewer',
+    loadComponent: () => import('./components/crpc/reviewer-home/reviewer-home.component').then(m => m.ReviewerHomeComponent)
+  },
+  {
+    path: 'crpc/reviewer/draft/:id',
+    loadComponent: () => import('./components/crpc/reviewer-assessment/reviewer-assessment.component').then(m => m.ReviewerAssessmentComponent)
+  },
+  // ── CRPC Help Desk ──
+  {
+    path: 'crpc/help-desk',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/crpc/help-desk/help-desk.component').then(m => m.HelpDeskComponent)
+  },
+  // ── CRPC In-Charge ──
+  {
+    path: 'crpc/in-charge',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/crpc/in-charge-dashboard/in-charge-dashboard.component').then(m => m.InChargeDashboardComponent)
+  },
+  // ── CRPC Reports ──
+  {
+    path: 'crpc/reports',
+    // Was unguarded, unlike its crpc/in-charge sibling. That mattered more than usual: the server gates
+    // /api/v1/crpc/** to CRPC roles, so a non-CRPC visitor received a 403 — and the component's error
+    // handler answered by filling the screen with random numbers. An unauthorised user saw fabricated
+    // report figures instead of an access-denied message.
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/crpc/crpc-reports/crpc-reports.component').then(m => m.CrpcReportsComponent)
+  },
+  // ── Admin — Team Management ──
+  {
+    path: 'admin/team-management',
+    canActivate: [staffRoleGuard(['ADMIN', 'CRPC_ADMIN', 'CRPC_HEAD'])],
+    loadComponent: () => import('./components/admin/team-management/team-management.component').then(m => m.TeamManagementComponent)
+  },
+  // ── Admin — Security console (UST873, UST875, UST890) ──
+  // The route guard only hides the screen; every endpoint it calls is ADMIN-enforced server-side.
+  {
+    path: 'admin/security',
+    canActivate: [staffRoleGuard(['ADMIN'])],
+    loadComponent: () => import('./components/admin/security-alerts/security-alerts.component').then(m => m.SecurityAlertsComponent)
+  },
+  // ── Admin — Template Management ──
+  {
+    path: 'admin/comment-templates',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/admin/comment-templates/comment-templates.component').then(m => m.CommentTemplatesComponent)
+  },
+  {
+    path: 'admin/communication-templates',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/admin/communication-templates/communication-templates.component').then(m => m.CommunicationTemplatesComponent)
+  },
+  {
+    path: 'admin/master-data',
+    canActivate: [staffAuthGuard],
+    loadComponent: () => import('./components/admin/master-data/master-data.component').then(m => m.MasterDataComponent)
+  },
+  // ── RE Portal (Regulated Entity) ──
+  {
+    path: 're-portal/login',
+    loadComponent: () => import('./components/re-portal/re-login/re-login.component').then(m => m.ReLoginComponent)
+  },
+  {
+    path: 're-portal',
+    loadComponent: () => import('./components/re-portal/re-layout/re-layout.component').then(m => m.ReLayoutComponent),
+    canActivate: [staffAuthGuard],
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: 'dashboard', loadComponent: () => import('./components/re-portal/re-dashboard/re-dashboard.component').then(m => m.ReDashboardComponent) },
+      { path: 'complaints/:complaintNumber', loadComponent: () => import('./components/re-portal/re-complaint-detail/re-complaint-detail.component').then(m => m.ReComplaintDetailComponent) },
+      { path: 'profile', loadComponent: () => import('./components/re-portal/re-profile/re-profile.component').then(m => m.ReProfileComponent) },
+      // Reassignment (UST838, UST842, UST843, UST844). Guarded with staffAuthGuard only, matching the
+      // sibling routes above: the PNO-only rules are enforced server-side from the resolved identity,
+      // so a route guard here would be a convenience, not the access control. Adding a role guard as
+      // well would also lock out ADMIN callers, who legitimately administer any entity.
+      { path: 'reassignment/my-requests', loadComponent: () => import('./components/re-portal/reassignment/my-requests/my-requests.component').then(m => m.MyRequestsComponent) },
+      { path: 'reassignment/approvals', loadComponent: () => import('./components/re-portal/reassignment/pno-approvals/pno-approvals.component').then(m => m.PnoApprovalsComponent) },
+      { path: 'pno-dashboard', loadComponent: () => import('./components/re-portal/pno-dashboard/pno-dashboard.component').then(m => m.PnoDashboardComponent) },
+    ]
+  },
+  // ── Appellate Authority (AA) Module ──
+  // These used bare staffAuthGuard, i.e. authentication only, so any authenticated staff member --
+  // a CEPC contact person, an RE nodal officer -- could open the AA queue and appeal detail. The
+  // backend @AaRoleGuard would refuse the API calls, but the route itself must not be reachable.
+  {
+    path: 'aa/dashboard',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-dashboard/aa-dashboard.component').then(m => m.AaDashboardComponent)
+  },
+  {
+    path: 'aa/appeal/:appealNumber',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-appeal-detail/aa-appeal-detail.component').then(m => m.AaAppealDetailComponent)
+  },
+  // ── AA routes pre-wired for the parallel S2A / S2B / S2C sessions ──
+  // Registered up front, pointing at intentionally inert placeholder components, so that three
+  // sessions working on the AA module in parallel never have to edit THIS file. Concurrent edits to a
+  // shared route table silently lose work, and the loser only finds out when their component 404s.
+  // Each session fleshes out its own component and must keep the class name, selector and file path
+  // unchanged — these imports already point at them.
+  {
+    // S2A — parent-complaint search feeding appeal registration.
+    path: 'aa/search',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-appeal-search/aa-appeal-search.component').then(m => m.AaAppealSearchComponent)
+  },
+  {
+    // S2A — Register milestone. :complaintNumber is the parent being escalated.
+    path: 'aa/register/:complaintNumber',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-register/aa-register.component').then(m => m.AaRegisterComponent)
+  },
+  {
+    // S2B — AA DO assessment of an email/letter-origin draft.
+    path: 'aa/draft/:draftId',
+    canActivate: [staffRoleGuard(AA_ROLES)],
+    loadComponent: () => import('./components/aa/aa-draft-assessment/aa-draft-assessment.component').then(m => m.AaDraftAssessmentComponent)
+  },
+  {
+    // S2C — assignment pool, per-DO thresholds, bulk activate/deactivate. AA_ADMIN only: this
+    // console changes who receives work, so it is deliberately narrower than the other AA routes.
+    path: 'aa/admin',
+    canActivate: [staffRoleGuard(['AA_ADMIN', 'ADMIN'])],
+    loadComponent: () => import('./components/aa/aa-admin-console/aa-admin-console.component').then(m => m.AaAdminConsoleComponent)
+  },
+  // ── Public Upload Link (no auth guard — OTP-verified) ──
+  {
+    path: 'public/upload/:token',
+    loadComponent: () => import('./components/public/complainant-upload/complainant-upload.component').then(m => m.ComplainantUploadComponent)
+  },
+  // ── Public-facing Complaint Portal ──
+  {
+    path: 'public',
+    loadComponent: () => import('./components/public/public-layout/public-layout.component').then(m => m.PublicLayoutComponent),
+    children: [
+      { path: '', loadComponent: () => import('./components/public/public-home/public-home.component').then(m => m.PublicHomeComponent) },
+      { path: 'login', loadComponent: () => import('./components/public/public-login/public-login.component').then(m => m.PublicLoginComponent) },
+      { path: 'eligibility-wizard', loadComponent: () => import('./components/public/eligibility-wizard/eligibility-wizard.component').then(m => m.EligibilityWizardComponent) },
+      { path: 'track', loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent) },
+      { path: 'track/:id', loadComponent: () => import('./components/complaint-tracker/complaint-tracker.component').then(m => m.ComplaintTrackerComponent) },
+      // Protected routes — require active session (NFR-005: 15-minute session)
+      { path: 'file-complaint', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-complaint/file-complaint.component').then(m => m.PublicFileComplaintComponent) },
+      { path: 'withdraw', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
+      { path: 'withdraw/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
+      { path: 'feedback', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
+      { path: 'appeal', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
+      { path: 'faq', loadComponent: () => import('./components/public/faq/faq.component').then(m => m.FaqComponent) },
+      { path: 'history', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-history/complaint-history.component').then(m => m.ComplaintHistoryComponent) },
+      { path: 'complaint/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
+    ]
+  },
+  {
+    path: '**',
+    redirectTo: ''
+  }
+];

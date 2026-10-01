@@ -1,0 +1,1034 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/aa/s2a-parent-search.spec.ts",
+      "--project=chromium",
+      "--workers=1",
+      "--reporter=json"
+    ],
+    "configFile": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\playwright.config.ts",
+    "rootDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "aa\\s2a-parent-search.spec.ts",
+      "file": "aa/s2a-parent-search.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "S2A — AA parent-complaint search and appeal registration",
+          "file": "aa/s2a-parent-search.spec.ts",
+          "line": 97,
+          "column": 15,
+          "specs": [
+            {
+              "title": "story 1 — exact complaint number returns the single parent",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 853,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:00.224Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-cd4cff87365dc7c3b8e0",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 151,
+              "column": 7
+            },
+            {
+              "title": "story 1 — an unknown complaint number yields a no-results translation key",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 25,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:09.487Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-12d87e81ea72ee562932",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 158,
+              "column": 7
+            },
+            {
+              "title": "a filterless search is refused rather than returning the whole table",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:09.519Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-75e48276c44074d7517d",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 166,
+              "column": 7
+            },
+            {
+              "title": "story 2 — name is a PARTIAL match, mobile and email are EXACT",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 102,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:09.538Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-67c6430906c2bbf82657",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 174,
+              "column": 7
+            },
+            {
+              "title": "story 2 — a one-character name term is rejected instead of scanning the table",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:09.646Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-85571bfbeeab51439744",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 198,
+              "column": 7
+            },
+            {
+              "title": "story 3 — each filter works independently",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 164,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:09.657Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-1472a85a57750bec1f77",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 206,
+              "column": 7
+            },
+            {
+              "title": "story 3 — filters COMBINE as AND, and a contradictory combination returns nothing",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 275,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:09.827Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-f5d179cacc076e22be81",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 224,
+              "column": 7
+            },
+            {
+              "title": "story 4 — AA_REVIEWER sees exactly what AA_DO sees",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 43,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.108Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-c84712f1398bef19a739",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 237,
+              "column": 7
+            },
+            {
+              "title": "story 5 — a PNO JWT claim beats a conflicting X-Entity-Code header",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 76,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.157Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-2509c6191ac32ba06c3e",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 249,
+              "column": 7
+            },
+            {
+              "title": "story 5 — NEGATIVE CONTROL: the other entity IS reachable by a properly scoped caller",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 23,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.240Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-ea32db6512a9486fda02",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 272,
+              "column": 7
+            },
+            {
+              "title": "story 5 — a PNO sees only appeal-eligible parents (closed or reopened)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 109,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.269Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-fda464086c91e289ed5b",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 280,
+              "column": 7
+            },
+            {
+              "title": "story 6 — appealEligible is true for closed/reopened and false for open",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 74,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.385Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-e7bb214f174aa584cea6",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 304,
+              "column": 7
+            },
+            {
+              "title": "PII is masked in search results, server-side",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 22,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.464Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-1cf728909b65b17a4b3d",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 317,
+              "column": 7
+            },
+            {
+              "title": "stories 8-10 — autofill carries what exists and FLAGS what has no source",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 23,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.491Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-efda31d8a44610c20fbb",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 331,
+              "column": 7
+            },
+            {
+              "title": "story 6 — the register form reports an OPEN parent as not appealable",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 12,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.521Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-22575dd142b0cb6ba8e0",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 375,
+              "column": 7
+            },
+            {
+              "title": "dropdown masters are served from their master tables",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 22,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.541Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-919e14319ecfba47dfe9",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 387,
+              "column": 7
+            },
+            {
+              "title": "every new user-facing key is genuinely translated in all ten locales",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                        "line": 97,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 490,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:02:10.576Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\s2a-parent-search.spec.ts",
+                            "line": 97,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "22eaf6f92241fcd6cfbd-9b23c989ad9b6892c79c",
+              "file": "aa/s2a-parent-search.spec.ts",
+              "line": 422,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T11:01:59.764Z",
+    "duration": 12006.058,
+    "expected": 17,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

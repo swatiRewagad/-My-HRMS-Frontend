@@ -1,0 +1,25 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      type: single
+      missing-topics-fatal: false
+      ack-mode: manual
+
+cms:
+  search:
+    enabled: true
+    host: localhost
+    port: 9200
+    scheme: http
+    alias: cms-complaints
+    reindex:
+      batch-size: 200
+      pause-between-batches-ms: 50
+
+logging:
+  level:
+    com.rbi.cms: DEBUG

@@ -1,0 +1,166 @@
+$primary: var(--brand-primary);
+$primary-light: var(--brand-primary-bg);
+$text-dark: var(--text-heading);
+$text-muted: var(--text-muted);
+$border-color: var(--border-subtle);
+
+.re-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+// Profile Section
+.profile-section {
+  margin-bottom: 28px;
+}
+
+.welcome-text {
+  font-size: 14px;
+  font-weight: 400;
+  color: $text-muted;
+  margin: 0 0 4px;
+}
+
+.entity-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: $text-dark;
+  margin: 0 0 4px;
+}
+
+.nodal-info {
+  font-size: 13px;
+  color: $text-muted;
+  margin: 0;
+}
+
+// Stats Grid
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+// The three filtering cards are <button>s now, so the reset is here rather than relying on the tile
+// having been a div: a button inherits a centred, UA-styled box that would otherwise break the row.
+.stat-card {
+  background: var(--surface-card);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid $border-color;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+// Only the filtering cards offer a pointer. The breached tile is a read-only indicator (see the
+// template), and a pointer cursor on it would promise a click that deliberately does nothing.
+button.stat-card {
+  cursor: pointer;
+
+  // A visible focus ring, because these are now the primary way to filter the queue and a
+  // keyboard-only nodal officer has to be able to see which card they are on.
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+  }
+
+  // The selected card and the rows below it describe the same set; the tint is what says so.
+  &.active {
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.12);
+  }
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.stat-card.total .stat-icon { background: $primary-light; color: $primary; }
+.stat-card.pending .stat-icon { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+.stat-card.responded .stat-icon { background: var(--state-success-bg); color: var(--state-success-fg); }
+.stat-card.breached .stat-icon { background: var(--state-danger-bg); color: var(--state-danger-solid-hover); }
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: $text-dark;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: $text-muted;
+  margin-top: 2px;
+}
+
+// ═══ THE QUEUE ═══
+// The table, its header bar, its empty/loading states, its row hover and its paging now belong to the
+// shared app-task-grid, so the ~90 lines that styled a hand-rolled `.complaints-table` here are gone
+// rather than kept as a second, divergable definition of the same grid. What remains below is only
+// what is genuinely RE-specific: the projected status dropdown and the deadline row tint.
+
+// Projected into the grid's headerActions slot, so the DOM lives in the grid's component while the
+// template belongs to this one — ::ng-deep is what styles it, following rbio-tasks.
+:host ::ng-deep .status-filter {
+  padding: 8px 16px;
+  border: 1px solid $border-color;
+  border-radius: 8px;
+  font-size: 13px;
+  color: $text-dark;
+  background: var(--surface-card);
+  cursor: pointer;
+  outline: none;
+
+  &:focus {
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.1);
+  }
+}
+
+// The deadline tint, applied to grid rows through the grid's `rowClass` input. Also projected DOM, so
+// also ::ng-deep. Dormant until the list endpoint emits responseDeadline (the class function returns
+// '' without one), but kept so the cue returns with the field rather than having to be rebuilt.
+:host ::ng-deep .data-grid tbody tr {
+  &.urgency-green { border-left: 3px solid var(--state-success-solid); }
+  &.urgency-yellow { border-left: 3px solid #eab308; }
+  &.urgency-red { border-left: 3px solid var(--state-danger-solid); }
+  &.urgency-breached { border-left: 3px solid #7c2d12; background: var(--state-danger-bg); }
+}
+
+// Responsive
+@media (max-width: 1024px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: 1fr; gap: 12px; }
+  // The grid owns its own narrow-screen behaviour now, so the column-hiding rules that used to live
+  // here would have had no element to match.
+}
+
+@media (max-width: 480px) {
+  .stat-card { padding: 16px; }
+  .stat-value { font-size: 22px; }
+  .entity-name { font-size: 18px; }
+}

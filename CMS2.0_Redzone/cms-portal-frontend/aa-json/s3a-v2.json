@@ -1,0 +1,1784 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/aa/s3a-state-machine.spec.ts",
+      "--project=chromium",
+      "--workers=1",
+      "--reporter=json"
+    ],
+    "configFile": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\playwright.config.ts",
+    "rootDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "aa\\s3a-state-machine.spec.ts",
+      "file": "aa/s3a-state-machine.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "S3A state machine — from-status validation",
+          "file": "aa/s3a-state-machine.spec.ts",
+          "line": 219,
+          "column": 6,
+          "specs": [
+            {
+              "title": "an appeal cannot jump from filed straight to PASS_ORDER",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2749,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:24:25.646Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-8ab021f892d82ae39249",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 226,
+              "column": 7
+            },
+            {
+              "title": "a hearing cannot be scheduled before the appeal is accepted",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2886,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:24:55.334Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-6e09e291becf050f52a5",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 250,
+              "column": 7
+            },
+            {
+              "title": "the full legal lifecycle succeeds and records a coherent timeline",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4858,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:24:58.232Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-ecc9c6d75fce0cdf6649",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 262,
+              "column": 7
+            },
+            {
+              "title": "a date-only hearing date is accepted, and an unparseable one is not a 500",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3106,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:03.098Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-2846a98d14dfa2e0800e",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 315,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S3A state machine — terminal immutability",
+          "file": "aa/s3a-state-machine.spec.ts",
+          "line": 365,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a passed order cannot be overwritten by a second PASS_ORDER",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3039,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:08.775Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-17a2d664feeb6ecacfae",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 379,
+              "column": 7
+            },
+            {
+              "title": "a disposed appeal cannot be pulled back by an ordinary action",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2974,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:11.821Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-226ca6f7cbb0edfc0aa3",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 391,
+              "column": 7
+            },
+            {
+              "title": "available-actions is empty for a non-admin on a disposed appeal",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2963,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:14.803Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-9fde67c55987adb1d086",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 400,
+              "column": 7
+            },
+            {
+              "title": "REOPEN requires a reason and is the only way out of a terminal state",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3580,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:17.777Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-967473594ce330969696",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 417,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S3A state machine — server-side authority",
+          "file": "aa/s3a-state-machine.spec.ts",
+          "line": 438,
+          "column": 6,
+          "specs": [
+            {
+              "title": "available-actions never offers an action performAction would refuse",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3042,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:23.698Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-6afef577ced4a7a0e77e",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 442,
+              "column": 7
+            },
+            {
+              "title": "a reviewer cannot pass an order and a DO cannot dismiss",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2958,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:26.746Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-4f97ca7d4cf4aeb2f275",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 469,
+              "column": 7
+            },
+            {
+              "title": "REASSIGN cannot park an appeal on a non-AA role",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2407,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:29.710Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-d0293e5f6502a686c44b",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 482,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S3A state machine — engine-backed assignment",
+          "file": "aa/s3a-state-machine.spec.ts",
+          "line": 502,
+          "column": 6,
+          "specs": [
+            {
+              "title": "filing places the appeal with a real AA_DO through the engine",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2413,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:34.997Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-77d8cb7336d0d058b3d8",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 506,
+              "column": 7
+            },
+            {
+              "title": "routing to the bench and the authority both go through the engine",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3386,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:37.423Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-36dfa846fb3a63a66a17",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 521,
+              "column": 7
+            },
+            {
+              "title": "SEND_BACK_REGISTRAR returns the appeal to the DO who routed it",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4115,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:40.814Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-1868c9369020079fc88e",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 540,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S3A state machine — tier-2 escalation",
+          "file": "aa/s3a-state-machine.spec.ts",
+          "line": 558,
+          "column": 6,
+          "specs": [
+            {
+              "title": "a tier-1 reviewer escalates to tier 2 and the change is audited",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2443,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:47.580Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-ee142c61f78ea1941594",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 562,
+              "column": 7
+            },
+            {
+              "title": "a tier-2 reviewer cannot escalate further",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2755,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:50.029Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-9dda4b7890ab7c1d69e0",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 588,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "S3A state machine — remand",
+          "file": "aa/s3a-state-machine.spec.ts",
+          "line": 601,
+          "column": 6,
+          "specs": [
+            {
+              "title": "remand hands the parent complaint back with a stage, a timeline row and a reopen count",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3522,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:55.664Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-376884382dc9ba36c07c",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 605,
+              "column": 7
+            },
+            {
+              "title": "remand fails loudly when the parent complaint is missing",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2700,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        },
+                        {
+                          "buffer": "bXlzcWw6IFtXYXJuaW5nXSBVc2luZyBhIHBhc3N3b3JkIG9uIHRoZSBjb21tYW5kIGxpbmUgaW50ZXJmYWNlIGNhbiBiZSBpbnNlY3VyZS4NCg=="
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:25:59.191Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "82572d9b6c4060630776-e4f27e5dc95d4b15d954",
+              "file": "aa/s3a-state-machine.spec.ts",
+              "line": 634,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T11:24:25.071Z",
+    "duration": 99857.99100000001,
+    "expected": 18,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

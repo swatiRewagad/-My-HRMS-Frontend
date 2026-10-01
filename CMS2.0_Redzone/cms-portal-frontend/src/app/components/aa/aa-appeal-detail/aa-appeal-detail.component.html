@@ -1,0 +1,413 @@
+<app-shell [titleKey]="'aa.detail.title'" [roleKey]="roleLabelKey()">
+  <div shell-actions>
+    <button type="button" class="back-btn" data-testid="back-to-dashboard" (click)="goBack()">
+      <span aria-hidden="true">&larr;</span>
+    </button>
+    @if (reviewerTier(); as tier) {
+      <span class="tier-badge" data-testid="reviewer-tier">
+        {{ 'aa.detail.reviewer_tier' | translate }}: {{ tier }}
+      </span>
+    }
+  </div>
+
+  <div class="aa-detail">
+    @if (loading()) {
+      <div class="loading" data-testid="detail-loading">{{ 'aa.detail.loading' | translate }}</div>
+    } @else if (!appeal()) {
+      <div class="error-state" data-testid="detail-not-found">{{ 'aa.detail.not_found' | translate }}</div>
+    } @else {
+      <!-- Appeal Summary Strip — shared app-complaint-summary, as on RBIO, CEPC and the CRPC screens.
+           This screen had no strip: the identifying facts were spread across .appeal-header and three
+           field sections, so the same appeal read differently here and on the queue that linked to it. -->
+      <app-complaint-summary [items]="summaryItems()" (back)="goBack()" />
+
+      <!--
+        ═══ MAIN CONTENT: THREE REGIONS ═══
+        LEFT is the appeal as filed (read-only facts), CENTER is the actions and the hearing/order forms,
+        RIGHT is a thin rail holding the timeline and the comment thread — material a bench officer
+        CONSULTS rather than works in. Both were previously stacked full-width in the left column, so
+        reading the timeline scrolled the action cards out of sight.
+
+        `.detail-layout` is a SPEC CONTRACT: `e2e/aa/{workflow,hearing,order}.spec.ts` all wait on
+        `.aa-detail .detail-layout` as their "screen has loaded" signal, and `.detail-panel` /
+        `.action-panel` name the regions those specs reach into. The new region classes are ADDITIVE.
+      -->
+      <div class="detail-layout detail-content">
+        <!-- Left: Appeal Details -->
+        <div class="detail-panel left-panel">
+          <!-- Header -->
+          <div class="appeal-header">
+            <div class="header-left">
+              <h3>{{ appeal().appealNumber }}</h3>
+              <app-status-badge [status]="appeal().classification" keyPrefix="classification" />
+              @if (appeal().classificationOverridden) {
+                <span class="override-tag" [title]="appeal().classificationOverrideReason || ''">
+                  {{ 'aa.overridden' | translate }}
+                </span>
+              }
+              <!-- Three .status-badge elements render on this screen (classification, this one, and the
+                   terminal banner's), so that class alone is ambiguous. This test id names the APPEAL's
+                   own status, which is what workflow assertions are actually about. -->
+              <app-status-badge [status]="appeal().status" data-testid="appeal-status" />
+            </div>
+            <div class="header-meta">
+              <span>{{ 'aa.detail.filed' | translate }}: {{ appeal().filedAt | date:'dd MMM yyyy' }}</span>
+            </div>
+          </div>
+
+          <!--
+            Stage SLA, exactly as the server computed it. daysRemaining is NEGATIVE once the deadline has
+            passed, so the overdue branch renders its absolute value against a different key.
+          -->
+          @if (sla()?.tracked) {
+            <div class="sla-banner"
+                 [class.error-banner]="sla()!.breached"
+                 [class.warning-banner]="!sla()!.breached"
+                 [attr.data-testid]="sla()!.breached ? 'sla-overdue' : 'sla-status'"
+                 role="status"
+                 aria-live="polite">
+              @if (sla()!.breached) {
+                <span class="sla-icon" aria-hidden="true">&#9888;</span>
+              }
+              <span class="sla-status-label">{{ sla()!.statusKey | translate }}</span>
+              <span class="sla-deadline">
+                {{ 'aa.detail.sla_deadline' | translate }}:
+                {{ sla()!.deadline ? (sla()!.deadline | date:'dd MMM yyyy') : ('aa.detail.not_available' | translate) }}
+              </span>
+              @if (sla()!.daysRemaining !== null) {
+                @if (sla()!.breached) {
+                  <span class="sla-days">
+                    {{ 'aa.detail.sla_overdue_by' | translate }}: {{ 0 - sla()!.daysRemaining! }}
+                  </span>
+                } @else {
+                  <span class="sla-days">
+                    {{ 'aa.detail.sla_days_remaining' | translate }}: {{ sla()!.daysRemaining }}
+                  </span>
+                }
+              }
+            </div>
+          }
+
+          <!-- Appeal Info -->
+          <section class="detail-section">
+            <h4>{{ 'aa.detail.appeal_information' | translate }}</h4>
+            <div class="field-grid">
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.ground_for_appeal' | translate }}</span>
+                <span data-testid="appeal-ground">{{ appeal().appealGround || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.relief_sought' | translate }}</span>
+                <span data-testid="relief-sought">{{ appeal().reliefSought || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.filed_date' | translate }}</span>
+                <span data-testid="filed-at">{{ appeal().filedAt | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.original_complaint' | translate }}</span>
+                <span class="complaint-link" data-testid="original-complaint">{{ appeal().originalComplaintNumber || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.closure_clause' | translate }}</span>
+                <span data-testid="closure-clause">{{ appeal().closureClause || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.mode_of_receipt' | translate }}</span>
+                <span data-testid="mode-of-receipt">{{ appeal().modeOfReceipt || '—' }}</span>
+              </div>
+              @if (appeal().reasonForDelay) {
+                <div class="field full-width">
+                  <span class="field-label">{{ 'aa.detail.reason_for_delay' | translate }}</span>
+                  <p class="description-text" data-testid="reason-for-delay">{{ appeal().reasonForDelay }}</p>
+                </div>
+              }
+            </div>
+          </section>
+
+          <!-- Appellant Info -->
+          <section class="detail-section">
+            <h4>{{ 'aa.detail.appellant_details' | translate }}</h4>
+            <div class="field-grid">
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.name' | translate }}</span>
+                <span data-testid="appellant-name">{{ appeal().appellantName || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.email' | translate }}</span>
+                <span data-testid="appellant-email">{{ appeal().appellantEmail || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.phone' | translate }}</span>
+                <span data-testid="appellant-phone">{{ appeal().appellantPhone || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.entity' | translate }}</span>
+                <span data-testid="entity-code">{{ appeal().entityCode || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.filed_by' | translate }}</span>
+                <span data-testid="appeal-filed-by">{{ appeal().appealFiledBy || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Assignment -->
+          <section class="detail-section">
+            <h4>{{ 'aa.detail.assignment' | translate }}</h4>
+            <div class="field-grid">
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.assigned_role' | translate }}</span>
+                <span data-testid="assigned-role">{{ appeal().assignedRole || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.assigned_officer' | translate }}</span>
+                <span data-testid="assigned-officer">{{ appeal().assignedOfficer || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.workflow_stage' | translate }}</span>
+                <span data-testid="workflow-stage">{{ appeal().workflowStage || '—' }}</span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.priority' | translate }}</span>
+                <span data-testid="priority">{{ appeal().priority || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Hearing -->
+          <!--
+            `-summary` suffixes because app-aa-hearing's own date and venue CONTROLS already own
+            data-testid="hearing-date" / "hearing-venue". Both render at once when the hearing panel is
+            open, and the bare ids made every getByTestId on them a strict-mode violation — so a spec
+            trying to fill the form resolved two elements and could not proceed.
+          -->
+          <section class="detail-section">
+            <h4>{{ 'aa.detail.hearing' | translate }}</h4>
+            <div class="field-grid">
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.hearing_date' | translate }}</span>
+                <span data-testid="hearing-date-summary">
+                  {{ appeal().hearingDate ? (appeal().hearingDate | date:'dd MMM yyyy, HH:mm') : ('aa.detail.not_scheduled' | translate) }}
+                </span>
+              </div>
+              <div class="field">
+                <span class="field-label">{{ 'aa.detail.hearing_venue' | translate }}</span>
+                <span data-testid="hearing-venue-summary">{{ appeal().hearingVenue || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!--
+            Order details are FLAT on the detail payload; there is no nested `order` object, which is why
+            this section never rendered before.
+          -->
+          @if (appeal().orderOutcome) {
+            <section class="detail-section order-section" data-testid="order-section">
+              <h4>{{ 'aa.detail.order' | translate }}</h4>
+              <div class="field-grid">
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.order_outcome' | translate }}</span>
+                  <span class="outcome-badge" data-testid="order-outcome" [attr.data-outcome]="appeal().orderOutcome">
+                    {{ appeal().orderOutcome }}
+                  </span>
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.order_date' | translate }}</span>
+                  <span data-testid="order-date">
+                    {{ appeal().orderDate ? (appeal().orderDate | date:'dd MMM yyyy') : '—' }}
+                  </span>
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.award_amount' | translate }}</span>
+                  <span data-testid="award-modified-amount">
+                    {{ appeal().awardModifiedAmount ? '₹' + appeal().awardModifiedAmount : '—' }}
+                  </span>
+                </div>
+              </div>
+              <div class="field full-width">
+                <span class="field-label">{{ 'aa.detail.order_summary' | translate }}</span>
+                <p class="description-text" data-testid="order-summary">{{ appeal().orderSummary || '—' }}</p>
+              </div>
+            </section>
+          }
+
+          <!-- Closure -->
+          @if (appeal().closureCause || appeal().closedAt) {
+            <section class="detail-section" data-testid="closure-section">
+              <h4>{{ 'aa.detail.closure' | translate }}</h4>
+              <div class="field-grid">
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.closure_cause' | translate }}</span>
+                  <span data-testid="closure-cause">{{ appeal().closureCause || '—' }}</span>
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ 'aa.detail.closed_at' | translate }}</span>
+                  <span data-testid="closed-at">
+                    {{ appeal().closedAt ? (appeal().closedAt | date:'dd MMM yyyy, HH:mm') : '—' }}
+                  </span>
+                </div>
+              </div>
+            </section>
+          }
+
+        </div>
+
+        <!-- Center: the actions -->
+        <!-- `.action-panel` is the class the AA specs reach the action region through. `.right-panel` is
+             the region name the reference layout uses for the CENTER column — misleading, but it is what
+             the RBIO screen and its layout spec already call it, and one vocabulary beats an accurate
+             one nobody else shares. -->
+        <div class="action-panel right-panel">
+          <!--
+            OUTSIDE the terminal/actions branches, because the outcome of an action must outlive the
+            actions. Reject and Dismiss both move the appeal to a terminal state, so the re-fetch that
+            follows flipped this panel to the banner below and destroyed the very confirmation the
+            officer had just earned — the write succeeded and the screen said nothing about it.
+          -->
+          @if (actionResult()) {
+            <div class="result-msg" role="status" aria-live="polite" data-testid="action-result"
+                 [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+              {{ actionResult() | translate }}
+            </div>
+          }
+
+          <!-- `terminal-banner` matches the isTerminalState() predicate that gates it. It was
+               data-testid="no-actions", which no spec referenced, while the S3B suite asserted on
+               `terminal-banner` — so the one banner had two names and the assertion could never pass. -->
+          @if (isTerminalState()) {
+            <div class="closed-banner" data-testid="terminal-banner">
+              <span class="closed-icon" aria-hidden="true">&#10003;</span>
+              <h4>{{ 'aa.detail.no_actions_available' | translate }}</h4>
+              <app-status-badge [status]="appeal().status" />
+              <p>{{ 'aa.detail.no_actions_hint' | translate }}</p>
+            </div>
+          } @else {
+            <h4>{{ 'aa.detail.available_actions' | translate }}</h4>
+            <p class="action-hint">{{ 'aa.detail.available_actions_hint' | translate }}</p>
+
+            <!--
+              Server-driven: the cards are exactly the ids the API returned in availableActions, rendered
+              through their translation keys. Nothing here decides eligibility.
+
+              SCHEDULE_HEARING and PASS_ORDER never reach the generic confirm step — selectAction routes
+              them to app-aa-hearing / app-aa-order and clears the selection, so the bar renders its cards
+              and no form. Those two screens own their own remarks and their own submit.
+            -->
+            <app-workflow-action-bar
+              [actions]="availableActions()"
+              [selectedId]="selectedAction()?.id ?? null"
+              [processing]="processing()"
+              [(remarks)]="remarks"
+              [showFormTitle]="true"
+              [fields]="targetPicker"
+              remarksLabelKey="aa.detail.remarks"
+              remarksPlaceholderKey="aa.detail.remarks_placeholder"
+              commitLabelKey="aa.detail.confirm"
+              processingLabelKey="aa.detail.processing"
+              cancelLabelKey="aa.detail.cancel"
+              (select)="selectAction($event)"
+              (commit)="submitAction()"
+              (cancel)="cancelAction()" />
+
+            <ng-template #targetPicker let-action>
+              @if (action.requiresTarget && action.targetType === 'user') {
+                <div class="form-field">
+                  <label for="action-target-user">{{ 'aa.detail.assign_to' | translate }}</label>
+                  <select id="action-target-user" data-testid="action-target-user" [(ngModel)]="targetUser">
+                    <option value="">{{ 'aa.detail.select_officer' | translate }}</option>
+                    @for (officer of aaOfficers(); track officer.id) {
+                      <option [value]="officer.id">{{ officer.name }}</option>
+                    }
+                  </select>
+                </div>
+              }
+            </ng-template>
+
+            <!-- Hearing Panel -->
+            @if (showHearingPanel()) {
+              <app-aa-hearing [appeal]="appeal()" (hearingScheduled)="onHearingScheduled()" (cancelled)="cancelAction()"></app-aa-hearing>
+            }
+
+            <!-- Order Panel -->
+            @if (showOrderPanel()) {
+              <app-aa-order [appeal]="appeal()" (orderPassed)="onOrderPassed()" (cancelled)="cancelAction()"></app-aa-order>
+            }
+
+          }
+        </div>
+
+        <!--
+          ═══ RIGHT RAIL ═══
+          The timeline and the comment thread. Both were full-width blocks at the bottom of the left
+          column, which is what pushed the action cards below the fold on an appeal with any history.
+
+          TWO panels, not three: this screen has NO attachments panel because there is no data source for
+          one. The appeal detail payload carries no attachment list, and the only AA attachment endpoint
+          is the DRAFT assessment's (app-aa-draft-assessment reads draft().attachments), which is a
+          different entity on a different screen. An attachments icon here would open a panel that could
+          only ever say "none" — indistinguishable from an appeal genuinely filed without documents, and
+          exactly the kind of UI-complete-but-wired-to-nothing panel this pass exists to remove. It wants
+          a `GET /api/v1/appeals/{n}/attachments` first.
+        -->
+        <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+
+        <ng-template #railBody let-open>
+          @switch (open) {
+            @case ('timeline') {
+              @if (timelineLoading()) {
+                <div class="loading-inline" data-testid="timeline-loading">{{ 'aa.detail.timeline_loading' | translate }}</div>
+              } @else if (timeline().length === 0) {
+                <p class="empty-timeline" data-testid="timeline-empty">{{ 'aa.detail.timeline_empty' | translate }}</p>
+              } @else {
+                <div class="timeline" data-testid="timeline">
+                  @for (entry of timeline(); track entry.timestamp) {
+                    <div class="timeline-item">
+                      <div class="timeline-dot">
+                        <span class="action-icon" aria-hidden="true">{{ getTimelineIcon(entry.action) }}</span>
+                      </div>
+                      <div class="timeline-content">
+                        <div class="timeline-main">
+                          <span class="timeline-action">{{ getTimelineLabelKey(entry.action) | translate }}</span>
+                          <span class="timeline-time">{{ entry.timestamp | date:'dd MMM yyyy HH:mm' }}</span>
+                        </div>
+                        @if (entry.performedBy) {
+                          <span class="timeline-actor">{{ entry.performedBy }}</span>
+                        }
+                        @if (entry.remarks) {
+                          <p class="timeline-remarks">{{ entry.remarks }}</p>
+                        }
+                        <span class="timeline-flow">
+                          {{ entry.fromStatus }} <span aria-hidden="true">&rarr;</span> {{ entry.toStatus }}
+                        </span>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+            @case ('comments') {
+              <!--
+                Keyed on the ORIGINAL COMPLAINT, not the appeal. The complaint is the one entity every
+                officer works around, so an RBIO note written before the appeal was filed is exactly the
+                context a bench officer needs; a thread scoped to the appeal number would hide it.
+                Absent when the appeal carries no complaint reference — an appeal against an order with
+                no originating complaint has nothing to thread on.
+              -->
+              @if (appeal().originalComplaintNumber) {
+                <app-comment-thread
+                  [complaintNumber]="appeal().originalComplaintNumber"
+                  [audienceRoles]="commentAudienceRoles" />
+              } @else {
+                <!-- `not_available` rather than a new comments-specific key: TranslationService returns an
+                     unseeded key VERBATIM, so inventing one would print "aa.detail.comments_unavailable"
+                     to a bench officer in all eleven locales. -->
+                <p class="empty-timeline">{{ 'aa.detail.not_available' | translate }}</p>
+              }
+            }
+          }
+        </ng-template>
+      </div>
+    }
+  </div>
+</app-shell>

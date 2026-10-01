@@ -1,0 +1,251 @@
+@import 'primeicons/primeicons.css';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — the single source of colour, spacing, radius and type.
+   Values are CRPC's measured palette (the de-facto reference implementation),
+   named semantically so a future RBI brand guide is a change HERE and nowhere
+   else. Never add a raw hex to a component stylesheet; add or reuse a token.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* ── Surfaces ── */
+  --surface-page: #f8fafc;
+  --surface-card: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --surface-sunken: #f5f7fa;
+  --surface-inverse: #1e293b;
+  --surface-hover: #f8fafc;
+  --surface-selected: #eff6ff;
+
+  /* ── Borders ── */
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --border-input: #d1d5db;
+  --border-divider: #f1f5f9;
+
+  /* ── Text ── */
+  --text-heading: #1e293b;
+  --text-body: #334155;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  --text-on-brand: #ffffff;
+  --text-on-inverse: #e2e8f0;
+
+  /* ── Brand ── */
+  --brand-primary: #3b82f6;
+  --brand-primary-hover: #2563eb;
+  --brand-primary-strong: #1e40af;
+  --brand-primary-bg: #eff6ff;
+  --brand-primary-bg-strong: #dbeafe;
+
+  /* ── State: success ── */
+  --state-success-bg: #d1fae5;
+  --state-success-fg: #065f46;
+  --state-success-solid: #10b981;
+
+  /* ── State: warning ── */
+  --state-warning-bg: #fef3c7;
+  --state-warning-fg: #92400e;
+  --state-warning-solid: #f59e0b;
+
+  /* ── State: danger ── */
+  --state-danger-bg: #fee2e2;
+  --state-danger-fg: #991b1b;
+  --state-danger-solid: #ef4444;
+  --state-danger-solid-hover: #dc2626;
+
+  /* ── State: info / neutral ── */
+  --state-info-bg: #e0f2fe;
+  --state-info-fg: #075985;
+  --state-neutral-bg: #e5e7eb;
+  --state-neutral-fg: #374151;
+
+  /* ── Workflow action accents ──
+     One colour per workflow-transition KIND, so the same kind of action reads the same on every screen.
+     These are not state colours: "escalate" and "return" are neither success nor failure, and the five
+     card hexes below (info, forward, escalate, return, close) were duplicated verbatim in
+     cepc-complaint-detail and aa-appeal-detail with no token to point at. Consumed only by
+     shared/workflow-action-bar. Hover tints are derived with color-mix rather than tokenised, because a
+     near-white wash of an accent carries no meaning of its own. */
+  --action-approve: #16a34a;
+  --action-info: #0288d1;
+  --action-forward: #00695c;
+  --action-escalate: #f57c00;
+  --action-return: #6a1b9a;
+  --action-close: #d32f2f;
+
+  /* ── Accent (secondary categorical fills) ── */
+  --accent-violet-bg: #ede9fe;
+  --accent-violet-fg: #5b21b6;
+  --accent-indigo-bg: #e0e7ff;
+  --accent-indigo-fg: #3730a3;
+  --accent-indigo-solid: #6366f1;
+  --accent-teal-bg: #ccfbf1;
+  --accent-teal-fg: #115e59;
+  --accent-pink-bg: #fce7f3;
+  --accent-pink-fg: #9d174d;
+
+  /* ── Spacing scale ── */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 20px;
+  --space-9: 24px;
+
+  /* ── Radius ── */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 999px;
+
+  /* ── Shadow ── */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-raised: 0 2px 8px rgba(59, 130, 246, 0.1);
+  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.2);
+
+  /* ── Type scale ── */
+  --font-sans: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 15px;
+  --text-xl: 18px;
+  --text-2xl: 20px;
+  /* KPI figures. 22px is what cepc-dashboard, admin-dashboard and aa-admin-console already use, so this
+     names the size they had each hardcoded rather than introducing a new one. */
+  --text-3xl: 22px;
+
+  /* ── Layout ── */
+  --shell-header-height: 56px;
+  --shell-sidebar-width: 200px;
+  --shell-sidebar-collapsed: 60px;
+
+  /* ── Focus ── */
+  --focus-ring: 3px solid #2460b9;
+  --focus-ring-offset: 2px;
+
+  /* ═══ CITIZEN-FACING BRAND ═══
+     The public portal is a DIFFERENT audience with its own established identity: a violet primary
+     (#472293) and a deeper blue (#2460b9), neither of which appears in the staff modules. These are
+     tokenised rather than flattened onto --brand-primary, because collapsing the citizen brand into
+     the staff palette is a design decision nobody has taken — and it would change what every
+     complainant sees. Tokenising makes that change a one-line edit if it is ever wanted. */
+  --citizen-primary: #472293;
+  --citizen-primary-alt: #4a3fc7;
+  --citizen-accent: #2460b9;
+  --citizen-accent-bright: #146ef5;
+  --citizen-surface-tint: #f0f4ff;
+  --citizen-surface-dark: #1a1a2e;
+}
+
+@import 'primitives';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #dfe6f5;
+  color: #333;
+  line-height: 1.5;
+}
+
+a { color: inherit; }
+
+button { font-family: inherit; }
+
+/* NFR-003: WCAG 2.1 Level AA - Focus visibility */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* NFR-003: Screen reader only class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* NFR-003: Skip to main content link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #2460b9;
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 10000;
+  font-size: 14px;
+  &:focus {
+    top: 0;
+  }
+}
+
+/* NFR-003: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* NFR-003: High contrast mode support */
+@media (forced-colors: active) {
+  .btn-primary, .btn-secondary, .btn-submit {
+    border: 2px solid ButtonText;
+  }
+}
+
+/* High contrast toggle */
+body.high-contrast {
+  background: #000 !important;
+  color: #fff !important;
+
+  * {
+    color: #fff !important;
+    border-color: #fff !important;
+  }
+
+  a { color: #ffff00 !important; }
+
+  .main-header, .scheme-card, .history-card, .press-card, .faq-item {
+    background: #1a1a1a !important;
+  }
+
+  .hero-outlined-btn, .action-btn, .filter-input {
+    background: #1a1a1a !important;
+    color: #fff !important;
+  }
+
+  .hero-btn, .file-new-btn, .login-btn, .wwd-btn-primary {
+    background: #ff6b35 !important;
+    color: #000 !important;
+  }
+}
+
+/* Speech-to-text textarea wrapper */
+.textarea-with-speech {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  textarea { flex: 1; }
+  app-speech-button { margin-top: 6px; }
+}

@@ -1,0 +1,93 @@
+server:
+  port: 8091
+  servlet:
+    context-path: /cms-search
+
+spring:
+  application:
+    name: cms-search-service
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8&useUnicode=true}
+    username: ${DB_USERNAME:cms_user}
+    password: ${DB_PASSWORD:cms_pass}
+    hikari:
+      # Reindex is the only DB consumer in this service and it is single-threaded, so a large pool
+      # would only take connections the backend needs. Production Hikari across the estate is 100
+      # connections at a 3000ms timeout; this service's share is deliberately tiny.
+      maximum-pool-size: ${DB_POOL_SIZE:4}
+      minimum-idle: 0
+      connection-timeout: 3000
+      idle-timeout: 60000
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: cms-search-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual
+      missing-topics-fatal: false
+
+cms:
+  search:
+    enabled: ${SEARCH_ENABLED:true}
+    host: ${ELASTICSEARCH_HOST:localhost}
+    port: ${ELASTICSEARCH_PORT:9200}
+    scheme: ${ELASTICSEARCH_SCHEME:http}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    alias: ${ELASTICSEARCH_ALIAS:cms-complaints}
+    connect-timeout-ms: ${ELASTICSEARCH_CONNECT_TIMEOUT_MS:1000}
+    socket-timeout-ms: ${ELASTICSEARCH_SOCKET_TIMEOUT_MS:2000}
+    bulk-socket-timeout-ms: ${ELASTICSEARCH_BULK_SOCKET_TIMEOUT_MS:30000}
+    reindex:
+      batch-size: ${REINDEX_BATCH_SIZE:500}
+      pause-between-batches-ms: ${REINDEX_PAUSE_MS:200}
+      max-retries-per-batch: ${REINDEX_MAX_RETRIES:3}
+      max-documents: ${REINDEX_MAX_DOCUMENTS:0}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      elasticsearch:
+        # Sliding window is count-based so the breaker reacts on a slow morning too, rather than
+        # waiting for a time window that never fills.
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 80
+        slow-call-duration-threshold: 2s
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+        record-exceptions:
+          - com.rbi.cms.search.service.SearchUnavailableException
+          - java.io.IOException
+  bulkhead:
+    instances:
+      elasticsearch:
+        # The reason this exists. Tomcat's default pool is 200 threads; without a bulkhead a hung
+        # Elasticsearch lets search occupy all of them and the service stops answering anything,
+        # including its own health endpoint. 16 concurrent ES calls is the ceiling search is allowed
+        # to hold, and the 17th is rejected immediately as "unavailable" instead of queueing.
+        max-concurrent-calls: ${SEARCH_BULKHEAD_MAX:16}
+        max-wait-duration: 0
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  health:
+    circuitbreakers:
+      enabled: true
+
+logging:
+  level:
+    com.rbi.cms: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{correlationId}] %-5level %logger{36} - %msg%n"

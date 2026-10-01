@@ -1,0 +1,1796 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/aa/backlog-traceable.spec.ts",
+      "--project=chromium",
+      "--workers=1",
+      "--reporter=json"
+    ],
+    "configFile": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\playwright.config.ts",
+    "rootDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Projects/My-HRMS-Frontend/CMS2.0_Redzone/cms-portal-frontend/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "aa\\backlog-traceable.spec.ts",
+      "file": "aa/backlog-traceable.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "AA-US-001: Search parent & create Appeal/Representation",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 100,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00101: Happy path — search closed parent, create appeal with pre-populated data",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 13355,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:15.135Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-1006509605a980dd0d2b",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 130,
+              "column": 7
+            },
+            {
+              "title": "TC-00102: Negative — AA Admin cannot create appeals (no button visible)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10735,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:28.815Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-c37019bba7a6e7bd19ca",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 163,
+              "column": 7
+            },
+            {
+              "title": "TC-00103: Edge — search returns only closed/reopened complaints",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 12114,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:39.559Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-468b642d40f8c6991d93",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 173,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-002: Immutable classification (Appeal vs Representation)",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 191,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00201: Happy path — classification auto-set from closure clause, badge visible",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 13138,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:26:51.684Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-890ef502f26ffacc8bdc",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 204,
+              "column": 7
+            },
+            {
+              "title": "TC-00202: Negative — classification field not editable after creation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15156,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:04.955Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-9c8c822a16266d0d2d01",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 230,
+              "column": 7
+            },
+            {
+              "title": "TC-00203: classification can only be changed by an authorised role, and is audited",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1974,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:20.123Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-ed0c0fbe0f6b6a8702fc",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 264,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-003: Auto-creation of NO Record",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 286,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00301: registering an appeal auto-creates the Nodal Officer Record",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 308,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:22.107Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 308,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-7d25476b9d2882c36eb5",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 308,
+              "column": 8
+            },
+            {
+              "title": "TC-00302: Negative — AA Admin cannot edit NO Record content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15250,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:22.108Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-1f6ad0c8877a34883c64",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 315,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-004: Multi-channel registration",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 338,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00401: Happy path — PNO creates appeal with CMD approval fields",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 14544,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts:370:19",
+                        "location": {
+                          "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                          "column": 19,
+                          "line": 370
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 368 |\u001b[39m     \u001b[36mconst\u001b[39m mandatoryFields \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'[required], .required-field'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 369 |\u001b[39m     \u001b[36mconst\u001b[39m count \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m mandatoryFields\u001b[33m.\u001b[39mcount()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 370 |\u001b[39m     expect(count)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                   \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 371 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 372 |\u001b[39m\n \u001b[90m 373 |\u001b[39m   test(\u001b[32m'TC-00402: Negative — account numbers masked in display'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page\u001b[33m,\u001b[39m request }) \u001b[33m=>\u001b[39m {\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "column": 19,
+                            "line": 370
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n  368 |     const mandatoryFields = page.locator('[required], .required-field');\n  369 |     const count = await mandatoryFields.count();\n> 370 |     expect(count).toBeGreaterThan(0);\n      |                   ^\n  371 |   });\n  372 |\n  373 |   test('TC-00402: Negative — account numbers masked in display', async ({ page, request }) => {\n    at C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts:370:19"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:37.484Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\test-results\\aa-backlog-traceable-AA-US-ad2cc-al-with-CMD-approval-fields-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\test-results\\aa-backlog-traceable-AA-US-ad2cc-al-with-CMD-approval-fields-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "column": 19,
+                        "line": 370
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-8a44a44480fe72093468",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 351,
+              "column": 7
+            },
+            {
+              "title": "TC-00402: Negative — account numbers masked in display",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 16231,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:27:52.959Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-07e24e4213d0277ccad5",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 373,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-005: AA DO milestone-based workflow",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 394,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00501: Happy path — AA DO sees correct status options (Register + Process)",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15061,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:09.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-860cb2ad186c0a941c2d",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 407,
+              "column": 7
+            },
+            {
+              "title": "TC-00502: Negative — AA DO cannot access Close milestone",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 14483,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:24.838Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-3a7544b0392a85d388b9",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 423,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-006: AA Reviewer workflow + bulk close",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 440,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00601: Happy path — Reviewer sees review options",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 12122,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:39.333Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-665e1d57851c9ad3d05b",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 453,
+              "column": 7
+            },
+            {
+              "title": "TC-00602: Negative — non-Reviewer role cannot bulk close",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10704,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:28:51.618Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-dba81bd65911509e0a99",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 472,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-008: Appellate Authority final decision",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 484,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00801: Happy path — AA Authority sees all closure options",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15436,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:02.330Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-36ea1154c7aa002023cc",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 497,
+              "column": 7
+            },
+            {
+              "title": "TC-00802: Negative — AA DO cannot access Close milestone decisions",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 14775,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:17.911Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-65afbf662362e5175d1b",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 527,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-009: AA Admin reassign & reopen",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 544,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-00901: the AA Admin holds the reassign and close overrides, a DO does not",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11904,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:32.695Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-6033ee107698d53d219a",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 557,
+              "column": 7
+            },
+            {
+              "title": "TC-00902: Negative — Admin cannot edit complaint content",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15057,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:44.729Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-c80d3e36397f5833fe68",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 579,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-011: Advisory mechanism (RBIOS 2026)",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 613,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01101: Issue Advisory is offered to the Appellate Authority",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: ISSUE_ADVISORY is absent from AaWorkflowTransition (server answers \"Unknown action: ISSUE_ADVISORY\"). No Advisory entity, status, deadline or closure cause exists. The former tests here asserted `x || true` and swallowed the error, so they passed over absent code.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 614,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:59.797Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: ISSUE_ADVISORY is absent from AaWorkflowTransition (server answers \"Unknown action: ISSUE_ADVISORY\"). No Advisory entity, status, deadline or closure cause exists. The former tests here asserted `x || true` and swallowed the error, so they passed over absent code.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 614,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-1c4448ca01861d7d0ce5",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 621,
+              "column": 7
+            },
+            {
+              "title": "TC-01103: Issuing an advisory records a status transition and a response deadline",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: ISSUE_ADVISORY is absent from AaWorkflowTransition (server answers \"Unknown action: ISSUE_ADVISORY\"). No Advisory entity, status, deadline or closure cause exists. The former tests here asserted `x || true` and swallowed the error, so they passed over absent code.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 614,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:59.798Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: ISSUE_ADVISORY is absent from AaWorkflowTransition (server answers \"Unknown action: ISSUE_ADVISORY\"). No Advisory entity, status, deadline or closure cause exists. The former tests here asserted `x || true` and swallowed the error, so they passed over absent code.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 614,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-46913b4bf47975dbd438",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 625,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-012: Award cap validation",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 649,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01201: an award within the statutory cap is accepted",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: PASS_AWARD is not an AA action (server answers \"Unknown action: PASS_AWARD\"); the AA disposal action is PASS_ORDER. AaAppealOrderService.validateAward enforces no cap of any kind and there are no consequential/harassment amount fields. The cap VALUES also need legal sign-off before being encoded.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 650,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:59.798Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: PASS_AWARD is not an AA action (server answers \"Unknown action: PASS_AWARD\"); the AA disposal action is PASS_ORDER. AaAppealOrderService.validateAward enforces no cap of any kind and there are no consequential/harassment amount fields. The cap VALUES also need legal sign-off before being encoded.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 650,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-7d6d7b7ea167283df0bf",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 658,
+              "column": 7
+            },
+            {
+              "title": "TC-01203: an award exceeding the consequential-loss cap is refused",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: PASS_AWARD is not an AA action (server answers \"Unknown action: PASS_AWARD\"); the AA disposal action is PASS_ORDER. AaAppealOrderService.validateAward enforces no cap of any kind and there are no consequential/harassment amount fields. The cap VALUES also need legal sign-off before being encoded.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 650,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:59.798Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: PASS_AWARD is not an AA action (server answers \"Unknown action: PASS_AWARD\"); the AA disposal action is PASS_ORDER. AaAppealOrderService.validateAward enforces no cap of any kind and there are no consequential/harassment amount fields. The cap VALUES also need legal sign-off before being encoded.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 650,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-36192395069db22a3128",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 662,
+              "column": 7
+            },
+            {
+              "title": "TC-01205: an award exceeding the harassment cap is refused",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: PASS_AWARD is not an AA action (server answers \"Unknown action: PASS_AWARD\"); the AA disposal action is PASS_ORDER. AaAppealOrderService.validateAward enforces no cap of any kind and there are no consequential/harassment amount fields. The cap VALUES also need legal sign-off before being encoded.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 650,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:59.798Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: PASS_AWARD is not an AA action (server answers \"Unknown action: PASS_AWARD\"); the AA disposal action is PASS_ORDER. AaAppealOrderService.validateAward enforces no cap of any kind and there are no consequential/harassment amount fields. The cap VALUES also need legal sign-off before being encoded.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 650,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-16ec8c4faab47453d483",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 666,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-013: Hearing management + adjournment history",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 671,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01301: scheduling a hearing records the sitting, its venue and the acting officer",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3476,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:29:59.798Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-4787e0feace7f2843290",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 692,
+              "column": 7
+            },
+            {
+              "title": "TC-01303: rescheduling preserves the vacated sitting and records the reason",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2739,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:03.417Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-f019347b4005bcefe45c",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 726,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-014: Legal cases / sub-judice",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 759,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01401: an appeal records whether a related court trial was declared",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1959,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:06.168Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-f1d310300f936c6d64c3",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 776,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-014: sub-judice blocks a final order",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 810,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01403: an order cannot be passed on a sub-judice appeal without a recorded override",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: no Legal Cases backend exists (POST /api/v1/legal-cases -> 404) and no code prevents an order on a sub-judice matter. The former test passed only because PASS_AWARD is not an AA action, so it proved the opposite of its name. Needs legal sign-off on the rule before build.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 811,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:08.251Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: no Legal Cases backend exists (POST /api/v1/legal-cases -> 404) and no code prevents an order on a sub-judice matter. The former test passed only because PASS_AWARD is not an AA action, so it proved the opposite of its name. Needs legal sign-off on the rule before build.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 811,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-ee24f1b900fb2ae224e3",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 818,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-016: Bulk close Representations",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 835,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01601: several Representations can be closed in one operation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: no /api/v1/appeals/bulk-close endpoint, no BULK_CLOSE transition, no multi-select UI. The former positive test accepted 404 as a pass, i.e. it accepted the feature being absent.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 836,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:08.251Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: no /api/v1/appeals/bulk-close endpoint, no BULK_CLOSE transition, no multi-select UI. The former positive test accepted 404 as a pass, i.e. it accepted the feature being absent.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 836,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-5d033869dd7a4725ee52",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 842,
+              "column": 7
+            },
+            {
+              "title": "TC-01602: an Appeal cannot be bulk-closed — only Representations may be",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: no /api/v1/appeals/bulk-close endpoint, no BULK_CLOSE transition, no multi-select UI. The former positive test accepted 404 as a pass, i.e. it accepted the feature being absent.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 836,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:08.251Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: no /api/v1/appeals/bulk-close endpoint, no BULK_CLOSE transition, no multi-select UI. The former positive test accepted 404 as a pass, i.e. it accepted the feature being absent.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 836,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-1ba7c8c0fedee0791b71",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 846,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-017: Reports",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 862,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01701: the AA reports page loads with its filters",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: /aa/reports is not a registered route and ReportBuilderController exposes no AA data source. The former tests were `expect(x || true)` and a negative assertion against a 404 page.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 863,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:08.251Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: /aa/reports is not a registered route and ReportBuilderController exposes no AA data source. The former tests were `expect(x || true)` and a negative assertion against a 404 page.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 863,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-a65d189e538579921018",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 869,
+              "column": 7
+            },
+            {
+              "title": "TC-01702: an AA DO cannot see admin-only reports",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: /aa/reports is not a registered route and ReportBuilderController exposes no AA data source. The former tests were `expect(x || true)` and a negative assertion against a 404 page.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 863,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:08.251Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: /aa/reports is not a registered route and ReportBuilderController exposes no AA data source. The former tests were `expect(x || true)` and a negative assertion against a 404 page.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 863,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-45843b0adb253345c645",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 873,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-018: RBAC + milestone security",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 878,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01801: Happy path — milestone edit enforced per role",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10643,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:08.251Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-256572a2dd5425cd6883",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 891,
+              "column": 7
+            },
+            {
+              "title": "TC-01802: an AA DO cannot pass a final order, but the Secretariat can",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2527,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:19.017Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-42739b77d6b5d4a6156e",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 909,
+              "column": 7
+            },
+            {
+              "title": "TC-01803: the session expires after 15 minutes of inactivity",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 939,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:21.553Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 939,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-29f85350a8f5599e2dca",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 939,
+              "column": 8
+            }
+          ]
+        },
+        {
+          "title": "AA-US-019: Performance",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 949,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-01901: the AA dashboard loads within the 3s budget",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 15137,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:21.553Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-86fa14a9f69b5c9eaa18",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 972,
+              "column": 7
+            }
+          ]
+        },
+        {
+          "title": "AA-US-042: Email communication templates",
+          "file": "aa/backlog-traceable.spec.ts",
+          "line": 1003,
+          "column": 6,
+          "specs": [
+            {
+              "title": "TC-04201: the Appellate Communications tab offers a template to compose from",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: no AA communication templates, no Appellate Communications tab, no thread storage — and no email/SMS gateway exists in this product at all. The former tests were `expect(x || true)` and a negative assertion against a feature nobody can reach.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 1004,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:36.841Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: no AA communication templates, no Appellate Communications tab, no thread storage — and no email/SMS gateway exists in this product at all. The former tests were `expect(x || true)` and a negative assertion against a feature nobody can reach.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 1004,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-7914fe130aea315958e7",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 1011,
+              "column": 7
+            },
+            {
+              "title": "TC-04202: roles without a correspondence duty cannot compose appellate email",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 60000,
+                  "annotations": [
+                    {
+                      "type": "fixme",
+                      "description": "UNBUILT: no AA communication templates, no Appellate Communications tab, no thread storage — and no email/SMS gateway exists in this product at all. The former tests were `expect(x || true)` and a negative assertion against a feature nobody can reach.",
+                      "location": {
+                        "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                        "line": 1004,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-01T11:30:36.841Z",
+                      "annotations": [
+                        {
+                          "type": "fixme",
+                          "description": "UNBUILT: no AA communication templates, no Appellate Communications tab, no thread storage — and no email/SMS gateway exists in this product at all. The former tests were `expect(x || true)` and a negative assertion against a feature nobody can reach.",
+                          "location": {
+                            "file": "C:\\Projects\\My-HRMS-Frontend\\CMS2.0_Redzone\\cms-portal-frontend\\e2e\\aa\\backlog-traceable.spec.ts",
+                            "line": 1004,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "8f17d176acb5abc1bad1-4771727ba5ef49101f28",
+              "file": "aa/backlog-traceable.spec.ts",
+              "line": 1015,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-01T11:26:14.655Z",
+    "duration": 262477.38,
+    "expected": 22,
+    "skipped": 14,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

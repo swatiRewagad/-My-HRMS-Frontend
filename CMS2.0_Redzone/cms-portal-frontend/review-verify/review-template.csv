@@ -1,0 +1,5 @@
+Screen ID,Area,Screen name,Role used,URL,Capture status,Change in front end,Change in logic (backend)
+CEPC-001,CEPC,CEPC dashboard,CEPC_DO,http://localhost:4202/cepc/dashboard,CAPTURED,,
+RBIO-001,RBIO,RBIO home,RBIO_OFFICER,http://localhost:4202/rbio,CAPTURED,,
+AA-002,AA,AA appeal detail,AA_DO,http://localhost:4202/aa/appeal/APL-20260928-FBC38F,CAPTURED,,
+CRPC-006,CRPC,CRPC help desk,CEPC_DO,http://localhost:4202/crpc/help-desk,CAPTURED,,

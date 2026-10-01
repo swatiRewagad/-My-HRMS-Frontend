@@ -1,0 +1,29 @@
+# Elasticsearch 8.15.3 with analysis-icu, for CMS complaint search in 13 languages.
+#
+# WHY THIS FILE EXISTS
+# The stock elasticsearch image does not ship analysis-icu. The complaint mapping declares two
+# custom analyzers, cms_indic and cms_urdu, and both are built on icu_tokenizer + icu_folding
+# because Elasticsearch has NO built-in analyzer for 9 of the 13 languages this system serves:
+# tamil, telugu, marathi, gujarati, kannada, malayalam, punjabi, oriya and assamese (only english,
+# hindi, bengali, persian and arabic exist as built-ins). Without the plugin, creating the index
+# fails outright with "Unknown tokenizer type [icu_tokenizer]" and there is no Indic search at all.
+#
+# VERSIONS
+#   base image     docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+#   plugin         analysis-icu 8.15.3  (version is implicit: elasticsearch-plugin resolves the
+#                                        plugin to the exact version of the node installing it, and
+#                                        refuses a mismatch, so it cannot silently drift)
+#   java client    8.15.5 via the Spring Boot 3.4.1 BOM — wire-compatible with an 8.15.3 server
+#
+# LICENCE
+# The 8.15.3 distribution is Elastic License 2.0 and self-starts a Basic licence. analysis-icu does
+# not appear in Elastic's licence-gating table, so it is available at Basic. Nothing the complaint
+# mapping uses requires a paid tier.
+FROM docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+
+# --batch accepts the plugin's security policy prompts non-interactively; without it the build
+# blocks forever waiting on stdin that a docker build does not have.
+RUN bin/elasticsearch-plugin install --batch analysis-icu
+
+# Fail the BUILD, not the first request, if the plugin did not actually land.
+RUN bin/elasticsearch-plugin list | grep -q analysis-icu

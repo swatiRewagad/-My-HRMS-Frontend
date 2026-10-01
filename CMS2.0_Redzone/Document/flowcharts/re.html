@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bank / RE Portal — How the bank responds</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html" class="active">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>Bank Portal — the Regulated Entity's side</h1>
+  <p class="sub">What a bank's nodal officer sees and does when a complaint is sent to them for a reply</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    When an Ombudsman office wants the bank's version of events, the complaint appears on a
+    <strong>separate portal that only that bank can see</strong>. A clock starts: <strong>15 days</strong> to reply.
+    The bank's nodal officer opens the case, prepares a reply, attaches supporting documents and submits. As they
+    work, the system quietly tracks <strong>how far along they are</strong> — opened, under review, drafting,
+    documents uploaded, submitted — and shows that progress to the RBI officer. The bank never chooses a status; it
+    is inferred from what they do. If the 15 days lapse, the RBI officer is <strong>unlocked to proceed without the
+    bank</strong>. Submitting late is still allowed.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Who does what</h2>
+  <table class="tbl who-table">
+    <thead><tr><th>Role</th><th>What this person does in the system</th></tr></thead>
+    <tbody>
+      <tr><td>Nodal Officer</td><td>The bank's working contact. Opens complaints, drafts and submits the bank's reply, uploads documents, and can request a clarification or an extension.</td></tr>
+      <tr><td>Principal Nodal Officer</td><td>Senior contact. Everything a Nodal Officer can do, plus updating who the nodal officer is, approving reassignment requests, and filing an appeal against an Ombudsman decision.</td></tr>
+      <tr><td>Entity Administrator</td><td>Same working rights, plus the administrative ones.</td></tr>
+    </tbody>
+  </table>
+  <div class="watch good">
+    <span class="lbl">Data separation</span>
+    Every request is checked against the bank the signed-in user belongs to. A user from one bank cannot see or
+    touch another bank's complaints — the system refuses outright rather than returning an empty list, and there is
+    no "unknown bank" fallback that could leak a case.
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. The bank's journey</h2>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Complaint arrives</span>
+    <span><i class="swatch sw-state"></i>Progress point</span>
+    <span><i class="swatch sw-dec"></i>A check the system makes</span>
+    <span><i class="swatch sw-term"></i>Bank's work is finished</span>
+    <span><i class="swatch sw-auto"></i>Automatic, overnight or on a timer</span>
+    <span><i class="swatch sw-bad"></i>Refused</span>
+  </div>
+  <div class="diagram" id="dg-re-journey">
+    <div class="diagram-bar">
+      <span class="title">Complaint forwarded → 15-day clock → bank replies → back to the RBI officer</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  FWD(["An RBI officer forwards the<br/>complaint to the bank"]):::start
+  FWD --> CLOCK["A 15-day reply clock starts.<br/>The deadline is calculated in<br/>working days and cannot fall on a<br/>weekend or a declared holiday"]:::state
+
+  CLOCK --> SCOPE{"Does the signed-in user<br/>belong to this bank?"}:::dec
+  SCOPE -- no --> DENY["Access refused"]:::bad
+  SCOPE -- yes --> L0
+
+  subgraph LADDER["The progress the RBI officer can see — it only ever moves forward"]
+    direction TB
+    L0["Not yet opened"]:::start
+    L1["Opened"]:::state
+    L2["Under review"]:::state
+    L3["Reply being prepared"]:::state
+    L4["Documents uploaded"]:::state
+    L5["Reply submitted"]:::term
+    L0 -->|"nodal officer opens<br/>the complaint"| L1
+    L1 -->|"starts working on it"| L2
+    L2 -->|"saves draft reply text"| L3
+    L3 -->|"attaches a document"| L4
+    L4 -->|"submits the reply"| L5
+    L1 -.->|"can jump straight ahead —<br/>skipping steps is allowed"| L5
+  end
+
+  subgraph WORK["What the bank can submit"]
+    direction TB
+    W1["A written reply — mandatory"]:::state
+    W2["Supporting documents, within<br/>the configured count and size limits.<br/>All files are checked before<br/>any of them is saved"]:::state
+    W3["A saved draft, to come back to later"]:::state
+    W4["A request for clarification, or for<br/>more time — recorded against the case<br/>but it does not pause the clock"]:::state
+  end
+  L3 -.-> W3
+  L5 --> W1
+  L5 --> W2
+  L2 -.-> W4
+
+  L5 --> DONE["The RBI officer is notified that the<br/>bank has replied, and the complaint<br/>returns to them"]:::term
+  DONE --> BACK(["Back with the RBI officer.<br/>There is no way for the bank<br/>to close a complaint"]):::ext
+
+  subgraph AUTO["What happens automatically"]
+    direction TB
+    N1["Every morning at 9: a reminder<br/>to the RBI officer if the bank has<br/>been sitting on a case too long<br/>(3 days by default)"]:::auto
+    N2["Every 15 minutes: if the 15 days<br/>have lapsed, the case is marked<br/>overdue and the RBI officer is told"]:::auto
+    N3["Every night at 10: the reply window<br/>is formally recorded as breached,<br/>which unlocks the RBI officer to<br/>proceed without the bank"]:::auto
+  end
+  CLOCK -.-> N1
+  CLOCK -.-> N2
+  CLOCK -.-> N3
+  N2 --> OVD["Marked overdue"]:::auto
+  OVD -->|"the bank can still reply —<br/>late submission is accepted"| L5
+  L5 -.-x|"once the reply is in, a case<br/>can never be marked overdue"| N2
+  N3 --> EXP(["RBI officer may now decide<br/>the case without the bank"]):::ext
+</div>
+    </div></div>
+    <div class="hint">The progress ladder only moves forward. Nothing the bank does can take it backwards.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. How the progress ladder works</h2>
+  <p>This is a <strong>separate</strong> indicator from the complaint's own status. It exists to tell the RBI officer
+     whether the bank is actually engaging. Two rules govern it:</p>
+  <ol class="steps">
+    <li><strong>The bank never names a status.</strong> It performs an action — opening the case, saving a draft,
+      attaching a file, submitting — and the system works out the corresponding rung. A direct attempt to set the
+      progress indicator is <strong>refused by design</strong>.</li>
+    <li><strong>It only moves forward.</strong> Skipping rungs is fine; going back is impossible. A bank that opens
+      a case and immediately submits a full reply jumps from "Opened" straight to "Reply submitted".</li>
+  </ol>
+  <table class="tbl">
+    <thead><tr><th>Progress shown</th><th>What triggered it</th><th>Reminders sent?</th></tr></thead>
+    <tbody>
+      <tr><td>Not yet opened</td><td>The starting point</td><td><span class="badge badge-ok">yes</span></td></tr>
+      <tr><td>Opened</td><td>The nodal officer viewed the complaint</td><td><span class="badge badge-ok">yes</span></td></tr>
+      <tr><td>Under review</td><td>Started working on a reply</td><td><span class="badge badge-ok">yes</span></td></tr>
+      <tr><td>Reply being prepared</td><td>Draft reply text saved</td><td><span class="badge badge-ok">yes</span></td></tr>
+      <tr><td>Documents uploaded</td><td>A document was attached</td><td>no</td></tr>
+      <tr><td>Reply submitted</td><td>The reply was submitted — final</td><td>no</td></tr>
+      <tr><td>Overdue</td><td>Set by the system only, never by the bank — final</td><td>no</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>4. Clocks and deadlines</h2>
+  <div class="timebox">
+    <div><b>15 days</b><span>for the bank to reply, from the day it is forwarded</span></div>
+    <div><b>3 days</b><span>of inactivity before the RBI officer gets a nudge</span></div>
+    <div><b>Every 15 min</b><span>how often the system checks for lapsed deadlines</span></div>
+    <div><b>10:00 pm</b><span>nightly check that formally records a breach</span></div>
+  </div>
+  <div class="watch good">
+    <span class="lbl">This is the one module where deadlines genuinely bite</span>
+    Unlike the RBI-side modules, the bank's clock is actively monitored. Three separate jobs run: one nudges, one
+    marks cases overdue, and one records the breach that unlocks proceeding without the bank. Officers are notified
+    at each stage.
+  </div>
+  <div class="watch mild">
+    <span class="lbl">But a late reply is still accepted</span>
+    There is <strong>no hard cut-off</strong>. A bank can submit after the deadline and the system records it,
+    noting that it arrived after the window closed. The consequence of missing the deadline is that the RBI officer
+    <em>may</em> proceed without the bank — not that the bank's reply form locks.
+  </div>
+  <div class="watch mild">
+    <span class="lbl">An officer can set the deadline manually, within limits</span>
+    An RBI officer may set a specific reply date, but the system <strong>refuses</strong> a date in the past, on a
+    weekend, or on a declared holiday. When the system calculates the date itself it silently rolls forward to the
+    next working day.
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. Things to know before relying on this</h2>
+  <table class="tbl">
+    <thead><tr><th>What you might assume</th><th>What the code actually does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Asking for an extension buys the bank more time"</td>
+        <td>It is recorded and the officer is informed, but it <strong>does not move the deadline or pause the clock</strong>. Only the officer changing the date does that.</td>
+      </tr>
+      <tr>
+        <td>"The bank can offer the complainant a settlement here"</td>
+        <td>There is <strong>no settlement-offer feature anywhere</strong> in the bank portal. Settlements are recorded by the RBI officer on their own side.</td>
+      </tr>
+      <tr>
+        <td>"The reminder threshold can be changed and takes effect immediately"</td>
+        <td>No — the threshold is <strong>copied onto the case when it reaches a progress rung</strong>. Changing the configuration afterwards does not affect cases already in flight.</td>
+      </tr>
+      <tr>
+        <td>"Any forwarded complaint can be replied to"</td>
+        <td>Only if the tracking record was created when it was forwarded. If that record is missing, <strong>every attempt to reply, draft or upload fails with "not found"</strong> — the complaint is visible but unanswerable.</td>
+      </tr>
+      <tr>
+        <td>"The bank can close a complaint once it has replied"</td>
+        <td>It cannot. Submitting a reply hands the case straight back to the RBI officer.</td>
+      </tr>
+      <tr>
+        <td>"Uploading several documents saves the valid ones"</td>
+        <td>No — <strong>all files are validated first</strong>. If one fails, nothing is saved.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>The ladder is not <code>Complaint.status</code></h4>
+    <p><code>entity/ReActivityStatus.java</code> is a separate <em>entity-progress</em> enum, rank-ordered:
+       0 <code>NOT_OPENED</code> · 1 <code>OPENED</code> · 2 <code>UNDER_REVIEW</code> ·
+       3 <code>RESPONSE_BEING_PREPARED</code> · 4 <code>DOCUMENTS_UPLOADED</code> ·
+       5 <code>RESPONSE_SUBMITTED</code> (terminal) · 6 <code>OVERDUE</code> (terminal, system only).
+       <code>null</code> is read as <code>NOT_OPENED</code>.
+       The RE touches <code>Complaint.status</code> exactly once — <code>→ re_responded</code>, timeline
+       <code>RE_RESPONDED</code>, bell notification <code>RE_RESPONSE</code> to
+       <code>complaint.assignedOfficer</code>.</p>
+
+    <h4>Sole advancement rule</h4>
+    <p><code>ReActivityStatusService.applyTransition</code> → <code>ReActivityStatus.canAdvanceTo</code>, whose
+       whole body is <code>target.rank &gt; this.rank</code>.
+       <code>PUT /re-portal/activity-status</code> returns
+       <strong>403 <code>re.activity.manual_set_forbidden</code></strong> by design.</p>
+
+    <h4>Transition table</h4>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>From</th><th>Trigger (API)</th><th>To</th><th>Actor</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>any lower</td><td><code>GET /re-portal/complaints/{n}</code></td><td><code>OPENED</code></td><td>RE_NODAL_OFFICER, RE_PNO, RE_ADMIN</td><td>MANUAL</td></tr>
+        <tr><td>any lower</td><td><code>POST …/draft</code>, blank <code>draftText</code></td><td><code>UNDER_REVIEW</code></td><td>same 3</td><td>MANUAL</td></tr>
+        <tr><td>any lower</td><td><code>POST …/draft</code>, non-blank text</td><td><code>RESPONSE_BEING_PREPARED</code></td><td>same 3</td><td>MANUAL</td></tr>
+        <tr><td>any lower</td><td>attachment persisted on respond</td><td><code>DOCUMENTS_UPLOADED</code></td><td>same 3</td><td>MANUAL</td></tr>
+        <tr><td>any lower</td><td><code>POST …/respond</code> (multipart or JSON)</td><td><code>RESPONSE_SUBMITTED</code></td><td>same 3</td><td>MANUAL</td></tr>
+        <tr><td>any non-terminal <em>(rank ignored)</em></td><td>scheduled sweep, window expired</td><td><code>OVERDUE</code></td><td><span class="badge badge-role">SYSTEM</span></td><td><span class="badge badge-info">AUTOMATIC</span></td></tr>
+        <tr><td><code>OVERDUE</code></td><td>late respond / late upload</td><td><code>RESPONSE_SUBMITTED</code> or <code>DOCUMENTS_UPLOADED</code></td><td>same 3</td><td>MANUAL</td></tr>
+        <tr><td><code>RESPONSE_SUBMITTED</code></td><td>anything</td><td>— <em>no edge; can never go OVERDUE</em></td><td>—</td><td>—</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h4>Arrival and the tracker row</h4>
+    <p><code>TriageController</code> → <code>ReResponsivenessService.trackForwarding()</code> creates
+       <code>RE_RESPONSE_TRACKER</code>: <code>forwardedAt = now</code>,
+       <code>windowDays = timeline.re.response_deadline_days</code> (default <strong>15</strong>),
+       <code>windowExpiresAt</code> via <code>businessHoursService</code>, <code>breached=false</code>,
+       <code>exParteEligible=false</code>.
+       <strong>No tracker row ⇒ every RE write path throws <code>NoSuchElementException</code> ⇒ 404.</strong></p>
+
+    <h4>Roles and entity scoping</h4>
+    <p><code>security/RequestIdentityResolver.java:35</code> —
+       <code>RE_ROLES = {RE_NODAL_OFFICER, RE_PNO, RE_ADMIN}</code>, guard <code>@ReRoleGuard</code>.
+       <code>PUT /re-portal/profile/nodal-officer</code> is <code>RE_PNO</code> / <code>RE_ADMIN</code> only;
+       reassignment approval is <code>RE_PNO</code> / <code>RE_ADMIN</code> / <code>ADMIN</code>.
+       <code>RePortalController.extractEntityCode</code> precedence: JWT <code>entity_code</code> claim
+       <strong>first</strong>; then <code>X-Entity-Code</code> / <code>X-User-Entity</code> headers
+       <em>only</em> when <code>cms.security.allow-dev-identity-headers=true</code>; otherwise <strong>403</strong>.
+       No <code>UNKNOWN_ENTITY</code> fallback. Ownership is re-checked in <code>getComplaintDetail</code>
+       (<code>SecurityException</code> ⇒ 403).</p>
+
+    <h4>Scheduled jobs</h4>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Job</th><th>Cron (property)</th><th>Effect</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>ReActivityScheduler.runOverdueSweep</code> → <code>ReActivitySweepService.sweepOverdue</code></td>
+          <td><code>cms.re.activity.overdue-cron</code>, default <code>0 */15 * * * *</code></td>
+          <td>Ladder → <code>OVERDUE</code> + notify <code>complaint.assignedOfficer</code> type
+              <code>RE_ACTIVITY_OVERDUE</code>, same transaction. Gated by
+              <code>cms.re.activity.overdue_escalation_enabled</code> (default <strong>true</strong>)</td>
+        </tr>
+        <tr>
+          <td><code>ReActivityScheduler.runNudgeSweep</code> → <code>sweepNudges</code></td>
+          <td><code>cms.re.activity.nudge-cron</code>, default <code>0 0 9 * * *</code></td>
+          <td><code>RE_ACTIVITY_NUDGE</code> to the owner. Threshold is <strong>snapshotted</strong> into
+              <code>reActivityNudgeDays</code> on entry
+              (<code>cms.re.activity.nudge_days.&lt;status&gt;</code> → <code>.default</code> → 3).
+              Batch <code>cms.re.activity.sweep_batch_size</code> = 500</td>
+        </tr>
+        <tr>
+          <td><code>ReResponsivenessService.detectBreaches</code></td>
+          <td><strong>hardcoded</strong> <code>0 0 22 * * *</code></td>
+          <td><code>breached=true</code>, <strong><code>exParteEligible=true</code></strong> — the real
+              auto-escalation that lets RBIO proceed ex-parte</td>
+        </tr>
+        <tr>
+          <td><code>ReDeadlineSweepService.sweepOverdueDeadlines</code></td>
+          <td>driven externally</td>
+          <td>Sets <em>and clears</em> <code>Complaint.reResponseOverdue</code> from
+              <code>ReResponseDeadlineService.isOverdue</code> — the single server-side definition</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h4>Deadline setting</h4>
+    <p><code>ReResponseDeadlineService.setDeadline</code> writes to <strong>both</strong>
+       <code>Complaint.reResponseDeadline</code> and <code>NodalOfficerRecord.reResponseDeadline</code>.
+       An officer-chosen past date, weekend or holiday is <strong>refused</strong>; a computed default is corrected
+       forward to the next business day.
+       <code>respondToComplaint</code> logs "after window expiry" and proceeds — <strong>no hard cutoff</strong>.</p>
+
+    <h4>Queries the RE can raise</h4>
+    <p><code>CLARIFICATION</code> or <code>EXTENSION_REQUEST</code>, timeline
+       <code>RE_CLARIFICATION</code> / <code>RE_EXTENSION_REQUEST</code>, with
+       <code>fromStatus == toStatus</code> — explicitly no transition.</p>
+
+    <h4>Frontend screens</h4>
+    <p class="mono" style="font-size:13px">
+      cms-portal-frontend/src/app/components/re-portal/ —
+      re-login · re-layout · re-dashboard · pno-dashboard · re-complaint-detail · re-profile ·
+      reassignment/{my-requests, pno-approvals, reassignment-popup}
+    </p>
+    <p>Plus <code>components/re/pno-create-appeal</code> — the PNO's entry point into the
+       <a href="aa.html">Appellate Authority module</a>.</p>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — Bank / RE portal process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

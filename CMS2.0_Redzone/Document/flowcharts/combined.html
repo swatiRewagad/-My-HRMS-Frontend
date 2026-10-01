@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>End-to-end — A complaint's full journey</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html" class="active">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>End-to-end — a complaint's full journey</h1>
+  <p class="sub">How the six parts of the system hand work to each other, from the citizen's first click to the final appeal order</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    A grievance enters the system in one of two ways: the citizen files it on the
+    <a href="portal.html">portal</a>, or it arrives as an email or letter and is typed up at the
+    <a href="crpc.html">central intake centre</a>. It is then routed to one of two offices — the
+    <a href="rbio.html">Ombudsman office</a> if the Scheme covers it, or the
+    <a href="cepc.html">consumer protection cell</a> if not. Both offices work the case up a review ladder, and both
+    can ask the <a href="re.html">bank</a> for its side of the story through a separate bank portal. Both end in a
+    closure letter. Only an Ombudsman closure can then be taken to the
+    <a href="aa.html">Appellate Authority</a>, which can send the case back to the Ombudsman to be reconsidered.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. The whole picture</h2>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Entry into the system</span>
+    <span><i class="swatch sw-state"></i>A stage of work</span>
+    <span><i class="swatch sw-dec"></i>A routing decision</span>
+    <span><i class="swatch sw-term"></i>Closed</span>
+    <span><i class="swatch sw-auto"></i>The bank's involvement</span>
+    <span><i class="swatch sw-gap"></i>A gap between modules</span>
+  </div>
+  <div class="diagram" id="dg-all">
+    <div class="diagram-bar">
+      <span class="title">Six modules, and how work passes between them</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  subgraph A["1 · How a grievance gets in"]
+    direction TB
+    P1["Citizen files on the portal<br/>after passing the eligibility interview"]:::start
+    P2["Email to the RBI inbox"]:::start
+    P3["Physical letter, scanned"]:::start
+    P4["Helpdesk phone call"]:::start
+  end
+
+  subgraph B["2 · Central intake centre (CRPC)"]
+    direction TB
+    C1["Junk, duplicates and unreadable<br/>items filtered out automatically"]:::state
+    C2["An operator keys in the details"]:::state
+    C3["A reviewer approves it"]:::state
+    C1 --> C2 --> C3
+  end
+
+  P2 --> C1
+  P3 --> C1
+  P4 --> C2
+
+  ROUTE{"Which office should handle this?"}:::dec
+  P1 --> ROUTE
+  C3 --> ROUTE
+
+  subgraph C["3 · Ombudsman office (RBIO)"]
+    direction TB
+    R1["Dealing Official examines it<br/>and decides maintainability"]:::state
+    R2["Up the ladder:<br/>Reviewer → Deputy Ombudsman<br/>→ Ombudsman"]:::state
+    R3["Settled, conciliated,<br/>awarded or rejected"]:::term
+    R1 --> R2 --> R3
+    R2 -. "sent back for more work" .-> R1
+  end
+
+  subgraph D["4 · Consumer protection cell (CEPC)"]
+    direction TB
+    E1["Dealing Official examines it<br/>and gathers information"]:::state
+    E2["Up the chain:<br/>Reviewer → In-charge<br/>→ Closing Authority"]:::state
+    E3["Closed, or forwarded to another<br/>office, department or regulator"]:::term
+    E1 --> E2 --> E3
+    E2 -. "sent back" .-> E1
+  end
+
+  ROUTE -- "covered by the<br/>Ombudsman Scheme" --> R1
+  ROUTE -- "not covered, or the<br/>institution is unknown" --> E1
+
+  subgraph E["5 · Bank portal — the other side"]
+    direction TB
+    B1["The bank's nodal officer sees<br/>the complaint on its own portal"]:::auto
+    B2["15 days to reply.<br/>Progress is visible to the officer"]:::auto
+    B3["Reply and documents submitted"]:::auto
+    B4["No reply — the RBI officer is<br/>unlocked to decide without the bank"]:::auto
+    B1 --> B2
+    B2 --> B3
+    B2 --> B4
+  end
+
+  R1 -- "ask the bank" --> B1
+  E1 -- "ask the contact person" --> B1
+  B3 --> R1
+  B3 --> E1
+  B4 --> R1
+
+  LETTER["Closure letter issued<br/>to the citizen"]:::term
+  R3 --> LETTER
+  E3 --> LETTER
+
+  subgraph F["6 · Appellate Authority (AA)"]
+    direction TB
+    A1["Citizen or bank appeals<br/>within 30 days — 60 with a reason"]:::state
+    A2["Admitted, allocated to a bench,<br/>hearing held"]:::state
+    A3["Order: upheld, modified,<br/>set aside or dismissed"]:::term
+    A4["Remanded — sent back<br/>to the Ombudsman"]:::state
+    A1 --> A2 --> A3
+    A2 --> A4
+  end
+
+  LETTER -- "an Ombudsman closure<br/>may be appealed" --> A1
+  A4 --> R1
+
+  NOAPP["A consumer protection cell closure<br/>CANNOT be appealed — no route exists<br/>from CEPC to the Appellate Authority"]:::gap
+  E3 -.- NOAPP
+
+  TRACK(["Throughout, the citizen sees only<br/>one of four stages: Registered,<br/>Under review by RBI,<br/>With the bank, Closed"]):::ext
+  LETTER -.-> TRACK
+</div>
+    </div></div>
+    <div class="hint">Each numbered block is a separate module with its own rules — follow the links in the menu for the detail.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>2. The hand-offs, and who owns the case at each point</h2>
+  <div class="tbl-wrap">
+  <table class="tbl">
+    <thead><tr><th>Hand-off</th><th>Who triggers it</th><th>What changes</th><th>Can it come back?</th></tr></thead>
+    <tbody>
+      <tr><td>Portal → an office</td><td>Automatic on submission</td><td>The complaint is created and placed with an office</td><td>No</td></tr>
+      <tr><td>Intake centre → an office</td><td>A reviewer approving the draft</td><td>The draft becomes a real complaint with its own reference number</td><td>No</td></tr>
+      <tr><td>Ombudsman office → bank</td><td>The Dealing Official</td><td>The complaint appears on the bank's portal; a 15-day clock starts</td><td>Yes — when the bank replies, or when the clock lapses</td></tr>
+      <tr><td>Consumer cell → institution's contact person</td><td>The Dealing Official</td><td>The case waits for the contact person's response</td><td>Yes</td></tr>
+      <tr><td>Office → another RBI office</td><td>The Closing Authority or Ombudsman</td><td>A transfer is <em>requested</em> — the case parks until the central intake head decides</td><td>Yes, if rejected</td></tr>
+      <tr><td>Ombudsman closure → appeal</td><td>The citizen, or the bank's Principal Nodal Officer</td><td>A new appeal record is created alongside the complaint</td><td>—</td></tr>
+      <tr><td>Appeal → back to the Ombudsman (remand)</td><td>The Appellate Authority's Secretariat</td><td>The original complaint reopens; its closure date and clause are cleared</td><td>Yes — it can be closed again, and appealed again</td></tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. All the deadlines in one place</h2>
+  <div class="tbl-wrap">
+  <table class="tbl">
+    <thead><tr><th>Where</th><th>Limit</th><th>What it governs</th><th>Enforced automatically?</th></tr></thead>
+    <tbody>
+      <tr><td>Portal</td><td>30 days</td><td>How long the bank gets before the citizen may come to the Ombudsman</td><td><span class="badge badge-ok">yes — blocks filing</span></td></tr>
+      <tr><td>Portal</td><td>310 days</td><td>Window to approach the Ombudsman when the bank never replied</td><td><span class="badge badge-ok">yes — blocks filing</span></td></tr>
+      <tr><td>Portal</td><td>90 days</td><td>Window to approach the Ombudsman after the bank's reply</td><td><span class="badge badge-ok">yes — blocks filing</span></td></tr>
+      <tr><td>Bank portal</td><td>15 days</td><td>Time for the bank to reply</td><td><span class="badge badge-ok">yes — three jobs monitor it</span></td></tr>
+      <tr><td>Bank portal</td><td>3 days</td><td>Inactivity before the RBI officer is nudged</td><td><span class="badge badge-ok">yes — nightly</span></td></tr>
+      <tr><td>Ombudsman office</td><td>30 / 60 / 120 days</td><td>Disposal targets — normal, conciliation, adjudication</td><td><span class="badge badge-bad">no — display only</span></td></tr>
+      <tr><td>Consumer cell</td><td>7 / 15 / 30 / 45 days</td><td>Disposal target by priority</td><td><span class="badge badge-bad">no — calculated on screen only</span></td></tr>
+      <tr><td>Intake centre</td><td>3 and 5 days</td><td>How long a draft may sit before someone is reminded</td><td><span class="badge badge-warn">reminders only</span></td></tr>
+      <tr><td>Appellate Authority</td><td>30 / 60 days</td><td>Appeal window, and the late window needing a reason</td><td><span class="badge badge-ok">yes — blocks filing</span></td></tr>
+      <tr><td>Appellate Authority</td><td>7 days</td><td>Notice before a hearing</td><td><span class="badge badge-warn">advisory — warns only</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="watch">
+    <span class="lbl">The pattern to take away</span>
+    Deadlines are <strong>strictly enforced at the boundaries</strong> — getting into the system, and getting an
+    answer out of the bank. <strong>Inside the RBI offices, deadlines are informational only.</strong> No case is ever
+    moved, escalated or closed by the system for being late. Overdue work is visible on dashboards but depends
+    entirely on someone acting on it.
+  </div>
+</div>
+
+<div class="card">
+  <h2>4. These are six separate systems, not one workflow</h2>
+  <p>It is important not to read the diagram above as a single pipeline. Each module has its <strong>own vocabulary,
+     its own rules and its own degree of enforcement</strong>, and they all write to the same complaint record.</p>
+  <div class="tbl-wrap">
+  <table class="tbl">
+    <thead><tr><th>Module</th><th>Does the system check the user's role?</th><th>Does it check the case is at the right stage?</th><th>Does it act on deadlines by itself?</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="aa.html">Appellate Authority</a></td>
+        <td><span class="badge badge-ok">Yes, properly</span></td>
+        <td><span class="badge badge-ok">Yes, properly</span></td>
+        <td><span class="badge badge-bad">No</span></td>
+      </tr>
+      <tr>
+        <td><a href="re.html">Bank portal</a></td>
+        <td><span class="badge badge-ok">Yes, plus bank-level separation</span></td>
+        <td><span class="badge badge-ok">Yes — progress only moves forward</span></td>
+        <td><span class="badge badge-ok">Yes — the only module that does</span></td>
+      </tr>
+      <tr>
+        <td><a href="rbio.html">Ombudsman office</a></td>
+        <td><span class="badge badge-warn">Yes, but skipped if the role is not supplied</span></td>
+        <td><span class="badge badge-bad">No — advertised, not enforced</span></td>
+        <td><span class="badge badge-bad">No</span></td>
+      </tr>
+      <tr>
+        <td><a href="cepc.html">Consumer protection cell</a></td>
+        <td><span class="badge badge-bad">No — only a coarse module-level check</span></td>
+        <td><span class="badge badge-bad">No</span></td>
+        <td><span class="badge badge-bad">No</span></td>
+      </tr>
+      <tr>
+        <td><a href="crpc.html">Central intake centre</a></td>
+        <td><span class="badge badge-bad">No, on the live path</span></td>
+        <td><span class="badge badge-bad">No, on the live path</span></td>
+        <td><span class="badge badge-warn">Reminders only</span></td>
+      </tr>
+      <tr>
+        <td><a href="portal.html">Citizen portal</a></td>
+        <td><span class="badge badge-ok">Yes — OTP login required to file</span></td>
+        <td><span class="badge badge-ok">Yes — no skipping ahead in the form</span></td>
+        <td><span class="badge badge-ok">Yes — filing windows block submission</span></td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. Cross-module issues worth raising</h2>
+  <table class="tbl">
+    <thead><tr><th>Issue</th><th>Why it matters across modules</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Consumer protection cell closures cannot be appealed</td>
+        <td>There is no route from CEPC to the Appellate Authority anywhere in the code. A complainant whose case went to CEPC rather than to an Ombudsman office has <strong>no appeal route inside this system</strong>.</td>
+      </tr>
+      <tr>
+        <td>Many closed complaints have no closure clause recorded</td>
+        <td>Appeal eligibility is decided from the closure clause. Without one, the appeal is refused. Thousands of existing closed complaints are affected — this is a <strong>data problem that blocks a whole module</strong>.</td>
+      </tr>
+      <tr>
+        <td>The citizen view understands only a fraction of the internal states</td>
+        <td>Anything it does not recognise shows as "Registered". The entire consumer protection cell review chain, and several Ombudsman stages, fall into that gap — so <strong>citizens see no movement while real work happens</strong>, and the stage can also move backwards.</td>
+      </tr>
+      <tr>
+        <td>Unidentified institutions default to the consumer protection cell</td>
+        <td>When the system cannot work out which institution is complained about, it sends the case to CEPC. Some of those may belong with an Ombudsman office, and being in CEPC also removes the appeal route.</td>
+      </tr>
+      <tr>
+        <td>Refusals that look like successes</td>
+        <td>In both the Ombudsman office and the intake centre, a rejected action frequently returns a normal-looking response with a failure flag inside. Screens that do not read the flag <strong>appear to have worked</strong>. This affects testing, demos and user trust across two modules.</td>
+      </tr>
+      <tr>
+        <td>Notices are recorded but never sent</td>
+        <td>The Appellate Authority records an obligation to notify the parties, but dispatch is not built. <strong>Every such notice sits permanently pending.</strong></td>
+      </tr>
+      <tr>
+        <td>Nothing inside RBI moves on a timer</td>
+        <td>Only the bank's clock is enforced. Neither Ombudsman nor consumer cell cases escalate, reassign or close on their own. Operational control depends entirely on people watching dashboards.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>Five independent state machines over one row</h4>
+    <p>RBIO · CEPC · CRPC · AA · RE all write to the same <code>Complaint</code> record but share no state
+       vocabulary. A sixth read-only projection, <code>CitizenStageMapper</code>, collapses everything into four
+       citizen-facing stages.</p>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>Module</th><th>State field</th><th>Role guard</th><th>From-status guard</th><th>Refusal shape</th></tr></thead>
+      <tbody>
+        <tr><td>AA</td><td><code>AppealStatus</code> (6 values)</td><td><code>AaWorkflowTransition</code> — enforced</td><td>enforced</td><td>403 / 409</td></tr>
+        <tr><td>RE</td><td><code>ReActivityStatus</code> (7 ranks) + <code>Complaint.status</code> once</td><td><code>@ReRoleGuard</code> + entity scoping</td><td><code>target.rank &gt; this.rank</code></td><td>403 / 404</td></tr>
+        <tr><td>RBIO</td><td><code>status</code> + <code>workflowStage</code> + <code>milestone</code> + <code>assignedRole</code></td><td>DB-first, <strong>skipped when <code>userRole</code> is blank</strong></td><td><code>VALID_FROM</code> is advertisement only</td><td><strong>200 with <code>success:false</code></strong></td></tr>
+        <tr><td>CEPC</td><td><code>status</code> + <code>workflowStage</code></td><td>coarse <code>@CepcRoleGuard</code> only</td><td><strong>none on execute</strong></td><td>400 on the three FORWARD_TO_* exits only</td></tr>
+        <tr><td>CRPC (live)</td><td><code>DraftStatus</code> + 2 off-enum strings</td><td><strong>none</strong></td><td><strong>none</strong></td><td><strong>200 with <code>{"error":…}</code></strong></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h4>Routing</h4>
+    <p><code>ComplaintRoutingService</code>. <code>routeFromPublicPortal</code> — non-RBIO entity ⇒ dept CEPC, role
+       <code>CEPC_DO</code>; <strong>UNKNOWN entity fails closed to CEPC</strong>.
+       <code>createComplaintFromDraft</code> resolves via
+       <code>routingService.resolveDepartment(entityName)</code>, overridden by a <code>targetOffice</code> prefix
+       (<code>RBIO*</code> / <code>CEPC*</code>). <code>routeFromCrpcToApproval</code> (:127) and
+       <code>transferBetweenDepartments</code> (:142) both emit the dead role <code>CEPC_OFFICER</code>.</p>
+
+    <h4>Inter-office transfer</h4>
+    <p>Both RBIO's <code>FORWARD_TO_OTHER_OFFICE</code> and CEPC's equivalent delegate to
+       <code>InterOfficeTransferService</code>, parking the complaint at <code>sent_to_other</code>. The decision
+       endpoint on <code>CrpcHeadController</code> (<code>APPROVE_TRANSFER</code> / <code>REJECT_TRANSFER</code>)
+       has <strong>no role guard</strong>.</p>
+
+    <h4>AA → RBIO remand</h4>
+    <p><code>REMAND_TO_OMBUDSMAN</code> writes to the parent complaint: <code>status</code> ⇒
+       <code>in_progress</code>, <code>stage</code> ⇒ <code>REMANDED_BY_AA</code>, <code>closedAt</code> and
+       <code>closureClause</code> nulled, <code>reopenCount</code>++. Missing parent ⇒ hard fail.</p>
+
+    <h4>RE breach → RBIO ex-parte</h4>
+    <p><code>ReResponsivenessService.detectBreaches</code> (hardcoded <code>0 0 22 * * *</code>) sets
+       <code>breached=true</code> and <code>exParteEligible=true</code> on <code>RE_RESPONSE_TRACKER</code>. This is
+       the <strong>only automatic cross-module escalation in the entire system</strong>, and it still requires an
+       officer to act.</p>
+
+    <h4>Scheduled jobs across all modules</h4>
+    <ul>
+      <li><strong>RE</strong> — overdue sweep <code>0 */15 * * * *</code>; nudge <code>0 0 9 * * *</code>;
+          breach detection <code>0 0 22 * * *</code>; deadline sweep (externally driven).</li>
+      <li><strong>CRPC</strong> — five weekday jobs, all notify-only.
+          <code>ThresholdOverflowService</code> queries a dead status and never fires.</li>
+      <li><strong>RBIO</strong> — none. <code>RbioSlaService</code> has no <code>@Scheduled</code> method.</li>
+      <li><strong>CEPC</strong> — none. <code>CepcSlaService</code> has no <code>@Scheduled</code> method.</li>
+      <li><strong>AA</strong> — <code>hearing.reminder_enabled</code> is off by default.</li>
+    </ul>
+
+    <h4>Appeal eligibility depends on RBIO closure data</h4>
+    <p><code>AppealClassificationService.classify</code> raises <code>UnmappedClauseException</code> ⇒ 503 at
+       <code>AppealController:182</code> when <code>closureClause</code> is null, blank or unmapped.
+       <code>isAppealableBy</code>: complainant ⇒ 15(1)(a)+15(1)(b); entity ⇒ 15(1)(b) only.
+       <code>withdrawn</code> is deliberately excluded from appealable statuses.
+       The check endpoint fails open (<code>200 appealable:false</code>); the filing path fails closed (503).</p>
+
+    <h4>Citizen projection</h4>
+    <p><code>CitizenStageMapper</code>: 1 = <code>pending,new</code> · 2 =
+       <code>assigned,in_progress,under_review,escalated</code> · 3 = <code>approved,sent_back</code> ·
+       4 = <code>resolved,rejected,closed,withdrawn</code>; unknown ⇒ 1. Unmapped and therefore invisible:
+       <code>info_requested</code>, <code>forwarded</code>, <code>forwarded_to_contact</code>,
+       <code>reviewer_review</code>, <code>incharge_review</code>, <code>awaiting_closure</code>,
+       <code>forwarded_external</code>, <code>sent_to_other</code>, <code>conciliated</code>,
+       <code>adjudicated</code>, <code>re_responded</code>. <strong>Not monotonic.</strong></p>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — end-to-end process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

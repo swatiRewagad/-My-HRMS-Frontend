@@ -1,0 +1,141 @@
+<!--
+  ══ WHY THE EMPTY, UNAVAILABLE AND FAILED STATES ARE THREE SEPARATE BLOCKS ══
+
+  They used to be one. `staff/task-action` and `crpc/draft-assessment` both ended their error handler
+  with an empty array, so the "No similar cases found" block rendered for a 404, a 500, a timeout and a
+  genuine no-match alike. One of those endpoints did not exist at all and nobody noticed, because the
+  screen said the same calm sentence either way. Each state below therefore has its own role, its own
+  icon and its own wording:
+
+    empty        role=status   the search ran, the index answered, nothing matched
+    unavailable  role=status   the server reported provider:"none" — no search backend is configured
+    failed       role=alert    the request did not complete; we know nothing about the index
+
+  `.similar-cases-list` and `.similar-empty` keep the class names the two old panels used so a BA
+  screenshot review and any ad-hoc selector still match. No e2e spec pins either today (grepped
+  cms-e2e-tests and cms-portal-frontend/e2e: zero hits for "similar").
+
+  The panel is NOT rendered while closed — not an empty shell — so a host that never opens it costs
+  nothing, and the lazy search in the component cannot be mistaken for a load-time fetch.
+-->
+@if (open()) {
+  <!--
+    The Escape handler is on the `tabindex="-1"` region rather than on a plain `<section>`: a keydown
+    listener on a non-focusable element only ever fires through bubbling, so it silently depends on
+    something inside being focused, and `@angular-eslint/template/interactive-supports-focus` flags
+    exactly that. `tabindex="-1"` plus `role="region"` makes the panel a real focus target — the
+    component already moves focus to the heading on open, so Escape has somewhere to bubble from.
+  -->
+  <section class="similar-cases" data-testid="similar-cases"
+           role="region" tabindex="-1"
+           [attr.aria-label]="'similar.panel_title' | translate"
+           [attr.aria-busy]="loading()"
+           (keydown)="onKeydown($event)">
+
+    <header class="similar-header">
+      <!-- tabindex="-1" so the component can move focus here on open; it is not in the tab ring. -->
+      <h3 #heading class="similar-title" tabindex="-1">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        {{ 'similar.panel_title' | translate }}
+        @if (state() === 'results') {
+          <span class="similar-count">{{ results().length }}</span>
+        }
+      </h3>
+      @if (showClose()) {
+        <button type="button" class="similar-close" data-testid="similar-close"
+                [attr.aria-label]="'similar.close' | translate"
+                (click)="closePanel.emit()">
+          <i class="pi pi-chevron-right" aria-hidden="true"></i>
+        </button>
+      }
+    </header>
+
+    <!-- Identifiers only. The API narrows _source on purpose; see the service doc. -->
+    <p class="similar-scope-note">{{ 'similar.identifiers_only_note' | translate }}</p>
+
+    @switch (state()) {
+
+      @case ('loading') {
+        <div class="similar-loading" role="status" data-testid="similar-loading">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>{{ 'similar.searching' | translate }}</span>
+        </div>
+      }
+
+      @case ('results') {
+        <ul class="similar-cases-list" data-testid="similar-results">
+          @for (sc of results(); track sc.complaintNumber) {
+            <li class="similar-card">
+              <!-- A button ONLY when the host acts on the selection. An inert button is reachable by
+                   keyboard and then does nothing, which is worse than a plain row. -->
+              @if (selectable()) {
+                <button type="button" class="similar-card-body"
+                        [attr.data-testid]="'similar-case-' + sc.complaintNumber"
+                        (click)="selectCase.emit(sc)">
+                  <span class="similar-row">
+                    <span class="similar-number">{{ sc.complaintNumber }}</span>
+                    <app-status-badge [status]="sc.status" />
+                  </span>
+                  @if (sc.subject) {
+                    <span class="similar-subject">{{ sc.subject }}</span>
+                  }
+                  @if (sc.createdAt) {
+                    <span class="similar-date">{{ sc.createdAt | date:'dd MMM yyyy' }}</span>
+                  }
+                </button>
+              } @else {
+                <div class="similar-card-body"
+                     [attr.data-testid]="'similar-case-' + sc.complaintNumber">
+                  <span class="similar-row">
+                    <span class="similar-number">{{ sc.complaintNumber }}</span>
+                    <app-status-badge [status]="sc.status" />
+                  </span>
+                  @if (sc.subject) {
+                    <span class="similar-subject">{{ sc.subject }}</span>
+                  }
+                  @if (sc.createdAt) {
+                    <span class="similar-date">{{ sc.createdAt | date:'dd MMM yyyy' }}</span>
+                  }
+                </div>
+              }
+            </li>
+          }
+        </ul>
+      }
+
+      @case ('empty') {
+        <div class="similar-empty similar-state" role="status" data-testid="similar-empty">
+          <i class="pi pi-inbox" aria-hidden="true"></i>
+          <p>{{ 'similar.none_found' | translate }}</p>
+          <p class="similar-state-hint">{{ 'similar.none_found_hint' | translate }}</p>
+          <button type="button" class="similar-retry" data-testid="similar-retry" (click)="retry()">
+            <i class="pi pi-refresh" aria-hidden="true"></i> {{ 'similar.retry' | translate }}
+          </button>
+        </div>
+      }
+
+      @case ('unavailable') {
+        <div class="similar-state similar-unavailable" role="status" data-testid="similar-unavailable">
+          <i class="pi pi-ban" aria-hidden="true"></i>
+          <p>{{ 'similar.unavailable' | translate }}</p>
+          <p class="similar-state-hint">{{ 'similar.unavailable_hint' | translate }}</p>
+          <button type="button" class="similar-retry" data-testid="similar-retry" (click)="retry()">
+            <i class="pi pi-refresh" aria-hidden="true"></i> {{ 'similar.retry' | translate }}
+          </button>
+        </div>
+      }
+
+      @case ('failed') {
+        <!-- role=alert, not status: this is the state the old code silently swallowed. -->
+        <div class="similar-state similar-failed" role="alert" data-testid="similar-error">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <p>{{ 'similar.error_failed' | translate }}</p>
+          <p class="similar-state-hint">{{ 'similar.error_failed_hint' | translate }}</p>
+          <button type="button" class="similar-retry" data-testid="similar-retry" (click)="retry()">
+            <i class="pi pi-refresh" aria-hidden="true"></i> {{ 'similar.retry' | translate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+}

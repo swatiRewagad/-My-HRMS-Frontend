@@ -1,0 +1,74 @@
+@if (commentsToggle()) {
+  <label class="history-comments-toggle">
+    <input type="checkbox" [checked]="hideComments()" (change)="toggleComments()" />
+    <span>Hide comments</span>
+  </label>
+}
+
+@if (mode() === 'history') {
+  <div class="history-timeline">
+    @for (entry of rows(); track $index) {
+      <div class="history-entry">
+        <div class="history-status-badge">{{ actionLabel(entry) }}</div>
+        <p class="history-description">{{ transitionOf(entry) }}</p>
+        <div class="history-meta">
+          <span class="history-date">{{ stamp(entry) | date: 'dd-MM-yyyy HH:mm' }}</span>
+          @if (actorOf(entry); as actor) {
+            <span class="history-actor">{{ actor }}</span>
+            @if (entry.performedByRole) {
+              <span class="history-actor-role">{{ entry.performedByRole }}</span>
+            }
+          }
+          @if (entry.destinationOffice) {
+            <span class="history-destination">{{ entry.destinationOffice }}</span>
+          }
+          @if (entry.closureClause) {
+            <span class="history-clause">{{ entry.closureClause }}</span>
+          }
+        </div>
+        @if (entry.fieldName && (entry.oldValue || entry.newValue)) {
+          <p class="history-change">
+            <span class="change-field">{{ entry.fieldName }}:</span>
+            <span class="change-old">{{ entry.oldValue || '—' }}</span>
+            <span class="change-arrow">→</span>
+            <span class="change-new">{{ entry.newValue || '—' }}</span>
+          </p>
+        }
+        @if (entry.remarks && remarksVisible()) {
+          <p class="history-remarks">{{ entry.remarks }}</p>
+        }
+      </div>
+    } @empty {
+      <p class="empty-text">{{ emptyText() }}</p>
+    }
+  </div>
+} @else if (!rows().length) {
+  <!-- Outside the .timeline wrapper, and the wrapper is not rendered at all when empty: a spec that
+       checks "is the list visible, and if so does it have rows" must not see an empty list as a list. -->
+  <p class="empty-timeline empty-text">{{ emptyText() }}</p>
+} @else {
+  <div class="timeline timeline-list">
+    @for (entry of rows(); track $index) {
+      <!-- Both class names: .timeline-entry and .timeline-item were each pinned by different specs
+           against the screens this component replaces. -->
+      <div class="timeline-entry timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-header-row timeline-main">
+            <span class="timeline-action">{{ actionLabel(entry) }}</span>
+            <span class="timeline-time timeline-date">{{ stamp(entry) | date: 'dd-MM-yyyy HH:mm' }}</span>
+          </div>
+          <span class="timeline-flow">{{ transitionOf(entry) }}</span>
+          @if (actorOf(entry); as actor) {
+            <span class="timeline-actor">
+              {{ actor }}@if (entry.performedByRole) { <em>({{ entry.performedByRole }})</em> }
+            </span>
+          }
+          @if (entry.remarks && remarksVisible()) {
+            <p class="timeline-remarks">{{ entry.remarks }}</p>
+          }
+        </div>
+      </div>
+    }
+  </div>
+}

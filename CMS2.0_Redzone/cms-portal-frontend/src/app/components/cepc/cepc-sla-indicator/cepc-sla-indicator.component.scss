@@ -1,0 +1,34 @@
+.sla-indicator {
+  display: flex; flex-direction: column; gap: 4px; min-width: 100px;
+
+  &.green .progress-fill { background: var(--state-success-solid); }
+  &.yellow .progress-fill { background: #ca8a04; }
+  &.orange .progress-fill { background: var(--state-warning-solid); }
+  &.red .progress-fill { background: var(--state-danger-solid-hover); }
+  &.terminal .progress-fill { background: var(--text-muted); }
+  &.unknown .progress-fill { background: var(--text-subtle); }
+
+  &.green .days-text { color: var(--state-success-solid); }
+  &.yellow .days-text { color: #ca8a04; }
+  &.orange .days-text { color: var(--state-warning-solid); }
+  &.red .days-text { color: var(--state-danger-solid-hover); }
+  &.terminal .days-text { color: var(--text-muted); }
+}
+
+.breached-badge {
+  display: inline-block; align-self: flex-start;
+  padding: 1px 6px; background: var(--state-danger-solid-hover); color: white;
+  border-radius: 3px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px;
+}
+
+.progress-bar {
+  width: 100%; height: 4px; background: var(--border-subtle); border-radius: 2px; overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%; border-radius: 2px; transition: width 0.3s ease;
+}
+
+.days-text {
+  font-size: 11px; font-weight: 500;
+}

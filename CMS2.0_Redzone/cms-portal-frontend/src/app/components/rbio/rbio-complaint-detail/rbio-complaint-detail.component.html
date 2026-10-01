@@ -1,0 +1,510 @@
+<div class="rbio-detail">
+  <!-- Header -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">Complaint Management System</span>
+    </div>
+    <div class="header-right">
+      <div class="header-icons">
+        <button title="Refresh"><i class="pi pi-refresh"></i></button>
+        <button title="Font size">A<sup>-</sup></button>
+        <button>A</button>
+        <button>A<sup>+</sup></button>
+        <button title="Language"><i class="pi pi-globe"></i> English</button>
+        <button title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <span class="user-avatar">{{ (loggedInUser?.name || 'R').charAt(0) }}</span>
+      <div class="user-details">
+        <span class="user-name">{{ loggedInUser?.name || 'Rahul Jain' }}</span>
+        <span class="user-role">RBIO Dealing Officer</span>
+      </div>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">Loading complaint details...</div>
+  }
+
+  @if (complaint(); as c) {
+    <!--
+      ═══ DOCUMENT TABS ═══
+      The complaint is always tab one and cannot be closed; each opened document becomes a sibling tab
+      ALONGSIDE it rather than a modal over it. That is the point: an officer reading an attachment needs
+      the complaint still on screen to compare against, and a modal or a new browser tab breaks that.
+      The `+` used to be decorative; it now opens the attachments rail, which is where documents are.
+    -->
+    <div class="tab-bar" role="tablist">
+      <button type="button" class="tab-item" [class.active]="openDocId() === null"
+              role="tab" [attr.aria-selected]="openDocId() === null"
+              (click)="openDocId.set(null)">
+        <i class="pi pi-file-edit"></i>
+        <span>Complaint {{ c.complaintId }}</span>
+      </button>
+      @for (doc of openDocs(); track doc.id) {
+        <button type="button" class="tab-item doc-tab" [class.active]="openDocId() === doc.id"
+                role="tab" [attr.aria-selected]="openDocId() === doc.id"
+                (click)="openDocId.set(doc.id)">
+          <i class="pi pi-paperclip"></i>
+          <span class="doc-tab-name">{{ doc.fileName }}</span>
+          <span class="doc-tab-close" role="button" [attr.aria-label]="'Close ' + doc.fileName"
+                (click)="closeDoc(doc.id); $event.stopPropagation()">
+            <i class="pi pi-times"></i>
+          </span>
+        </button>
+      }
+      <button type="button" class="tab-add" title="Open a document"
+              (click)="openRail('attachments')"><i class="pi pi-plus"></i></button>
+    </div>
+
+    <!-- Complaint Summary Strip — shared app-complaint-summary (see complaint-summary.types.ts) -->
+    <app-complaint-summary [items]="summaryItems()" [actions]="stripActions" (back)="goBack()" />
+
+    <ng-template #stripActions>
+      <button class="btn-edit" (click)="editMode.set(!editMode())"><i class="pi pi-pencil"></i> Edit</button>
+      <div class="approval-wrapper">
+        <button
+          class="btn-approval"
+          [disabled]="isClosureBlocked()"
+          [title]="isClosureBlocked() ? 'Closure blocked: upload link is active' : ''"
+          (click)="!isClosureBlocked() && showApprovalDropdown.set(!showApprovalDropdown())"
+        >
+          Send for Approval <i class="pi pi-chevron-down"></i>
+        </button>
+        @if (showApprovalDropdown()) {
+          <div class="approval-dropdown">
+            @for (opt of approvalOptions; track opt.key) {
+              <button (click)="openApprovalOption(opt)">{{ opt.label }}</button>
+            }
+          </div>
+        }
+      </div>
+      <button class="btn-more"><i class="pi pi-ellipsis-v"></i></button>
+    </ng-template>
+
+    <!-- Upload Link Status Banner -->
+    <app-upload-link-status
+      [complaintNumber]="c.complaintNumber"
+      (linkStatusChange)="onLinkStatusChange($event)"
+    ></app-upload-link-status>
+
+    <!-- Section Tabs -->
+    <div class="section-tabs">
+      @for (tab of tabs; track tab.key) {
+        <button
+          class="section-tab"
+          [class.active]="activeTab() === tab.key"
+          [class.tab-restricted]="tab.key === 'forward' && isForwardingRestricted()"
+          [title]="tab.key === 'forward' && isForwardingRestricted() ? 'Forwarding restricted: upload link active' : ''"
+          (click)="activeTab.set(tab.key)"
+        >
+          {{ tab.label }}
+          @if (tab.key === 'forward' && isForwardingRestricted()) {
+            <i class="pi pi-lock" style="font-size: 11px; margin-left: 4px; color: var(--state-warning-fg);"></i>
+          }
+        </button>
+      }
+    </div>
+
+    <!--
+      ═══ DOCUMENT VIEWER ═══
+      Rendered INSTEAD of the panels when a document tab is active, not over them, so the browser back
+      button and the tab strip stay the only navigation. An iframe rather than a bespoke viewer: the
+      browser already renders PDF and image attachments, and a preview that cannot show the file is
+      worse than none, so an unpreviewable type falls back to a download.
+    -->
+    @if (activeDoc(); as doc) {
+      <div class="doc-viewer">
+        <div class="doc-viewer-bar">
+          <span class="doc-viewer-name"><i class="pi pi-paperclip"></i> {{ doc.fileName }}</span>
+          <a class="doc-viewer-download" [href]="doc.url" target="_blank" rel="noopener">
+            <i class="pi pi-download"></i> Download
+          </a>
+        </div>
+        @if (doc.previewable) {
+          <iframe class="doc-viewer-frame" [src]="doc.safeUrl" [title]="doc.fileName"></iframe>
+        } @else {
+          <div class="doc-viewer-fallback">
+            <i class="pi pi-file"></i>
+            <p>This file type cannot be previewed in the browser.</p>
+            <a class="doc-viewer-download" [href]="doc.url" target="_blank" rel="noopener">
+              <i class="pi pi-download"></i> Download {{ doc.fileName }}
+            </a>
+          </div>
+        }
+      </div>
+    }
+
+    <!--
+      ═══ MAIN CONTENT: THREE PANELS ═══
+      LEFT is the complaint as filed (read-only facts), CENTER is the officer's assessment and the
+      actions, RIGHT is a thin rail that stays collapsed until asked for. The rail holds history,
+      attachments and email — context an officer consults rather than works in — so it does not compete
+      for width with the assessment. It was previously three full-width tabs BELOW the fold, which meant
+      checking the history scrolled the assessment out of sight and lost unsaved edits from view.
+      Hidden, not destroyed, while a document tab is open: the assessment holds unsaved ngModel state and
+      an @if here would discard an officer's half-written speaking order.
+    -->
+    <div class="detail-content" [hidden]="openDocId() !== null">
+      <!-- Left Panel: Complaint Info -->
+      <div class="left-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-edit"></i> Complaint</h3>
+            <button class="btn-expand"><i class="pi pi-expand"></i></button>
+          </div>
+
+          <div class="section-block">
+            <h4>Basic Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Complainant Name</label>
+                <span>{{ c.complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email ID</label>
+                <span>{{ c.complainantEmail }}</span>
+              </div>
+            </div>
+            <div class="field full-width">
+              <label>Subject</label>
+              <span>{{ c.subject }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Complaint Details</label>
+              <span>{{ c.description }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Comments</label>
+              <span>-</span>
+            </div>
+            <div class="field-group">
+              <div class="field">
+                <label>Mode of Receipt</label>
+                <span>{{ c.modeOfReceipt }}</span>
+              </div>
+              <div class="field">
+                <label>Receipt Date</label>
+                <span>{{ c.receiptDate }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Eligibility</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Proposed Complaint Type</label>
+                <span>-</span>
+              </div>
+              <div class="field">
+                <label>Reason for not a complaint</label>
+                <span>-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Entity Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Entity Name</label>
+                <span>{{ c.entityName || '-' }}</span>
+              </div>
+              <div class="field">
+                <label>Module Name</label>
+                <span>-</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section-block">
+            <h4>Complainant Details</h4>
+            <div class="field-group">
+              <div class="field">
+                <label>Complainant Name</label>
+                <span>{{ c.complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <span>{{ c.complainantEmail }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Assessment -->
+      <div class="right-panel">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3><i class="pi pi-chart-line"></i> Assessment</h3>
+            <div class="panel-icons">
+              <button><i class="pi pi-user"></i></button>
+              <button><i class="pi pi-copy"></i></button>
+              <button><i class="pi pi-history"></i></button>
+              <button><i class="pi pi-download"></i></button>
+            </div>
+          </div>
+
+          <div class="assessment-fields">
+            <div class="field-group">
+              <div class="field" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
+                <label>Proposed Action</label>
+                <select [(ngModel)]="proposedAction" [disabled]="isFieldReadOnlyDueToDecision()" (ngModelChange)="onProposedActionChange($event)">
+                  <option value="">Select a Value</option>
+                  <option value="ACCEPT">Accept</option>
+                  <option value="REJECT">Reject</option>
+                  <option value="TRANSFER">Transfer</option>
+                  <option value="CONCILIATE">Conciliate</option>
+                </select>
+                @if (isFieldReadOnlyDueToDecision()) {
+                  <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+                }
+              </div>
+              <div class="field" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
+                <label>Proposed Clause</label>
+                <input type="text" placeholder="Search" [(ngModel)]="proposedClause" [readonly]="isFieldReadOnlyDueToDecision()" (ngModelChange)="onProposedClauseChange($event)" />
+                @if (isFieldReadOnlyDueToDecision()) {
+                  <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <!-- ═══ Final Decision Section (UST576, UST581-584) ═══ -->
+          @if (activeTab() === 'final') {
+            <div class="final-decision-section" style="margin:12px 0; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid var(--border-subtle);">
+              <h4 style="margin:0 0 10px; font-size:13px; color:var(--text-body);"><i class="pi pi-file-check"></i> Final Decision</h4>
+
+              <!-- Closure Clause Picker (UST581-584) -->
+              <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Closure Clause</label>
+                <select [ngModel]="closureClause()" (ngModelChange)="onClosureClauseChange($event)" (focus)="loadClosureClauses()" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;">
+                  <option value="">Select Closure Clause</option>
+                  @for (clause of allowedClosureClauses(); track clause.code) {
+                    <option [value]="clause.code">{{ clause.code }} - {{ clause.label }}</option>
+                  }
+                </select>
+              </div>
+
+              <!-- Custom Closure Text (UST576) -->
+              <div style="margin-bottom:10px;">
+                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Custom Closure Text (optional)</label>
+                <textarea [ngModel]="customClosureText()" (ngModelChange)="customClosureText.set($event)" rows="3" maxlength="2000" placeholder="Enter custom text to include in the closure letter..." style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; resize:vertical;"></textarea>
+                <span style="font-size:11px; color:var(--text-muted); float:right;">{{ customClosureTextLength }} / 2000</span>
+              </div>
+
+              <!-- Email validation error (UST656) -->
+              @if (emailValidationError()) {
+                <div style="margin-top:8px; padding:8px 12px; background:#fff3f3; border:1px solid #ffcdd2; border-radius:4px; color:#c62828; font-size:12px;">
+                  <i class="pi pi-exclamation-triangle"></i> {{ emailValidationError() }}
+                </div>
+              }
+            </div>
+          }
+
+          <!-- ═══ Comments — shared app-comment-thread ═══ -->
+          <!--
+            What stood here looked like a working thread but was two hardcoded lorem-ipsum entries and a
+            textarea whose text went into a local signal and nowhere else. An officer could type a
+            comment, see it appear, and lose it on navigation.
+          -->
+          @if (complaint(); as c) {
+            <app-comment-thread
+              [complaintNumber]="c.complaintNumber"
+              [audienceRoles]="commentAudienceRoles" />
+          }
+
+          <!-- Speaking Order -->
+          <div class="speaking-order" [attr.title]="isFieldReadOnlyDueToDecision() ? getReadOnlyTooltip() : null">
+            <label>Contents of the Speaking Order</label>
+            <textarea placeholder="Enter text here" [(ngModel)]="speakingOrder" rows="3" [readonly]="isFieldReadOnlyDueToDecision()"></textarea>
+            @if (isFieldReadOnlyDueToDecision()) {
+              <span class="readonly-badge">Set by {{ finalDecisionByRole() }}, cannot be modified</span>
+            }
+          </div>
+
+          <!-- ═══ Deputy Ombudsman Decision (UST758) ═══ -->
+          @if (showDeputyDecision()) {
+            <app-rbio-deputy-decision [complaint]="complaint()" (decisionSubmitted)="onDeputyDecisionSubmitted()"></app-rbio-deputy-decision>
+          }
+
+          <!-- ═══ Add Entity (UST487-495) ═══ -->
+          @if (showAddEntity()) {
+            <app-rbio-add-entity [complaint]="complaint()"></app-rbio-add-entity>
+          }
+
+          <!-- ═══ Forward to Regulatory Body (UST766) ═══ -->
+          @if (showForwardRegulatory()) {
+            <app-rbio-forward-regulatory [complaint]="complaint()"></app-rbio-forward-regulatory>
+          }
+        </div>
+      </div>
+
+      <!--
+        ═══ RIGHT RAIL ═══
+        Collapsed to an icon strip by default, and now the shared app-context-rail so CEPC and AA cannot
+        re-diverge from this screen's behaviour. The rail's own DOM, width contract and overlay body all
+        live in that component; this template supplies only the panel list and the bodies.
+      -->
+      <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+
+      <ng-template #railBody let-open>
+        @switch (open) {
+          @case ('history') {
+            <app-rbio-complaint-history [complaintNumber]="c.complaintNumber" />
+            <app-rbio-action-override-history [complaint]="complaint()" />
+          }
+          @case ('attachments') {
+            <!--
+              ONE attachment list, the real component. An earlier version of this rail rendered its own
+              compact list ABOVE this component, so the same documents appeared twice in one panel with
+              two different empty states — which is the incoherence this whole pass exists to remove.
+              Clicking a filename opens it as a TAB rather than replacing the rail's content, because
+              the reason to open a document is to read it next to the complaint, not instead of the list.
+            -->
+            <app-rbio-attachments [complaintNumber]="c.complaintNumber" [complaintId]="c.dbId"
+                                  (openDocument)="openAttachment($event)" />
+          }
+          @case ('email') {
+            <app-rbio-email-communication [complaintNumber]="c.complaintNumber" />
+          }
+        }
+      </ng-template>
+    </div>
+
+    <!-- ═══ Legal Case Tab Content (UST553-555) ═══ -->
+    @if (activeTab() === 'legal') {
+      <div class="tab-content-section">
+        <app-rbio-legal-case [complaint]="complaint()"></app-rbio-legal-case>
+      </div>
+    }
+
+    <!--
+      Email Communication (UST590-593, UST656-657), Attachments (UST585-589) and Complaint History
+      (UST594-596, plus action-override UST639-642) used to be three full-width blocks here, below the
+      fold. They now live in the right rail above, so an officer consults them WITHOUT the assessment
+      scrolling out of sight. The components are unchanged; only where they render moved.
+    -->
+  }
+</div>
+
+<!-- Assignment Modal -->
+@if (showAssignmentModal() && selectedApprovalOption(); as opt) {
+  <div class="modal-overlay" (click)="cancelAssignment()">
+    <div class="modal-dialog assignment-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-icon"><i class="pi pi-info-circle"></i></div>
+        <div>
+          <h3>Confirmation</h3>
+          <p>Are you sure you want to send the request to {{ opt.label.replace('Send to ', '') }} ?</p>
+        </div>
+        <button class="modal-close" (click)="cancelAssignment()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="field-group">
+          <div class="field">
+            <label>Assignment</label>
+            <select [(ngModel)]="assignmentType">
+              <option value="Automatic">Automatic</option>
+              <option value="Manual">Manual</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>{{ opt.nameLabel }}</label>
+            <div class="search-input">
+              <input type="text" [(ngModel)]="assigneeName" />
+              <i class="pi pi-search"></i>
+            </div>
+          </div>
+        </div>
+
+        @if (opt.key === 'ombudsman') {
+          <div class="field-group">
+            <div class="field">
+              <label>CRPC Proposed Action</label>
+              <select [(ngModel)]="crpcProposedAction">
+                <option value="">Select a Value</option>
+                <option value="ACCEPT">Accept</option>
+                <option value="REJECT">Reject</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>CRPC Proposed Clause</label>
+              <div class="search-input">
+                <input type="text" placeholder="Search" [(ngModel)]="crpcProposedClause" />
+                <i class="pi pi-search"></i>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (opt.key === 'deputy' || opt.key === 'ombudsman') {
+          <div class="systemic-issue">
+            <label>Systemic Issue?</label>
+            <div class="radio-group">
+              <label><input type="radio" name="systemic" [value]="true" [(ngModel)]="systemicIssue" /> Yes</label>
+              <label><input type="radio" name="systemic" [value]="false" [(ngModel)]="systemicIssue" /> No</label>
+            </div>
+          </div>
+        }
+
+        <div class="expected-status">
+          <label>Expected Status Change</label>
+          <div class="status-flow">
+            <span class="status-from">
+              <i class="pi pi-circle-fill green"></i> {{ complaint()?.status === 'NEW' ? 'New Complaint' : complaint()?.status }}
+            </span>
+            <i class="pi pi-arrow-right"></i>
+            <span class="status-to">
+              <i class="pi pi-pencil blue"></i> Sent to {{ opt.label.replace('Send to ', '') }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="cancelAssignment()">Cancel</button>
+        <button class="btn-confirm" (click)="confirmAssignment()">Confirm</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ═══ SAMPLE CLOSURE LETTER MODAL (UST521) ═══ -->
+@if (showSampleLetterModal()) {
+  <div class="modal-overlay">
+    <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:600px;">
+      <div class="modal-header">
+        <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:var(--brand-primary);"></i></div>
+        <div>
+          <h3>Sample Closure Letter</h3>
+          <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
+        </div>
+        <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px; max-height:400px; overflow-y:auto;">
+        <div style="background:#fafafa; padding:16px; border:1px solid var(--border-subtle); border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
+          <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
+          <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
+          <p>Dear [Complainant Name],</p>
+          <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021, we wish to inform you that after careful examination, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
+          <p><em>[Clause-specific reasoning would be inserted here]</em></p>
+          <p>Yours faithfully,<br/>[Authority Name]<br/>[Designation]</p>
+          <p style="font-size:11px;color:#888;">System-generated letter. Not a digitally signed document.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-confirm" (click)="acknowledgeSampleLetter()"><i class="pi pi-check"></i> I have reviewed</button>
+      </div>
+    </div>
+  </div>
+}

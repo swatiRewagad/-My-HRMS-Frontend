@@ -1,0 +1,299 @@
+.rbio-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface-sunken);
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+// ═══ HEADER ═══
+.cms-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 24px; background: var(--surface-card); border-bottom: 1px solid var(--border-subtle); height: 56px;
+  .header-left {
+    display: flex; align-items: center; gap: 10px;
+    .rbi-logo { height: 38px; border-radius: 50%; }
+    .rbi-text { display: flex; flex-direction: column;
+      .rbi-hindi { font-size: 12px; font-weight: 600; color: var(--brand-primary-strong); }
+      .rbi-english { font-size: 9px; color: var(--text-secondary); }
+    }
+    .header-divider-v { width: 1px; height: 30px; background: var(--border-strong); margin: 0 4px; }
+    .cms-logo { height: 32px; }
+    .cms-title { font-size: 18px; font-weight: 700; color: var(--brand-primary-strong); }
+    .cms-subtitle { font-size: 11px; color: var(--text-muted); }
+  }
+  .header-right {
+    display: flex; align-items: center; gap: 14px;
+    .header-icons {
+      display: flex; align-items: center; gap: 8px;
+      button { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 13px; padding: 4px 8px;
+        &:hover { color: var(--text-heading); }
+      }
+    }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: #4caf50; color: white;
+      display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; }
+    .user-details { display: flex; flex-direction: column;
+      .user-name { font-size: 13px; font-weight: 600; color: var(--text-heading); }
+      .user-role { font-size: 11px; color: var(--text-muted); }
+    }
+  }
+}
+
+// ═══ TAB BAR ═══
+// The strip is now real: tab one is the complaint, every other tab is an open document. It scrolls
+// horizontally rather than wrapping, so opening a fourth document never pushes the panels down.
+.tab-bar {
+  display: flex; align-items: center; background: var(--surface-card); border-bottom: 1px solid var(--border-subtle);
+  padding: 0 24px; overflow-x: auto; flex-shrink: 0;
+  .tab-item {
+    display: flex; align-items: center; gap: 6px; flex-shrink: 0; border: none; background: none; cursor: pointer;
+    padding: 10px 20px; font-size: 13px; color: var(--text-secondary); border-bottom: 2px solid transparent;
+    &.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); background: var(--brand-primary-bg); border-radius: 6px 6px 0 0; font-weight: 600; }
+  }
+  .doc-tab { max-width: 220px; }
+  .doc-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-tab-close {
+    display: inline-flex; align-items: center; border-radius: 4px; padding: 2px; color: var(--text-subtle);
+    &:hover { background: var(--surface-page); color: var(--state-danger-solid); }
+  }
+  .tab-add { background: none; border: none; color: var(--text-subtle); cursor: pointer; padding: 10px; font-size: 14px; flex-shrink: 0; }
+}
+
+// ═══ DOCUMENT VIEWER ═══
+// Fills the space the panels occupy, which is what makes it read as a tab rather than an overlay.
+.doc-viewer {
+  display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 20px 24px; gap: 12px;
+}
+
+.doc-viewer-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 8px;
+}
+
+.doc-viewer-name {
+  font-size: 13px; font-weight: 600; color: var(--text-heading); display: flex; align-items: center; gap: 8px;
+  i { color: var(--brand-primary); }
+}
+
+.doc-viewer-download {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+  color: var(--brand-primary); text-decoration: none;
+  &:hover { text-decoration: underline; }
+}
+
+.doc-viewer-frame {
+  flex: 1; min-height: 480px; width: 100%; border: 1px solid var(--border-subtle); border-radius: 8px;
+  background: var(--surface-card);
+}
+
+.doc-viewer-fallback {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 40px;
+  i { font-size: 32px; color: var(--text-subtle); }
+  p { margin: 0; font-size: 13px; color: var(--text-muted); }
+}
+
+// ═══ RIGHT CONTEXT RAIL ═══
+// The rail is now the shared app-context-rail, which owns its own 48px width contract and its overlaying
+// body. Nothing for it is left here: its DOM is inside that component's view encapsulation, so rules
+// written from this stylesheet could not reach it anyway.
+//
+// The rail's own attachment list is likewise gone: app-rbio-attachments is the single list.
+
+// ═══ COMPLAINT STRIP ACTIONS ═══
+// The strip itself is now app-complaint-summary. Only this screen's own buttons stay here, and they are
+// deliberately FLAT rather than nested: they render through the strip's ngTemplateOutlet, so a
+// `.complaint-strip .strip-actions` ancestor selector no longer matches the DOM path they end up in.
+.btn-edit {
+  padding: 8px 16px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--surface-card);
+  font-size: 13px; cursor: pointer; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;
+  &:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+}
+
+.approval-wrapper { position: relative; }
+
+.btn-approval {
+  padding: 8px 16px; border: none; border-radius: 6px; background: var(--state-success-solid);
+  font-size: 13px; cursor: pointer; color: var(--text-on-brand); font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+}
+
+.approval-dropdown {
+  position: absolute; top: 100%; right: 0; margin-top: 4px; background: var(--surface-card);
+  border: 1px solid var(--border-subtle); border-radius: 8px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 100; min-width: 240px; overflow: hidden;
+  button {
+    display: block; width: 100%; padding: 12px 16px; border: none; background: none;
+    font-size: 13px; color: var(--text-body); cursor: pointer; text-align: left;
+    &:hover { background: var(--surface-page); }
+  }
+}
+
+.btn-more {
+  background: none; border: 1px solid var(--border-subtle); border-radius: 6px;
+  padding: 8px 10px; cursor: pointer; color: var(--text-muted);
+}
+
+// ═══ SECTION TABS ═══
+.section-tabs {
+  display: flex; gap: 0; background: var(--surface-card); border-bottom: 1px solid var(--border-subtle); padding: 0 24px;
+  .section-tab {
+    padding: 12px 20px; border: none; background: none; font-size: 13px; color: var(--text-muted);
+    cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 500;
+    &.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); font-weight: 600; }
+    &:hover { color: var(--brand-primary); }
+  }
+}
+
+// ═══ DETAIL CONTENT ═══
+// The third column is the rail's 48px icon strip and never changes width — not even the `gap` varies
+// with rail state, because any grid change at all reflows the two working panels.
+.detail-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr 48px;
+  gap: 20px;
+  padding: 20px 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.panel-card {
+  background: white; border: 1px solid var(--border-subtle); border-radius: 12px; overflow: hidden;
+  .panel-header {
+    display: flex; justify-content: space-between; align-items: center; padding: 14px 18px;
+    border-bottom: 1px solid var(--border-subtle);
+    h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--text-heading);
+      i { margin-right: 6px; color: var(--brand-primary); }
+    }
+    .panel-icons { display: flex; gap: 4px;
+      button { background: none; border: 1px solid var(--border-subtle); border-radius: 6px; padding: 6px 8px;
+        cursor: pointer; color: var(--text-muted); font-size: 13px;
+        &:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+      }
+    }
+    .btn-expand { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; }
+  }
+}
+
+.section-block {
+  padding: 16px 18px; border-bottom: 1px solid var(--surface-subtle);
+  h4 { font-size: 13px; font-weight: 700; color: var(--text-heading); margin: 0 0 12px; display: flex; align-items: center; gap: 6px;
+    &::before { content: '⠿'; color: var(--brand-primary); font-size: 14px; }
+  }
+}
+
+.field-group {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;
+}
+
+.field {
+  display: flex; flex-direction: column; gap: 4px;
+  label { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  span { font-size: 13px; color: var(--text-heading); }
+  select, input { padding: 8px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px;
+    &:focus { outline: none; border-color: var(--brand-primary); }
+  }
+  &.full-width { grid-column: span 2; margin-bottom: 12px; }
+}
+
+// ═══ ASSESSMENT ═══
+.assessment-fields {
+  padding: 16px 18px; border-bottom: 1px solid var(--surface-subtle);
+}
+
+// Comments are app-comment-thread now, which brings its own (view-encapsulated) styling. The old
+// .comments-section / .comment-item / .add-comment rules here styled the mock thread and cannot reach
+// the child component's DOM, so they are gone rather than left as dead weight.
+.speaking-order {
+  padding: 16px 18px; border-bottom: 1px solid var(--surface-subtle); position: relative;
+  label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
+  textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px; resize: vertical;
+    &:focus { outline: none; border-color: var(--brand-primary); }
+  }
+}
+
+// ═══ LOADING ═══
+.loading-state {
+  display: flex; align-items: center; justify-content: center; flex: 1; color: var(--text-muted); font-size: 14px;
+}
+
+// ═══ MODAL ═══
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.assignment-modal {
+  background: white; border-radius: 12px; padding: 24px; width: 520px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+
+  .modal-header {
+    display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px;
+    .modal-icon { color: var(--brand-primary); font-size: 20px; margin-top: 2px; }
+    h3 { margin: 0; font-size: 16px; font-weight: 700; color: var(--text-heading); }
+    p { margin: 4px 0 0; font-size: 13px; color: var(--text-muted); }
+    .modal-close { margin-left: auto; background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
+  }
+
+  .modal-body {
+    .field-group { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .field {
+      display: flex; flex-direction: column; gap: 6px;
+      label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+      select, input { padding: 10px 12px; border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px;
+        &:focus { outline: none; border-color: var(--brand-primary); }
+      }
+    }
+    .search-input { position: relative;
+      input { width: 100%; padding-right: 32px; }
+      i { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--text-subtle); }
+    }
+    .systemic-issue {
+      margin-bottom: 16px;
+      label { font-size: 12px; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 8px; }
+      .radio-group { display: flex; gap: 20px;
+        label { font-size: 13px; font-weight: 400; color: var(--text-body); display: flex; align-items: center; gap: 6px; cursor: pointer; }
+      }
+    }
+    .expected-status {
+      margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--surface-subtle);
+      > label { font-size: 11px; color: var(--text-subtle); margin-bottom: 8px; display: block; }
+      .status-flow { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500;
+        .green { color: var(--state-success-solid); font-size: 10px; margin-right: 4px; }
+        .blue { color: var(--brand-primary); font-size: 10px; margin-right: 4px; }
+        .pi-arrow-right { color: var(--text-subtle); }
+      }
+    }
+  }
+
+  .modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;
+    .btn-cancel { padding: 10px 24px; border: 1px solid var(--border-subtle); border-radius: 6px; background: white;
+      font-size: 13px; cursor: pointer; color: var(--text-secondary); &:hover { background: var(--surface-page); } }
+    .btn-confirm { padding: 10px 24px; border: none; border-radius: 6px; background: var(--brand-primary);
+      font-size: 13px; cursor: pointer; color: white; font-weight: 600; &:hover { background: var(--brand-primary-hover); } }
+  }
+}
+
+// ═══ UST756: Read-only badge for decision-locked fields ═══
+.readonly-badge {
+  display: inline-block;
+  font-size: 10px;
+  color: #f57c00;
+  background: var(--state-warning-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-top: 3px;
+  border: 1px solid #ffe082;
+}
+
+// ═══ Tab content section for Legal Case / History tabs ═══
+.tab-content-section {
+  padding: 16px 24px;
+  background: var(--surface-card);
+  border-radius: 8px;
+  margin: 12px 24px;
+  border: 1px solid var(--border-subtle);
+}

@@ -1,0 +1,5 @@
+Screen ID,Area,Screen name,Role used,URL,Status,Detail,Console errors
+CEPC-001,CEPC,CEPC dashboard,CEPC_DO,http://localhost:4202/cepc/dashboard,CAPTURED,,0
+RBIO-001,RBIO,RBIO home,RBIO_OFFICER,http://localhost:4202/rbio,CAPTURED,,2
+AA-002,AA,AA appeal detail,AA_DO,http://localhost:4202/aa/appeal/APL-20260928-FBC38F,CAPTURED,,0
+CRPC-006,CRPC,CRPC help desk,CEPC_DO,http://localhost:4202/crpc/help-desk,CAPTURED,,3

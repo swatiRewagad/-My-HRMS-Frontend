@@ -1,0 +1,764 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             xmlns:tns="http://www.jboss.org/drools"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             id="Definition"
+             targetNamespace="http://www.rbi.cms/complaint"
+             expressionLanguage="http://www.mvel.org/2.0"
+             typeLanguage="http://www.java.com/javaTypes">
+
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+    <!-- CMS UNIFIED COMPLAINT LIFECYCLE                                    -->
+    <!-- Version: 2.0                                                       -->
+    <!-- Supports: Public Portal + CRPC → RBIO/CEPC multi-role processing  -->
+    <!-- Entity routing: Configurable via Drools (entity-routing rules)    -->
+    <!-- ══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Item Definitions (Process Variables) -->
+    <itemDefinition id="_complaintIdItem" structureRef="String"/>
+    <itemDefinition id="_channelItem" structureRef="String"/>
+    <itemDefinition id="_categoryItem" structureRef="String"/>
+    <itemDefinition id="_priorityItem" structureRef="String"/>
+    <itemDefinition id="_entityNameItem" structureRef="String"/>
+    <itemDefinition id="_entityTypeItem" structureRef="String"/>
+    <itemDefinition id="_entitySizeItem" structureRef="String"/>
+    <itemDefinition id="_departmentItem" structureRef="String"/>
+    <itemDefinition id="_assignedDeoItem" structureRef="String"/>
+    <itemDefinition id="_assignedReviewerItem" structureRef="String"/>
+    <itemDefinition id="_assignedOfficerItem" structureRef="String"/>
+    <itemDefinition id="_assignedSupervisorItem" structureRef="String"/>
+    <itemDefinition id="_assignedConciliatorItem" structureRef="String"/>
+    <itemDefinition id="_assignedAdjudicatorItem" structureRef="String"/>
+    <itemDefinition id="_deoDecisionItem" structureRef="String"/>
+    <itemDefinition id="_reviewerDecisionItem" structureRef="String"/>
+    <itemDefinition id="_officerDecisionItem" structureRef="String"/>
+    <itemDefinition id="_supervisorDecisionItem" structureRef="String"/>
+    <itemDefinition id="_conciliationOutcomeItem" structureRef="String"/>
+    <itemDefinition id="_adjudicationOutcomeItem" structureRef="String"/>
+    <itemDefinition id="_resolutionSummaryItem" structureRef="String"/>
+    <itemDefinition id="_escalationReasonItem" structureRef="String"/>
+    <itemDefinition id="_regionalOfficeItem" structureRef="String"/>
+    <itemDefinition id="_currentRoleItem" structureRef="String"/>
+    <itemDefinition id="_returnToRoleItem" structureRef="String"/>
+
+    <process id="com.rbi.cms.complaint-lifecycle" name="CMS Unified Complaint Lifecycle v2.0" isExecutable="true"
+             processType="Private" tns:packageName="com.rbi.cms.workflow">
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!-- PROCESS VARIABLES                                         -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <property id="complaintId" itemSubjectRef="_complaintIdItem"/>
+        <property id="channel" itemSubjectRef="_channelItem"/>
+        <property id="category" itemSubjectRef="_categoryItem"/>
+        <property id="priority" itemSubjectRef="_priorityItem"/>
+        <property id="entityName" itemSubjectRef="_entityNameItem"/>
+        <property id="entityType" itemSubjectRef="_entityTypeItem"/>
+        <property id="entitySize" itemSubjectRef="_entitySizeItem"/>
+        <property id="department" itemSubjectRef="_departmentItem"/>
+        <property id="assignedDeo" itemSubjectRef="_assignedDeoItem"/>
+        <property id="assignedReviewer" itemSubjectRef="_assignedReviewerItem"/>
+        <property id="assignedOfficer" itemSubjectRef="_assignedOfficerItem"/>
+        <property id="assignedSupervisor" itemSubjectRef="_assignedSupervisorItem"/>
+        <property id="assignedConciliator" itemSubjectRef="_assignedConciliatorItem"/>
+        <property id="assignedAdjudicator" itemSubjectRef="_assignedAdjudicatorItem"/>
+        <property id="deoDecision" itemSubjectRef="_deoDecisionItem"/>
+        <property id="reviewerDecision" itemSubjectRef="_reviewerDecisionItem"/>
+        <property id="officerDecision" itemSubjectRef="_officerDecisionItem"/>
+        <property id="supervisorDecision" itemSubjectRef="_supervisorDecisionItem"/>
+        <property id="conciliationOutcome" itemSubjectRef="_conciliationOutcomeItem"/>
+        <property id="adjudicationOutcome" itemSubjectRef="_adjudicationOutcomeItem"/>
+        <property id="resolutionSummary" itemSubjectRef="_resolutionSummaryItem"/>
+        <property id="escalationReason" itemSubjectRef="_escalationReasonItem"/>
+        <property id="regionalOffice" itemSubjectRef="_regionalOfficeItem"/>
+        <property id="currentRole" itemSubjectRef="_currentRoleItem"/>
+        <property id="returnToRole" itemSubjectRef="_returnToRoleItem"/>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PHASE 1: INTAKE                                                -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <startEvent id="StartEvent" name="Complaint Received">
+            <outgoing>Flow_Start_ChannelGateway</outgoing>
+        </startEvent>
+
+        <!-- Channel Gateway: Portal vs CRPC -->
+        <exclusiveGateway id="ChannelGateway" name="Channel?" gatewayDirection="Diverging" default="Flow_Channel_Portal">
+            <incoming>Flow_Start_ChannelGateway</incoming>
+            <outgoing>Flow_Channel_Portal</outgoing>
+            <outgoing>Flow_Channel_CRPC</outgoing>
+        </exclusiveGateway>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PATH A: PUBLIC PORTAL (direct filing)                          -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <task id="PortalValidationTask" name="Portal: Auto-Validate &amp; Register"
+              tns:taskName="com.rbi.cms.workflow.handler.PortalRegistrationHandler">
+            <incoming>Flow_Channel_Portal</incoming>
+            <outgoing>Flow_Portal_Registered</outgoing>
+        </task>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PATH B: CRPC (Email / Physical Letter / CPGRAMS)               -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- B1: Draft Created -->
+        <task id="DraftCreationTask" name="CRPC: Create Draft"
+              tns:taskName="com.rbi.cms.workflow.handler.DraftCreationHandler">
+            <incoming>Flow_Channel_CRPC</incoming>
+            <outgoing>Flow_Draft_DeoAssignment</outgoing>
+        </task>
+
+        <!-- B2: DEO Assignment (Round-Robin) -->
+        <exclusiveGateway id="DeoAssignmentMerge" name="Merge to DEO" gatewayDirection="Converging">
+            <incoming>Flow_Draft_DeoAssignment</incoming>
+            <incoming>Flow_Reviewer_SentBack</incoming>
+            <outgoing>Flow_DeoMerge_DeoAssignment</outgoing>
+        </exclusiveGateway>
+
+        <task id="DeoAssignmentTask" name="CRPC: Assign DEO (Round-Robin)"
+              tns:taskName="com.rbi.cms.workflow.handler.PassThroughHandler">
+            <incoming>Flow_DeoMerge_DeoAssignment</incoming>
+            <outgoing>Flow_DeoAssignment_DeoTask</outgoing>
+        </task>
+
+        <!-- B3: DEO Assessment -->
+        <task tns:taskName="Human Task" id="DeoAssessmentTask" name="CRPC: DEO Assessment">
+            <incoming>Flow_DeoAssignment_DeoTask</incoming>
+            <outgoing>Flow_DeoTask_DeoDecision</outgoing>
+            <ioSpecification>
+                <dataInput id="DeoInput_complaintId" name="complaintId"/>
+                <dataInput id="DeoInput_category" name="category"/>
+                <dataOutput id="DeoOutput_decision" name="deoDecision"/>
+                <dataOutput id="DeoOutput_category" name="category"/>
+                <dataOutput id="DeoOutput_priority" name="priority"/>
+                <dataOutput id="DeoOutput_entityName" name="entityName"/>
+                <dataOutput id="DeoOutput_entitySize" name="entitySize"/>
+                <inputSet>
+                    <dataInputRefs>DeoInput_complaintId</dataInputRefs>
+                    <dataInputRefs>DeoInput_category</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>DeoOutput_decision</dataOutputRefs>
+                    <dataOutputRefs>DeoOutput_category</dataOutputRefs>
+                    <dataOutputRefs>DeoOutput_priority</dataOutputRefs>
+                    <dataOutputRefs>DeoOutput_entityName</dataOutputRefs>
+                    <dataOutputRefs>DeoOutput_entitySize</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedDeo</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- B4: DEO Decision -->
+        <exclusiveGateway id="DeoDecisionGateway" name="DEO Decision?" gatewayDirection="Diverging">
+            <incoming>Flow_DeoTask_DeoDecision</incoming>
+            <outgoing>Flow_Deo_Maintainable</outgoing>
+            <outgoing>Flow_Deo_NonMaintainable</outgoing>
+        </exclusiveGateway>
+
+        <endEvent id="EndEvent_NonMaintainable" name="Closed (Non-Maintainable)">
+            <incoming>Flow_Deo_NonMaintainable</incoming>
+            <terminateEventDefinition/>
+        </endEvent>
+
+        <!-- B5: Reviewer Assignment (Round-Robin) -->
+        <task id="ReviewerAssignmentTask" name="CRPC: Assign Reviewer (Round-Robin)"
+              tns:taskName="com.rbi.cms.workflow.handler.PassThroughHandler">
+            <incoming>Flow_Deo_Maintainable</incoming>
+            <outgoing>Flow_ReviewerAssignment_ReviewerTask</outgoing>
+        </task>
+
+        <!-- B6: Reviewer Assessment -->
+        <task tns:taskName="Human Task" id="ReviewerAssessmentTask" name="CRPC: Reviewer Assessment">
+            <incoming>Flow_ReviewerAssignment_ReviewerTask</incoming>
+            <outgoing>Flow_ReviewerTask_ReviewerDecision</outgoing>
+            <ioSpecification>
+                <dataInput id="RevInput_complaintId" name="complaintId"/>
+                <dataInput id="RevInput_deoDecision" name="deoDecision"/>
+                <dataOutput id="RevOutput_decision" name="reviewerDecision"/>
+                <dataOutput id="RevOutput_regionalOffice" name="regionalOffice"/>
+                <inputSet>
+                    <dataInputRefs>RevInput_complaintId</dataInputRefs>
+                    <dataInputRefs>RevInput_deoDecision</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>RevOutput_decision</dataOutputRefs>
+                    <dataOutputRefs>RevOutput_regionalOffice</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedReviewer</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- B7: Reviewer Decision -->
+        <exclusiveGateway id="ReviewerDecisionGateway" name="Reviewer Decision?" gatewayDirection="Diverging">
+            <incoming>Flow_ReviewerTask_ReviewerDecision</incoming>
+            <outgoing>Flow_Reviewer_Approve</outgoing>
+            <outgoing>Flow_Reviewer_SentBack</outgoing>
+            <outgoing>Flow_Reviewer_NotComplaint</outgoing>
+        </exclusiveGateway>
+
+        <endEvent id="EndEvent_NotComplaint" name="Closed (Not a Complaint)">
+            <incoming>Flow_Reviewer_NotComplaint</incoming>
+            <terminateEventDefinition/>
+        </endEvent>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PHASE 2: REGISTRATION & DEPARTMENT ROUTING                     -->
+        <!-- Both Portal and CRPC converge here                             -->
+        <!-- Configurable routing: entitySize → RBIO or CEPC               -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <exclusiveGateway id="RegistrationConvergeGateway" name="Complaint Registered" gatewayDirection="Converging">
+            <incoming>Flow_Portal_Registered</incoming>
+            <incoming>Flow_Reviewer_Approve</incoming>
+            <outgoing>Flow_Registered_DeptRouting</outgoing>
+        </exclusiveGateway>
+
+        <!-- Department Routing (Drools - configurable rules based on entity) -->
+        <!-- Rules evaluate: entityName, entitySize, entityType, category     -->
+        <!-- Output: department = "RBIO" or "CEPC"                            -->
+        <!-- NOTE: Schema TBD - rules are hot-reloadable via Drools DRL       -->
+        <task id="DepartmentRoutingTask" name="Route to Department (Configurable)"
+              tns:taskName="com.rbi.cms.workflow.handler.PassThroughHandler">
+            <incoming>Flow_Registered_DeptRouting</incoming>
+            <outgoing>Flow_DeptRouting_DeptGateway</outgoing>
+        </task>
+
+        <!-- Department Gateway: RBIO vs CEPC -->
+        <exclusiveGateway id="DepartmentGateway" name="Department?" gatewayDirection="Diverging" default="Flow_Dept_RBIO">
+            <incoming>Flow_DeptRouting_DeptGateway</incoming>
+            <outgoing>Flow_Dept_RBIO</outgoing>
+            <outgoing>Flow_Dept_CEPC</outgoing>
+        </exclusiveGateway>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PHASE 3A: RBIO PROCESSING                                      -->
+        <!-- Roles: Officer → Supervisor → Conciliator → Adjudicator        -->
+        <!-- Flow can go back and forth between roles                        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- RBIO: Officer Assignment (Round-Robin within RBIO regional office) -->
+        <exclusiveGateway id="RbioOfficerMerge" name="Merge to RBIO Officer" gatewayDirection="Converging">
+            <incoming>Flow_Dept_RBIO</incoming>
+            <incoming>Flow_RbioSupervisor_ReturnToOfficer</incoming>
+            <outgoing>Flow_RbioOfficerMerge_Assignment</outgoing>
+        </exclusiveGateway>
+
+        <task id="RbioOfficerAssignmentTask" name="RBIO: Assign Officer"
+              tns:taskName="com.rbi.cms.workflow.handler.PassThroughHandler">
+            <incoming>Flow_RbioOfficerMerge_Assignment</incoming>
+            <outgoing>Flow_RbioOfficerAssign_OfficerTask</outgoing>
+        </task>
+
+        <!-- RBIO Officer: Investigation & Initial Assessment -->
+        <task tns:taskName="Human Task" id="RbioOfficerTask" name="RBIO: Officer Investigation">
+            <incoming>Flow_RbioOfficerAssign_OfficerTask</incoming>
+            <outgoing>Flow_RbioOfficer_Decision</outgoing>
+            <ioSpecification>
+                <dataInput id="RbioOfficerIn_complaintId" name="complaintId"/>
+                <dataInput id="RbioOfficerIn_category" name="category"/>
+                <dataInput id="RbioOfficerIn_priority" name="priority"/>
+                <dataOutput id="RbioOfficerOut_decision" name="officerDecision"/>
+                <dataOutput id="RbioOfficerOut_resolution" name="resolutionSummary"/>
+                <inputSet>
+                    <dataInputRefs>RbioOfficerIn_complaintId</dataInputRefs>
+                    <dataInputRefs>RbioOfficerIn_category</dataInputRefs>
+                    <dataInputRefs>RbioOfficerIn_priority</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>RbioOfficerOut_decision</dataOutputRefs>
+                    <dataOutputRefs>RbioOfficerOut_resolution</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <dataInputAssociation>
+                <sourceRef>complaintId</sourceRef>
+                <targetRef>RbioOfficerIn_complaintId</targetRef>
+            </dataInputAssociation>
+            <dataInputAssociation>
+                <sourceRef>category</sourceRef>
+                <targetRef>RbioOfficerIn_category</targetRef>
+            </dataInputAssociation>
+            <dataInputAssociation>
+                <sourceRef>priority</sourceRef>
+                <targetRef>RbioOfficerIn_priority</targetRef>
+            </dataInputAssociation>
+            <dataOutputAssociation>
+                <sourceRef>RbioOfficerOut_decision</sourceRef>
+                <targetRef>officerDecision</targetRef>
+            </dataOutputAssociation>
+            <dataOutputAssociation>
+                <sourceRef>RbioOfficerOut_resolution</sourceRef>
+                <targetRef>resolutionSummary</targetRef>
+            </dataOutputAssociation>
+        </task>
+
+        <!-- RBIO Officer Decision Gateway -->
+        <exclusiveGateway id="RbioOfficerDecisionGateway" name="Officer Decision?" gatewayDirection="Diverging" default="Flow_RbioOfficer_Resolved">
+            <incoming>Flow_RbioOfficer_Decision</incoming>
+            <outgoing>Flow_RbioOfficer_Resolved</outgoing>
+            <outgoing>Flow_RbioOfficer_EscalateToSupervisor</outgoing>
+            <outgoing>Flow_RbioOfficer_SendToConciliation</outgoing>
+        </exclusiveGateway>
+
+        <!-- RBIO Supervisor Review -->
+        <exclusiveGateway id="RbioSupervisorMerge" name="Merge to RBIO Supervisor" gatewayDirection="Converging">
+            <incoming>Flow_RbioOfficer_EscalateToSupervisor</incoming>
+            <incoming>Flow_RbioConciliation_EscalateToSupervisor</incoming>
+            <incoming>Flow_SLA_RbioOfficer</incoming>
+            <outgoing>Flow_RbioSupervisorMerge_Task</outgoing>
+        </exclusiveGateway>
+
+        <task tns:taskName="Human Task" id="RbioSupervisorTask" name="RBIO: Supervisor Review">
+            <incoming>Flow_RbioSupervisorMerge_Task</incoming>
+            <outgoing>Flow_RbioSupervisor_Decision</outgoing>
+            <ioSpecification>
+                <dataInput id="RbioSupIn_complaintId" name="complaintId"/>
+                <dataOutput id="RbioSupOut_decision" name="supervisorDecision"/>
+                <inputSet>
+                    <dataInputRefs>RbioSupIn_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>RbioSupOut_decision</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedSupervisor</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- RBIO Supervisor Decision -->
+        <exclusiveGateway id="RbioSupervisorDecisionGateway" name="Supervisor Decision?" gatewayDirection="Diverging">
+            <incoming>Flow_RbioSupervisor_Decision</incoming>
+            <outgoing>Flow_RbioSupervisor_Resolved</outgoing>
+            <outgoing>Flow_RbioSupervisor_ReturnToOfficer</outgoing>
+            <outgoing>Flow_RbioSupervisor_SendToAdjudication</outgoing>
+            <outgoing>Flow_RbioSupervisor_SendToConciliation</outgoing>
+        </exclusiveGateway>
+
+        <!-- RBIO Conciliation -->
+        <exclusiveGateway id="RbioConciliationMerge" name="Merge to RBIO Conciliation" gatewayDirection="Converging">
+            <incoming>Flow_RbioOfficer_SendToConciliation</incoming>
+            <incoming>Flow_RbioSupervisor_SendToConciliation</incoming>
+            <outgoing>Flow_RbioConciliationMerge_Task</outgoing>
+        </exclusiveGateway>
+
+        <task tns:taskName="Human Task" id="RbioConciliationTask" name="RBIO: Conciliation">
+            <incoming>Flow_RbioConciliationMerge_Task</incoming>
+            <outgoing>Flow_RbioConciliation_Outcome</outgoing>
+            <ioSpecification>
+                <dataInput id="RbioConcIn_complaintId" name="complaintId"/>
+                <dataOutput id="RbioConcOut_outcome" name="conciliationOutcome"/>
+                <inputSet>
+                    <dataInputRefs>RbioConcIn_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>RbioConcOut_outcome</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedConciliator</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- RBIO Conciliation Outcome -->
+        <exclusiveGateway id="RbioConciliationOutcomeGateway" name="Conciliation Outcome?" gatewayDirection="Diverging">
+            <incoming>Flow_RbioConciliation_Outcome</incoming>
+            <outgoing>Flow_RbioConciliation_Resolved</outgoing>
+            <outgoing>Flow_RbioConciliation_EscalateToSupervisor</outgoing>
+            <outgoing>Flow_RbioConciliation_ToAdjudication</outgoing>
+        </exclusiveGateway>
+
+        <!-- RBIO Adjudication (Final decision - Award/Rejection) -->
+        <exclusiveGateway id="RbioAdjudicationMerge" name="Merge to RBIO Adjudication" gatewayDirection="Converging">
+            <incoming>Flow_RbioSupervisor_SendToAdjudication</incoming>
+            <incoming>Flow_RbioConciliation_ToAdjudication</incoming>
+            <outgoing>Flow_RbioAdjudicationMerge_Task</outgoing>
+        </exclusiveGateway>
+
+        <task tns:taskName="Human Task" id="RbioAdjudicationTask" name="RBIO: Adjudication (Award)">
+            <incoming>Flow_RbioAdjudicationMerge_Task</incoming>
+            <outgoing>Flow_RbioAdjudication_Resolved</outgoing>
+            <ioSpecification>
+                <dataInput id="RbioAdjIn_complaintId" name="complaintId"/>
+                <dataOutput id="RbioAdjOut_outcome" name="adjudicationOutcome"/>
+                <dataOutput id="RbioAdjOut_resolution" name="resolutionSummary"/>
+                <inputSet>
+                    <dataInputRefs>RbioAdjIn_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>RbioAdjOut_outcome</dataOutputRefs>
+                    <dataOutputRefs>RbioAdjOut_resolution</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedAdjudicator</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PHASE 3B: CEPC PROCESSING                                      -->
+        <!-- Same role hierarchy as RBIO but for large entities (HDFC etc.) -->
+        <!-- Roles: Officer → Supervisor → Conciliator → Adjudicator        -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- CEPC: Officer Assignment -->
+        <exclusiveGateway id="CepcOfficerMerge" name="Merge to CEPC Officer" gatewayDirection="Converging">
+            <incoming>Flow_Dept_CEPC</incoming>
+            <incoming>Flow_CepcSupervisor_ReturnToOfficer</incoming>
+            <outgoing>Flow_CepcOfficerMerge_Assignment</outgoing>
+        </exclusiveGateway>
+
+        <task id="CepcOfficerAssignmentTask" name="CEPC: Assign Officer"
+              tns:taskName="com.rbi.cms.workflow.handler.PassThroughHandler">
+            <incoming>Flow_CepcOfficerMerge_Assignment</incoming>
+            <outgoing>Flow_CepcOfficerAssign_OfficerTask</outgoing>
+        </task>
+
+        <!-- CEPC Officer: Investigation -->
+        <task tns:taskName="Human Task" id="CepcOfficerTask" name="CEPC: Officer Investigation">
+            <incoming>Flow_CepcOfficerAssign_OfficerTask</incoming>
+            <outgoing>Flow_CepcOfficer_Decision</outgoing>
+            <ioSpecification>
+                <dataInput id="CepcOfficerIn_complaintId" name="complaintId"/>
+                <dataInput id="CepcOfficerIn_category" name="category"/>
+                <dataInput id="CepcOfficerIn_priority" name="priority"/>
+                <dataOutput id="CepcOfficerOut_decision" name="officerDecision"/>
+                <dataOutput id="CepcOfficerOut_resolution" name="resolutionSummary"/>
+                <inputSet>
+                    <dataInputRefs>CepcOfficerIn_complaintId</dataInputRefs>
+                    <dataInputRefs>CepcOfficerIn_category</dataInputRefs>
+                    <dataInputRefs>CepcOfficerIn_priority</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>CepcOfficerOut_decision</dataOutputRefs>
+                    <dataOutputRefs>CepcOfficerOut_resolution</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedOfficer</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- CEPC Officer Decision -->
+        <exclusiveGateway id="CepcOfficerDecisionGateway" name="CEPC Officer Decision?" gatewayDirection="Diverging">
+            <incoming>Flow_CepcOfficer_Decision</incoming>
+            <outgoing>Flow_CepcOfficer_Resolved</outgoing>
+            <outgoing>Flow_CepcOfficer_EscalateToSupervisor</outgoing>
+            <outgoing>Flow_CepcOfficer_SendToConciliation</outgoing>
+        </exclusiveGateway>
+
+        <!-- CEPC Supervisor -->
+        <exclusiveGateway id="CepcSupervisorMerge" name="Merge to CEPC Supervisor" gatewayDirection="Converging">
+            <incoming>Flow_CepcOfficer_EscalateToSupervisor</incoming>
+            <incoming>Flow_CepcConciliation_EscalateToSupervisor</incoming>
+            <incoming>Flow_SLA_CepcOfficer</incoming>
+            <outgoing>Flow_CepcSupervisorMerge_Task</outgoing>
+        </exclusiveGateway>
+
+        <task tns:taskName="Human Task" id="CepcSupervisorTask" name="CEPC: Supervisor Review">
+            <incoming>Flow_CepcSupervisorMerge_Task</incoming>
+            <outgoing>Flow_CepcSupervisor_Decision</outgoing>
+            <ioSpecification>
+                <dataInput id="CepcSupIn_complaintId" name="complaintId"/>
+                <dataOutput id="CepcSupOut_decision" name="supervisorDecision"/>
+                <inputSet>
+                    <dataInputRefs>CepcSupIn_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>CepcSupOut_decision</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedSupervisor</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- CEPC Supervisor Decision -->
+        <exclusiveGateway id="CepcSupervisorDecisionGateway" name="CEPC Supervisor Decision?" gatewayDirection="Diverging">
+            <incoming>Flow_CepcSupervisor_Decision</incoming>
+            <outgoing>Flow_CepcSupervisor_Resolved</outgoing>
+            <outgoing>Flow_CepcSupervisor_ReturnToOfficer</outgoing>
+            <outgoing>Flow_CepcSupervisor_SendToAdjudication</outgoing>
+            <outgoing>Flow_CepcSupervisor_SendToConciliation</outgoing>
+        </exclusiveGateway>
+
+        <!-- CEPC Conciliation -->
+        <exclusiveGateway id="CepcConciliationMerge" name="Merge to CEPC Conciliation" gatewayDirection="Converging">
+            <incoming>Flow_CepcOfficer_SendToConciliation</incoming>
+            <incoming>Flow_CepcSupervisor_SendToConciliation</incoming>
+            <outgoing>Flow_CepcConciliationMerge_Task</outgoing>
+        </exclusiveGateway>
+
+        <task tns:taskName="Human Task" id="CepcConciliationTask" name="CEPC: Conciliation">
+            <incoming>Flow_CepcConciliationMerge_Task</incoming>
+            <outgoing>Flow_CepcConciliation_Outcome</outgoing>
+            <ioSpecification>
+                <dataInput id="CepcConcIn_complaintId" name="complaintId"/>
+                <dataOutput id="CepcConcOut_outcome" name="conciliationOutcome"/>
+                <inputSet>
+                    <dataInputRefs>CepcConcIn_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>CepcConcOut_outcome</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedConciliator</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- CEPC Conciliation Outcome -->
+        <exclusiveGateway id="CepcConciliationOutcomeGateway" name="CEPC Conciliation Outcome?" gatewayDirection="Diverging">
+            <incoming>Flow_CepcConciliation_Outcome</incoming>
+            <outgoing>Flow_CepcConciliation_Resolved</outgoing>
+            <outgoing>Flow_CepcConciliation_EscalateToSupervisor</outgoing>
+            <outgoing>Flow_CepcConciliation_ToAdjudication</outgoing>
+        </exclusiveGateway>
+
+        <!-- CEPC Adjudication -->
+        <exclusiveGateway id="CepcAdjudicationMerge" name="Merge to CEPC Adjudication" gatewayDirection="Converging">
+            <incoming>Flow_CepcSupervisor_SendToAdjudication</incoming>
+            <incoming>Flow_CepcConciliation_ToAdjudication</incoming>
+            <outgoing>Flow_CepcAdjudicationMerge_Task</outgoing>
+        </exclusiveGateway>
+
+        <task tns:taskName="Human Task" id="CepcAdjudicationTask" name="CEPC: Adjudication (Award)">
+            <incoming>Flow_CepcAdjudicationMerge_Task</incoming>
+            <outgoing>Flow_CepcAdjudication_Resolved</outgoing>
+            <ioSpecification>
+                <dataInput id="CepcAdjIn_complaintId" name="complaintId"/>
+                <dataOutput id="CepcAdjOut_outcome" name="adjudicationOutcome"/>
+                <dataOutput id="CepcAdjOut_resolution" name="resolutionSummary"/>
+                <inputSet>
+                    <dataInputRefs>CepcAdjIn_complaintId</dataInputRefs>
+                </inputSet>
+                <outputSet>
+                    <dataOutputRefs>CepcAdjOut_outcome</dataOutputRefs>
+                    <dataOutputRefs>CepcAdjOut_resolution</dataOutputRefs>
+                </outputSet>
+            </ioSpecification>
+            <potentialOwner>
+                <resourceAssignmentExpression>
+                    <formalExpression>assignedAdjudicator</formalExpression>
+                </resourceAssignmentExpression>
+            </potentialOwner>
+        </task>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- PHASE 4: RESOLUTION & CLOSURE                                  -->
+        <!-- All resolved paths converge here                               -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- Resolution Convergence (all paths that resolve) -->
+        <exclusiveGateway id="ResolutionConvergeGateway" name="Resolved" gatewayDirection="Converging">
+            <incoming>Flow_RbioOfficer_Resolved</incoming>
+            <incoming>Flow_RbioSupervisor_Resolved</incoming>
+            <incoming>Flow_RbioConciliation_Resolved</incoming>
+            <incoming>Flow_RbioAdjudication_Resolved</incoming>
+            <incoming>Flow_CepcOfficer_Resolved</incoming>
+            <incoming>Flow_CepcSupervisor_Resolved</incoming>
+            <incoming>Flow_CepcConciliation_Resolved</incoming>
+            <incoming>Flow_CepcAdjudication_Resolved</incoming>
+            <outgoing>Flow_Resolution_Notify</outgoing>
+        </exclusiveGateway>
+
+        <!-- Notify Customer -->
+        <task id="NotifyCustomerTask" name="Notify Customer of Resolution"
+              tns:taskName="com.rbi.cms.workflow.handler.NotificationHandler">
+            <incoming>Flow_Resolution_Notify</incoming>
+            <outgoing>Flow_Notify_ClosureTimer</outgoing>
+        </task>
+
+        <!-- Closure Timer (7 days) -->
+        <intermediateCatchEvent id="ClosureTimer" name="Wait for Confirmation (7 days)">
+            <incoming>Flow_Notify_ClosureTimer</incoming>
+            <outgoing>Flow_Timer_Close</outgoing>
+            <timerEventDefinition>
+                <timeDuration>P7D</timeDuration>
+            </timerEventDefinition>
+        </intermediateCatchEvent>
+
+        <!-- End -->
+        <endEvent id="EndEvent_Closed" name="Complaint Closed">
+            <incoming>Flow_Timer_Close</incoming>
+        </endEvent>
+
+        <!-- SLA Timer on RBIO Officer (30 days) -->
+        <boundaryEvent id="SLATimer_RbioOfficer" name="SLA Breach (30d)" attachedToRef="RbioOfficerTask" cancelActivity="false">
+            <outgoing>Flow_SLA_RbioOfficer</outgoing>
+            <timerEventDefinition>
+                <timeDuration>P30D</timeDuration>
+            </timerEventDefinition>
+        </boundaryEvent>
+
+        <!-- SLA Timer on CEPC Officer (30 days) -->
+        <boundaryEvent id="SLATimer_CepcOfficer" name="SLA Breach (30d)" attachedToRef="CepcOfficerTask" cancelActivity="false">
+            <outgoing>Flow_SLA_CepcOfficer</outgoing>
+            <timerEventDefinition>
+                <timeDuration>P30D</timeDuration>
+            </timerEventDefinition>
+        </boundaryEvent>
+
+        <!-- ══════════════════════════════════════════════════════════════ -->
+        <!-- SEQUENCE FLOWS                                                 -->
+        <!-- ══════════════════════════════════════════════════════════════ -->
+
+        <!-- Phase 1: Intake -->
+        <sequenceFlow id="Flow_Start_ChannelGateway" sourceRef="StartEvent" targetRef="ChannelGateway"/>
+        <sequenceFlow id="Flow_Channel_Portal" sourceRef="ChannelGateway" targetRef="PortalValidationTask">
+            <conditionExpression xsi:type="tFormalExpression">return channel == "PORTAL";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Channel_CRPC" sourceRef="ChannelGateway" targetRef="DraftCreationTask">
+            <conditionExpression xsi:type="tFormalExpression">return channel == "EMAIL" || channel == "PHYSICAL_LETTER" || channel == "CPGRAMS";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Portal_Registered" sourceRef="PortalValidationTask" targetRef="RegistrationConvergeGateway"/>
+
+        <!-- Merge gateway flows -->
+        <sequenceFlow id="Flow_DeoMerge_DeoAssignment" sourceRef="DeoAssignmentMerge" targetRef="DeoAssignmentTask"/>
+        <sequenceFlow id="Flow_RbioOfficerMerge_Assignment" sourceRef="RbioOfficerMerge" targetRef="RbioOfficerAssignmentTask"/>
+        <sequenceFlow id="Flow_RbioSupervisorMerge_Task" sourceRef="RbioSupervisorMerge" targetRef="RbioSupervisorTask"/>
+        <sequenceFlow id="Flow_RbioConciliationMerge_Task" sourceRef="RbioConciliationMerge" targetRef="RbioConciliationTask"/>
+        <sequenceFlow id="Flow_RbioAdjudicationMerge_Task" sourceRef="RbioAdjudicationMerge" targetRef="RbioAdjudicationTask"/>
+        <sequenceFlow id="Flow_CepcOfficerMerge_Assignment" sourceRef="CepcOfficerMerge" targetRef="CepcOfficerAssignmentTask"/>
+        <sequenceFlow id="Flow_CepcSupervisorMerge_Task" sourceRef="CepcSupervisorMerge" targetRef="CepcSupervisorTask"/>
+        <sequenceFlow id="Flow_CepcConciliationMerge_Task" sourceRef="CepcConciliationMerge" targetRef="CepcConciliationTask"/>
+        <sequenceFlow id="Flow_CepcAdjudicationMerge_Task" sourceRef="CepcAdjudicationMerge" targetRef="CepcAdjudicationTask"/>
+
+        <!-- CRPC flows -->
+        <sequenceFlow id="Flow_Draft_DeoAssignment" sourceRef="DraftCreationTask" targetRef="DeoAssignmentMerge"/>
+        <sequenceFlow id="Flow_DeoAssignment_DeoTask" sourceRef="DeoAssignmentTask" targetRef="DeoAssessmentTask"/>
+        <sequenceFlow id="Flow_DeoTask_DeoDecision" sourceRef="DeoAssessmentTask" targetRef="DeoDecisionGateway"/>
+        <sequenceFlow id="Flow_Deo_Maintainable" sourceRef="DeoDecisionGateway" targetRef="ReviewerAssignmentTask">
+            <conditionExpression xsi:type="tFormalExpression">return deoDecision == "MAINTAINABLE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Deo_NonMaintainable" sourceRef="DeoDecisionGateway" targetRef="EndEvent_NonMaintainable">
+            <conditionExpression xsi:type="tFormalExpression">return deoDecision == "NON_MAINTAINABLE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_ReviewerAssignment_ReviewerTask" sourceRef="ReviewerAssignmentTask" targetRef="ReviewerAssessmentTask"/>
+        <sequenceFlow id="Flow_ReviewerTask_ReviewerDecision" sourceRef="ReviewerAssessmentTask" targetRef="ReviewerDecisionGateway"/>
+        <sequenceFlow id="Flow_Reviewer_Approve" sourceRef="ReviewerDecisionGateway" targetRef="RegistrationConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return reviewerDecision == "APPROVE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Reviewer_SentBack" sourceRef="ReviewerDecisionGateway" targetRef="DeoAssignmentMerge">
+            <conditionExpression xsi:type="tFormalExpression">return reviewerDecision == "SENT_BACK_TO_DEO";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Reviewer_NotComplaint" sourceRef="ReviewerDecisionGateway" targetRef="EndEvent_NotComplaint">
+            <conditionExpression xsi:type="tFormalExpression">return reviewerDecision == "NOT_A_COMPLAINT";</conditionExpression>
+        </sequenceFlow>
+
+        <!-- Phase 2: Department Routing -->
+        <sequenceFlow id="Flow_Registered_DeptRouting" sourceRef="RegistrationConvergeGateway" targetRef="DepartmentRoutingTask"/>
+        <sequenceFlow id="Flow_DeptRouting_DeptGateway" sourceRef="DepartmentRoutingTask" targetRef="DepartmentGateway"/>
+        <sequenceFlow id="Flow_Dept_RBIO" sourceRef="DepartmentGateway" targetRef="RbioOfficerMerge">
+            <conditionExpression xsi:type="tFormalExpression">return department == "RBIO";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_Dept_CEPC" sourceRef="DepartmentGateway" targetRef="CepcOfficerMerge">
+            <conditionExpression xsi:type="tFormalExpression">return department == "CEPC";</conditionExpression>
+        </sequenceFlow>
+
+        <!-- Phase 3A: RBIO Flows -->
+        <sequenceFlow id="Flow_RbioOfficerAssign_OfficerTask" sourceRef="RbioOfficerAssignmentTask" targetRef="RbioOfficerTask"/>
+        <sequenceFlow id="Flow_RbioOfficer_Decision" sourceRef="RbioOfficerTask" targetRef="RbioOfficerDecisionGateway"/>
+        <sequenceFlow id="Flow_RbioOfficer_Resolved" sourceRef="RbioOfficerDecisionGateway" targetRef="ResolutionConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return officerDecision == "RESOLVED";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioOfficer_EscalateToSupervisor" sourceRef="RbioOfficerDecisionGateway" targetRef="RbioSupervisorMerge">
+            <conditionExpression xsi:type="tFormalExpression">return officerDecision == "ESCALATE_TO_SUPERVISOR";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioOfficer_SendToConciliation" sourceRef="RbioOfficerDecisionGateway" targetRef="RbioConciliationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return officerDecision == "SEND_TO_CONCILIATION";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioSupervisor_Decision" sourceRef="RbioSupervisorTask" targetRef="RbioSupervisorDecisionGateway"/>
+        <sequenceFlow id="Flow_RbioSupervisor_Resolved" sourceRef="RbioSupervisorDecisionGateway" targetRef="ResolutionConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "RESOLVED";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioSupervisor_ReturnToOfficer" sourceRef="RbioSupervisorDecisionGateway" targetRef="RbioOfficerMerge">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "RETURN_TO_OFFICER";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioSupervisor_SendToAdjudication" sourceRef="RbioSupervisorDecisionGateway" targetRef="RbioAdjudicationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "SEND_TO_ADJUDICATION";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioSupervisor_SendToConciliation" sourceRef="RbioSupervisorDecisionGateway" targetRef="RbioConciliationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "SEND_TO_CONCILIATION";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioConciliation_Outcome" sourceRef="RbioConciliationTask" targetRef="RbioConciliationOutcomeGateway"/>
+        <sequenceFlow id="Flow_RbioConciliation_Resolved" sourceRef="RbioConciliationOutcomeGateway" targetRef="ResolutionConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return conciliationOutcome == "SETTLED";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioConciliation_EscalateToSupervisor" sourceRef="RbioConciliationOutcomeGateway" targetRef="RbioSupervisorMerge">
+            <conditionExpression xsi:type="tFormalExpression">return conciliationOutcome == "FAILED_ESCALATE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioConciliation_ToAdjudication" sourceRef="RbioConciliationOutcomeGateway" targetRef="RbioAdjudicationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return conciliationOutcome == "FAILED_ADJUDICATE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_RbioAdjudication_Resolved" sourceRef="RbioAdjudicationTask" targetRef="ResolutionConvergeGateway"/>
+        <sequenceFlow id="Flow_SLA_RbioOfficer" sourceRef="SLATimer_RbioOfficer" targetRef="RbioSupervisorMerge"/>
+
+        <!-- Phase 3B: CEPC Flows (mirror of RBIO) -->
+        <sequenceFlow id="Flow_CepcOfficerAssign_OfficerTask" sourceRef="CepcOfficerAssignmentTask" targetRef="CepcOfficerTask"/>
+        <sequenceFlow id="Flow_CepcOfficer_Decision" sourceRef="CepcOfficerTask" targetRef="CepcOfficerDecisionGateway"/>
+        <sequenceFlow id="Flow_CepcOfficer_Resolved" sourceRef="CepcOfficerDecisionGateway" targetRef="ResolutionConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return officerDecision == "RESOLVED";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcOfficer_EscalateToSupervisor" sourceRef="CepcOfficerDecisionGateway" targetRef="CepcSupervisorMerge">
+            <conditionExpression xsi:type="tFormalExpression">return officerDecision == "ESCALATE_TO_SUPERVISOR";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcOfficer_SendToConciliation" sourceRef="CepcOfficerDecisionGateway" targetRef="CepcConciliationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return officerDecision == "SEND_TO_CONCILIATION";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcSupervisor_Decision" sourceRef="CepcSupervisorTask" targetRef="CepcSupervisorDecisionGateway"/>
+        <sequenceFlow id="Flow_CepcSupervisor_Resolved" sourceRef="CepcSupervisorDecisionGateway" targetRef="ResolutionConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "RESOLVED";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcSupervisor_ReturnToOfficer" sourceRef="CepcSupervisorDecisionGateway" targetRef="CepcOfficerMerge">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "RETURN_TO_OFFICER";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcSupervisor_SendToAdjudication" sourceRef="CepcSupervisorDecisionGateway" targetRef="CepcAdjudicationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "SEND_TO_ADJUDICATION";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcSupervisor_SendToConciliation" sourceRef="CepcSupervisorDecisionGateway" targetRef="CepcConciliationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return supervisorDecision == "SEND_TO_CONCILIATION";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcConciliation_Outcome" sourceRef="CepcConciliationTask" targetRef="CepcConciliationOutcomeGateway"/>
+        <sequenceFlow id="Flow_CepcConciliation_Resolved" sourceRef="CepcConciliationOutcomeGateway" targetRef="ResolutionConvergeGateway">
+            <conditionExpression xsi:type="tFormalExpression">return conciliationOutcome == "SETTLED";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcConciliation_EscalateToSupervisor" sourceRef="CepcConciliationOutcomeGateway" targetRef="CepcSupervisorMerge">
+            <conditionExpression xsi:type="tFormalExpression">return conciliationOutcome == "FAILED_ESCALATE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcConciliation_ToAdjudication" sourceRef="CepcConciliationOutcomeGateway" targetRef="CepcAdjudicationMerge">
+            <conditionExpression xsi:type="tFormalExpression">return conciliationOutcome == "FAILED_ADJUDICATE";</conditionExpression>
+        </sequenceFlow>
+        <sequenceFlow id="Flow_CepcAdjudication_Resolved" sourceRef="CepcAdjudicationTask" targetRef="ResolutionConvergeGateway"/>
+        <sequenceFlow id="Flow_SLA_CepcOfficer" sourceRef="SLATimer_CepcOfficer" targetRef="CepcSupervisorMerge"/>
+
+        <!-- Phase 4: Resolution & Closure -->
+        <sequenceFlow id="Flow_Resolution_Notify" sourceRef="ResolutionConvergeGateway" targetRef="NotifyCustomerTask"/>
+        <sequenceFlow id="Flow_Notify_ClosureTimer" sourceRef="NotifyCustomerTask" targetRef="ClosureTimer"/>
+        <sequenceFlow id="Flow_Timer_Close" sourceRef="ClosureTimer" targetRef="EndEvent_Closed"/>
+
+    </process>
+
+</definitions>

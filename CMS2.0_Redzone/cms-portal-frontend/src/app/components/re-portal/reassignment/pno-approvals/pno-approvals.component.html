@@ -1,0 +1,197 @@
+<div class="pno-approvals">
+  <div class="section-header">
+    <h3 class="section-title">{{ 're.reassign.approvals_title' | translate }}</h3>
+    @if (totalElements() > 0) {
+      <span class="total-count">{{ totalElements() }}</span>
+    }
+  </div>
+
+  <!--
+    UST839: a bulk call can answer 200 with some items failed. The summary below therefore reports the
+    succeeded count and the failed items together — never one at the expense of the other.
+  -->
+  @if (actionSuccess()) {
+    <div class="banner banner-success" role="status">
+      <i class="pi pi-check-circle"></i>
+      <span>{{ actionSuccess() | translate }}</span>
+    </div>
+  }
+  @if (actionError()) {
+    <div class="banner banner-error" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <div class="banner-body">
+        <span>{{ actionError() | translate }}</span>
+        @if (lastFailures().length > 0) {
+          <p class="partial-tally">
+            {{ lastSucceededCount() }} / {{ lastSucceededCount() + lastFailures().length }}
+          </p>
+          <ul class="failure-list">
+            @for (failure of lastFailures(); track failure.id) {
+              <li class="failure-item">
+                <span class="failure-subject">{{ labelFor(failure.id) }}</span>
+                <!-- The server's key, translated; its English `detail` is never shown as the reason. -->
+                <span class="failure-reason">{{ failure.messageKey | translate }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+    </div>
+  } @else if (loadError()) {
+    <div class="banner banner-error" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ loadError() | translate }}</span>
+    </div>
+  } @else if (requests().length === 0) {
+    <div class="empty-state">
+      <i class="pi pi-check-square"></i>
+      <p>{{ 're.reassign.approvals_none' | translate }}</p>
+    </div>
+  } @else {
+    <div class="bulk-bar">
+      <label class="select-all">
+        <input
+          type="checkbox"
+          [checked]="allSelected()"
+          [disabled]="deciding()"
+          (change)="toggleAll()" />
+        <span>{{ 're.reassign.select_all' | translate }}</span>
+      </label>
+
+      @if (hasSelection()) {
+        <span class="selection-tally">
+          {{ selectedCount() }} {{ 're.reassign.selected_count' | translate }}
+        </span>
+      }
+
+      <div class="bulk-actions">
+        <button
+          type="button"
+          class="btn btn-primary"
+          [disabled]="!hasSelection() || deciding()"
+          (click)="approveSelected()">
+          <i class="pi pi-check"></i>
+          {{ 're.reassign.bulk_approve_button' | translate }}
+        </button>
+
+        @if (confirmingBulkReject()) {
+          <button
+            type="button"
+            class="btn btn-danger"
+            [disabled]="deciding()"
+            (click)="confirmRejectSelected()">
+            <i class="pi pi-check"></i>
+            {{ 're.reassign.bulk_reject_button' | translate }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-plain"
+            [disabled]="deciding()"
+            (click)="cancelRejectSelected()">
+            {{ 're.reassign.cancel_button' | translate }}
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn btn-outline-danger"
+            [disabled]="!hasSelection() || deciding()"
+            (click)="askRejectSelected()">
+            <i class="pi pi-times"></i>
+            {{ 're.reassign.bulk_reject_button' | translate }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Always visible, not only on reject: a comment is mandatory for rejection, so hiding the box
+         behind the reject button would make the requirement discoverable only by failing. -->
+    <div class="comment-field">
+      <label for="decisionComment">{{ 're.reassign.decision_comment_label' | translate }}</label>
+      <textarea
+        id="decisionComment"
+        rows="2"
+        class="comment-input"
+        [ngModel]="decisionComment()"
+        (ngModelChange)="decisionComment.set($event)"
+        [disabled]="deciding()"></textarea>
+    </div>
+
+    <div class="table-wrapper">
+      <table class="approvals-table">
+        <thead>
+          <tr>
+            <th class="col-check">
+              <input
+                type="checkbox"
+                [attr.aria-label]="'re.reassign.select_all' | translate"
+                [checked]="allSelected()"
+                [disabled]="deciding()"
+                (change)="toggleAll()" />
+            </th>
+            <!-- No seeded key names a complaint-number column, and labelling it with an unrelated key
+                 would mistranslate it. The values below are self-identifying. -->
+            <th class="col-subject"></th>
+            <th>{{ 're.reassign.from_officer' | translate }}</th>
+            <th>{{ 're.reassign.to_officer' | translate }}</th>
+            <th>{{ 're.reassign.workload_column' | translate }}</th>
+            <th>{{ 're.reassign.original_reason_label' | translate }}</th>
+            <th>{{ 're.reassign.requested_at' | translate }}</th>
+            <th class="col-actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (request of requests(); track request.id) {
+            <tr [class.row-selected]="isSelected(request.id)">
+              <td class="col-check">
+                <input
+                  type="checkbox"
+                  [attr.aria-label]="request.complaintNumber"
+                  [checked]="isSelected(request.id)"
+                  [disabled]="deciding()"
+                  (change)="toggleRow(request.id)" />
+              </td>
+              <td>
+                <span class="complaint-number">{{ request.complaintNumber }}</span>
+                <app-status-badge [status]="request.status" keyPrefix="re.reassign.status" />
+              </td>
+              <td>{{ request.fromUserName || request.fromUserId || '-' }}</td>
+              <td>{{ request.toUserName || request.toUserId }}</td>
+              <td class="col-workload">
+                {{ request.toUserWorkloadAtRequest !== null ? request.toUserWorkloadAtRequest : '-' }}
+              </td>
+              <td class="col-reason" [title]="request.reason || ''">{{ request.reason || '-' }}</td>
+              <td>{{ request.requestedAt ? (request.requestedAt | date:'dd MMM yyyy') : '-' }}</td>
+              <td class="col-actions">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary"
+                  [disabled]="deciding()"
+                  (click)="approveOne(request)">
+                  {{ 're.reassign.approve_button' | translate }}
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (totalPages() > 1) {
+      <div class="pager">
+        <button type="button" class="btn btn-plain" [disabled]="!hasPrev()" (click)="prevPage()">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <span class="pager-status">{{ page() + 1 }} / {{ totalPages() }}</span>
+        <button type="button" class="btn btn-plain" [disabled]="!hasNext()" (click)="nextPage()">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+      </div>
+    }
+  }
+</div>

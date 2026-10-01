@@ -1,0 +1,245 @@
+.page-container { max-width: 750px; margin: 0 auto; padding: 48px 24px; }
+
+.card {
+  background: var(--surface-card); border: 1px solid #e8e8e8; border-radius: 16px; padding: 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  h2 { font-size: 22px; color: var(--citizen-surface-dark); margin-bottom: 8px; }
+}
+.subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 24px; }
+
+.info-box {
+  display: flex; gap: 12px; padding: 16px; background: #e3f2fd; border: 1px solid #90caf9;
+  border-radius: 8px; margin-bottom: 24px;
+  i { color: var(--brand-primary); font-size: 18px; margin-top: 2px; }
+  strong { display: block; font-size: 14px; color: var(--citizen-surface-dark); margin-bottom: 6px; }
+  ul { margin: 0; padding-left: 16px; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
+}
+
+.form-group {
+  margin-bottom: 16px;
+  label { display: block; font-size: 13px; font-weight: 600; color: var(--text-body); margin-bottom: 6px; }
+  .required { color: var(--state-danger-solid-hover); }
+}
+.form-input, .form-textarea {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border-subtle); border-radius: 8px;
+  font-size: 14px; font-family: inherit;
+  &:focus { outline: none; border-color: var(--citizen-accent); box-shadow: 0 0 0 3px rgba(36,96,185,0.1); }
+}
+.form-textarea { resize: vertical; }
+
+.radio-group { display: flex; flex-direction: column; gap: 8px; }
+.radio-label {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  border: 1px solid var(--border-subtle); border-radius: 6px; cursor: pointer; font-size: 14px;
+  input { accent-color: var(--citizen-accent); }
+  &.selected { border-color: var(--citizen-accent); background: var(--citizen-surface-tint); }
+}
+
+.file-input-hidden { display: none; }
+.file-upload-area {
+  border: 1.5px dashed var(--border-strong); border-radius: 8px; padding: 28px 24px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-card); margin-top: 4px; transition: border-color 0.2s, background 0.2s;
+  &:hover { border-color: var(--citizen-accent-bright); }
+  &.dragover { border-color: var(--citizen-accent-bright); background: rgba(20, 110, 245, 0.04); }
+}
+.file-upload-text { font-size: 14px; color: var(--text-secondary); font-weight: 400; }
+label.file-upload-browse-link {
+  display: inline; margin-bottom: 0; color: var(--citizen-accent-bright); font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: underline;
+  &:hover { color: #0d5ad4; }
+}
+.file-upload-meta {
+  display: flex; justify-content: space-between; width: 100%;
+  font-size: 12px; color: var(--text-subtle); margin-top: 8px;
+}
+.file-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.file-chip {
+  display: flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: var(--surface-subtle); border: 1px solid var(--border-subtle); border-radius: 6px; font-size: 13px;
+  .remove-file { background: none; border: none; cursor: pointer; color: var(--text-subtle); &:hover { color: var(--state-danger-solid-hover); } }
+}
+
+.declaration-box {
+  padding: 16px; background: #f9f9f9; border: 1px solid var(--border-subtle); border-radius: 8px; margin-bottom: 16px;
+}
+.checkbox-label {
+  display: flex; align-items: flex-start; gap: 8px; cursor: pointer; font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+  input { margin-top: 3px; accent-color: var(--citizen-accent); }
+}
+
+.error-msg {
+  color: var(--state-danger-solid-hover); font-size: 13px; margin-bottom: 12px; padding: 8px 12px;
+  background: #fdecea; border-radius: 6px;
+  i { margin-right: 6px; }
+}
+
+.form-actions {
+  display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px;
+  border-top: 1px solid var(--border-subtle);
+  &.center { justify-content: center; }
+}
+
+.btn-primary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 28px; background: var(--citizen-primary); color: var(--surface-card); border: none; border-radius: 8px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  &:hover { background: #3a1b78; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+}
+.btn-secondary {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 28px; background: var(--surface-card); color: var(--citizen-primary); border: 1px solid var(--citizen-primary); border-radius: 8px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  &:hover { background: var(--citizen-surface-tint); }
+}
+
+.success-card { text-align: center; }
+.success-icon { margin-bottom: 16px; i { font-size: 56px; color: #4caf50; } }
+.ref-label { font-size: 14px; color: var(--text-muted); margin-top: 8px; margin-bottom: 4px; }
+.ref-number {
+  font-size: 24px; font-weight: 700; color: var(--citizen-accent); margin-bottom: 16px;
+  padding: 10px 20px; background: var(--citizen-surface-tint); border-radius: 8px; display: inline-block;
+}
+.success-card > p { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
+
+// ── Eligibility Result ──
+.eligibility-result {
+  display: flex; align-items: center; gap: 16px; padding: 20px;
+  border-radius: 8px; margin-bottom: 20px;
+  &.eligible { background: var(--state-success-bg); border: 1px solid #a5d6a7; }
+  &.ineligible { background: #fbe9e7; border: 1px solid #ef9a9a; }
+  .eligibility-icon {
+    font-size: 36px;
+    i { color: inherit; }
+  }
+  &.eligible .eligibility-icon { color: var(--state-success-fg); }
+  &.ineligible .eligibility-icon { color: var(--state-danger-solid-hover); }
+  .eligibility-info {
+    h3 { margin: 0 0 4px; font-size: 16px; }
+    p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+  }
+  &.eligible .eligibility-info h3 { color: var(--state-success-fg); }
+  &.ineligible .eligibility-info h3 { color: var(--state-danger-solid-hover); }
+}
+
+// ── Classification ──
+.classification-info {
+  display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+  background: var(--surface-sunken); border-radius: 8px; margin-bottom: 20px;
+  label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+  .immutable-note { font-size: 11px; color: var(--text-subtle); font-style: italic; }
+}
+
+
+.classification-banner {
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+  background: var(--citizen-surface-tint); border: 1px solid #c7d2fe; border-radius: 8px; margin-bottom: 20px;
+  .classification-note { font-size: 12px; color: var(--text-secondary); }
+}
+
+.classification-result {
+  margin-top: 12px; font-size: 14px; color: var(--text-body);
+}
+
+// ── Complaint Summary ──
+.complaint-summary {
+  background: var(--surface-card); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; margin-bottom: 20px;
+  h4 { margin: 0 0 12px; font-size: 14px; color: var(--text-heading); }
+}
+.summary-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.summary-field {
+  label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-subtle); font-weight: 600; margin-bottom: 2px; }
+  span { font-size: 14px; color: var(--text-body); }
+}
+
+// UST112: Speaking Order section
+.speaking-order-section {
+  margin-bottom: 20px;
+  h4 {
+    font-size: 14px; color: var(--text-heading); margin: 0 0 10px; display: flex; align-items: center; gap: 8px;
+    i { color: var(--state-danger-solid-hover); font-size: 16px; }
+  }
+}
+
+.readonly-box {
+  background: #f8f9fa; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px;
+  pointer-events: none; user-select: text;
+  p { margin: 0; font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+}
+
+// UST112: Complaint details in appeal (read-only)
+.complaint-details-readonly {
+  margin-bottom: 20px;
+  h4 { font-size: 14px; color: var(--text-heading); margin: 0 0 10px; }
+  .readonly-box {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .detail-field {
+    label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-subtle); font-weight: 600; margin-bottom: 2px; }
+    span { font-size: 14px; color: var(--text-body); }
+    &.full-width { grid-column: 1 / -1; }
+  }
+}
+
+// Delay notice
+.delay-notice {
+  display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px;
+  background: var(--state-warning-bg); border: 1px solid #ffcc80; border-radius: 8px; margin-bottom: 16px;
+  i { color: var(--state-warning-fg); font-size: 18px; margin-top: 2px; }
+  p { margin: 0; font-size: 13px; color: #bf360c; line-height: 1.5; }
+}
+
+.char-count { font-size: 11px; color: var(--text-subtle); float: right; margin-top: 4px; }
+
+.textarea-with-speech {
+  position: relative;
+  app-speech-button { position: absolute; right: 10px; bottom: 10px; }
+}
+
+// ── Appellant identity block ──
+.appellant-section {
+  padding: 16px; margin-bottom: 20px;
+  background: var(--surface-sunken); border: 1px solid var(--border-subtle); border-radius: 8px;
+  h4 { margin: 0 0 14px; font-size: 14px; color: var(--text-heading); }
+  .form-group:last-child { margin-bottom: 0; }
+}
+
+.field-error {
+  display: block; margin-top: 4px;
+  font-size: 12px; color: var(--state-danger-solid-hover);
+}
+
+.form-input.invalid, .form-textarea.invalid {
+  border-color: var(--state-danger-solid-hover);
+  &:focus { box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12); }
+}
+
+.clause-refusal { font-weight: 600; }
+
+// The visible Date of Receipt input is readonly; this native picker is the ONLY way to set a value.
+// It must stay fully transparent and non-interactive, otherwise a second, typeable date field appears
+// next to the readonly one and "date-picker only" stops being true.
+.date-picker-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .form-input { padding-right: 40px; }
+
+  .date-hidden-picker {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .date-picker-btn {
+    position: absolute;
+    right: 10px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 16px; padding: 4px;
+    &:hover { color: var(--citizen-accent-bright); }
+  }
+}

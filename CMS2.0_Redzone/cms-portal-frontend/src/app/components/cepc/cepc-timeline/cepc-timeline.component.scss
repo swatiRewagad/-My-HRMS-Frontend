@@ -1,0 +1,60 @@
+// Only this panel's chrome. The trail itself is styled by app-workflow-timeline — the ~45 lines that used
+// to duplicate it here are gone, along with the emoji dot and the doc-link markup for a `documents[]`
+// field no endpoint has ever returned.
+
+.cepc-timeline {
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  border: 1px solid var(--border-subtle);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-7);
+
+  h4 {
+    margin: 0;
+    font-size: var(--text-md);
+    color: var(--text-heading);
+    border-bottom: 1px solid var(--surface-subtle);
+    padding-bottom: var(--space-3);
+    flex: 1;
+  }
+}
+
+.refresh-btn {
+  background: none;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-secondary);
+
+  &:hover:not(:disabled) { background: var(--surface-subtle); }
+  &:disabled { opacity: 0.5; cursor: default; }
+}
+
+.loading-state {
+  text-align: center;
+  padding: var(--space-8);
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--state-danger-solid);
+  background: var(--state-danger-bg);
+  color: var(--state-danger-fg);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+}

@@ -1,0 +1,266 @@
+<app-session-timeout></app-session-timeout>
+<app-shell [titleKey]="'ui.nav.cepc_dashboard'" [roleKey]="'ui.role.cepc_officer'">
+  <div shell-actions>
+    <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'ui.common.advanced_search' | translate }}</button>
+    @if (advSearchActive()) {
+      <button class="btn btn-link danger" (click)="clearAdvancedSearch()">{{ 'ui.common.clear_filters' | translate }}</button>
+    }
+    <!-- The bucket list is derived from the loaded queue, so an option is offered only when the role
+         actually holds work in it. A fixed option list stranded FORWARDED / RE_RESPONDED /
+         INFO_REQUESTED complaints behind no reachable bucket at all. -->
+    <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+      <option value="">{{ 'ui.nav.cepc_dashboard' | translate }}</option>
+      @for (b of visibleBuckets(); track b.code) {
+        <option [value]="b.code">{{ b.labelKey | translate }}</option>
+      }
+    </select>
+    <select class="queue-select" [value]="filterQueue()" (change)="filterQueue.set($any($event.target).value)">
+      <option value="ASSIGNED_TO_ME">{{ 'cepc.queue.assigned_to_me' | translate }}</option>
+      <option value="ALL">{{ 'cepc.queue.all_complaints' | translate }}</option>
+    </select>
+    @if (userRole() === 'CEPC_DO' || userRole() === 'CEPC_ADMIN') {
+      <button class="btn btn-primary create-btn" (click)="openCreateDialog()">
+        <i class="pi pi-plus"></i> {{ 'cepc.action.create_complaint' | translate }}
+      </button>
+      <!-- The CRPC layout is the physical-letter intake form, which collects Mode of Receipt,
+           Category, Entity, Module, State and District. The eight-field dialog above is NOT that
+           form, so this is a link to the real route rather than a second dialog. -->
+      <a class="btn btn-outline" data-testid="create-complaint-crpc" routerLink="/crpc/physical-letter">
+        <i class="pi pi-file-edit"></i> {{ 'cepc.action.create_complaint_crpc' | translate }}
+      </a>
+    }
+  </div>
+
+  <div class="cepc-dashboard">
+
+      <!-- KPI cards — the same five RBIO presents, reusing RBIO's own rbio.stats.* keys so the two
+           verticals cannot drift apart and so all eleven locales are already covered. Each card is
+           clickable and selects the bucket it counts, which is the project's "clickable
+           role-relevant KPI cards" goal; the Total card clears the filter. -->
+      <div class="stats-bar">
+        <div class="stat-card" (click)="filterStatus.set('')">
+          <div class="stat-icon blue"><i class="pi pi-inbox"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">{{ 'cepc.stats.total_pending' | translate }}</span>
+            <span class="stat-value">{{ stats().totalPending }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('pending')">
+          <div class="stat-icon yellow"><i class="pi pi-user"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">{{ 'cepc.stats.pending_with_me' | translate }}</span>
+            <span class="stat-value">{{ stats().pendingWithMe }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('forwarded_to_contact')">
+          <div class="stat-icon red"><i class="pi pi-users"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">{{ 'cepc.stats.pending_contact_person' | translate }}</span>
+            <span class="stat-value">{{ stats().pendingContactPerson }}</span>
+          </div>
+        </div>
+        <div class="stat-card" (click)="filterStatus.set('meeting_scheduled')">
+          <div class="stat-icon purple"><i class="pi pi-calendar"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">{{ 'cepc.stats.pending_meeting' | translate }}</span>
+            <span class="stat-value">{{ stats().pendingMeeting }}</span>
+          </div>
+        </div>
+        <div class="stat-card sla-card">
+          <div class="stat-icon orange"><i class="pi pi-clock"></i></div>
+          <div class="stat-content">
+            <span class="stat-label">{{ 'cepc.stats.sla_breach' | translate }}</span>
+            <span class="stat-value">{{ stats().slaBreach }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status tabs — data-driven from the buckets the role actually holds, exactly as RBIO drives
+           its strip from RBIO_STATUS_MASTER per role. A hardcoded strip is what made the Reviewer and
+           the DO see identical tabs when their queues hold different statuses. -->
+      <div class="status-tabs">
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
+          {{ 'rbio.grid.all_statuses' | translate }}
+        </button>
+        @for (b of visibleBuckets(); track b.code) {
+          <button class="tab" [class.active]="filterStatus() === b.code" (click)="filterStatus.set(b.code)">
+            {{ b.labelKey | translate }} <span class="tab-count">{{ bucketCount(b) }}</span>
+          </button>
+        }
+      </div>
+
+      <!-- Complaints Table -->
+      <!-- The SLA cell is a module-specific component, so it is supplied to the shared grid as a
+           template rather than being downgraded to plain text. -->
+      <ng-template #slaCell let-item>
+        <app-cepc-sla-indicator [slaDueDate]="item.slaDueDate" [status]="item.status"></app-cepc-sla-indicator>
+      </ng-template>
+
+      <!-- Queue toggles, passed to the shared grid through its existing headerActions template input —
+           no change to the task-grid public API, which the RE portal now also depends on. The markup
+           mirrors RBIO's own toggle so the two grids look and behave identically. -->
+      <ng-template #queueToggles>
+        <label class="toggle-filter" data-testid="filter-unread">
+          <span class="toggle-switch" [class.active]="filterUnread()">
+            <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Unread
+        </label>
+        <label class="toggle-filter" data-testid="filter-attachments">
+          <span class="toggle-switch" [class.active]="filterWithAttachments()">
+            <input type="checkbox" [checked]="filterWithAttachments()"
+                   (change)="filterWithAttachments.set(!filterWithAttachments())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Without Attachments
+        </label>
+      </ng-template>
+
+      <app-task-grid
+        [headerActions]="queueToggles"
+        [rows]="filteredComplaints()"
+        [columns]="gridColumns"
+        [titleKey]="'ui.grid.complaints'"
+        rowKey="complaintId"
+        [loading]="loading()"
+        [cellTemplates]="{ sla: slaCell }"
+        (rowClick)="openComplaint($event)">
+      </app-task-grid>
+  </div>
+</app-shell>
+
+<!-- Advanced Search Dialog -->
+@if (showAdvancedSearch()) {
+  <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
+    <div class="modal-dialog search-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Advanced Search
+        <button class="modal-close" (click)="showAdvancedSearch.set(false)">&times;</button>
+      </div>
+      <div class="search-grid">
+        <div class="search-field">
+          <label>Complaint Number</label>
+          <input type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complaint Id</label>
+          <input type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Status Code</label>
+          <select [(ngModel)]="advSearch.statusCode">
+            <option value="">Select a Value</option>
+            <option value="pending">Pending</option>
+            <option value="in_progress">Under Examination</option>
+            <option value="under_review">Under Review</option>
+            <option value="awaiting_closure">Awaiting Closure</option>
+            <option value="escalated">Escalated</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label>Complainant Name</label>
+          <input type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Complainant Email</label>
+          <input type="text" [(ngModel)]="advSearch.email" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Entity Name</label>
+          <input type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field full-width">
+          <label>Subject</label>
+          <input type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label>Priority</label>
+          <select [(ngModel)]="advSearch.priority">
+            <option value="">Select a Value</option>
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">Clear</button>
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Create Complaint Dialog -->
+@if (showCreateDialog()) {
+  <div class="modal-overlay" (click)="closeCreateDialog()">
+    <div class="modal-dialog create-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Create New CEPC Complaint
+        <button class="modal-close" (click)="closeCreateDialog()">&times;</button>
+      </div>
+      @if (createSuccess()) {
+        <div class="success-msg">{{ createSuccess() }}</div>
+      } @else {
+        <div class="search-grid">
+          <div class="search-field">
+            <label>Complainant Name *</label>
+            <input type="text" [(ngModel)]="newComplaint.complainantName" placeholder="Full name" />
+          </div>
+          <div class="search-field">
+            <label>Email</label>
+            <input type="email" [(ngModel)]="newComplaint.complainantEmail" placeholder="Email address" />
+          </div>
+          <div class="search-field">
+            <label>Phone</label>
+            <input type="tel" [(ngModel)]="newComplaint.complainantPhone" placeholder="Mobile number" />
+          </div>
+          <div class="search-field">
+            <label>Entity Name</label>
+            <input type="text" [(ngModel)]="newComplaint.entityName" placeholder="Regulated entity name" />
+          </div>
+          <div class="search-field full-width">
+            <label>Subject *</label>
+            <input type="text" [(ngModel)]="newComplaint.subject" placeholder="Brief subject of complaint" />
+          </div>
+          <div class="search-field full-width">
+            <label>Description</label>
+            <div class="textarea-with-speech">
+              <textarea [(ngModel)]="newComplaint.description" rows="4" placeholder="Detailed description..."></textarea>
+              <app-speech-button (transcription)="newComplaint.description = newComplaint.description + ' ' + $event"></app-speech-button>
+            </div>
+          </div>
+          <div class="search-field">
+            <label>Priority</label>
+            <select [(ngModel)]="newComplaint.priority">
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+              <option value="CRITICAL">Critical</option>
+            </select>
+          </div>
+          <div class="search-field">
+            <label>Filing Type</label>
+            <select [(ngModel)]="newComplaint.filingType">
+              <option value="CEPC_MANUAL">Manual Entry</option>
+              <option value="PHYSICAL_LETTER">Physical Letter</option>
+              <option value="EMAIL">Email</option>
+            </select>
+          </div>
+        </div>
+        @if (createError()) {
+          <div class="error-msg">{{ createError() }}</div>
+        }
+        <div class="modal-actions">
+          <button class="btn btn-outline" (click)="closeCreateDialog()">Cancel</button>
+          <button class="btn btn-primary" [disabled]="creating()" (click)="submitNewComplaint()">
+            @if (creating()) { Creating... } @else { Create Complaint }
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

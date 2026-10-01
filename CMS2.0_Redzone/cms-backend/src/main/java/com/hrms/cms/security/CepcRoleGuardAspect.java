@@ -1,0 +1,137 @@
+package com.hrms.cms.security;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.server.ResponseStatusException;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.*;
+
+/**
+ * AOP aspect that enforces role-based access control on CEPC endpoints.
+ * Checks the current user's roles from the JWT token (passed via request headers)
+ * against the allowed roles specified in {@link CepcRoleGuard}.
+ */
+@Aspect
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class CepcRoleGuardAspect {
+
+    private final ObjectMapper objectMapper;
+
+    /** True only under dev-local; the enforcing profile leaves it false and headers are ignored. */
+    @Value("${cms.security.allow-dev-identity-headers:false}")
+    private boolean allowDevIdentityHeaders;
+
+    @Around("@annotation(cepcRoleGuard)")
+    public Object checkRole(ProceedingJoinPoint joinPoint, CepcRoleGuard cepcRoleGuard) throws Throwable {
+        String[] allowedRoles = cepcRoleGuard.roles();
+
+        Set<String> userRoles = extractUserRoles();
+
+        if (userRoles.isEmpty()) {
+            log.warn("CEPC access denied: no roles present on the request for {}",
+                    joinPoint.getSignature().toShortString());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Access denied: insufficient role permissions for this CEPC action");
+        }
+
+        for (String allowedRole : allowedRoles) {
+            if (userRoles.contains(allowedRole)) {
+                return joinPoint.proceed();
+            }
+        }
+
+        log.warn("Access denied: user roles {} do not include any of {}", userRoles, Arrays.toString(allowedRoles));
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Access denied: insufficient role permissions for this CEPC action");
+    }
+
+    /**
+     * Extracts user roles from the request.
+     * Checks for:
+     * 1. X-User-Roles header (comma-separated roles)
+     * 2. X-User-Role header (single role, for backward compat)
+     * 3. Authorization Bearer token (JWT decode for realm_access.roles)
+     */
+    private Set<String> extractUserRoles() {
+        ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attrs == null) return Collections.emptySet();
+
+        HttpServletRequest request = attrs.getRequest();
+        Set<String> roles = new HashSet<>();
+
+        // The JWT is authoritative and is decoded FIRST. Header-first extraction meant any caller
+        // could grant themselves a CEPC role with a single header, in every profile.
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                String[] parts = token.split("\\.");
+                if (parts.length >= 2) {
+                    String payload = new String(Base64.getUrlDecoder().decode(parts[1]));
+                    Map<String, Object> claims = objectMapper.readValue(payload, Map.class);
+
+                    // Extract realm_access.roles (Keycloak standard)
+                    Object realmAccess = claims.get("realm_access");
+                    if (realmAccess instanceof Map) {
+                        Object rolesObj = ((Map<?, ?>) realmAccess).get("roles");
+                        if (rolesObj instanceof List) {
+                            for (Object r : (List<?>) rolesObj) {
+                                roles.add(r.toString());
+                            }
+                        }
+                    }
+
+                    // Also check resource_access for client-specific roles
+                    Object resourceAccess = claims.get("resource_access");
+                    if (resourceAccess instanceof Map) {
+                        for (Object clientRoles : ((Map<?, ?>) resourceAccess).values()) {
+                            if (clientRoles instanceof Map) {
+                                Object clientRolesList = ((Map<?, ?>) clientRoles).get("roles");
+                                if (clientRolesList instanceof List) {
+                                    for (Object r : (List<?>) clientRolesList) {
+                                        roles.add(r.toString());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.debug("Failed to decode JWT for role extraction: {}", e.getMessage());
+            }
+        }
+
+        if (!roles.isEmpty() || !allowDevIdentityHeaders) {
+            return roles;
+        }
+
+        // dev-local only: X-User-Roles (comma-separated), then the single-role variant.
+        String rolesHeader = request.getHeader("X-User-Roles");
+        if (rolesHeader != null && !rolesHeader.isBlank()) {
+            for (String role : rolesHeader.split(",")) {
+                roles.add(role.trim());
+            }
+            return roles;
+        }
+
+        String singleRole = request.getHeader("X-User-Role");
+        if (singleRole != null && !singleRole.isBlank()) {
+            roles.add(singleRole.trim());
+        }
+
+        return roles;
+    }
+}

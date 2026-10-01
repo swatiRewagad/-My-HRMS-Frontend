@@ -1,0 +1,204 @@
+<app-shell [titleKey]="'aa.draft.title'">
+  <div shell-actions>
+    <button type="button" class="back-btn" data-testid="back-to-dashboard" (click)="goBack()">
+      <span aria-hidden="true">&larr;</span>
+    </button>
+  </div>
+
+  <div class="aa-draft-assessment">
+
+  @if (noticeKey()) {
+    <div class="notice-banner" role="status" aria-live="polite" data-testid="draft-notice">
+      <span>{{ noticeKey() | translate }}</span>
+      <button type="button" data-testid="dismiss-notice" (click)="dismissMessages()">&times;</button>
+    </div>
+  }
+  @if (errorKey()) {
+    <div class="error-banner" role="alert" aria-live="assertive" data-testid="draft-error">
+      <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+      <span>{{ errorKey() | translate }}</span>
+      <button type="button" data-testid="dismiss-error" (click)="dismissMessages()">&times;</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="loading" data-testid="draft-loading">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+    </p>
+  } @else if (!draft()) {
+    <p class="empty" data-testid="draft-missing">{{ 'aa.draft.not_found' | translate }}</p>
+  } @else {
+    <div class="assessment-layout">
+      <!-- LEFT: what actually arrived, read-only. -->
+      <section class="source-panel">
+        <h3>{{ 'aa.draft.received' | translate }}</h3>
+        <div class="meta-grid">
+          <div class="field">
+            <span class="field-label">{{ 'aa.draft.reference' | translate }}</span>
+            <span data-testid="draft-reference">{{ draft().displayId || draft().draftId }}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">{{ 'aa.draft.status' | translate }}</span>
+            <span class="status-pill" data-testid="draft-status">{{ draft().status }}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">{{ 'aa.draft.sender' | translate }}</span>
+            <span data-testid="draft-sender">{{ draft().senderEmail || '—' }}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">{{ 'aa.draft.mode_of_receipt' | translate }}</span>
+            <span>{{ draft().modeOfReceipt || '—' }}</span>
+          </div>
+          <div class="field">
+            <span class="field-label">{{ 'aa.draft.language' | translate }}</span>
+            <span data-testid="draft-language">
+              {{ draft().languageName || draft().detectedLanguage || '—' }}
+              @if (draft().isVernacular) {
+                <span class="vernacular-tag" data-testid="vernacular-tag">
+                  {{ 'aa.draft.vernacular' | translate }}
+                </span>
+              }
+            </span>
+          </div>
+          <div class="field">
+            <span class="field-label">{{ 'aa.draft.parent_complaint' | translate }}</span>
+            <span data-testid="draft-parent">{{ draft().parentComplaintId || '—' }}</span>
+          </div>
+        </div>
+
+        <h4>{{ 'aa.draft.subject' | translate }}</h4>
+        <p class="subject" data-testid="draft-subject">{{ draft().subject || '—' }}</p>
+
+        <h4>{{ 'aa.draft.body' | translate }}</h4>
+        <pre class="body-text" data-testid="draft-body">{{ draft().body || '—' }}</pre>
+
+        <!-- OCR. One draft-level score only: the API exposes no per-field confidence, so none is shown. -->
+        <h4>{{ 'aa.draft.ocr' | translate }}</h4>
+        <div class="ocr-status" [class.low]="ocrLowConfidence()"
+             [class.manual]="draft().requiresManualEntry" data-testid="ocr-status">
+          <span>{{ ocrStatusKey() | translate }}</span>
+          @if (draft().ocrProcessed) {
+            <span class="ocr-score" data-testid="ocr-confidence">{{ draft().ocrConfidence }}%</span>
+          }
+          @if (draft().ocrSkipReason) {
+            <span class="ocr-skip" data-testid="ocr-skip-reason">{{ draft().ocrSkipReason }}</span>
+          }
+        </div>
+        @if (ocrLowConfidence() || draft().requiresManualEntry) {
+          <p class="ocr-caveat" data-testid="ocr-caveat">{{ 'aa.draft.ocr_caveat' | translate }}</p>
+        }
+
+        @if (extractedFields().length > 0) {
+          <table class="extracted-table" data-testid="extracted-fields">
+            <tbody>
+              @for (f of extractedFields(); track f.key) {
+                <tr>
+                  <th scope="row">{{ f.key }}</th>
+                  <td>{{ f.value }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+
+        @if (attachments().length > 0) {
+          <h4>{{ 'aa.draft.attachments' | translate }}</h4>
+          <ul class="attachment-list" data-testid="attachment-list">
+            @for (a of attachments(); track a.id) {
+              <li>
+                <a [href]="attachmentUrl(a)" target="_blank" rel="noopener"
+                   [attr.data-testid]="'attachment-' + a.id">{{ a.fileName }}</a>
+                @if (a.ocrConfidence !== null) {
+                  <span class="att-score">{{ a.ocrConfidence }}%</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <!-- RIGHT: the officer's assessment. -->
+      <section class="assess-panel">
+        <h3>{{ 'aa.draft.assessment' | translate }}</h3>
+
+        @if (readonly()) {
+          <div class="notice-banner" data-testid="draft-readonly">
+            {{ 'aa.draft.already_disposed' | translate }}
+          </div>
+        }
+
+        <div class="form-field">
+          <label for="complainant-name">{{ 'aa.draft.complainant_name' | translate }}</label>
+          <input id="complainant-name" type="text" data-testid="complainant-name"
+                 [disabled]="readonly()" [(ngModel)]="complainantName" />
+        </div>
+        <div class="form-field">
+          <label for="complainant-phone">{{ 'aa.draft.complainant_phone' | translate }}</label>
+          <input id="complainant-phone" type="tel" data-testid="complainant-phone"
+                 [disabled]="readonly()" [(ngModel)]="complainantPhone" />
+        </div>
+        <div class="form-field">
+          <label for="draft-category">{{ 'aa.draft.category' | translate }}</label>
+          <input id="draft-category" type="text" data-testid="draft-category"
+                 [disabled]="readonly()" [(ngModel)]="category" />
+        </div>
+        <div class="form-field">
+          <label for="draft-entity">{{ 'aa.draft.entity' | translate }}</label>
+          <input id="draft-entity" type="text" data-testid="draft-entity"
+                 [disabled]="readonly()" [(ngModel)]="entityName" />
+        </div>
+        <div class="form-field">
+          <label for="draft-summary">{{ 'aa.draft.summary' | translate }}</label>
+          <textarea id="draft-summary" rows="4" data-testid="draft-summary"
+                    [disabled]="readonly()" [(ngModel)]="complaintSummary"></textarea>
+        </div>
+        <div class="form-field">
+          <label for="draft-remarks">{{ 'aa.draft.remarks' | translate }}</label>
+          <textarea id="draft-remarks" rows="3" data-testid="draft-remarks"
+                    [disabled]="readonly()" [(ngModel)]="remarks"
+                    [attr.placeholder]="'aa.draft.remarks_placeholder' | translate"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" data-testid="save-assessment"
+                  [disabled]="readonly() || saving()" [attr.aria-busy]="saving()"
+                  (click)="saveAssessment()">{{ 'aa.draft.save' | translate }}</button>
+          <button type="button" class="btn btn-primary" data-testid="route-onward"
+                  [disabled]="readonly() || saving()" [attr.aria-busy]="saving()"
+                  (click)="routeOnward()">{{ 'aa.draft.route_onward' | translate }}</button>
+          <button type="button" class="btn btn-danger" data-testid="not-maintainable"
+                  [disabled]="readonly() || saving()" [attr.aria-busy]="saving()"
+                  (click)="markNotMaintainable()">{{ 'aa.draft.not_maintainable' | translate }}</button>
+        </div>
+
+        <!-- Similarity, NOT deduplication. Dedup runs only at ingest and exposes nothing queryable, so
+             these are candidates for a human to judge, never a duplicate verdict. -->
+        <h4>{{ 'aa.draft.possibly_related' | translate }}</h4>
+        @if (suggestedRelated().length === 0) {
+          <p class="empty" data-testid="no-related">{{ 'aa.draft.no_related' | translate }}</p>
+        } @else {
+          <p class="related-caveat">{{ 'aa.draft.related_caveat' | translate }}</p>
+          <table class="related-table" data-testid="related-drafts">
+            <thead>
+              <tr>
+                <th>{{ 'aa.draft.reference' | translate }}</th>
+                <th>{{ 'aa.draft.subject' | translate }}</th>
+                <th>{{ 'aa.draft.similarity' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of suggestedRelated(); track r.draftId) {
+                <tr [attr.data-testid]="'related-' + r.draftId">
+                  <td>{{ r.draftId }}</td>
+                  <td>{{ r.subject }}</td>
+                  <td>{{ (r.similarityScore * 100) | number:'1.0-0' }}%</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </section>
+    </div>
+  }
+  </div>
+</app-shell>

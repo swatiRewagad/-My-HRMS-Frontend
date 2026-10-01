@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMS 2.0 - Complete Feature Documentation</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; line-height: 1.6; color: #333; background: #f5f7fa; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1a237e, #283593); color: white; padding: 40px; border-radius: 12px; margin-bottom: 30px; }
+        .header h1 { font-size: 2.2em; margin-bottom: 10px; }
+        .header p { opacity: 0.9; font-size: 1.1em; }
+        .meta { display: flex; gap: 20px; margin-top: 15px; font-size: 0.9em; opacity: 0.8; }
+        .section { background: white; border-radius: 10px; padding: 30px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+        .section h2 { color: #1a237e; border-bottom: 2px solid #e8eaf6; padding-bottom: 10px; margin-bottom: 20px; }
+        .section h3 { color: #283593; margin: 20px 0 10px; }
+        .section h4 { color: #3949ab; margin: 15px 0 8px; }
+        .feature-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 15px 0; background: #fafbfc; }
+        .feature-card h4 { margin-top: 0; color: #1565c0; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8em; font-weight: 600; margin-right: 8px; }
+        .badge-public { background: #e8f5e9; color: #2e7d32; }
+        .badge-staff { background: #e3f2fd; color: #1565c0; }
+        .badge-admin { background: #fce4ec; color: #c62828; }
+        .badge-api { background: #fff3e0; color: #e65100; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 10px 14px; text-align: left; border: 1px solid #e0e0e0; }
+        th { background: #e8eaf6; color: #1a237e; font-weight: 600; }
+        tr:nth-child(even) { background: #fafbfc; }
+        code { background: #f5f5f5; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+        .toc { background: #e8eaf6; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .toc ul { list-style: none; padding-left: 15px; }
+        .toc a { color: #1a237e; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .flow-steps { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }
+        .flow-step { background: #e3f2fd; border: 1px solid #90caf9; border-radius: 8px; padding: 10px 15px; font-size: 0.9em; }
+        .flow-step::after { content: ' \2192'; color: #1565c0; }
+        .flow-step:last-child::after { content: ''; }
+        ul, ol { padding-left: 20px; margin: 10px 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>CMS 2.0 - Complete Feature Documentation</h1>
+        <p>RBI Complaint Management System - Integrated Ombudsman Scheme</p>
+        <div class="meta">
+            <span>Document Date: 22 July 2026</span>
+            <span>Version: 2.0</span>
+            <span>Classification: Internal</span>
+        </div>
+    </div>
+
+    <div class="toc">
+        <h3>Table of Contents</h3>
+        <ul>
+            <li><a href="#module1">1. Public Complaint Portal</a></li>
+            <li><a href="#module2">2. Citizen Authentication & Session Management</a></li>
+            <li><a href="#module3">3. MRE (Maintainability Rules Engine)</a></li>
+            <li><a href="#module4">4. CRPC Module (Central Receipt & Processing Centre)</a></li>
+            <li><a href="#module5">5. RBIO Module (RBI Integrated Ombudsman)</a></li>
+            <li><a href="#module6">6. CEPC Module (Complaints Examination & Processing Cell)</a></li>
+            <li><a href="#module7">7. Appellate Authority (AA) Module</a></li>
+            <li><a href="#module8">8. RE Portal (Regulated Entity)</a></li>
+            <li><a href="#module9">9. Email Syndication & OCR</a></li>
+            <li><a href="#module10">10. AI/ML Features (Triage, Copilot, OCR)</a></li>
+            <li><a href="#module11">11. Report Builder & Analytics</a></li>
+            <li><a href="#module12">12. Workflow Engine (BPMN/jBPM)</a></li>
+            <li><a href="#module13">13. SLA Monitoring & Escalation</a></li>
+            <li><a href="#module14">14. Notification Service</a></li>
+            <li><a href="#module15">15. Admin Module</a></li>
+            <li><a href="#module16">16. Search & Similar Cases</a></li>
+            <li><a href="#module17">17. File Storage & Attachments</a></li>
+            <li><a href="#module18">18. Internationalization (i18n)</a></li>
+        </ul>
+    </div>
+
+    <!-- MODULE 1: PUBLIC COMPLAINT PORTAL -->
+    <div class="section" id="module1">
+        <h2>1. Public Complaint Portal</h2>
+        <span class="badge badge-public">Public</span>
+        <p>The public-facing complaint filing system that allows citizens to register banking complaints under the RBI Integrated Ombudsman Scheme.</p>
+
+        <div class="feature-card">
+            <h4>1.1 Eligibility Wizard (9-Question Flow)</h4>
+            <p>Before filing, citizens must pass an eligibility check through a guided questionnaire:</p>
+            <table>
+                <tr><th>#</th><th>Question Key</th><th>Purpose</th></tr>
+                <tr><td>1</td><td>regulatedEntity</td><td>Select the Regulated Entity type (Bank, NBFC, etc.)</td></tr>
+                <tr><td>2</td><td>complaintAgainst</td><td>Confirm complaint is against an RE covered under the scheme</td></tr>
+                <tr><td>3</td><td>groundOfComplaint</td><td>Select category/ground of complaint</td></tr>
+                <tr><td>4</td><td>filedWithRE</td><td>Confirm prior complaint was filed with the RE</td></tr>
+                <tr><td>5</td><td>reResponseTime</td><td>RE did not respond within 30 days OR response was unsatisfactory</td></tr>
+                <tr><td>6</td><td>pendingForum</td><td>Not pending in any court/tribunal/arbitrator</td></tr>
+                <tr><td>7</td><td>withinLimitation</td><td>Filed within limitation period (1 year from RE response)</td></tr>
+                <tr><td>8</td><td>notSettled</td><td>Not already settled by Ombudsman</td></tr>
+                <tr><td>9</td><td>consent</td><td>Consent to declaration</td></tr>
+            </table>
+            <p><strong>Outcome:</strong> If any eligibility answer fails, the complaint is marked NON_MAINTAINABLE and the user is informed.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>1.2 Multi-Step Complaint Form</h4>
+            <p>After eligibility clearance, the form progresses through these steps:</p>
+            <ol>
+                <li><strong>Step 1 - Complainant Details:</strong> Name, mobile, email, address, Pincode (auto-fills State/District)</li>
+                <li><strong>Step 2 - Entity Details:</strong> Select RE name, branch, state, district, credit card flag</li>
+                <li><strong>Step 3 - Complaint Details:</strong> Subject, description, category, dispute amount, date of cause</li>
+                <li><strong>Step 4 - Prior Complaint Info:</strong> RE complaint reference, date, RE response details</li>
+                <li><strong>Step 5 - Attachments:</strong> Upload supporting documents (max 10 files, 50MB each)</li>
+                <li><strong>Step 6 - Review & Submit:</strong> Preview all data, confirm, and submit</li>
+            </ol>
+            <p><strong>Validations:</strong> All mandatory fields (entityState, entityDistrict, entityBranch, isCreditCardComplaint, disputeAmount, bankComplaintDate) are enforced with inline error messages.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>1.3 Complaint Tracking</h4>
+            <p>Citizens can track complaint status using their complaint number or mobile number.</p>
+            <ul>
+                <li>Real-time status updates with timeline visualization</li>
+                <li>View assigned officer (anonymized)</li>
+                <li>Download resolution letters</li>
+                <li>File appeal if unsatisfied with resolution</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>1.4 Complaint History</h4>
+            <p>Authenticated citizens can view all their past complaints with status, dates, and outcome.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>1.5 File Appeal</h4>
+            <p>If a complaint resolution is unsatisfactory, citizens can file an appeal to the Appellate Authority within 30 days of the order.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>1.6 Withdraw Complaint</h4>
+            <p>Citizens can withdraw a pending complaint voluntarily before it reaches final resolution stage.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>1.7 Submit Feedback</h4>
+            <p>Post-resolution feedback submission with satisfaction rating.</p>
+        </div>
+    </div>
+
+    <!-- MODULE 2: CITIZEN AUTH -->
+    <div class="section" id="module2">
+        <h2>2. Citizen Authentication & Session Management</h2>
+        <span class="badge badge-public">Public</span>
+
+        <div class="feature-card">
+            <h4>2.1 OTP-Based Authentication</h4>
+            <ul>
+                <li>Mobile number verification via 6-digit OTP</li>
+                <li>OTP validity: 10 minutes</li>
+                <li>Max resend: 99/hour (dev), configurable for prod</li>
+                <li>Max verify attempts per OTP: 99 (dev), 3 (prod)</li>
+                <li>Captcha validation before OTP request</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>2.2 Session Management (NFR-005)</h4>
+            <ul>
+                <li>15-minute session timeout</li>
+                <li>Session ID tracked via <code>X-Session-Id</code> header</li>
+                <li>Auto-logout with warning dialog</li>
+                <li>Session binding to mobile number</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>2.3 Anti-Automation & Rate Limiting</h4>
+            <ul>
+                <li>CAPTCHA (image-based, 6 characters, 200x60px)</li>
+                <li>Form submission timing check (min-form-submission-ms)</li>
+                <li>Honeypot field detection (<code>X-HP-Field</code> header)</li>
+                <li>Velocity throttling (60s window, threshold: 100)</li>
+                <li>Cool-off progression: 5s, 10s, 20s (resets after 1 minute)</li>
+                <li>IP-based rate limiting for OTP requests</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 3: MRE -->
+    <div class="section" id="module3">
+        <h2>3. MRE (Maintainability Rules Engine)</h2>
+        <span class="badge badge-api">Engine</span>
+
+        <div class="feature-card">
+            <h4>3.1 How MRE Works</h4>
+            <p>The MRE evaluates every incoming complaint against 6 grounds to determine if it's <strong>maintainable</strong> under the RBI-IOS 2026 rules.</p>
+            <div class="flow-steps">
+                <span class="flow-step">Complaint Submitted</span>
+                <span class="flow-step">MRE Evaluates 6 Grounds</span>
+                <span class="flow-step">Generates Verdict per Ground</span>
+                <span class="flow-step">Computes Overall Signal</span>
+                <span class="flow-step">Routes to Officer</span>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <h4>3.2 Six Grounds Evaluated</h4>
+            <table>
+                <tr><th>Ground</th><th>Rule</th><th>Verdict if Fails</th></tr>
+                <tr><td>ENTITY_NOT_COVERED</td><td>RE must be covered under the scheme</td><td>NON_MAINTAINABLE</td></tr>
+                <tr><td>NO_PRIOR_RE_COMPLAINT</td><td>Must have filed with RE first</td><td>NON_MAINTAINABLE</td></tr>
+                <tr><td>FILED_BEFORE_WINDOW</td><td>Must wait 30 days after RE complaint (or RE replied)</td><td>NON_MAINTAINABLE</td></tr>
+                <tr><td>FILED_BEYOND_DEADLINE</td><td>Must file within 1 year of RE response</td><td>NON_MAINTAINABLE</td></tr>
+                <tr><td>RE_COMPLAINT_BEYOND_LIMITATION</td><td>RE complaint must be within 3-year limitation</td><td>NON_MAINTAINABLE</td></tr>
+                <tr><td>SAME_GRIEVANCE_PENDING</td><td>Same issue not pending in court/tribunal</td><td>NON_MAINTAINABLE</td></tr>
+            </table>
+            <p><strong>Logic:</strong> ANY single ground FAIL = Overall verdict <code>OBJECTIVELY_NON_MAINTAINABLE</code></p>
+        </div>
+
+        <div class="feature-card">
+            <h4>3.3 Configurable Parameters</h4>
+            <table>
+                <tr><th>Parameter</th><th>Value</th><th>Config Key</th></tr>
+                <tr><td>RE Window Days</td><td>30</td><td>cms.mre.re-window-days</td></tr>
+                <tr><td>NPCI Window Days</td><td>30</td><td>cms.mre.npci-window-days</td></tr>
+                <tr><td>Card Network Window</td><td>60</td><td>cms.mre.card-network-window-days</td></tr>
+                <tr><td>Filing Deadline</td><td>90 days</td><td>cms.mre.filing-deadline-days</td></tr>
+                <tr><td>Limitation Period</td><td>3 years</td><td>cms.mre.limitation-period-years</td></tr>
+                <tr><td>Window Basis</td><td>BUSINESS days</td><td>cms.mre.window-basis</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODULE 4: CRPC -->
+    <div class="section" id="module4">
+        <h2>4. CRPC Module (Central Receipt & Processing Centre)</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>4.1 Overview</h4>
+            <p>CRPC handles complaints received via <strong>Email</strong> and <strong>Physical Letters</strong>. It is the digitization and assessment layer before routing to RBIO/CEPC.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.2 DEO (Data Entry Operator) Dashboard</h4>
+            <ul>
+                <li>View queue of unprocessed email drafts</li>
+                <li>Manual data entry for physical letters</li>
+                <li>OCR-assisted field extraction from scanned documents</li>
+                <li>Draft assessment: fill complainant details, entity info, complaint details</li>
+                <li>MRE copilot shows real-time maintainability assessment</li>
+                <li>Submit for reviewer approval or mark as non-maintainable</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.3 Reviewer Dashboard</h4>
+            <ul>
+                <li>Review DEO-submitted drafts</li>
+                <li>Approve (promotes to full complaint) or Reject (sends back to DEO)</li>
+                <li>Add comments and corrections</li>
+                <li>Threshold management: max 50 complaints per reviewer</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.4 In-Charge Dashboard</h4>
+            <ul>
+                <li>Workload overview across all DEOs and Reviewers</li>
+                <li>Reassign complaints between team members</li>
+                <li>View pending/overdue items</li>
+                <li>Threshold overflow management</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.5 Ops Head Dashboard</h4>
+            <ul>
+                <li>High-level operational metrics</li>
+                <li>View all complaints in pipeline</li>
+                <li>Escalation handling</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.6 Help Desk</h4>
+            <ul>
+                <li>Handle citizen inquiries about complaint status</li>
+                <li>Search and look up complaints</li>
+                <li>Provide status updates to citizens</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.7 Physical Letter Intake</h4>
+            <div class="flow-steps">
+                <span class="flow-step">Receive Letter</span>
+                <span class="flow-step">Scan & OCR</span>
+                <span class="flow-step">DEO Reviews Extraction</span>
+                <span class="flow-step">Fills Missing Fields</span>
+                <span class="flow-step">Submit for Review</span>
+                <span class="flow-step">Route to RBIO/CEPC</span>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <h4>4.8 Routing Logic</h4>
+            <p>After CRPC approval, complaints are routed based on entity type:</p>
+            <ul>
+                <li><strong>Banking entities</strong> (banks, NBFCs, payment systems) &rarr; <strong>RBIO</strong></li>
+                <li><strong>Non-banking entities</strong> (card networks, system participants) &rarr; <strong>CEPC</strong></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 5: RBIO -->
+    <div class="section" id="module5">
+        <h2>5. RBIO Module (RBI Integrated Ombudsman)</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>5.1 Officer Dashboard</h4>
+            <ul>
+                <li>View assigned complaints with priority indicators</li>
+                <li>Round-robin auto-assignment from Keycloak user pool</li>
+                <li>SLA progress bars per complaint</li>
+                <li>Quick actions: Accept, Investigate, Escalate, Close</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>5.2 Complaint Detail & Actions</h4>
+            <ul>
+                <li>Full complaint timeline with all events</li>
+                <li>Communication with RE (send notices, reminders)</li>
+                <li>Communication with complainant</li>
+                <li>Add investigation notes</li>
+                <li>View similar past cases (OpenSearch)</li>
+                <li>AI Triage signal (priority recommendation)</li>
+                <li>Compensation calculation</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>5.3 Conciliation Process</h4>
+            <ul>
+                <li>Schedule conciliation meetings between complainant and RE</li>
+                <li>Record conciliation outcome</li>
+                <li>If conciliation fails, escalate to adjudication</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>5.4 Adjudication</h4>
+            <ul>
+                <li>Formal hearing process</li>
+                <li>Issue award/order</li>
+                <li>Generate closure letters</li>
+                <li>Award compensation if applicable</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>5.5 Supervisor Dashboard</h4>
+            <ul>
+                <li>Overview of all officers' workload</li>
+                <li>SLA breach monitoring</li>
+                <li>Reassign complaints</li>
+                <li>Approve high-value awards</li>
+                <li>View escalated cases</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>5.6 Advisory Generation</h4>
+            <p>Generate formal advisories to regulated entities based on complaint patterns.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>5.7 Assignment Logic</h4>
+            <p>Round-robin assignment via <code>ComplaintRoutingService</code>:</p>
+            <ol>
+                <li>Query Keycloak for users with <code>RBIO_OFFICER</code> role</li>
+                <li>Use atomic counter to select next officer in rotation</li>
+                <li>If Keycloak unavailable, falls back to "RBIO OFFICER Team" (pool assignment)</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- MODULE 6: CEPC -->
+    <div class="section" id="module6">
+        <h2>6. CEPC Module (Complaints Examination & Processing Cell)</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>6.1 CEPC Dashboard</h4>
+            <ul>
+                <li>View complaints routed to CEPC</li>
+                <li>Priority-based queue</li>
+                <li>Status filters: New, In Progress, Awaiting RE Response, Resolved</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>6.2 Complaint Processing</h4>
+            <ul>
+                <li>Full complaint detail view with timeline</li>
+                <li>Send formal communications to RE</li>
+                <li>Track RE responses</li>
+                <li>Conciliation scheduling</li>
+                <li>Resolution and closure</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>6.3 SLA Dashboard</h4>
+            <ul>
+                <li>Visual SLA indicators (green/amber/red)</li>
+                <li>Time remaining per complaint</li>
+                <li>Breach alerts</li>
+                <li>Historical SLA performance metrics</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>6.4 Roles</h4>
+            <table>
+                <tr><th>Role</th><th>Responsibility</th></tr>
+                <tr><td>DO (Dealing Officer)</td><td>Primary complaint handler</td></tr>
+                <tr><td>REVIEWER</td><td>Quality check on resolutions</td></tr>
+                <tr><td>INCHARGE</td><td>Team management, escalations</td></tr>
+                <tr><td>CA (Competent Authority)</td><td>Final authority on awards</td></tr>
+                <tr><td>CP (Conciliation Presiding)</td><td>Presides over conciliation</td></tr>
+                <tr><td>ADMIN</td><td>System configuration</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODULE 7: AA -->
+    <div class="section" id="module7">
+        <h2>7. Appellate Authority (AA) Module</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>7.1 Appeal Dashboard</h4>
+            <ul>
+                <li>View all filed appeals</li>
+                <li>Status tracking: Filed, Under Review, Hearing Scheduled, Order Issued</li>
+                <li>Link to original complaint and RBIO resolution</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>7.2 Appeal Detail & Processing</h4>
+            <ul>
+                <li>Review original complaint and resolution</li>
+                <li>Schedule hearings</li>
+                <li>Record hearing proceedings</li>
+                <li>Issue appellate orders</li>
+                <li>Uphold, modify, or overturn original decision</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>7.3 Roles</h4>
+            <table>
+                <tr><th>Role</th><th>Responsibility</th></tr>
+                <tr><td>AA_REGISTRAR</td><td>Intake and scheduling</td></tr>
+                <tr><td>AA_BENCH_OFFICER</td><td>Case preparation</td></tr>
+                <tr><td>AA_AUTHORITY</td><td>Hearing and order issuance</td></tr>
+                <tr><td>AA_ADMIN</td><td>Administration</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODULE 8: RE Portal -->
+    <div class="section" id="module8">
+        <h2>8. RE Portal (Regulated Entity)</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>8.1 RE Dashboard</h4>
+            <ul>
+                <li>View complaints filed against the RE</li>
+                <li>Status-wise complaint breakdown</li>
+                <li>SLA alerts for response deadlines</li>
+                <li>Historical complaint trends</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>8.2 Complaint Response</h4>
+            <ul>
+                <li>View complaint details and communications</li>
+                <li>Submit responses to Ombudsman notices</li>
+                <li>Upload evidence/documents</li>
+                <li>Accept or contest complaints</li>
+                <li>Propose resolution/compensation</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>8.3 RE Profile Management</h4>
+            <ul>
+                <li>Update nodal officer contact details</li>
+                <li>Configure escalation matrix</li>
+                <li>View compliance score</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>8.4 Roles</h4>
+            <table>
+                <tr><th>Role</th><th>Responsibility</th></tr>
+                <tr><td>RE_NODAL_OFFICER</td><td>Primary point of contact, responds to complaints</td></tr>
+                <tr><td>RE_PNO (Principal Nodal Officer)</td><td>Escalation authority, compliance oversight</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODULE 9: EMAIL SYNDICATION -->
+    <div class="section" id="module9">
+        <h2>9. Email Syndication & OCR</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>9.1 Email Queue</h4>
+            <ul>
+                <li>Displays incoming emails from complaint mailbox</li>
+                <li>Auto-extraction of complaint details using OCR + NLP</li>
+                <li>Status: Pending, In Draft, Processed, Ignored</li>
+                <li>Bulk actions on email queue</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>9.2 Draft Detail (Email-to-Complaint Conversion)</h4>
+            <ul>
+                <li>View extracted fields from email body/attachments</li>
+                <li>OCR output for scanned attachments</li>
+                <li>DEO can edit/correct extracted fields</li>
+                <li>Side-by-side: original email vs extracted data</li>
+                <li>Confidence scores for extracted fields</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>9.3 Ignore List</h4>
+            <ul>
+                <li>Manage email addresses to auto-ignore (spam, internal)</li>
+                <li>Pattern-based rules (domain, subject keywords)</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>9.4 Email Simulator (Dev/Test)</h4>
+            <p>Simulates incoming emails with various complaint scenarios for testing the extraction pipeline.</p>
+        </div>
+    </div>
+
+    <!-- MODULE 10: AI/ML -->
+    <div class="section" id="module10">
+        <h2>10. AI/ML Features</h2>
+        <span class="badge badge-api">AI</span>
+
+        <div class="feature-card">
+            <h4>10.1 OCR Pipeline</h4>
+            <p>Multi-provider OCR chain for extracting text from scanned documents:</p>
+            <table>
+                <tr><th>Provider</th><th>Use Case</th></tr>
+                <tr><td>Groq (LLaMA 4 Scout)</td><td>Primary: Fast AI-powered extraction</td></tr>
+                <tr><td>PaddleOCR</td><td>Fallback: Local, no API key needed</td></tr>
+                <tr><td>Gemini</td><td>Alternative cloud provider</td></tr>
+                <tr><td>Azure Document Intelligence</td><td>Enterprise-grade extraction</td></tr>
+                <tr><td>OpenAI Vision</td><td>GPT-4 based extraction</td></tr>
+                <tr><td>HuggingFace</td><td>Open-source models</td></tr>
+            </table>
+            <p>Configuration: <code>cms.ocr.chain</code> selects the active provider.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>10.2 Intake Triage (AI Priority Signal)</h4>
+            <ul>
+                <li>Analyzes complaint text at intake</li>
+                <li>Assigns triage signal: HIGH, MEDIUM, LOW</li>
+                <li>Considers: dispute amount, complaint category, RE history, urgency keywords</li>
+                <li>Signal stored as <code>triageSignal</code> on complaint entity</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>10.3 MRE Copilot (Maintainability Assessment)</h4>
+            <ul>
+                <li>Real-time assessment shown during CRPC draft editing</li>
+                <li>Shows which grounds PASS/FAIL/INSUFFICIENT_DATA</li>
+                <li>Suggests corrections to make complaint maintainable</li>
+                <li>Runs via <code>MaintainabilityCopilotService</code></li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>10.4 Similar Cases (OpenSearch)</h4>
+            <ul>
+                <li>Full-text similarity search on complaint description</li>
+                <li>Shows past cases with similar facts for officer reference</li>
+                <li>Helps ensure consistent resolution</li>
+                <li>Configurable: <code>cms.similar-cases.enabled</code></li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>10.5 Compensation Precedent Service</h4>
+            <p>Analyzes past awards for similar complaint types to recommend appropriate compensation ranges.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>10.6 RE Responsiveness Scoring</h4>
+            <p>Tracks and scores how responsive each RE is to Ombudsman communications, influencing triage and escalation.</p>
+        </div>
+    </div>
+
+    <!-- MODULE 11: REPORT BUILDER -->
+    <div class="section" id="module11">
+        <h2>11. Report Builder & Analytics</h2>
+        <span class="badge badge-staff">Staff</span>
+
+        <div class="feature-card">
+            <h4>11.1 Natural Language Report Builder</h4>
+            <ul>
+                <li>Semantic query interface: users describe what they want in natural language</li>
+                <li>System translates to structured query using <code>SemanticModelRegistry</code></li>
+                <li>Supports subjects: count, list, avgtat, medtat</li>
+                <li>Supports group-by: status, priority, department, reName, region, month</li>
+                <li>Supports filters: date ranges (THIS_WEEK, THIS_MONTH, LAST_30D, etc.), entity, status</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>11.2 Widget Dashboard</h4>
+            <ul>
+                <li>Add multiple report widgets to dashboard</li>
+                <li>Chart types: BAR, PIE, LINE, TABLE, KPI</li>
+                <li>Chart.js rendering with <code>{group, value}</code> data format</li>
+                <li>Save and share report configurations</li>
+                <li>Auto-refresh capability</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>11.3 Senior Dashboard</h4>
+            <ul>
+                <li>Pre-built executive dashboard for senior management</li>
+                <li>Key metrics: Total complaints, SLA adherence, resolution rate</li>
+                <li>Trend analysis with period comparison</li>
+                <li>Department-wise breakdown</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>11.4 Admin Dashboard</h4>
+            <ul>
+                <li>System health metrics</li>
+                <li>User activity and workload distribution</li>
+                <li>Kafka queue depths</li>
+                <li>Compliance KPIs</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 12: WORKFLOW -->
+    <div class="section" id="module12">
+        <h2>12. Workflow Engine (BPMN/jBPM)</h2>
+        <span class="badge badge-api">Engine</span>
+
+        <div class="feature-card">
+            <h4>12.1 State Machine</h4>
+            <p>Each complaint follows a defined lifecycle:</p>
+            <div class="flow-steps">
+                <span class="flow-step">FILED</span>
+                <span class="flow-step">ASSIGNED</span>
+                <span class="flow-step">IN_PROGRESS</span>
+                <span class="flow-step">AWAITING_RE_RESPONSE</span>
+                <span class="flow-step">CONCILIATION</span>
+                <span class="flow-step">ADJUDICATION</span>
+                <span class="flow-step">RESOLVED/CLOSED</span>
+            </div>
+        </div>
+
+        <div class="feature-card">
+            <h4>12.2 BPMN Process Definitions</h4>
+            <ul>
+                <li>RBIO complaint workflow (conciliation &rarr; adjudication)</li>
+                <li>CEPC complaint workflow</li>
+                <li>Appeal workflow</li>
+                <li>Escalation workflow</li>
+                <li>Defined in Camunda Modeler (<code>camunda-modeler-setup/</code>)</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>12.3 Task Management</h4>
+            <ul>
+                <li>Tasks auto-created from BPMN process nodes</li>
+                <li>Task assignment via round-robin or manual</li>
+                <li>Task actions: Claim, Complete, Delegate, Escalate</li>
+                <li>Task history and audit trail</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 13: SLA -->
+    <div class="section" id="module13">
+        <h2>13. SLA Monitoring & Escalation</h2>
+        <span class="badge badge-api">Engine</span>
+
+        <div class="feature-card">
+            <h4>13.1 SLA Calculation</h4>
+            <ul>
+                <li>Business hours only: 9 AM - 6 PM IST (configurable)</li>
+                <li>Excludes holidays (from Holiday entity)</li>
+                <li>Default SLA: 240 business hours (30 working days)</li>
+                <li>TAT (Turn-Around Time) calculated in real-time</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>13.2 Escalation Rules</h4>
+            <ul>
+                <li>Auto-escalation on SLA breach</li>
+                <li>Multi-level escalation: Officer &rarr; Supervisor &rarr; In-Charge &rarr; Head</li>
+                <li>Configurable escalation thresholds per complaint priority</li>
+                <li>Email/notification triggers on escalation</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>13.3 CEPC SLA Service</h4>
+            <p>Dedicated SLA tracking for CEPC with different thresholds and business rules.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>13.4 RBIO SLA Service</h4>
+            <p>RBIO-specific SLA with conciliation and adjudication phase timers.</p>
+        </div>
+    </div>
+
+    <!-- MODULE 14: NOTIFICATIONS -->
+    <div class="section" id="module14">
+        <h2>14. Notification Service</h2>
+        <span class="badge badge-api">Service</span>
+
+        <div class="feature-card">
+            <h4>14.1 Notification Channels</h4>
+            <ul>
+                <li>Email notifications (SMTP)</li>
+                <li>SMS notifications (gateway integration)</li>
+                <li>In-app notifications (real-time, stored in DB)</li>
+                <li>Kafka-driven: consumes events, sends notifications</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>14.2 Notification Triggers</h4>
+            <table>
+                <tr><th>Event</th><th>Recipients</th><th>Channel</th></tr>
+                <tr><td>Complaint Filed</td><td>Citizen</td><td>SMS + Email</td></tr>
+                <tr><td>Complaint Assigned</td><td>Officer</td><td>In-App</td></tr>
+                <tr><td>RE Notice Sent</td><td>RE Nodal Officer</td><td>Email</td></tr>
+                <tr><td>SLA Warning (80%)</td><td>Officer + Supervisor</td><td>In-App + Email</td></tr>
+                <tr><td>SLA Breach</td><td>Supervisor + In-Charge</td><td>Email</td></tr>
+                <tr><td>Resolution</td><td>Citizen</td><td>SMS + Email</td></tr>
+                <tr><td>Appeal Filed</td><td>AA Registrar</td><td>In-App</td></tr>
+            </table>
+        </div>
+
+        <div class="feature-card">
+            <h4>14.3 Communication Templates</h4>
+            <ul>
+                <li>Admin-configurable email/SMS templates</li>
+                <li>Variable placeholders: {{complaintNumber}}, {{citizenName}}, etc.</li>
+                <li>Multi-language support</li>
+                <li>Template versioning</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 15: ADMIN -->
+    <div class="section" id="module15">
+        <h2>15. Admin Module</h2>
+        <span class="badge badge-admin">Admin</span>
+
+        <div class="feature-card">
+            <h4>15.1 Rules Management</h4>
+            <ul>
+                <li>Create/edit/delete routing and extraction rules</li>
+                <li>Rule editor with condition builder</li>
+                <li>Rule tester: test rules against sample data</li>
+                <li>Rule versioning and activation/deactivation</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>15.2 Extraction Rules</h4>
+            <ul>
+                <li>Configure regex/NLP patterns for email field extraction</li>
+                <li>Map extracted fields to complaint entity fields</li>
+                <li>Confidence thresholds</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>15.3 Team Management</h4>
+            <ul>
+                <li>View all Keycloak users and their roles</li>
+                <li>Assign/revoke roles</li>
+                <li>View workload distribution</li>
+                <li>Activate/deactivate users</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>15.4 Comment Templates</h4>
+            <p>Pre-defined comment templates for officers to quickly add standardized notes.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>15.5 Communication Templates</h4>
+            <p>Email/SMS templates with variable substitution for automated communications.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>15.6 Holiday Management</h4>
+            <p>Manage holiday calendar for SLA business-hour calculations.</p>
+        </div>
+
+        <div class="feature-card">
+            <h4>15.7 Form Configuration</h4>
+            <p>Dynamic form field configuration via <code>FormConfigService</code> — allows adding/modifying form fields without code changes.</p>
+        </div>
+    </div>
+
+    <!-- MODULE 16: SEARCH -->
+    <div class="section" id="module16">
+        <h2>16. Search & Similar Cases</h2>
+        <span class="badge badge-api">Service</span>
+
+        <div class="feature-card">
+            <h4>16.1 Full-Text Search (OpenSearch)</h4>
+            <ul>
+                <li>Index: <code>complaints</code></li>
+                <li>Searchable fields: subject, description, complainant name, complaint number</li>
+                <li>Fuzzy matching and relevance scoring</li>
+                <li>Faceted search by status, priority, department</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>16.2 Similar Cases Engine</h4>
+            <ul>
+                <li>Uses OpenSearch More-Like-This query</li>
+                <li>Input: complaint description text</li>
+                <li>Output: top-N similar past complaints with similarity score</li>
+                <li>Helps officers achieve consistency in resolution</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 17: FILE STORAGE -->
+    <div class="section" id="module17">
+        <h2>17. File Storage & Attachments</h2>
+        <span class="badge badge-api">Service</span>
+
+        <div class="feature-card">
+            <h4>17.1 Chunked Upload</h4>
+            <ul>
+                <li>Large files split into 5MB chunks</li>
+                <li>Resumable uploads</li>
+                <li>Max file size: 50MB per file</li>
+                <li>Max 10 files per complaint</li>
+                <li>Allowed types: PDF, PNG, JPG, JPEG, DOC, DOCX, XLS, XLSX, TXT, CSV, ZIP</li>
+            </ul>
+        </div>
+
+        <div class="feature-card">
+            <h4>17.2 Storage</h4>
+            <ul>
+                <li>Local filesystem storage (configurable root path)</li>
+                <li>Organized by complaint number</li>
+                <li>Virus scanning hook (configurable)</li>
+                <li>PII encryption for sensitive attachments</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- MODULE 18: I18N -->
+    <div class="section" id="module18">
+        <h2>18. Internationalization (i18n)</h2>
+        <span class="badge badge-public">Public</span>
+
+        <div class="feature-card">
+            <h4>18.1 Multi-Language Support</h4>
+            <ul>
+                <li>Translation service with key-value pairs per locale</li>
+                <li>Supported locales stored in DB</li>
+                <li>Language switcher component in UI</li>
+                <li>API: <code>/api/translations/{locale}</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SUMMARY TABLE -->
+    <div class="section">
+        <h2>Summary: All Controllers (39 APIs)</h2>
+        <table>
+            <tr><th>Controller</th><th>Purpose</th></tr>
+            <tr><td>ComplaintController</td><td>Core CRUD for complaints</td></tr>
+            <tr><td>ComplaintApiV1Controller</td><td>Public API v1 for filing/tracking</td></tr>
+            <tr><td>ComplaintRoutingController</td><td>Routing decisions (RBIO/CEPC)</td></tr>
+            <tr><td>ComplaintDraftController</td><td>Save/resume draft complaints</td></tr>
+            <tr><td>CitizenAuthController</td><td>OTP, CAPTCHA, session management</td></tr>
+            <tr><td>EligibilityWizardController</td><td>Eligibility check API</td></tr>
+            <tr><td>MreController</td><td>Maintainability rules engine</td></tr>
+            <tr><td>CrpcWorkflowController</td><td>CRPC DEO/Reviewer workflow</td></tr>
+            <tr><td>CrpcDraftEnhancementController</td><td>OCR-enhanced draft editing</td></tr>
+            <tr><td>CrpcInChargeController</td><td>In-Charge operations</td></tr>
+            <tr><td>WorkflowController</td><td>BPMN task operations</td></tr>
+            <tr><td>OfficerDashboardController</td><td>RBIO officer metrics</td></tr>
+            <tr><td>DashboardController</td><td>General dashboard APIs</td></tr>
+            <tr><td>AdminDashboardController</td><td>Admin metrics and config</td></tr>
+            <tr><td>SeniorDashboardController</td><td>Senior management analytics</td></tr>
+            <tr><td>AppealController</td><td>Appeal filing and processing</td></tr>
+            <tr><td>RePortalController</td><td>Regulated Entity portal APIs</td></tr>
+            <tr><td>EmailSyndicationApiController</td><td>Email intake pipeline</td></tr>
+            <tr><td>EmailSimulationController</td><td>Email simulator (dev/test)</td></tr>
+            <tr><td>OcrController</td><td>OCR extraction API</td></tr>
+            <tr><td>FileUploadController</td><td>Chunked file upload</td></tr>
+            <tr><td>CopilotController</td><td>AI copilot (MRE assessment)</td></tr>
+            <tr><td>TriageController</td><td>AI triage signal</td></tr>
+            <tr><td>SimilarCasesController</td><td>OpenSearch similar cases</td></tr>
+            <tr><td>ReportBuilderController</td><td>Semantic query reports</td></tr>
+            <tr><td>RulesApiController</td><td>DRL rules management</td></tr>
+            <tr><td>ExtractionRuleController</td><td>Email extraction rules</td></tr>
+            <tr><td>CommentTemplateController</td><td>Comment templates CRUD</td></tr>
+            <tr><td>CommunicationTemplateController</td><td>Communication templates</td></tr>
+            <tr><td>KeycloakUserController</td><td>User/role management</td></tr>
+            <tr><td>NotificationController</td><td>In-app notifications</td></tr>
+            <tr><td>BankController</td><td>Bank/RE master data</td></tr>
+            <tr><td>CategoryController</td><td>Complaint categories</td></tr>
+            <tr><td>LocationController</td><td>Pincode/State/District lookup</td></tr>
+            <tr><td>GeoLocationController</td><td>Geolocation services</td></tr>
+            <tr><td>TatController</td><td>TAT calculation API</td></tr>
+            <tr><td>TranslationController</td><td>i18n translations</td></tr>
+            <tr><td>FormConfigController</td><td>Dynamic form configuration</td></tr>
+            <tr><td>PastComplaintController</td><td>Past complaint lookup</td></tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Summary: Frontend Components (67 Components)</h2>
+        <table>
+            <tr><th>Module</th><th>Components</th></tr>
+            <tr><td>Public Portal</td><td>public-home, public-login, eligibility-wizard, file-complaint, complaint-history, file-appeal, withdraw-complaint, submit-feedback, public-layout</td></tr>
+            <tr><td>CRPC</td><td>crpc-login, deo-home, physical-letter, draft-assessment, reviewer-home, reviewer-assessment, ops-head, in-charge-dashboard, help-desk</td></tr>
+            <tr><td>RBIO</td><td>rbio-home, rbio-complaint-detail, rbio-supervisor-dashboard, rbio-conciliation, rbio-adjudication, rbio-advisory, rbio-sla-progress</td></tr>
+            <tr><td>CEPC</td><td>cepc-dashboard, cepc-complaint-detail, cepc-sla-dashboard, cepc-conciliation, cepc-sla-indicator, cepc-timeline</td></tr>
+            <tr><td>Appellate Authority</td><td>aa-dashboard, aa-appeal-detail, aa-hearing, aa-order</td></tr>
+            <tr><td>RE Portal</td><td>re-login, re-layout, re-dashboard, re-complaint-detail, re-profile</td></tr>
+            <tr><td>Staff</td><td>staff-login, staff-dashboard, staff-unauthorized, rbio-tasks, cepc-tasks, task-action</td></tr>
+            <tr><td>Email Syndication</td><td>email-queue, draft-detail, ignore-list, email-simulator</td></tr>
+            <tr><td>Admin</td><td>admin-dashboard, rules-management, rule-editor, rule-tester, extraction-rules, team-management, comment-templates, communication-templates</td></tr>
+            <tr><td>Reports</td><td>report-builder, senior-dashboard</td></tr>
+            <tr><td>Other</td><td>landing, complaint-form, complaint-tracker, search, officer-dashboard, complaint-action, eligibility-questionnaire, language-switcher</td></tr>
+        </table>
+    </div>
+
+    <div class="section" style="text-align: center; padding: 20px;">
+        <p style="color: #666;">Document generated on 22 July 2026 | CMS 2.0 - RBI Integrated Ombudsman Scheme</p>
+    </div>
+</div>
+</body>
+</html>

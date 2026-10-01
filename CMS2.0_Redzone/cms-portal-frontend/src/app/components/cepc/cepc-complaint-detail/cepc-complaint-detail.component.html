@@ -1,0 +1,332 @@
+<div class="cepc-detail">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="back-btn" (click)="goBack()">&larr;</button>
+      <h2>CEPC Complaint Examination</h2>
+    </div>
+    <div class="topbar-right">
+      @if (auth.currentUser(); as user) {
+        <span class="role-badge">{{ userRole() }}</span>
+        <span>{{ user.firstName }} {{ user.lastName }}</span>
+      }
+    </div>
+  </header>
+
+  <main class="content">
+    @if (loading()) {
+      <div class="loading">Loading complaint details...</div>
+    } @else if (!complaint()) {
+      <div class="error-state">Complaint not found.</div>
+    } @else {
+      <!-- Complaint Summary Strip — shared app-complaint-summary, as on RBIO and the three CRPC screens.
+           This screen had no strip: the identifying facts were scattered through .complaint-header and
+           the Entity/Complainant sections, so the same complaint read differently here and on the
+           dashboard that linked to it. -->
+      <app-complaint-summary [items]="summaryItems()" (back)="goBack()" />
+
+      <!--
+        ═══ MAIN CONTENT: THREE REGIONS ═══
+        LEFT is the complaint as filed (read-only facts), CENTER is the actions the officer takes, RIGHT
+        is a thin rail holding the audit trail, the documents and the comment thread — material an
+        officer CONSULTS rather than works in. Those three were previously stacked full-width in the left
+        column, so reading the audit trail scrolled the action cards out of sight entirely.
+
+        `.detail-layout` is a SPEC CONTRACT: seven CEPC specs wait on `.cepc-detail .detail-layout` as
+        their "screen has loaded" signal. Same for `.detail-panel` on the left region and `.action-panel`
+        on the centre — `e2e/cepc/dashboard-grid.spec.ts:716` asserts `.action-panel .action-card`. The
+        new region classes are ADDITIVE; do not collapse either vocabulary.
+      -->
+      <div class="detail-layout detail-content">
+        <!-- Left: the complaint as filed -->
+        <div class="detail-panel left-panel">
+          <!-- Header -->
+          <div class="complaint-header">
+            <div class="header-left">
+              <h3>{{ complaint().complaintNumber || complaint().complaintId }}</h3>
+              <!-- `.complaint-header .status-badge` is pinned by workflow-actions.spec.ts:44,64 and
+                   contact-person.spec.ts:169, so the badge stays INSIDE this header even though the
+                   summary strip above now also carries the status. -->
+              <app-status-badge [status]="complaint().status" />
+              <span class="priority-badge" [attr.data-priority]="complaint().priority">{{ complaint().priority }}</span>
+            </div>
+            <div class="header-meta">
+              <span>Filed: {{ complaint().registeredAt | date:'dd MMM yyyy' }}</span>
+              <app-cepc-sla-indicator [slaDueDate]="complaint().slaDueDate" [status]="complaint().status"></app-cepc-sla-indicator>
+              @if (canEdit()) {
+                <button class="btn-edit" type="button" title="Edit" (click)="startEdit()">Edit</button>
+              }
+            </div>
+          </div>
+
+          @if (editing()) {
+            <section class="detail-section edit-section">
+              <h4>Edit Complaint</h4>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="edit-status">Status</label>
+                  <select id="edit-status" [(ngModel)]="editForm.status">
+                    <option value="pending">Pending</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="escalated">Escalated</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="edit-priority">Priority</label>
+                  <select id="edit-priority" [(ngModel)]="editForm.priority">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="edit-officer">Assigned Officer</label>
+                  <input id="edit-officer" type="text" [(ngModel)]="editForm.assignedOfficer" />
+                </div>
+              </div>
+              <div class="field full-width">
+                <label for="edit-remarks">Remarks</label>
+                <textarea id="edit-remarks" rows="3" [(ngModel)]="editForm.remarks"
+                          placeholder="Why is this record being changed?"></textarea>
+              </div>
+              @if (editError()) {
+                <p class="edit-error">{{ editError() }}</p>
+              }
+              <div class="form-actions">
+                <button class="submit-btn" type="button" [disabled]="savingEdit()" (click)="saveEdit()">
+                  @if (savingEdit()) { Saving... } @else { Save Changes }
+                </button>
+                <button class="cancel-btn" type="button" (click)="cancelEdit()">Cancel</button>
+              </div>
+            </section>
+          }
+
+          <!-- Complainant Details -->
+          <section class="detail-section">
+            <h4>Complainant Details</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Name</label>
+                <span>{{ complaint().complainantName }}</span>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <span>{{ complaint().complainantEmail || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Phone</label>
+                <span>{{ complaint().complainantPhone || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Address</label>
+                <span>{{ complaint().complainantAddress || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Entity Details -->
+          <section class="detail-section">
+            <h4>Entity Details</h4>
+            <div class="field-grid">
+              <div class="field">
+                <label>Entity Name</label>
+                <span>{{ complaint().entityName || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Entity Type</label>
+                <span>{{ complaint().entityType || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Department</label>
+                <span class="dept-badge">CEPC</span>
+              </div>
+              <div class="field">
+                <label>Assigned To</label>
+                <span>{{ complaint().assignedTo || complaint().assignedTeam || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Complaint Details -->
+          <section class="detail-section">
+            <h4>Complaint Information</h4>
+            <div class="field full-width">
+              <label>Subject</label>
+              <span>{{ complaint().subject }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Description</label>
+              <p class="description-text">{{ complaint().description || '—' }}</p>
+            </div>
+            <div class="field-grid">
+              <div class="field">
+                <label>Category</label>
+                <span>{{ complaint().category || '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Amount Involved</label>
+                <span>{{ complaint().amountInvolved ? '₹' + complaint().amountInvolved : '—' }}</span>
+              </div>
+              <div class="field">
+                <label>Transaction Date</label>
+                <span>{{ complaint().transactionDate | date:'dd MMM yyyy' }}</span>
+              </div>
+              <div class="field">
+                <label>Filing Type</label>
+                <span>{{ complaint().filingType || '—' }}</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Conciliation Panel (shown when workflow stage involves conciliation) -->
+          <!-- Stays in the left flow rather than moving to the rail: conciliation is something the
+               officer WORKS in — it carries its own form and submit — and a 340px overlay is not where a
+               form belongs. -->
+          @if (complaint().workflowStage?.toLowerCase()?.includes('conciliation') || complaint().status === 'conciliation') {
+            <app-cepc-conciliation [complaint]="complaint()"></app-cepc-conciliation>
+          }
+        </div>
+
+        <!-- Center: the actions -->
+        <!-- `.action-panel` is a spec contract (dashboard-grid.spec.ts:716). `.right-panel` is the
+             region name the reference layout uses for the CENTER column — misleading, but it is what
+             the RBIO screen and its layout spec already call it, and one vocabulary beats an accurate
+             one nobody else shares. -->
+        <div class="action-panel right-panel">
+          @if (isTerminalState()) {
+            <div class="closed-banner">
+              <span class="closed-icon">&#10003;</span>
+              <h4>Complaint {{ complaint().status | uppercase }}</h4>
+              <p>This complaint has been closed. No further actions available.</p>
+            </div>
+          } @else {
+            <h4>Available Actions</h4>
+            <p class="action-hint">Select an action to perform on this complaint.</p>
+
+            <app-workflow-action-bar
+              [actions]="availableActions()"
+              [selectedId]="selectedAction()?.id ?? null"
+              [processing]="processing()"
+              [(remarks)]="remarks"
+              [showFormTitle]="true"
+              [speech]="true"
+              [fields]="targetPicker"
+              [commitLabel]="confirmLabel()"
+              (select)="selectAction($event)"
+              (commit)="submitAction()"
+              (cancel)="cancelAction()" />
+
+            <ng-template #targetPicker let-action>
+              @if (action.requiresTarget && action.targetType === 'department') {
+                <div class="form-field">
+                  <label>Target Department</label>
+                  <select [(ngModel)]="targetDepartment">
+                    <option value="">Select Department</option>
+                    @for (dept of rbiDepartments; track dept) {
+                      <option [value]="dept">{{ dept }}</option>
+                    }
+                  </select>
+                </div>
+              }
+
+              @if (action.requiresTarget && action.targetType === 'user') {
+                <div class="form-field">
+                  <label>Assign To</label>
+                  <select [(ngModel)]="targetUser">
+                    <option value="">Select {{ action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN' ? 'Contact Person' : 'Officer' }}</option>
+                    @if (action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN') {
+                      @for (cp of contactPersons(); track cp.id) {
+                        <option [value]="cp.id">{{ cp.name }}</option>
+                      }
+                    } @else {
+                      @for (officer of cepcOfficers(); track officer.id) {
+                        <option [value]="officer.id">{{ officer.name }}</option>
+                      }
+                    }
+                  </select>
+                </div>
+              }
+            </ng-template>
+
+            @if (actionResult()) {
+              <div class="result-msg" [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                {{ actionResult() }}
+              </div>
+            }
+          }
+        </div>
+
+        <!--
+          ═══ RIGHT RAIL ═══
+          The documents and the comment thread, which were full-width blocks in the left column — which
+          is what pushed the action cards below the fold on a complaint with any history at all.
+
+          The AUDIT TRAIL is NOT here, and that is a spec contract rather than an oversight. Two specs
+          (`workflow-actions.spec.ts:177`, `contact-person.spec.ts:217`) assert the trail is VISIBLE as
+          soon as the screen loads, with no click, and a collapsed rail renders no body at all. A second
+          copy in the rail is not the answer either: `contact-person.spec.ts:217` calls toBeVisible on
+          `app-cepc-timeline` unqualified, so two instances is a Playwright strict-mode violation.
+          The trail therefore stays below the grid, in its own band, and the rail has two icons.
+        -->
+        <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+
+        <ng-template #railBody let-open>
+          @switch (open) {
+            @case ('documents') {
+              <div class="documents-area">
+                @if (documents().length > 0) {
+                  <div class="doc-list">
+                    @for (doc of documents(); track doc.id) {
+                      <div class="doc-item">
+                        <span class="doc-icon">&#128196;</span>
+                        <div class="doc-info">
+                          <span class="doc-name">{{ doc.name }}</span>
+                          <span class="doc-meta">{{ doc.size }} &middot; {{ doc.uploadedBy }} &middot; {{ doc.uploadedAt | date:'dd MMM yyyy' }}</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  <p class="no-docs">No documents uploaded yet.</p>
+                }
+                @if (!isTerminalState()) {
+                  <div class="upload-area">
+                    <label class="upload-btn">
+                      <input type="file" (change)="onDocumentUpload($event)" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" hidden />
+                      &#128206; Upload Document
+                    </label>
+                    @if (uploadingDoc()) {
+                      <span class="uploading">Uploading...</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            @case ('comments') {
+              <!--
+                CEPC had no thread at all: the only place an officer could write prose was the per-action
+                Remarks box, which is bound to one transition and disappears with it. There was nowhere to
+                leave a note that outlives a single workflow step.
+              -->
+              <app-comment-thread
+                [complaintNumber]="complaint().complaintNumber || complaint().complaintId"
+                [audienceRoles]="commentAudienceRoles" />
+            }
+          }
+        </ng-template>
+      </div>
+
+      <!--
+        ═══ AUDIT TRAIL ═══
+        The ONE instance, below the grid rather than in the rail. See the rail comment above for the two
+        assertions that require it to be visible without a click. Full-width here rather than back inside
+        the left column, so it no longer competes with the action cards for vertical space.
+      -->
+      <section class="detail-section trail-section">
+        <app-cepc-timeline [complaintNumber]="complaint().complaintNumber || complaint().complaintId"></app-cepc-timeline>
+      </section>
+    }
+  </main>
+</div>

@@ -1,0 +1,412 @@
+
+Running 44 tests using 1 worker
+
+[1/44] [chromium] › e2e\rbio\adjudication.spec.ts:18:7 › RBIO Adjudication Workflow › Adjudicator sees assigned complaint
+  1) [chromium] › e2e\rbio\adjudication.spec.ts:18:7 › RBIO Adjudication Workflow › Adjudicator sees assigned complaint 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.data-grid tbody tr:has-text("CMP-20260916-837870")')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.data-grid tbody tr:has-text("CMP-20260916-837870")') with timeout 5000ms
+      - waiting for locator('.data-grid tbody tr:has-text("CMP-20260916-837870")')
+
+
+      30 |
+      31 |       const row = page.locator(`.data-grid tbody tr:has-text("${complaintNumber}")`);
+    > 32 |       await expect(row).toBeVisible({ timeout: 5000 });
+         |                         ^
+      33 |
+      34 |       await logout(page);
+      35 |     } finally {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\adjudication.spec.ts:32:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-adjudication-RBIO-Adj-be8d4-tor-sees-assigned-complaint-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-adjudication-RBIO-Adj-be8d4-tor-sees-assigned-complaint-chromium\error-context.md
+
+
+[2/44] [chromium] › e2e\rbio\adjudication.spec.ts:40:7 › RBIO Adjudication Workflow › Adjudicator issues 13-1 Notice
+[3/44] [chromium] › e2e\rbio\adjudication.spec.ts:66:7 › RBIO Adjudication Workflow › Adjudicator impleads party (adds to impleaded list)
+[4/44] [chromium] › e2e\rbio\adjudication.spec.ts:90:7 › RBIO Adjudication Workflow › Adjudicator passes award with valid amount (status -> adjudicated)
+[5/44] [chromium] › e2e\rbio\adjudication.spec.ts:127:7 › RBIO Adjudication Workflow › Award amount exceeding 30L cap shows error
+[6/44] [chromium] › e2e\rbio\adjudication.spec.ts:157:7 › RBIO Adjudication Workflow › Award amount exceeding 3L for time/harassment shows error
+[7/44] [chromium] › e2e\rbio\adjudication.spec.ts:183:7 › RBIO Adjudication Workflow › Adjudicator rejects complaint
+[8/44] [chromium] › e2e\rbio\conciliation.spec.ts:18:7 › RBIO Conciliation Workflow › Conciliator sees assigned complaint
+  2) [chromium] › e2e\rbio\conciliation.spec.ts:18:7 › RBIO Conciliation Workflow › Conciliator sees assigned complaint 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.data-grid tbody tr:has-text("CMP-20260916-365920")')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.data-grid tbody tr:has-text("CMP-20260916-365920")') with timeout 5000ms
+      - waiting for locator('.data-grid tbody tr:has-text("CMP-20260916-365920")')
+
+
+      30 |
+      31 |       const row = page.locator(`.data-grid tbody tr:has-text("${complaintNumber}")`);
+    > 32 |       await expect(row).toBeVisible({ timeout: 5000 });
+         |                         ^
+      33 |
+      34 |       await logout(page);
+      35 |     } finally {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\conciliation.spec.ts:32:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-conciliation-RBIO-Con-56246-tor-sees-assigned-complaint-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-conciliation-RBIO-Con-56246-tor-sees-assigned-complaint-chromium\error-context.md
+
+
+[9/44] [chromium] › e2e\rbio\conciliation.spec.ts:40:7 › RBIO Conciliation Workflow › Conciliator schedules meeting
+[10/44] [chromium] › e2e\rbio\conciliation.spec.ts:66:7 › RBIO Conciliation Workflow › Conciliation succeeds (status -> conciliated, sets compensation)
+[11/44] [chromium] › e2e\rbio\conciliation.spec.ts:103:7 › RBIO Conciliation Workflow › Conciliation fails -> escalates to adjudication
+[12/44] [chromium] › e2e\rbio\conciliation.spec.ts:135:7 › RBIO Conciliation Workflow › Compensation cap validation displays warning
+[13/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:19:7 › RBIO Officer Workflow › Officer accepts complaint (status changes to in_progress)
+  3) [chromium] › e2e\rbio\officer-workflow.spec.ts:19:7 › RBIO Officer Workflow › Officer accepts complaint (status changes to in_progress) 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.status-badge')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.status-badge') with timeout 5000ms
+      - waiting for locator('.status-badge')
+
+
+      30 |
+      31 |       const statusBadge = page.locator('.status-badge');
+    > 32 |       await expect(statusBadge).toBeVisible();
+         |                                 ^
+      33 |       await expect(statusBadge).toContainText(/ASSIGNED/i);
+      34 |
+      35 |       // RBIO Officer actions: Escalate, Resolve, Reject — "Resolve" acts as accept+resolve
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\officer-workflow.spec.ts:32:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-officer-workflow-RBIO-e39a2-tus-changes-to-in-progress--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-officer-workflow-RBIO-e39a2-tus-changes-to-in-progress--chromium\error-context.md
+
+
+[14/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:61:7 › RBIO Officer Workflow › Officer resolves directly (status -> resolved, closedAt set)
+[15/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:98:7 › RBIO Officer Workflow › Officer rejects non-maintainable (status -> rejected)
+[16/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:135:7 › RBIO Officer Workflow › Officer escalates to supervisor (status -> escalated, role changes)
+[17/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:172:7 › RBIO Officer Workflow › Officer requests additional info (status -> info_requested)
+[18/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:207:7 › RBIO Officer Workflow › Officer forwards to conciliation (status -> conciliation)
+[19/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:246:7 › RBIO Officer Workflow › Officer issues advisory (status -> advisory_issued)
+[20/44] [chromium] › e2e\rbio\officer-workflow.spec.ts:292:7 › RBIO Officer Workflow › verify timeline shows all officer actions
+[21/44] [chromium] › e2e\rbio\reopen-admin.spec.ts:19:7 › RBIO Admin — Reopen & Reassign › Admin reopens closed complaint
+  4) [chromium] › e2e\rbio\reopen-admin.spec.ts:19:7 › RBIO Admin — Reopen & Reassign › Admin reopens closed complaint 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.closed-banner')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.closed-banner') with timeout 5000ms
+      - waiting for locator('.closed-banner')
+
+
+      33 |
+      34 |       const closedBanner = page.locator('.closed-banner');
+    > 35 |       await expect(closedBanner).toBeVisible({ timeout: 5000 });
+         |                                  ^
+      36 |
+      37 |       const reopenBtn = page.locator('.action-card:has-text("Reopen")');
+      38 |       await expect(reopenBtn).toBeVisible({ timeout: 5000 });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\reopen-admin.spec.ts:35:34
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-reopen-admin-RBIO-Adm-b7eec-in-reopens-closed-complaint-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-reopen-admin-RBIO-Adm-b7eec-in-reopens-closed-complaint-chromium\error-context.md
+
+
+[22/44] [chromium] › e2e\rbio\reopen-admin.spec.ts:57:7 › RBIO Admin — Reopen & Reassign › Reopened complaint returns to in_progress
+  5) [chromium] › e2e\rbio\reopen-admin.spec.ts:57:7 › RBIO Admin — Reopen & Reassign › Reopened complaint returns to in_progress 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.action-section')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.action-section') with timeout 5000ms
+      - waiting for locator('.action-section')
+
+
+      74 |
+      75 |       const actionSection = page.locator('.action-section');
+    > 76 |       await expect(actionSection).toBeVisible();
+         |                                   ^
+      77 |
+      78 |       const actions = page.locator('button.action-btn');
+      79 |       const actionCount = await actions.count();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\reopen-admin.spec.ts:76:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-reopen-admin-RBIO-Adm-bea01-aint-returns-to-in-progress-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-reopen-admin-RBIO-Adm-bea01-aint-returns-to-in-progress-chromium\error-context.md
+
+
+[23/44] [chromium] › e2e\rbio\reopen-admin.spec.ts:92:7 › RBIO Admin — Reopen & Reassign › Admin reassigns complaint to different officer
+  6) [chromium] › e2e\rbio\reopen-admin.spec.ts:92:7 › RBIO Admin — Reopen & Reassign › Admin reassigns complaint to different officer 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.action-card:has-text("Reassign")')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.action-card:has-text("Reassign")') with timeout 5000ms
+      - waiting for locator('.action-card:has-text("Reassign")')
+
+
+      105 |
+      106 |       const reassignBtn = page.locator('.action-card:has-text("Reassign")');
+    > 107 |       await expect(reassignBtn).toBeVisible({ timeout: 5000 });
+          |                                 ^
+      108 |       await reassignBtn.click();
+      109 |
+      110 |       const remarksField = page.locator('.remarks-section textarea');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\reopen-admin.spec.ts:107:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-reopen-admin-RBIO-Adm-77f16-plaint-to-different-officer-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-reopen-admin-RBIO-Adm-77f16-plaint-to-different-officer-chromium\error-context.md
+
+
+[24/44] [chromium] › e2e\rbio\reopen-admin.spec.ts:126:7 › RBIO Admin — Reopen & Reassign › Admin performs bulk assign (if available)
+[25/44] [chromium] › e2e\rbio\sla.spec.ts:18:7 › RBIO SLA Indicators › New RBIO complaint shows 30-day stage deadline
+  7) [chromium] › e2e\rbio\sla.spec.ts:18:7 › RBIO SLA Indicators › New RBIO complaint shows 30-day stage deadline 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.tat-timer-bar')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.tat-timer-bar') with timeout 5000ms
+      - waiting for locator('.tat-timer-bar')
+
+
+      28 |       // TAT timer bar shows remaining days
+      29 |       const tatTimer = page.locator('.tat-timer-bar');
+    > 30 |       await expect(tatTimer).toBeVisible({ timeout: 5000 });
+         |                              ^
+      31 |
+      32 |       const remaining = page.locator('.tat-remaining');
+      33 |       const text = await remaining.textContent();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\sla.spec.ts:30:30
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-sla-RBIO-SLA-Indicato-4eaae-shows-30-day-stage-deadline-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-sla-RBIO-SLA-Indicato-4eaae-shows-30-day-stage-deadline-chromium\error-context.md
+
+
+[26/44] [chromium] › e2e\rbio\sla.spec.ts:42:7 › RBIO SLA Indicators › SLA progress component shows correct stage (Officer/Conciliation/Adjudication)
+  8) [chromium] › e2e\rbio\sla.spec.ts:42:7 › RBIO SLA Indicators › SLA progress component shows correct stage (Officer/Conciliation/Adjudication) 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('app-rbio-sla-progress, .rbio-sla-progress')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('app-rbio-sla-progress, .rbio-sla-progress') with timeout 5000ms
+      - waiting for locator('app-rbio-sla-progress, .rbio-sla-progress')
+
+
+      52 |       // RBIO SLA progress component shows stages: Officer, Conciliation, Adjudication
+      53 |       const slaProgress = page.locator('app-rbio-sla-progress, .rbio-sla-progress');
+    > 54 |       await expect(slaProgress).toBeVisible({ timeout: 5000 });
+         |                                 ^
+      55 |
+      56 |       const stageText = await slaProgress.textContent();
+      57 |       expect(stageText).toContain('Officer');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\sla.spec.ts:54:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-sla-RBIO-SLA-Indicato-f6e2a--Conciliation-Adjudication--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-sla-RBIO-SLA-Indicato-f6e2a--Conciliation-Adjudication--chromium\error-context.md
+
+
+[27/44] [chromium] › e2e\rbio\sla.spec.ts:71:7 › RBIO SLA Indicators › Breached complaint shows red indicator
+[28/44] [chromium] › e2e\rbio\sla.spec.ts:94:7 › RBIO SLA Indicators › Overall 120-day lifecycle progress displays
+  9) [chromium] › e2e\rbio\sla.spec.ts:94:7 › RBIO SLA Indicators › Overall 120-day lifecycle progress displays 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('text=Total Lifecycle')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('text=Total Lifecycle') with timeout 5000ms
+      - waiting for locator('text=Total Lifecycle')
+
+
+      104 |       // The SLA progress component shows "Total Lifecycle (120 days)"
+      105 |       const lifecycleText = page.locator('text=Total Lifecycle');
+    > 106 |       await expect(lifecycleText).toBeVisible({ timeout: 5000 });
+          |                                   ^
+      107 |
+      108 |       // Should show remaining days
+      109 |       const slaProgress = page.locator('app-rbio-sla-progress, .rbio-sla-progress');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\sla.spec.ts:106:35
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-sla-RBIO-SLA-Indicato-70a4e-lifecycle-progress-displays-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-sla-RBIO-SLA-Indicato-70a4e-lifecycle-progress-displays-chromium\error-context.md
+
+
+[29/44] [chromium] › e2e\rbio\supervisor-workflow.spec.ts:18:7 › RBIO Supervisor Workflow › Supervisor sees escalated complaints
+  10) [chromium] › e2e\rbio\supervisor-workflow.spec.ts:18:7 › RBIO Supervisor Workflow › Supervisor sees escalated complaints 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.data-grid tbody tr:has-text("CMP-20260916-755024")')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.data-grid tbody tr:has-text("CMP-20260916-755024")') with timeout 5000ms
+      - waiting for locator('.data-grid tbody tr:has-text("CMP-20260916-755024")')
+
+
+      30 |
+      31 |       const row = page.locator(`.data-grid tbody tr:has-text("${complaintNumber}")`);
+    > 32 |       await expect(row).toBeVisible({ timeout: 5000 });
+         |                         ^
+      33 |
+      34 |       await logout(page);
+      35 |     } finally {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\supervisor-workflow.spec.ts:32:25
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-supervisor-workflow-R-3816b-r-sees-escalated-complaints-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-supervisor-workflow-R-3816b-r-sees-escalated-complaints-chromium\error-context.md
+
+
+[30/44] [chromium] › e2e\rbio\supervisor-workflow.spec.ts:40:7 › RBIO Supervisor Workflow › Supervisor approves and forwards to adjudication
+[31/44] [chromium] › e2e\rbio\supervisor-workflow.spec.ts:73:7 › RBIO Supervisor Workflow › Supervisor returns to officer
+[32/44] [chromium] › e2e\rbio\supervisor-workflow.spec.ts:105:7 › RBIO Supervisor Workflow › Supervisor forwards to conciliation
+[33/44] [chromium] › e2e\rbio\supervisor-workflow.spec.ts:138:7 › RBIO Supervisor Workflow › Supervisor reassigns to different officer
+[34/44] [chromium] › e2e\rbio\supervisor-workflow.spec.ts:171:7 › RBIO Supervisor Workflow › Supervisor dashboard shows SLA compliance stats
+[35/44] [chromium] › e2e\rbio\task-list.spec.ts:29:7 › RBIO Task List › page loads showing RBIO task list heading
+[36/44] [chromium] › e2e\rbio\task-list.spec.ts:40:7 › RBIO Task List › stats display (total, assigned, in progress, escalated, resolved)
+[37/44] [chromium] › e2e\rbio\task-list.spec.ts:63:7 › RBIO Task List › task table renders with correct columns
+[38/44] [chromium] › e2e\rbio\task-list.spec.ts:82:7 › RBIO Task List › search filters by complaint number/name/entity
+[39/44] [chromium] › e2e\rbio\task-list.spec.ts:105:7 › RBIO Task List › status filter works
+[40/44] [chromium] › e2e\rbio\task-list.spec.ts:128:7 › RBIO Task List › column configuration toggle shows/hides columns
+[41/44] [chromium] › e2e\rbio\task-list.spec.ts:162:7 › RBIO Task List › advanced search dialog opens and filters
+[42/44] [chromium] › e2e\rbio\task-list.spec.ts:186:7 › RBIO Task List › pagination controls work
+[43/44] [chromium] › e2e\rbio\task-list.spec.ts:203:7 › RBIO Task List › click task navigates to detail page
+  11) [chromium] › e2e\rbio\task-list.spec.ts:203:7 › RBIO Task List › click task navigates to detail page 
+
+    TimeoutError: page.waitForURL: Timeout 10000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation until "load"
+    ============================================================
+
+      210 |     await firstRow.click();
+      211 |
+    > 212 |     await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
+          |                ^
+      213 |     expect(page.url()).toContain('/staff/rbio/task/');
+      214 |
+      215 |     await logout(page);
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\task-list.spec.ts:212:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-task-list-RBIO-Task-L-42d8d-sk-navigates-to-detail-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-task-list-RBIO-Task-L-42d8d-sk-navigates-to-detail-page-chromium\error-context.md
+
+    Error Context: test-results\rbio-task-list-RBIO-Task-L-42d8d-sk-navigates-to-detail-page-chromium\error-context.md
+
+
+[44/44] [chromium] › e2e\rbio\task-list.spec.ts:218:7 › RBIO Task List › unread indicator clears after visiting task
+  12) [chromium] › e2e\rbio\task-list.spec.ts:218:7 › RBIO Task List › unread indicator clears after visiting task 
+
+    TimeoutError: page.waitForURL: Timeout 10000ms exceeded.
+    =========================== logs ===========================
+    waiting for navigation until "load"
+    ============================================================
+
+      225 |     const firstRow = page.locator('.data-grid tbody tr').first();
+      226 |     await firstRow.click();
+    > 227 |     await page.waitForURL(/\/staff\/rbio\/task\//, { timeout: 10000 });
+          |                ^
+      228 |
+      229 |     // Go back
+      230 |     await page.goBack();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\rbio\task-list.spec.ts:227:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\rbio-task-list-RBIO-Task-L-8951c--clears-after-visiting-task-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\rbio-task-list-RBIO-Task-L-8951c--clears-after-visiting-task-chromium\error-context.md
+
+    Error Context: test-results\rbio-task-list-RBIO-Task-L-8951c--clears-after-visiting-task-chromium\error-context.md
+
+
+  12 failed
+    [chromium] › e2e\rbio\adjudication.spec.ts:18:7 › RBIO Adjudication Workflow › Adjudicator sees assigned complaint 
+    [chromium] › e2e\rbio\conciliation.spec.ts:18:7 › RBIO Conciliation Workflow › Conciliator sees assigned complaint 
+    [chromium] › e2e\rbio\officer-workflow.spec.ts:19:7 › RBIO Officer Workflow › Officer accepts complaint (status changes to in_progress) 
+    [chromium] › e2e\rbio\reopen-admin.spec.ts:19:7 › RBIO Admin — Reopen & Reassign › Admin reopens closed complaint 
+    [chromium] › e2e\rbio\reopen-admin.spec.ts:57:7 › RBIO Admin — Reopen & Reassign › Reopened complaint returns to in_progress 
+    [chromium] › e2e\rbio\reopen-admin.spec.ts:92:7 › RBIO Admin — Reopen & Reassign › Admin reassigns complaint to different officer 
+    [chromium] › e2e\rbio\sla.spec.ts:18:7 › RBIO SLA Indicators › New RBIO complaint shows 30-day stage deadline 
+    [chromium] › e2e\rbio\sla.spec.ts:42:7 › RBIO SLA Indicators › SLA progress component shows correct stage (Officer/Conciliation/Adjudication) 
+    [chromium] › e2e\rbio\sla.spec.ts:94:7 › RBIO SLA Indicators › Overall 120-day lifecycle progress displays 
+    [chromium] › e2e\rbio\supervisor-workflow.spec.ts:18:7 › RBIO Supervisor Workflow › Supervisor sees escalated complaints 
+    [chromium] › e2e\rbio\task-list.spec.ts:203:7 › RBIO Task List › click task navigates to detail page 
+    [chromium] › e2e\rbio\task-list.spec.ts:218:7 › RBIO Task List › unread indicator clears after visiting task 
+  22 did not run
+  10 passed (6.3m)

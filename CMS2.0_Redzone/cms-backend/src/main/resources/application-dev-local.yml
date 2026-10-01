@@ -1,0 +1,177 @@
+# ============================================================
+# CMS Backend — Dev Local Profile
+# Activate: mvn spring-boot:run -Dspring-boot.run.profiles=dev-local
+# ============================================================
+
+server:
+  port: 8082
+
+spring:
+  # Local development drives the API with X-User-* identity headers and no Keycloak token, so the
+  # resource-server autoconfig is excluded: it would otherwise demand a reachable JWKS endpoint at
+  # startup. DevLocalSecurityConfig (@Profile("dev-local")) supplies the permissive chain.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+  datasource:
+    url: jdbc:mysql://localhost:3306/cms_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true&characterEncoding=UTF-8&useUnicode=true
+    username: cms_user
+    password: cms_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 5000
+      pool-name: CMS-Backend-Dev-Pool
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 10
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 1
+      properties:
+        max.block.ms: 3000
+        delivery.timeout.ms: 5000
+        request.timeout.ms: 3000
+    listener:
+      missing-topics-fatal: false
+
+  cache:
+    type: simple
+
+keycloak:
+  admin:
+    server-url: http://localhost:9090
+    realm: cms
+    client-id: admin-cli
+    username: admin
+    password: admin
+
+cms:
+  security:
+    # Lets the E2E suites and local tooling declare an identity via X-User-* headers. Deliberately
+    # NOT set in application.yml: a deployed instance must derive AA role and actor from the verified
+    # JWT only, otherwise any caller could name their own AA role and act as anyone.
+    allow-dev-identity-headers: true
+  ocr:
+    chain: groq
+    groq-api-key: ${GROQ_API_KEY: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}
+    groq-model: llama-3.3-70b-versatile
+    paddle-ocr-url: ""
+    gemini-api-key: ""
+    openai-api-key: ""
+    huggingface-api-key: ""
+    azure-endpoint: ""
+    azure-api-key: ""
+  attachments:
+    root-path: ./cms-attachments
+    # These limits must match production, or a file that passes locally fails in SIT. They are only the
+    # FALLBACK for a database with no SYSTEM_CONFIG row; enforcement reads UploadLimitsService.
+    max-file-size: 2097152
+    max-total-size: 26214400
+    chunk-size: 5242880
+    allowed-types: pdf,png,jpg,jpeg,doc,docx,xls,xlsx,txt,csv,zip
+    max-files-per-complaint: 10
+    temp-dir: temp-chunks
+  rate-limit:
+    complaints-per-minute: 100
+    api-requests-per-second: 1000
+  encryption:
+    server-secret: dev-local-secret-key-do-not-use-in-prod
+  anti-automation:
+    velocity-window-seconds: 60
+    velocity-threshold: 100
+    min-form-submission-ms: 0
+    require-standard-headers: false
+  eligibility:
+    scheme-version: RBIOS_2021
+    scheme-name: "Reserve Bank - Integrated Ombudsman Scheme, 2021"
+    grievance-filing-window-days: 310
+  mre:
+    version: 1
+    re-window-days: 30
+    npci-window-days: 30
+    card-network-window-days: 60
+    filing-deadline-days: 90
+    limitation-period-years: 3
+    window-basis: BUSINESS
+  cors:
+    allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300
+  similar-cases:
+    # Enabled locally: a real Elasticsearch 8.15.3 node with analysis-icu runs on 9200 in dev, so this
+    # is the one profile where the feature can actually be exercised.
+    enabled: true
+    elasticsearch-url: http://localhost:9200
+    index: cms-complaints
+  geo:
+    enabled: false
+  tat:
+    business-hour-start: 9
+    business-hour-end: 18
+    timezone: Asia/Kolkata
+    default-sla-hours: 240
+  auth:
+    otp:
+      length: 6
+      # 5, not a relaxed 10. The resend/verify counters below are loosened so repeated dev logins are not
+      # blocked, but the expiry is a stated rule the citizen is shown ("valid only for 5 minutes"), so a
+      # longer dev window makes dev disagree with prod on behaviour under test rather than on throttling.
+      expiry-minutes: 5
+      max-resend-per-hour: 99
+      max-verify-attempts-per-otp: 99
+      # Relaxed like the other dev limits so repeated manual and E2E logins are not blocked.
+      resend-cooldown-seconds: 0
+      dev-auto-populate: true
+    captcha:
+      length: 6
+      expiry-minutes: 10
+      image-width: 200
+      image-height: 60
+    cooloff:
+      progression-seconds: 5,10,20
+      max-ceiling-seconds: 20
+      reset-after-minutes: 1
+    rate-limit:
+      otp-requests-per-mobile-per-hour: 99
+      otp-requests-per-ip-per-hour: 99
+      login-attempts-per-ip-per-minute: 99
+
+crpc:
+  threshold:
+    max-per-reviewer: 50
+    overflow-target: CRPC_HEAD
+  scheduling:
+    pending-notify-cron: "0 0 9 * * MON-FRI"
+    duplicate-check-cron: "0 30 9 * * MON-FRI"
+    threshold-check-cron: "0 0 10 * * MON-FRI"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.hrms.cms: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.security: DEBUG

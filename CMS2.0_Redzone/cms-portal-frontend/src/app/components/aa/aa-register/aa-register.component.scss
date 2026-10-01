@@ -1,0 +1,147 @@
+// Rendered in the shell's light action bar, so body colours rather than the old white-on-navy.
+.subtitle { font-size: 12px; color: var(--text-muted); }
+.back-btn {
+  background: none; border: none; color: var(--brand-primary-strong);
+  font-size: 20px; line-height: 1; cursor: pointer;
+}
+
+.loading-state {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 60px; color: var(--text-muted);
+  .spinner {
+    width: 24px; height: 24px; border: 3px solid var(--border-subtle);
+    border-top-color: var(--brand-primary-strong); border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// Error state is a first-class panel, not a muted aside: a silent failure that looks like an empty
+// form is the specific defect this screen must not reproduce.
+.error-panel {
+  background: white; border: 1px solid var(--state-danger-bg); border-left: 4px solid var(--state-danger-solid-hover);
+  border-radius: 8px; padding: 20px 24px; margin-bottom: 20px;
+
+  h3 { margin: 0 0 8px; font-size: 15px; color: var(--state-danger-fg); }
+  .error-detail { margin: 0 0 12px; font-size: 13px; color: #7f1d1d; }
+  &.inline { padding: 14px 18px; }
+}
+.missing-list {
+  margin: 0 0 12px; padding-left: 20px; font-size: 12px; color: #7f1d1d;
+  li { margin-bottom: 2px; }
+}
+
+.success-panel {
+  background: white; border: 1px solid var(--state-success-bg); border-left: 4px solid var(--state-success-solid);
+  border-radius: 8px; padding: 24px;
+
+  h3 { margin: 0 0 6px; font-size: 16px; color: var(--state-success-fg); }
+  .appeal-number {
+    margin: 0 0 16px; font-size: 22px; font-weight: 700; color: var(--brand-primary-strong);
+    letter-spacing: 0.02em;
+  }
+}
+.summary {
+  display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px;
+  margin: 0 0 16px; font-size: 13px;
+  dt { color: var(--text-muted); font-weight: 500; }
+  dd { margin: 0; color: var(--text-heading); }
+}
+
+// Story 11 prompt. Amber rather than red: this is an instruction to record the trial elsewhere, not
+// an error, and there is no Legal Cases backend for it to link to.
+.legal-prompt {
+  background: var(--state-warning-bg); border: 1px solid #fcd34d; border-radius: 6px;
+  padding: 12px 14px; margin-bottom: 16px;
+  font-size: 13px; font-weight: 600; color: var(--state-warning-fg);
+  &.inline { margin: 8px 0 0; font-weight: 500; }
+}
+
+.card {
+  background: white; border: 1px solid var(--border-subtle); border-radius: 8px;
+  padding: 20px 24px; margin-bottom: 20px;
+
+  h3 {
+    margin: 0 0 4px; font-size: 15px; color: var(--brand-primary-strong);
+    padding-bottom: 10px; border-bottom: 1px solid var(--surface-subtle);
+  }
+}
+.mandatory-note { margin: 10px 0 16px; font-size: 12px; color: var(--text-muted); }
+
+.field-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px; margin-top: 16px;
+}
+.field {
+  display: flex; flex-direction: column; gap: 5px; min-width: 0;
+  &.wide { grid-column: 1 / -1; }
+
+  label { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+  input, select, textarea {
+    padding: 8px 10px; border: 1px solid var(--border-input); border-radius: 6px;
+    font-size: 13px; font-family: inherit; color: var(--text-heading); background: white;
+    &:focus { outline: none; border-color: var(--brand-primary-strong); box-shadow: 0 0 0 2px rgba(26, 35, 126, 0.12); }
+  }
+  textarea { resize: vertical; }
+
+  &.has-error {
+    input, select, textarea { border-color: var(--state-danger-solid-hover); background: var(--state-danger-bg); }
+  }
+}
+
+// Mode of receipt is server-derived and immutable; styled as plainly non-editable rather than
+// disabled so it still reads as recorded data.
+.readonly-input {
+  background: var(--surface-subtle) !important; color: var(--text-secondary) !important; cursor: default;
+}
+
+// Marks a blank that exists because the data does not, not because the load failed.
+.unresolved-hint {
+  font-size: 11px; color: var(--state-warning-fg); background: #fffbeb;
+  border-left: 2px solid #fcd34d; padding: 3px 6px; border-radius: 0 3px 3px 0;
+}
+.field-error { font-size: 11px; font-weight: 600; color: var(--state-danger-solid-hover); }
+
+.declaration {
+  padding: 14px 0; border-bottom: 1px solid var(--surface-subtle);
+  &:last-of-type { border-bottom: none; }
+  &.has-error {
+    .declaration-label { color: var(--state-danger-fg); }
+  }
+}
+.declaration-label { display: block; font-size: 13px; font-weight: 600; color: var(--state-neutral-fg); }
+.radio-row {
+  display: flex; gap: 20px; margin-top: 8px;
+  label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--state-neutral-fg); cursor: pointer;
+  }
+  input[type="radio"] { cursor: pointer; }
+}
+
+.upload-hint { font-size: 11px; color: var(--text-muted); }
+.file-list {
+  margin: 6px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary);
+  li { margin-bottom: 2px; }
+}
+
+.actions {
+  display: flex; justify-content: flex-end; gap: 12px;
+  padding-bottom: 32px;
+}
+.primary-btn {
+  padding: 10px 22px; border: 1px solid var(--brand-primary-strong); border-radius: 6px;
+  background: var(--brand-primary-strong); color: white; font-size: 14px; font-weight: 600; cursor: pointer;
+  &:hover:not(:disabled) { background: #151b62; }
+  &:disabled { opacity: 0.45; cursor: not-allowed; }
+}
+.secondary-btn {
+  padding: 10px 22px; border: 1px solid var(--border-strong); border-radius: 6px;
+  background: white; color: var(--text-secondary); font-size: 14px; cursor: pointer;
+  &:hover { background: var(--surface-page); }
+}
+
+@media (max-width: 720px) {
+  .field-grid { grid-template-columns: minmax(0, 1fr); }
+  .field.wide { grid-column: auto; }
+}

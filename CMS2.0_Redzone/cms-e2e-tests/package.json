@@ -1,0 +1,23 @@
+{
+  "name": "cms-e2e-tests",
+  "version": "1.0.0",
+  "description": "RBI CMS 2.0 End-to-End Test Suite (Playwright)",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:ui": "npx playwright test --ui",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug",
+    "test:public": "npx playwright test tests/public-portal.spec.ts",
+    "test:rbio": "npx playwright test tests/rbio-officer.spec.ts",
+    "test:cepc": "npx playwright test tests/cepc-workflow.spec.ts",
+    "test:mre": "npx playwright test tests/mre-assessment.spec.ts",
+    "test:admin": "npx playwright test tests/admin-rules.spec.ts",
+    "report": "npx playwright show-report",
+    "codegen": "npx playwright codegen http://localhost:4200"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

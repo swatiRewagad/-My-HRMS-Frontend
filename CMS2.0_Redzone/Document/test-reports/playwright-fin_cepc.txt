@@ -1,0 +1,579 @@
+
+Running 35 tests using 1 worker
+
+[1/35] [chromium] › e2e\cepc\contact-person.spec.ts:39:7 › CEPC Contact Person Workflow › DO forwards complaint to Contact Person
+[2/35] [chromium] › e2e\cepc\contact-person.spec.ts:82:7 › CEPC Contact Person Workflow › Contact Person sees the task in their queue
+  1) [chromium] › e2e\cepc\contact-person.spec.ts:82:7 › CEPC Contact Person Workflow › Contact Person sees the task in their queue 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      87 |
+      88 |     // Wait for complaints to load
+    > 89 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+         |                ^
+      90 |
+      91 |     // The forwarded complaint should appear in the Contact Person's queue
+      92 |     const complaintRow = page.locator(`.complaints-table tbody tr:has-text("${complaintNumber}")`);
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\contact-person.spec.ts:89:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-contact-person-CEPC-C-28f96-ees-the-task-in-their-queue-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-contact-person-CEPC-C-28f96-ees-the-task-in-their-queue-chromium\error-context.md
+
+    Error Context: test-results\cepc-contact-person-CEPC-C-28f96-ees-the-task-in-their-queue-chromium\error-context.md
+
+
+[3/35] [chromium] › e2e\cepc\contact-person.spec.ts:104:7 › CEPC Contact Person Workflow › Contact Person submits response
+[4/35] [chromium] › e2e\cepc\contact-person.spec.ts:133:7 › CEPC Contact Person Workflow › complaint returns to DO after Contact Person response
+[5/35] [chromium] › e2e\cepc\dashboard.spec.ts:25:7 › CEPC Dashboard › page loads and shows CEPC dashboard title
+  2) [chromium] › e2e\cepc\dashboard.spec.ts:25:7 › CEPC Dashboard › page loads and shows CEPC dashboard title 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('h2:has-text("CEPC - Complaint Management")')
+    Expected: visible
+    Timeout: 15000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('h2:has-text("CEPC - Complaint Management")') with timeout 15000ms
+      - waiting for locator('h2:has-text("CEPC - Complaint Management")')
+
+
+      25 |   test('page loads and shows CEPC dashboard title', async ({ page }) => {
+      26 |     const heading = page.locator('h2:has-text("CEPC - Complaint Management")');
+    > 27 |     await expect(heading).toBeVisible({ timeout: 15000 });
+         |                           ^
+      28 |   });
+      29 |
+      30 |   test('stats cards display (Total, Pending, Under Examination, etc.)', async ({ page }) => {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:27:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-7108b--shows-CEPC-dashboard-title-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-7108b--shows-CEPC-dashboard-title-chromium\error-context.md
+
+
+[6/35] [chromium] › e2e\cepc\dashboard.spec.ts:30:7 › CEPC Dashboard › stats cards display (Total, Pending, Under Examination, etc.)
+  3) [chromium] › e2e\cepc\dashboard.spec.ts:30:7 › CEPC Dashboard › stats cards display (Total, Pending, Under Examination, etc.) 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.stats-row')
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.stats-row') with timeout 10000ms
+      - waiting for locator('.stats-row')
+
+
+      30 |   test('stats cards display (Total, Pending, Under Examination, etc.)', async ({ page }) => {
+      31 |     const statsRow = page.locator('.stats-row');
+    > 32 |     await expect(statsRow).toBeVisible({ timeout: 10000 });
+         |                            ^
+      33 |
+      34 |     // Verify each stat card
+      35 |     await expect(page.locator('.stat-card:has(.stat-label:has-text("Total"))')).toBeVisible();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:32:28
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-194ca-ding-Under-Examination-etc--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-194ca-ding-Under-Examination-etc--chromium\error-context.md
+
+
+[7/35] [chromium] › e2e\cepc\dashboard.spec.ts:43:7 › CEPC Dashboard › complaint table renders with expected columns
+  4) [chromium] › e2e\cepc\dashboard.spec.ts:43:7 › CEPC Dashboard › complaint table renders with expected columns 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      43 |   test('complaint table renders with expected columns', async ({ page }) => {
+      44 |     // Wait for loading to complete
+    > 45 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+         |                ^
+      46 |
+      47 |     // If there are complaints, verify table headers
+      48 |     const table = page.locator('.complaints-table');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:45:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-967ea-nders-with-expected-columns-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-967ea-nders-with-expected-columns-chromium\error-context.md
+
+
+[8/35] [chromium] › e2e\cepc\dashboard.spec.ts:65:7 › CEPC Dashboard › search filters complaints by number or name
+  5) [chromium] › e2e\cepc\dashboard.spec.ts:65:7 › CEPC Dashboard › search filters complaints by number or name 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      64 |
+      65 |   test('search filters complaints by number or name', async ({ page }) => {
+    > 66 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+         |                ^
+      67 |
+      68 |     const searchInput = page.locator('.search-box input');
+      69 |     await expect(searchInput).toBeVisible();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:66:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-1f4ff-omplaints-by-number-or-name-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-1f4ff-omplaints-by-number-or-name-chromium\error-context.md
+
+
+[9/35] [chromium] › e2e\cepc\dashboard.spec.ts:89:7 › CEPC Dashboard › status filter dropdown works
+  6) [chromium] › e2e\cepc\dashboard.spec.ts:89:7 › CEPC Dashboard › status filter dropdown works ──
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      88 |
+      89 |   test('status filter dropdown works', async ({ page }) => {
+    > 90 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+         |                ^
+      91 |
+      92 |     const filterSelect = page.locator('.filter-select');
+      93 |     await expect(filterSelect).toBeVisible();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:90:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashboard-status-filter-dropdown-works-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashboard-status-filter-dropdown-works-chromium\error-context.md
+
+
+[10/35] [chromium] › e2e\cepc\dashboard.spec.ts:110:7 › CEPC Dashboard › pagination works (prev/next buttons)
+  7) [chromium] › e2e\cepc\dashboard.spec.ts:110:7 › CEPC Dashboard › pagination works (prev/next buttons) 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      109 |
+      110 |   test('pagination works (prev/next buttons)', async ({ page }) => {
+    > 111 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+          |                ^
+      112 |
+      113 |     const pagination = page.locator('.pagination');
+      114 |     if (await pagination.isVisible()) {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:111:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-ce1ae-on-works-prev-next-buttons--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-ce1ae-on-works-prev-next-buttons--chromium\error-context.md
+
+
+[11/35] [chromium] › e2e\cepc\dashboard.spec.ts:135:7 › CEPC Dashboard › Create Complaint dialog opens and submits successfully
+  8) [chromium] › e2e\cepc\dashboard.spec.ts:135:7 › CEPC Dashboard › Create Complaint dialog opens and submits successfully 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.toolbar') to be visible
+
+
+      134 |
+      135 |   test('Create Complaint dialog opens and submits successfully', async ({ page }) => {
+    > 136 |     await page.waitForSelector('.toolbar', { timeout: 15000 });
+          |                ^
+      137 |
+      138 |     const createBtn = page.locator('.create-btn');
+      139 |     await expect(createBtn).toBeVisible();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:136:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-5d3ef-ns-and-submits-successfully-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-5d3ef-ns-and-submits-successfully-chromium\error-context.md
+
+
+[12/35] [chromium] › e2e\cepc\dashboard.spec.ts:168:7 › CEPC Dashboard › Create Complaint validates required fields (name, subject)
+  9) [chromium] › e2e\cepc\dashboard.spec.ts:168:7 › CEPC Dashboard › Create Complaint validates required fields (name, subject) 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.toolbar') to be visible
+
+
+      167 |
+      168 |   test('Create Complaint validates required fields (name, subject)', async ({ page }) => {
+    > 169 |     await page.waitForSelector('.toolbar', { timeout: 15000 });
+          |                ^
+      170 |
+      171 |     const createBtn = page.locator('.create-btn');
+      172 |     await createBtn.click();
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:169:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-5c9f0-quired-fields-name-subject--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-5c9f0-quired-fields-name-subject--chromium\error-context.md
+
+
+[13/35] [chromium] › e2e\cepc\dashboard.spec.ts:191:7 › CEPC Dashboard › SLA overdue complaints show visual indicator
+  10) [chromium] › e2e\cepc\dashboard.spec.ts:191:7 › CEPC Dashboard › SLA overdue complaints show visual indicator 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      190 |
+      191 |   test('SLA overdue complaints show visual indicator', async ({ page }) => {
+    > 192 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+          |                ^
+      193 |
+      194 |     // Check if any rows have the .overdue class
+      195 |     const overdueRows = page.locator('.complaints-table tbody tr.overdue');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:192:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-df02d-aints-show-visual-indicator-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-df02d-aints-show-visual-indicator-chromium\error-context.md
+
+
+[14/35] [chromium] › e2e\cepc\dashboard.spec.ts:207:7 › CEPC Dashboard › clicking a complaint navigates to detail page
+  11) [chromium] › e2e\cepc\dashboard.spec.ts:207:7 › CEPC Dashboard › clicking a complaint navigates to detail page 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      206 |
+      207 |   test('clicking a complaint navigates to detail page', async ({ page }) => {
+    > 208 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+          |                ^
+      209 |
+      210 |     const firstRow = page.locator('.complaints-table tbody tr').first();
+      211 |     if (await firstRow.isVisible()) {
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:208:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-33e76-nt-navigates-to-detail-page-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-33e76-nt-navigates-to-detail-page-chromium\error-context.md
+
+
+[15/35] [chromium] › e2e\cepc\dashboard.spec.ts:231:7 › CEPC Dashboard - Role-based visibility › DO sees Create Complaint button
+  12) [chromium] › e2e\cepc\dashboard.spec.ts:231:7 › CEPC Dashboard - Role-based visibility › DO sees Create Complaint button 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.toolbar') to be visible
+
+
+      233 |     await loginAsCepcRole(page, 'DO');
+      234 |
+    > 235 |     await page.waitForSelector('.toolbar', { timeout: 15000 });
+          |                ^
+      236 |     const createBtn = page.locator('.create-btn');
+      237 |     await expect(createBtn).toBeVisible();
+      238 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:235:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-fb88d-ees-Create-Complaint-button-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-fb88d-ees-Create-Complaint-button-chromium\error-context.md
+
+
+[16/35] [chromium] › e2e\cepc\dashboard.spec.ts:242:7 › CEPC Dashboard - Role-based visibility › Reviewer does NOT see Create Complaint button
+  13) [chromium] › e2e\cepc\dashboard.spec.ts:242:7 › CEPC Dashboard - Role-based visibility › Reviewer does NOT see Create Complaint button 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.toolbar') to be visible
+
+
+      244 |     await loginAsCepcRole(page, 'REVIEWER');
+      245 |
+    > 246 |     await page.waitForSelector('.toolbar', { timeout: 15000 });
+          |                ^
+      247 |     const createBtn = page.locator('.create-btn');
+      248 |     await expect(createBtn).not.toBeVisible();
+      249 |
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\dashboard.spec.ts:246:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-dashboard-CEPC-Dashbo-c57d8-see-Create-Complaint-button-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-dashboard-CEPC-Dashbo-c57d8-see-Create-Complaint-button-chromium\error-context.md
+
+
+[17/35] [chromium] › e2e\cepc\reopen-reassign.spec.ts:40:7 › CEPC Reopen Complaint › closed complaint shows Reopen button for Closing Authority
+  14) [chromium] › e2e\cepc\reopen-reassign.spec.ts:40:7 › CEPC Reopen Complaint › closed complaint shows Reopen button for Closing Authority 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.action-card:has-text("Reopen Complaint")')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.action-card:has-text("Reopen Complaint")') with timeout 5000ms
+      - waiting for locator('.action-card:has-text("Reopen Complaint")')
+
+
+      51 |     // The component shows REOPEN for CA when status is closed/resolved
+      52 |     const reopenBtn = page.locator('.action-card:has-text("Reopen Complaint")');
+    > 53 |     await expect(reopenBtn).toBeVisible({ timeout: 5000 });
+         |                             ^
+      54 |
+      55 |     await logout(page);
+      56 |   });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\reopen-reassign.spec.ts:53:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-reopen-reassign-CEPC--624dd-utton-for-Closing-Authority-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--624dd-utton-for-Closing-Authority-chromium\error-context.md
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--624dd-utton-for-Closing-Authority-chromium\error-context.md
+
+
+[18/35] [chromium] › e2e\cepc\reopen-reassign.spec.ts:58:7 › CEPC Reopen Complaint › Closing Authority reopens the complaint
+  15) [chromium] › e2e\cepc\reopen-reassign.spec.ts:58:7 › CEPC Reopen Complaint › Closing Authority reopens the complaint 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: locator('.action-card:has-text("Reopen Complaint")')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" locator('.action-card:has-text("Reopen Complaint")') with timeout 5000ms
+      - waiting for locator('.action-card:has-text("Reopen Complaint")')
+
+
+      64 |     // Click Reopen
+      65 |     const reopenBtn = page.locator('.action-card:has-text("Reopen Complaint")');
+    > 66 |     await expect(reopenBtn).toBeVisible({ timeout: 5000 });
+         |                             ^
+      67 |     await reopenBtn.click();
+      68 |
+      69 |     // Fill remarks (required)
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\reopen-reassign.spec.ts:66:29
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-reopen-reassign-CEPC--7762b-ority-reopens-the-complaint-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--7762b-ority-reopens-the-complaint-chromium\error-context.md
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--7762b-ority-reopens-the-complaint-chromium\error-context.md
+
+
+[19/35] [chromium] › e2e\cepc\reopen-reassign.spec.ts:85:7 › CEPC Reopen Complaint › reopened complaint is no longer in terminal state
+  16) [chromium] › e2e\cepc\reopen-reassign.spec.ts:85:7 › CEPC Reopen Complaint › reopened complaint is no longer in terminal state 
+
+    Error: expect(locator).not.toBeVisible() failed
+
+    Locator:  locator('.closed-banner')
+    Expected: not visible
+    Received: visible
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "not toBeVisible" locator('.closed-banner') with timeout 5000ms
+      - waiting for locator('.closed-banner')
+        14 × locator resolved to <div class="closed-banner" _ngcontent-ng-c2085175314="">…</div>
+           - unexpected value "visible"
+
+
+      91 |     // The closed banner should not be visible
+      92 |     const closedBanner = page.locator('.closed-banner');
+    > 93 |     await expect(closedBanner).not.toBeVisible();
+         |                                    ^
+      94 |
+      95 |     // The action panel should show available actions
+      96 |     const actionList = page.locator('.action-list');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\reopen-reassign.spec.ts:93:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-reopen-reassign-CEPC--5f624-no-longer-in-terminal-state-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--5f624-no-longer-in-terminal-state-chromium\error-context.md
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--5f624-no-longer-in-terminal-state-chromium\error-context.md
+
+
+[20/35] [chromium] › e2e\cepc\reopen-reassign.spec.ts:134:7 › CEPC Reassign Complaint › In-Charge sees Reassign option
+[21/35] [chromium] › e2e\cepc\reopen-reassign.spec.ts:146:7 › CEPC Reassign Complaint › In-Charge reassigns to a different DO
+[22/35] [chromium] › e2e\cepc\reopen-reassign.spec.ts:190:7 › CEPC Reassign Complaint › reassigned complaint appears in new DO queue (dashboard check)
+  17) [chromium] › e2e\cepc\reopen-reassign.spec.ts:190:7 › CEPC Reassign Complaint › reassigned complaint appears in new DO queue (dashboard check) 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      194 |     await loginAsCepcRole(page, 'DO', '/cepc/dashboard');
+      195 |
+    > 196 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+          |                ^
+      197 |
+      198 |     // Search for the complaint number
+      199 |     const searchInput = page.locator('.search-box input');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\reopen-reassign.spec.ts:196:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-reopen-reassign-CEPC--07170-w-DO-queue-dashboard-check--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--07170-w-DO-queue-dashboard-check--chromium\error-context.md
+
+    Error Context: test-results\cepc-reopen-reassign-CEPC--07170-w-DO-queue-dashboard-check--chromium\error-context.md
+
+
+[23/35] [chromium] › e2e\cepc\sla.spec.ts:22:7 › CEPC SLA Indicators › new complaint shows correct SLA due date
+[24/35] [chromium] › e2e\cepc\sla.spec.ts:50:7 › CEPC SLA Indicators › at-risk complaint shows yellow indicator on dashboard
+  18) [chromium] › e2e\cepc\sla.spec.ts:50:7 › CEPC SLA Indicators › at-risk complaint shows yellow indicator on dashboard 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      52 |     await loginAsCepcRole(page, 'DO');
+      53 |
+    > 54 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+         |                ^
+      55 |
+      56 |     // Look for complaints with SLA approaching (this depends on existing test data)
+      57 |     // At-risk indicators are typically styled differently; check for any visual cue
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\sla.spec.ts:54:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-sla-CEPC-SLA-Indicato-ad2b9-llow-indicator-on-dashboard-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-sla-CEPC-SLA-Indicato-ad2b9-llow-indicator-on-dashboard-chromium\error-context.md
+
+
+[25/35] [chromium] › e2e\cepc\sla.spec.ts:75:7 › CEPC SLA Indicators › breached complaint shows red indicator (overdue class)
+  19) [chromium] › e2e\cepc\sla.spec.ts:75:7 › CEPC SLA Indicators › breached complaint shows red indicator (overdue class) 
+
+    TimeoutError: page.waitForSelector: Timeout 15000ms exceeded.
+    Call log:
+      - waiting for locator('.complaints-table, .empty-state') to be visible
+
+
+      77 |     await loginAsCepcRole(page, 'DO');
+      78 |
+    > 79 |     await page.waitForSelector('.complaints-table, .empty-state', { timeout: 15000 });
+         |                ^
+      80 |
+      81 |     // Overdue rows get the .overdue class on <tr> and .overdue-text on the SLA cell
+      82 |     const overdueRows = page.locator('.complaints-table tbody tr.overdue');
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\sla.spec.ts:79:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-sla-CEPC-SLA-Indicato-a4d6c-ed-indicator-overdue-class--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-sla-CEPC-SLA-Indicato-a4d6c-ed-indicator-overdue-class--chromium\error-context.md
+
+
+[26/35] [chromium] › e2e\cepc\sla.spec.ts:105:7 › CEPC SLA Indicators › SLA dashboard shows compliance stats (if route exists)
+[27/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:36:7 › CEPC Workflow — Full Lifecycle (Happy Path) › DO accepts a complaint (status changes to in_progress)
+  20) [chromium] › e2e\cepc\workflow-actions.spec.ts:36:7 › CEPC Workflow — Full Lifecycle (Happy Path) › DO accepts a complaint (status changes to in_progress) 
+
+    Error: expect(locator).toContainText(expected) failed
+
+    Locator: locator('.complaint-header .status-badge')
+    Expected substring: "Under Examination"
+    Received string:    " In Progress "
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toContainText" locator('.complaint-header .status-badge') with timeout 5000ms
+      - waiting for locator('.complaint-header .status-badge')
+        14 × locator resolved to <span class="status-badge" data-status="IN_PROGRESS" _ngcontent-ng-c3611970144="">…</span>
+           - unexpected value " In Progress "
+
+
+      62 |     // Status should update
+      63 |     await page.waitForTimeout(1000);
+    > 64 |     await expect(page.locator('.complaint-header .status-badge')).toContainText('Under Examination');
+         |                                                                   ^
+      65 |
+      66 |     await logout(page);
+      67 |   });
+        at C:\Projects\My-HRMS-Frontend\CMS2.0_Redzone\cms-portal-frontend\e2e\cepc\workflow-actions.spec.ts:64:67
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\cepc-workflow-actions-CEPC-68682-tus-changes-to-in-progress--chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\cepc-workflow-actions-CEPC-68682-tus-changes-to-in-progress--chromium\error-context.md
+
+    Error Context: test-results\cepc-workflow-actions-CEPC-68682-tus-changes-to-in-progress--chromium\error-context.md
+
+
+[28/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:69:7 › CEPC Workflow — Full Lifecycle (Happy Path) › DO submits for review (status -> reviewer_review)
+[29/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:96:7 › CEPC Workflow — Full Lifecycle (Happy Path) › Reviewer approves (status -> incharge_review)
+[30/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:120:7 › CEPC Workflow — Full Lifecycle (Happy Path) › In-Charge approves closure (status -> awaiting_closure)
+[31/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:144:7 › CEPC Workflow — Full Lifecycle (Happy Path) › Closing Authority closes complaint (status -> closed)
+[32/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:170:7 › CEPC Workflow — Full Lifecycle (Happy Path) › verify timeline shows all transitions
+[33/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:218:9 › CEPC Workflow — Send-Back Flows › Reviewer sends back to DO › Reviewer sends back to DO
+[34/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:257:9 › CEPC Workflow — Send-Back Flows › In-Charge sends back to Reviewer › In-Charge sends back to Reviewer
+[35/35] [chromium] › e2e\cepc\workflow-actions.spec.ts:296:9 › CEPC Workflow — Send-Back Flows › Closing Authority sends back to In-Charge › Closing Authority sends back to In-Charge
+  20 failed
+    [chromium] › e2e\cepc\contact-person.spec.ts:82:7 › CEPC Contact Person Workflow › Contact Person sees the task in their queue 
+    [chromium] › e2e\cepc\dashboard.spec.ts:25:7 › CEPC Dashboard › page loads and shows CEPC dashboard title 
+    [chromium] › e2e\cepc\dashboard.spec.ts:30:7 › CEPC Dashboard › stats cards display (Total, Pending, Under Examination, etc.) 
+    [chromium] › e2e\cepc\dashboard.spec.ts:43:7 › CEPC Dashboard › complaint table renders with expected columns 
+    [chromium] › e2e\cepc\dashboard.spec.ts:65:7 › CEPC Dashboard › search filters complaints by number or name 
+    [chromium] › e2e\cepc\dashboard.spec.ts:89:7 › CEPC Dashboard › status filter dropdown works ───
+    [chromium] › e2e\cepc\dashboard.spec.ts:110:7 › CEPC Dashboard › pagination works (prev/next buttons) 
+    [chromium] › e2e\cepc\dashboard.spec.ts:135:7 › CEPC Dashboard › Create Complaint dialog opens and submits successfully 
+    [chromium] › e2e\cepc\dashboard.spec.ts:168:7 › CEPC Dashboard › Create Complaint validates required fields (name, subject) 
+    [chromium] › e2e\cepc\dashboard.spec.ts:191:7 › CEPC Dashboard › SLA overdue complaints show visual indicator 
+    [chromium] › e2e\cepc\dashboard.spec.ts:207:7 › CEPC Dashboard › clicking a complaint navigates to detail page 
+    [chromium] › e2e\cepc\dashboard.spec.ts:231:7 › CEPC Dashboard - Role-based visibility › DO sees Create Complaint button 
+    [chromium] › e2e\cepc\dashboard.spec.ts:242:7 › CEPC Dashboard - Role-based visibility › Reviewer does NOT see Create Complaint button 
+    [chromium] › e2e\cepc\reopen-reassign.spec.ts:40:7 › CEPC Reopen Complaint › closed complaint shows Reopen button for Closing Authority 
+    [chromium] › e2e\cepc\reopen-reassign.spec.ts:58:7 › CEPC Reopen Complaint › Closing Authority reopens the complaint 
+    [chromium] › e2e\cepc\reopen-reassign.spec.ts:85:7 › CEPC Reopen Complaint › reopened complaint is no longer in terminal state 
+    [chromium] › e2e\cepc\reopen-reassign.spec.ts:190:7 › CEPC Reassign Complaint › reassigned complaint appears in new DO queue (dashboard check) 
+    [chromium] › e2e\cepc\sla.spec.ts:50:7 › CEPC SLA Indicators › at-risk complaint shows yellow indicator on dashboard 
+    [chromium] › e2e\cepc\sla.spec.ts:75:7 › CEPC SLA Indicators › breached complaint shows red indicator (overdue class) 
+    [chromium] › e2e\cepc\workflow-actions.spec.ts:36:7 › CEPC Workflow — Full Lifecycle (Happy Path) › DO accepts a complaint (status changes to in_progress) 
+  7 did not run
+  8 passed (10.0m)

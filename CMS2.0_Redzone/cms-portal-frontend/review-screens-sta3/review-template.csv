@@ -1,0 +1,2 @@
+Screen ID,Area,Screen name,Role used,URL,Capture status,Change in front end,Change in logic (backend)
+STA-003,Panel states,CEPC complaint detail — context rail open,CEPC_DO,http://localhost:4202/cepc/complaint/CMP-20260930-906580,CAPTURED,,

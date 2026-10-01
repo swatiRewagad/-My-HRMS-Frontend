@@ -1,0 +1,34 @@
+{
+  "generatedAt": "2026-09-30T13:34:50.556Z",
+  "appBase": "http://localhost:4202",
+  "apiBase": "http://localhost:8092",
+  "resolved": {
+    "complaintNumber": "CMP-20260930-906580",
+    "appealNumber": "APL-20260930-9D3112",
+    "draftId": "DRF-000025",
+    "ruleId": "1",
+    "closedComplaintNumber": "CMP-20260930-906580"
+  },
+  "captures": [
+    {
+      "id": "STF-005",
+      "area": "Staff",
+      "name": "Senior dashboard",
+      "actor": "CEPC_INCHARGE",
+      "routeTemplate": "/staff/senior-dashboard",
+      "resolvedRoute": "/staff/senior-dashboard",
+      "url": "http://localhost:4202/staff/senior-dashboard",
+      "finalUrl": "http://localhost:4202/staff/senior-dashboard",
+      "shot": "shots/STF-005.png",
+      "status": "CAPTURED",
+      "detail": "",
+      "title": "RBI Complaint Management System | RBI Complaint Management System",
+      "headings": [
+        "Senior Dashboard"
+      ],
+      "visibleText": 650,
+      "consoleErrors": [],
+      "capturedAt": "2026-09-30T13:34:19.802Z"
+    }
+  ]
+}

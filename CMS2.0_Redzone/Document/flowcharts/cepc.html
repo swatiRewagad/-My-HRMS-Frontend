@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CEPC — How a consumer protection case is handled</title>
+<link rel="stylesheet" href="lib/flowchart.css">
+</head>
+<body>
+
+<nav class="navbar"><div class="container">
+  <a href="index.html">Index</a>
+  <a href="portal.html">Citizen Portal</a>
+  <a href="crpc.html">CRPC Intake</a>
+  <a href="rbio.html">RBIO Office</a>
+  <a href="cepc.html" class="active">CEPC Office</a>
+  <a href="re.html">Bank / RE</a>
+  <a href="aa.html">Appellate Authority</a>
+  <a href="combined.html">End-to-end</a>
+</div></nav>
+
+<header class="page"><div class="container">
+  <h1>CEPC — Consumer Education &amp; Protection Cell</h1>
+  <p class="sub">The regional-office review chain for grievances the Ombudsman scheme does not cover</p>
+  <div class="meta">
+    <span>Written for business readers · every step below is what the software does today</span>
+    <span>Prepared from the CMS 2.0 source code, 30 Sep 2026</span>
+  </div>
+</div></header>
+
+<div class="container">
+
+<div class="plain">
+  <h2>In one paragraph</h2>
+  <p>
+    Grievances that fall outside the Ombudsman scheme — or that concern institutions the scheme does not reach —
+    go to a regional Consumer Education &amp; Protection Cell instead. A <strong>Dealing Official</strong> accepts
+    the case and gathers information: asking the complainant for more detail, consulting another RBI department, or
+    routing it to a designated contact person at the institution. A meeting can be convened. When the file is ready
+    it goes up a <strong>four-person review chain</strong> — Dealing Official → Reviewer → In-charge →
+    Closing Authority — and each level can send it back down. The Closing Authority either closes the case with a
+    letter, or forwards it out: to another RBI office, to another RBI department, or to a different regulator
+    altogether.
+  </p>
+</div>
+
+<div class="card">
+  <h2>1. Who does what</h2>
+  <table class="tbl who-table">
+    <thead><tr><th>Role</th><th>What this person does in the system</th></tr></thead>
+    <tbody>
+      <tr><td>Dealing Official</td><td>Accepts the case, requests information, consults other departments, forwards to a contact person at the institution, arranges meetings, and submits the file for review.</td></tr>
+      <tr><td>Reviewer</td><td>Quality-checks the file. Approves it upward to the In-charge, or sends it back to the Dealing Official.</td></tr>
+      <tr><td>In-charge</td><td>Second level of review. Approves for closure, or sends it back to the Reviewer. Can also reassign a case to a different officer.</td></tr>
+      <tr><td>Closing Authority</td><td>Final say. Closes the case with a letter, or forwards it out of CEPC entirely.</td></tr>
+      <tr><td>Contact Person</td><td>A designated person at the institution. Responds to the query, or asks for it to be passed to a colleague.</td></tr>
+      <tr><td>Administrator</td><td>Escalate, close, reopen, and reassign.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>2. The main journey</h2>
+  <div class="legend">
+    <span><i class="swatch sw-start"></i>Case arrives</span>
+    <span><i class="swatch sw-state"></i>Case is sitting here</span>
+    <span><i class="swatch sw-dec"></i>Someone must decide</span>
+    <span><i class="swatch sw-term"></i>Case is closed</span>
+    <span><i class="swatch sw-auto"></i>Recorded, case does not move</span>
+    <span><i class="swatch sw-gap"></i>Screen exists but does not work</span>
+  </div>
+  <div class="diagram" id="dg-cepc-journey">
+    <div class="diagram-bar">
+      <span class="title">Case arrives → examined → reviewed → In-charge → Closing Authority → closed or forwarded out</span>
+      <button data-act="in">+</button><button data-act="out">−</button>
+      <button data-act="fit">Fit</button><button data-act="reset">Reset</button>
+      <button data-act="full">Full screen</button><button data-act="svg">Save image</button>
+    </div>
+    <div class="diagram-view tall"><div class="pan">
+<div class="mermaid">
+flowchart TB
+  subgraph ARR["How cases arrive"]
+    direction TB
+    E1["Filed on the citizen portal<br/>against an institution outside<br/>the Ombudsman scheme"]:::start
+    E2["Handed over by the<br/>central intake centre"]:::start
+    E3["Created manually by<br/>a CEPC officer"]:::start
+  end
+
+  ASG["Waiting to be accepted"]:::state
+  E1 --> ASG
+  E2 --> ASG
+  E3 --> ASG
+
+  ASG --> ACC{"Dealing Official<br/>accepts the case"}:::dec
+  ACC --> IP["Under examination<br/>a target date is set on acceptance"]:::state
+
+  subgraph GATHER["Gathering information"]
+    direction TB
+    IP --> RI["Information requested<br/>from the complainant"]:::state
+    RI --> IP
+    IP --> FD["Referred to another<br/>RBI department for comments"]:::state
+    FD --> IP
+    IP --> CP["Sent to the institution's<br/>designated contact person"]:::state
+    CP -- "contact person responds" --> IP
+    CP -. "contact person asks for it to<br/>be passed to a colleague" .-> CP
+    MEET["A meeting is scheduled —<br/>recorded, the case stays put"]:::auto
+    IP -.-> MEET
+  end
+
+  IP --> UP{"File is ready"}:::dec
+  UP -- "submit for review" --> RV["With the Reviewer"]:::state
+  UP -- "straight to the In-charge<br/>skipping the Reviewer" --> IC["With the In-charge"]:::state
+
+  RV -- "approve" --> IC
+  RV -. "send back" .-> SB["Returned to the<br/>Dealing Official"]:::state
+  SB --> IP
+  IC -. "send back" .-> RV
+
+  RV -- "forward for closure" --> AC
+  IC -- "approve for closure" --> AC
+  AC["With the Closing Authority"]:::state
+  AC -. "send back" .-> IC
+
+  AC --> FIN{"Closing Authority decides"}:::dec
+  FIN -- "close the case" --> CL["Closed<br/>a reason is recorded and a closure<br/>letter is generated automatically"]:::term
+
+  subgraph OUT["Forwarding the case out of CEPC"]
+    direction TB
+    FIN -- "belongs to another<br/>RBI office" --> O1["Transfer requested —<br/>waits for central approval"]:::state
+    FIN -- "belongs to another<br/>RBI department" --> O2["Forwarded out"]:::state
+    FIN -- "belongs to a different<br/>regulator" --> O3["Forwarded out"]:::state
+  end
+  O1 --> CH(["Central intake head approves<br/>or rejects the transfer"]):::ext
+
+  ESC["Administrator may mark<br/>a case as escalated"]:::auto
+  IP -.-> ESC
+  RSN["In-charge or Administrator may<br/>reassign to a different officer —<br/>the case returns to the waiting queue"]:::auto
+  IP -.-> RSN
+  RSN -.-> ASG
+  CL -. "Closing Authority or Administrator<br/>may reopen" .-> IP
+
+  NOAPP["There is no route from CEPC<br/>to the Appellate Authority.<br/>A CEPC closure cannot be appealed<br/>inside this system."]:::gap
+  CL -.- NOAPP
+
+  CONC["A conciliation screen exists in the<br/>application but is not reachable and<br/>does not work — see section 5"]:::gap
+</div>
+    </div></div>
+    <div class="hint">Dotted lines can happen at almost any point. Pink is a gap, not a flow.</div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>3. The same journey as a checklist</h2>
+  <ol class="steps">
+    <li><span class="who">Dealing Official</span>
+      <strong>Accept the case.</strong> This is the only point at which a target date is set.</li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Gather what is needed.</strong> Ask the complainant for more information, consult another RBI
+      department, or route it to the institution's contact person. Any of these can be repeated.</li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Convene a meeting if required.</strong> Scheduling a meeting does not move the case — it is recorded
+      against it.</li>
+    <li><span class="who">Dealing Official</span>
+      <strong>Submit the file.</strong> Either to the Reviewer, or directly to the In-charge if the Reviewer step
+      is being skipped.</li>
+    <li><span class="who">Reviewer → In-charge</span>
+      <strong>Approve upward or send back.</strong> A Reviewer sends back to the Dealing Official; an In-charge
+      sends back to the Reviewer.</li>
+    <li><span class="who">Closing Authority</span>
+      <strong>Close it, or forward it out.</strong> Closing records a reason and generates the closure letter
+      automatically. Forwarding out requires the destination to be named — this is the only place the system
+      actually refuses incomplete input.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>4. Clocks and deadlines</h2>
+  <div class="timebox">
+    <div><b>7 days</b><span>target for a critical case</span></div>
+    <div><b>15 days</b><span>target for a high-priority case</span></div>
+    <div><b>30 days</b><span>target for a normal case — also the default</span></div>
+    <div><b>45 days</b><span>target for a low-priority case</span></div>
+  </div>
+  <p>Counted in working days only — Monday to Friday, 9:00 am to 6:00 pm, Indian time, with declared holidays
+     excluded.</p>
+  <div class="watch">
+    <span class="lbl">Important limitation</span>
+    <strong>CEPC has no deadline monitoring at all.</strong> There is no background job. Whether a case is overdue
+    is worked out only when someone opens the statistics screen, which sorts cases into breached, at-risk (two days
+    or fewer remaining) and on-track. Nobody is notified when a deadline passes, and no case escalates on its own.
+    The target date is also only ever set at three moments: acceptance, reopening, and manual creation — a case that
+    arrives and is never accepted has no deadline whatsoever.
+  </div>
+</div>
+
+<div class="card">
+  <h2>5. Things to know before relying on this</h2>
+  <div class="watch">
+    <span class="lbl">The biggest one — CEPC enforces almost nothing</span>
+    The application decides what buttons to show based on the user's role and the case's current state. The server
+    <strong>does not re-check either</strong>. The checking logic exists and is correct, but it is only consulted by
+    the read-only screens that ask "what can I do here?" — it is never consulted when the action is actually
+    performed. The practical effect: <strong>any of the six CEPC roles can perform any CEPC action on any case, from
+    any state.</strong> A Dealing Official can close a case; a contact person can approve a review.
+  </div>
+  <table class="tbl">
+    <thead><tr><th>What you might assume</th><th>What the code actually does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>"Only the Closing Authority can close a case"</td>
+        <td>That is what the screens show, but the server accepts a close from any CEPC role.</td>
+      </tr>
+      <tr>
+        <td>"A case must pass through the Reviewer"</td>
+        <td>The Dealing Official can legitimately skip straight to the In-charge, and in practice the order is not enforced at all.</td>
+      </tr>
+      <tr>
+        <td>"The conciliation screen works"</td>
+        <td><strong>It does not, on three counts.</strong> It is not linked into the application at all, so nobody can reach it. The three actions it sends are not CEPC actions, so they fall through to unrelated logic borrowed from the Ombudsman module. Two of them assign the case to a role that <strong>does not exist</strong>, effectively orphaning it. The third simply returns "unknown action".</td>
+      </tr>
+      <tr>
+        <td>"Uploading a document to a CEPC case saves it"</td>
+        <td>The upload is <strong>only held in the browser</strong>. It is never sent to the server and is lost on refresh.</td>
+      </tr>
+      <tr>
+        <td>"The history and escalations screens show different things"</td>
+        <td>Both menu items load the <strong>same screen</strong>. No separate escalations view exists.</td>
+      </tr>
+      <tr>
+        <td>"The citizen can see progress through the review chain"</td>
+        <td><strong>No.</strong> None of the CEPC states — information requested, referred to a department, with the Reviewer, with the In-charge, awaiting closure, forwarded out — is recognised by the citizen tracking page. Every one of them displays as <strong>"Stage 1 · Registered"</strong>. A CEPC complainant sees no movement at all until the case is closed.</td>
+      </tr>
+      <tr>
+        <td>"A CEPC case can be escalated to the Appellate Authority"</td>
+        <td>There is <strong>no such action</strong>. Nothing in the CEPC module references appeals. The "escalate" action only stamps a label on the case — it does not change the department or reassign it to anyone.</td>
+      </tr>
+      <tr>
+        <td>"Cases always reach the right cell"</td>
+        <td>When the institution cannot be identified, routing <strong>defaults to CEPC</strong>. Unidentified complaints therefore accumulate here.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<details class="tech">
+  <summary>Technical appendix — for developers and testers</summary>
+  <div class="inner">
+    <h4>The enforcement gap, precisely</h4>
+    <p><code>CepcWorkflowService.performAction</code> (line 123) calls <code>executeAction</code> directly. It never
+       calls <code>validateRoleAuthorization</code> (line 266) nor <code>isActionValidForState</code> (line 588).
+       Those two are reachable only from <code>GET …/validate-action</code> and
+       <code>GET …/available-actions/{n}</code>. The only runtime check is the coarse class-level list on
+       <code>@CepcRoleGuard</code> (<code>WorkflowController.java:174</code>), aspect
+       <code>security/CepcRoleGuardAspect.java</code> — JWT-first, <code>X-User-Roles</code> honoured only when
+       <code>cms.security.allow-dev-identity-headers=true</code>.</p>
+
+    <h4>Status vocabulary</h4>
+    <p>Lifecycle: <code>assigned</code> → <code>in_progress</code> → (<code>info_requested</code> |
+       <code>forwarded</code> | <code>forwarded_to_contact</code>) → <code>reviewer_review</code> →
+       <code>incharge_review</code> → <code>awaiting_closure</code> → <code>closed</code>.
+       Side states: <code>sent_back</code>, <code>escalated</code>, <code>forwarded_external</code>, and
+       <code>sent_to_other</code> (written by <code>InterOfficeTransferService</code>, not by CEPC).</p>
+
+    <h4><code>workflowStage</code> — a separate column</h4>
+    <p class="mono" style="font-size:12.5px">
+      CREATED · EXAMINATION · AWAITING_INFO · DEPT_CONSULTATION · MEETING_SCHEDULED · CONTACT_PERSON_REVIEW ·
+      REVIEWER_REVIEW · INCHARGE_REVIEW · SENT_BACK_TO_DO · AWAITING_CLOSURE · CLOSED · REASSIGNED · ESCALATED ·
+      REOPENED · FORWARDED_OTHER_OFFICE · FORWARDED_REGULATORY_BODY · FORWARDED_OTHER_RBI_DEPT
+    </p>
+
+    <h4>Transition table</h4>
+    <p><span class="badge badge-warn">A</span> = advertised in <code>ROLE_ACTIONS</code> and
+       <code>isActionValidForState</code> but <strong>not checked on execute</strong>.
+       <span class="badge badge-ok">✚</span> = has a real runtime check (parameter validation ⇒ 400).</p>
+    <div class="tbl-wrap">
+    <table class="tbl">
+      <thead><tr><th>From (declared)</th><th>Action</th><th>To status / stage</th><th>Declared role</th><th>Enforced?</th></tr></thead>
+      <tbody>
+        <tr><td>assigned, sent_back</td><td>ACCEPT</td><td>in_progress / EXAMINATION (+SLA)</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>REQUEST_INFO</td><td>info_requested / AWAITING_INFO</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>info_requested</td><td>INFO_RECEIVED</td><td>in_progress / EXAMINATION</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>FORWARD_DEPT</td><td>forwarded / DEPT_CONSULTATION</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>forwarded</td><td>COMMENTS_RECEIVED</td><td>in_progress / EXAMINATION</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>SCHEDULE_MEETING</td><td><em>status unchanged</em> / MEETING_SCHEDULED</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>FORWARD_TO_CONTACT</td><td>forwarded_to_contact / CONTACT_PERSON_REVIEW</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>forwarded_to_contact</td><td>CONTACT_RESPONSE</td><td>in_progress / EXAMINATION, role → CEPC_DO</td><td><span class="badge badge-role">CEPC_CONTACT_PERSON</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>forwarded_to_contact</td><td>CONTACT_REASSIGN</td><td><em>status unchanged</em> / CONTACT_PERSON_REVIEW</td><td><span class="badge badge-role">CEPC_CONTACT_PERSON</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>SUBMIT_FOR_REVIEW</td><td>reviewer_review / REVIEWER_REVIEW</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>FORWARD_TO_INCHARGE</td><td>incharge_review / INCHARGE_REVIEW</td><td><span class="badge badge-role">CEPC_DO</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>reviewer_review</td><td>APPROVE_REVIEW</td><td>incharge_review / INCHARGE_REVIEW</td><td><span class="badge badge-role">CEPC_REVIEWER</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>reviewer_review</td><td>SEND_BACK_DO</td><td>sent_back / SENT_BACK_TO_DO</td><td><span class="badge badge-role">CEPC_REVIEWER</span> <span class="badge badge-role">CEPC_INCHARGE</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>reviewer_review, incharge_review</td><td>FORWARD_TO_CLOSING_AUTHORITY</td><td>awaiting_closure / AWAITING_CLOSURE</td><td><span class="badge badge-role">CEPC_REVIEWER</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>incharge_review</td><td>APPROVE_CLOSURE</td><td>awaiting_closure / AWAITING_CLOSURE</td><td><span class="badge badge-role">CEPC_INCHARGE</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>incharge_review</td><td>SEND_BACK_REVIEWER</td><td>reviewer_review / REVIEWER_REVIEW</td><td><span class="badge badge-role">CEPC_INCHARGE</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>awaiting_closure</td><td>SEND_BACK_INCHARGE</td><td>incharge_review / INCHARGE_REVIEW</td><td><span class="badge badge-role">CEPC_CLOSING_AUTHORITY</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>awaiting_closure</td><td>CLOSE_COMPLAINT</td><td>closed / CLOSED (+closureCause, auto letter)</td><td><span class="badge badge-role">CEPC_CLOSING_AUTHORITY</span> <span class="badge badge-role">CEPC_ADMIN</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>awaiting_closure</td><td>FORWARD_TO_OTHER_OFFICE</td><td>→ InterOfficeTransferService (<code>sent_to_other</code>)</td><td><span class="badge badge-role">CEPC_CLOSING_AUTHORITY</span></td><td><span class="badge badge-ok">✚ office + reason</span></td></tr>
+        <tr><td>awaiting_closure</td><td>FORWARD_TO_REGULATORY_BODY</td><td>forwarded_external / FORWARDED_REGULATORY_BODY</td><td><span class="badge badge-role">CEPC_CLOSING_AUTHORITY</span></td><td><span class="badge badge-ok">✚ body</span></td></tr>
+        <tr><td>awaiting_closure</td><td>FORWARD_TO_OTHER_RBI_DEPT</td><td>forwarded_external / FORWARDED_OTHER_RBI_DEPT</td><td><span class="badge badge-role">CEPC_CLOSING_AUTHORITY</span></td><td><span class="badge badge-ok">✚ dept</span></td></tr>
+        <tr><td>closed, resolved</td><td>REOPEN</td><td>in_progress / REOPENED (+reopenCount, SLA reset)</td><td><span class="badge badge-role">CEPC_CLOSING_AUTHORITY</span> <span class="badge badge-role">CEPC_ADMIN</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>any non-terminal</td><td>REASSIGN</td><td>assigned / REASSIGNED</td><td><span class="badge badge-role">CEPC_INCHARGE</span> <span class="badge badge-role">CEPC_ADMIN</span></td><td><span class="badge badge-warn">A</span></td></tr>
+        <tr><td>in_progress, assigned</td><td>ESCALATE</td><td>escalated / ESCALATED — <strong>status only</strong>, department and role unchanged</td><td><span class="badge badge-role">CEPC_ADMIN</span></td><td><span class="badge badge-warn">A</span></td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h4>Roles</h4>
+    <p><code>ROLE_ACTIONS</code>, lines 78–100. Ladder <code>CEPC_DO</code> → <code>CEPC_REVIEWER</code> →
+       <code>CEPC_INCHARGE</code> → <code>CEPC_CLOSING_AUTHORITY</code>; off-ladder <code>CEPC_ADMIN</code>,
+       <code>CEPC_CONTACT_PERSON</code>.
+       <strong>Dead role:</strong> <code>CEPC_OFFICER</code> — in no guard and no <code>ROLE_ACTIONS</code> entry,
+       yet still emitted by <code>ComplaintRoutingService:129,144</code>.
+       <strong>Non-existent role:</strong> <code>CEPC_ADJUDICATOR</code>, only ever set by the unrouted conciliation
+       component's fall-through. Downstream assignee picked by round-robin <code>assignByRole</code> (line 649) via
+       Keycloak, filtering out <code>SECRETARY</code>.</p>
+
+    <h4>Entry points</h4>
+    <p><code>routeFromPublicPortal</code> (line 68) — non-RBIO entity ⇒ dept CEPC, role <code>CEPC_DO</code>;
+       <strong>UNKNOWN entity fails closed to CEPC</strong>.
+       <code>routeFromCrpcToApproval</code> (:127) and <code>transferBetweenDepartments</code> (:142) — both emit
+       the dead <code>CEPC_OFFICER</code>. <code>POST /workflow/cepc/create-complaint</code> —
+       <code>filingType CEPC_MANUAL</code>, stage <code>CREATED</code>.
+       <code>POST /workflow/route/{n}</code> — <strong>unguarded</strong>, department taken from the body.</p>
+
+    <h4>SLA</h4>
+    <p><code>service/CepcSlaService.java</code> — CRITICAL 7 / HIGH 15 / MEDIUM 30 / LOW 45 business days,
+       default 30. <strong>No <code>@Scheduled</code> anywhere in the class.</strong>
+       <code>applySlaDeadline</code> fires on exactly three paths: <code>ACCEPT</code>, <code>REOPEN</code>,
+       <code>cepc/create-complaint</code>. Breach computed on read via
+       <code>getComplianceStats("CEPC")</code> → <code>GET /workflow/cepc/sla-stats</code>.
+       Calendar: Mon–Fri 09:00–18:00 Asia/Kolkata, holidays excluded.</p>
+
+    <h4>Gaps</h4>
+    <ul>
+      <li><code>cepc-conciliation.component.ts:88,119</code> posts <code>SCHEDULE_CONCILIATION</code>,
+          <code>CONCILIATION_SUCCESS</code>, <code>CONCILIATION_FAILED</code> — none in
+          <code>ALL_CEPC_ACTIONS</code>, so <code>isCepcAction</code> is false and they fall through to the generic
+          switch (<code>WorkflowController:798</code>). <code>SCHEDULE_CONCILIATION</code> ⇒ "Unknown action"; the
+          other two hit the <strong>RBIO-shaped</strong> branches, set <code>conciliated</code> or
+          <code>escalated</code> plus role <code>CEPC_ADJUDICATOR</code>. Not routed in
+          <code>app.routes.ts</code> at all.</li>
+      <li><code>cepc-timeline</code> and <code>cepc-sla-indicator</code> — no HTTP calls, no route.</li>
+      <li><code>staff/cepc/history</code> (route 211) and <code>staff/cepc/escalations</code> (route 216) both load
+          <code>CepcTasksComponent</code>.</li>
+      <li><code>cepc-complaint-detail.component.ts:239</code> — document upload is local-signal only.</li>
+      <li><code>CitizenStageMapper:29–32</code> knows none of <code>info_requested, forwarded,
+          forwarded_to_contact, reviewer_review, incharge_review, awaiting_closure, forwarded_external</code> —
+          all hit <code>return 1</code>.</li>
+      <li>No <code>AA_</code> or appellate reference exists anywhere in <code>CepcWorkflowService</code>.</li>
+    </ul>
+
+    <h4>Closure letter</h4>
+    <p><code>CLOSE_COMPLAINT</code> auto-dispatches via <code>autoDispatchClosureLetter</code> (line 680). Scheme
+       version falls back to <code>cms.eligibility.scheme-version:RBIOS_2021</code> when unset.</p>
+  </div>
+</details>
+
+</div>
+
+<footer class="page">CMS 2.0 — CEPC process flow · derived from the <code>CMS2.0_Redzone</code> source, 30 Sep 2026 · works offline</footer>
+
+<script src="lib/mermaid.min.js"></script>
+<script src="lib/flowchart.js"></script>
+</body>
+</html>

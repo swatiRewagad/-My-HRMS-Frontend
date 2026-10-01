@@ -1,0 +1,271 @@
+<div class="extraction-rules-page">
+  <div class="page-header">
+    <div class="header-left">
+      <h1>Extraction Rules</h1>
+      <p class="subtitle">Define regex/keyword patterns to auto-extract complaint fields from emails</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-outline" (click)="openTester()"><i class="pi pi-play"></i> Test Rules</button>
+      <button class="btn btn-primary" (click)="openNewRule()"><i class="pi pi-plus"></i> New Rule</button>
+    </div>
+  </div>
+
+  @if (success()) {
+    <div class="alert alert-success"><i class="pi pi-check-circle"></i> {{ success() }}</div>
+  }
+  @if (error()) {
+    <div class="alert alert-error"><i class="pi pi-times-circle"></i> {{ error() }}</div>
+  }
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <input type="text" [(ngModel)]="filterByName" placeholder="Search by name..." class="filter-input" />
+    <select [(ngModel)]="filterByField" class="filter-select">
+      <option value="">All Fields</option>
+      @for (field of targetFields(); track field) {
+        <option [value]="field">{{ field }}</option>
+      }
+    </select>
+    <label class="toggle-label">
+      <input type="checkbox" [(ngModel)]="showActiveOnly" />
+      Active only
+    </label>
+    <span class="results-count">{{ filteredRules.length }} rules</span>
+  </div>
+
+  <!-- Rules Table -->
+  @if (loading()) {
+    <div class="loading"><i class="pi pi-spinner pi-spin"></i> Loading rules...</div>
+  } @else {
+    <div class="table-wrapper">
+      <table class="rules-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Rule Name</th>
+            <th>Pattern Type</th>
+            <th>Pattern</th>
+            <th>Target Field</th>
+            <th>Source</th>
+            <th>Priority</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (filteredRules.length === 0) {
+            <tr><td colspan="8" class="empty-cell">No extraction rules found. Create one to get started.</td></tr>
+          } @else {
+            @for (rule of filteredRules; track rule.id) {
+              <tr [class.inactive]="!rule.isActive">
+                <td>
+                  <button class="toggle-btn" [class.active]="rule.isActive" (click)="toggleRule(rule)" [title]="rule.isActive ? 'Deactivate' : 'Activate'">
+                    <i class="pi" [class.pi-check-circle]="rule.isActive" [class.pi-times-circle]="!rule.isActive"></i>
+                  </button>
+                </td>
+                <td>
+                  <strong>{{ rule.ruleName }}</strong>
+                  @if (rule.description) {
+                    <br><small class="text-muted">{{ rule.description }}</small>
+                  }
+                </td>
+                <td><span class="badge" [class.badge-regex]="rule.patternType === 'REGEX'" [class.badge-keyword]="rule.patternType === 'KEYWORD_LIST'">{{ rule.patternType === 'KEYWORD_LIST' ? 'Keywords' : 'Regex' }}</span></td>
+                <td><code class="pattern-code">{{ rule.pattern.length > 40 ? rule.pattern.substring(0, 40) + '...' : rule.pattern }}</code></td>
+                <td><span class="field-badge">{{ rule.targetField }}</span></td>
+                <td>{{ rule.sourceScope }}</td>
+                <td>{{ rule.priority }}</td>
+                <td class="actions-cell">
+                  <button class="icon-btn" title="Edit" (click)="openEditRule(rule)"><i class="pi pi-pencil"></i></button>
+                  <button class="icon-btn icon-btn-danger" title="Delete" (click)="confirmDelete(rule)"><i class="pi pi-trash"></i></button>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
+
+<!-- Rule Editor Modal -->
+@if (showEditor()) {
+  <div class="modal-overlay" (click)="cancelEditor()">
+    <div class="modal-content editor-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ editingRule() ? 'Edit Rule' : 'New Extraction Rule' }}</h2>
+        <button class="close-btn" (click)="cancelEditor()"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <!-- Quick Template Selector -->
+        <div class="template-section">
+          <label><i class="pi pi-bolt"></i> Quick Start — Pick a template</label>
+          <select class="template-select" (change)="applyTemplate($event)">
+            @for (tpl of patternTemplates; track tpl.label) {
+              <option>{{ tpl.label }}</option>
+            }
+          </select>
+          <small class="hint">Select a template to auto-fill the pattern. You can then customize it.</small>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Rule Name *</label>
+            <input type="text" [(ngModel)]="form.ruleName" placeholder="e.g. Extract Pincode" />
+          </div>
+          <div class="form-group">
+            <label>Rule Code</label>
+            <input type="text" [(ngModel)]="form.ruleCode" placeholder="Auto-generated if empty" [disabled]="!!editingRule()" />
+          </div>
+          <div class="form-group full-width">
+            <label>Description</label>
+            <input type="text" [(ngModel)]="form.description" placeholder="Optional description" />
+          </div>
+          <div class="form-group">
+            <label>Pattern Type *</label>
+            <select [(ngModel)]="form.patternType">
+              <option value="REGEX">Regex (auto-match pattern)</option>
+              <option value="KEYWORD_LIST">Keyword List (comma-separated words)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Target Field *</label>
+            <select [(ngModel)]="form.targetField">
+              <option value="">Select field...</option>
+              @for (field of targetFields(); track field) {
+                <option [value]="field">{{ field }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label>Pattern *</label>
+            @if (form.patternType === 'REGEX') {
+              <textarea [(ngModel)]="form.pattern" rows="3" placeholder="e.g. \b(\d{6})\b for pincode"></textarea>
+              <small class="hint">Auto-filled from template. Advanced users can edit directly.</small>
+            } @else {
+              <textarea [(ngModel)]="form.pattern" rows="3" placeholder="HDFC, SBI, ICICI, PNB (comma-separated keywords)"></textarea>
+              <small class="hint">Enter words separated by commas. If any word is found in the email, it's a match.</small>
+            }
+          </div>
+          @if (form.patternType === 'REGEX') {
+            <div class="form-group">
+              <label>Capture Group</label>
+              <input type="number" [(ngModel)]="form.extractGroup" min="0" max="9" />
+              <small class="hint">0 = entire match, 1 = first group, etc.</small>
+            </div>
+          }
+          <div class="form-group">
+            <label>Source Scope</label>
+            <select [(ngModel)]="form.sourceScope">
+              <option value="BOTH">Both (Subject + Body)</option>
+              <option value="SUBJECT">Subject only</option>
+              <option value="BODY">Body only</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Priority (1 = highest, checked first)</label>
+            <input type="number" [(ngModel)]="form.priority" min="1" max="1000" />
+            <small class="hint">1 = checked first. Use 1–3 for specific rules, 5 for normal, 10+ for fallbacks.</small>
+          </div>
+          <div class="form-group">
+            <label>Transform</label>
+            <select [(ngModel)]="form.transform">
+              <option value="">None</option>
+              <option value="UPPERCASE">UPPERCASE</option>
+              <option value="LOWERCASE">lowercase</option>
+              <option value="TRIM">Trim whitespace</option>
+            </select>
+          </div>
+        </div>
+
+        @if (error()) {
+          <div class="alert alert-error" style="margin-top:16px"><i class="pi pi-times-circle"></i> {{ error() }}</div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelEditor()">Cancel</button>
+        <button class="btn btn-primary" (click)="saveRule()" [disabled]="!form.ruleName || !form.pattern || !form.targetField">
+          {{ editingRule() ? 'Update Rule' : 'Create Rule' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Rule Tester Modal -->
+@if (showTester()) {
+  <div class="modal-overlay" (click)="cancelTester()">
+    <div class="modal-content tester-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Test Extraction Rules</h2>
+        <button class="close-btn" (click)="cancelTester()"><i class="pi pi-times"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Email Subject</label>
+          <input type="text" [(ngModel)]="testSubject" placeholder="Complaint about ATM transaction" />
+        </div>
+        <div class="form-group">
+          <label>Email Body</label>
+          <textarea [(ngModel)]="testBody" rows="8" placeholder="Paste sample email body here to test which rules will match..."></textarea>
+        </div>
+        <button class="btn btn-primary" (click)="runTest()" [disabled]="testing() || (!testSubject && !testBody)">
+          @if (testing()) { <i class="pi pi-spinner pi-spin"></i> Testing... } @else { <i class="pi pi-play"></i> Run Extraction }
+        </button>
+
+        @if (testResult()) {
+          <div class="test-results">
+            <h3>Extracted Fields ({{ testResult()!.matchDetails.length }} matches)</h3>
+            @if (testResult()!.matchDetails.length > 0) {
+              <table class="results-table">
+                <thead>
+                  <tr>
+                    <th>Rule</th>
+                    <th>Target Field</th>
+                    <th>Extracted Value</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (match of testResult()!.matchDetails; track match.ruleCode) {
+                    <tr>
+                      <td>{{ match.ruleName }}</td>
+                      <td><span class="field-badge">{{ match.targetField }}</span></td>
+                      <td><code>{{ match.extractedValue }}</code></td>
+                      <td>{{ match.priority }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="no-matches">No rules matched the sample text.</p>
+            }
+
+            @if (testResult()!.unmatchedFields.length > 0) {
+              <h4>Unmatched Fields</h4>
+              <div class="unmatched-list">
+                @for (field of testResult()!.unmatchedFields; track field) {
+                  <span class="unmatched-badge">{{ field }}</span>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Delete Confirmation -->
+@if (showDeleteConfirm()) {
+  <div class="modal-overlay" (click)="showDeleteConfirm.set(false)">
+    <div class="modal-content confirm-modal" (click)="$event.stopPropagation()">
+      <h3>Delete Rule</h3>
+      <p>Are you sure you want to delete "{{ ruleToDelete()?.ruleName }}"?</p>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="showDeleteConfirm.set(false)">Cancel</button>
+        <button class="btn btn-danger" (click)="deleteRule()">Delete</button>
+      </div>
+    </div>
+  </div>
+}

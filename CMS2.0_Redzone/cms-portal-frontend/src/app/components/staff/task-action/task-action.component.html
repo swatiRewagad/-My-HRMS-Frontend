@@ -1,0 +1,911 @@
+<div class="task-action-page">
+  <!-- ═══ HEADER BAR ═══ -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" />
+      <div class="rbi-text">
+        <span class="rbi-hindi">भारतीय रिज़र्व बैंक</span>
+        <span class="rbi-english">RESERVE BANK OF INDIA</span>
+      </div>
+      <div class="header-divider-v"></div>
+      <img src="assets/corporates-rbi-logo.jpg" alt="CMS" class="cms-logo" onerror="this.style.display='none'" />
+      <div class="header-brand">
+        <span class="cms-title">CMS</span>
+        <span class="cms-subtitle">Complaint Management System</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="accessibility-controls">
+        <button class="acc-btn" title="Phone"><i class="pi pi-phone"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Decrease font">A-</button>
+        <button class="acc-btn acc-btn-mid" title="Normal font">A</button>
+        <button class="acc-btn" title="Increase font">A+</button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn lang-btn" title="Language">English <i class="pi pi-chevron-down"></i></button>
+        <span class="acc-divider">|</span>
+        <button class="acc-btn" title="Notifications"><i class="pi pi-bell"></i></button>
+      </div>
+      <div class="header-divider"></div>
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'U').charAt(0) }}</span>
+        <div class="user-details">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">{{ user.roles[0] | titlecase }}</span>
+        </div>
+      }
+      <button class="btn-logout" (click)="goBack()" title="Logout"><i class="pi pi-sign-out"></i></button>
+    </div>
+  </header>
+
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading complaint details...</p>
+    </div>
+  } @else if (!complaint()) {
+    <div class="loading-state">
+      <i class="pi pi-exclamation-circle" style="font-size:3rem;color:#d32f2f;"></i>
+      <p>Complaint not found.</p>
+      <button class="btn btn-primary" (click)="goBack()">Back to Tasks</button>
+    </div>
+  } @else {
+
+    <!-- ═══ SUB-HEADER TAB ═══ -->
+    <div class="sub-header">
+      <div class="complaint-tab active">
+        <i class="pi pi-file"></i>
+        Complaint {{ complaint()!.complaintNumber }}
+      </div>
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to Tasks">
+        <i class="pi pi-plus"></i>
+      </div>
+    </div>
+
+    <!-- ═══ PAGE BODY: Three Columns + Icon Sidebar ═══ -->
+    <div class="page-body-layout has-sidebar">
+
+      <!-- LEFT MAIN AREA -->
+      <div class="left-main-area">
+
+        <!-- ═══ KPI / META ROW — shared app-complaint-summary ═══ -->
+        <app-complaint-summary [items]="summaryItems()" [actions]="stripActions" (back)="goBack()" />
+
+        <ng-template #stripActions>
+          @if (!isTerminalState()) {
+            <button class="btn btn-primary" (click)="scrollToActions()">Take Action</button>
+          }
+        </ng-template>
+
+        <!-- ═══ TAT TIMER ═══ -->
+        @if (tatData()) {
+          <div class="tat-timer-bar">
+            <div class="tat-timer-label">
+              <span class="tat-icon">⏱</span>
+              <span class="tat-title">SLA Timer (Business Hours)</span>
+            </div>
+            <div class="tat-progress-container">
+              <div class="tat-progress-bar" [style.width.%]="Math.min(tatData()!.percentUsed, 100)" [style.background]="getTatProgressColor()"></div>
+            </div>
+            <div class="tat-details">
+              <span class="tat-remaining" [style.color]="getTatProgressColor()">{{ tatTimerDisplay() }}</span>
+              <span class="tat-meta">{{ tatData()!.businessDaysElapsed }}d elapsed / {{ tatData()!.businessDaysElapsed + tatData()!.businessDaysRemaining }}d total</span>
+            </div>
+          </div>
+        }
+
+        <!-- ═══ RBIO SLA PROGRESS (multi-stage) ═══ -->
+        @if (isRbioComplaint() && complaint()) {
+          <app-rbio-sla-progress [complaint]="complaint()!" [currentStage]="getRbioCurrentStage()"></app-rbio-sla-progress>
+        }
+
+        <!-- ═══ CONTENT BOX (Email + Complaint panels) ═══ -->
+        <div class="content-box">
+          <div class="main-content-layout two-col">
+
+            <!-- ════════════════════════════════════════════ -->
+            <!-- LEFT PANEL: Document / Email Viewer         -->
+            <!-- ════════════════════════════════════════════ -->
+            <div class="col-email-syndicate" [class.panel-expanded]="expandedPanel() === 'email'" [class.panel-hidden]="expandedPanel() === 'complaint'">
+              <div class="panel-header">
+                <h3><i class="pi pi-inbox"></i> Documents &amp; Communication</h3>
+                <button class="expand-btn" (click)="toggleExpand('email')">
+                  @if (expandedPanel() === 'email') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
+                </button>
+              </div>
+
+              <!-- Email content / document viewer -->
+              <div class="email-syndicate-body">
+                @if (complaint()!.subject || complaint()!.description) {
+                  <h4 class="email-subject-title">{{ complaint()!.subject || 'Complaint Communication' }}</h4>
+                  <div class="email-sender-row">
+                    <div class="sender-avatar-circle">{{ (complaint()!.complainantName || 'U').charAt(0) }}</div>
+                    <div class="sender-info">
+                      <span class="sender-name-text">{{ complaint()!.complainantName || 'Unknown' }} &lt;{{ complaint()!.complainantEmail }}&gt;</span>
+                      <span class="sender-meta">To: {{ getDepartmentLabel() }}</span>
+                    </div>
+                    <span class="email-date">{{ complaint()!.registeredAt }}</span>
+                  </div>
+                  @if (complaint()!.attachments?.length) {
+                    <div class="email-attachments-bar">
+                      @for (att of complaint()!.attachments; track att.id || $index) {
+                        <div class="email-att-chip">
+                          <i class="pi pi-file"></i>
+                          <span>{{ att.name }}</span>
+                          <small>{{ att.size }}</small>
+                        </div>
+                      }
+                    </div>
+                  }
+                  <div class="email-body-display">
+                    @if (isEmailSource() && highlightedEmailBody()) {
+                      <p class="email-body-text" [innerHTML]="highlightedEmailBody()"></p>
+                    } @else {
+                      <p class="email-body-text">{{ complaint()!.description || 'No description provided.' }}</p>
+                    }
+                  </div>
+                } @else {
+                  <div class="doc-empty-state">
+                    <i class="pi pi-inbox"></i>
+                    <p>No communication available</p>
+                  </div>
+                }
+              </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════ -->
+            <!-- MIDDLE PANEL: Complaint Details              -->
+            <!-- ════════════════════════════════════════════ -->
+            <div class="col-complaint" [class.panel-expanded]="expandedPanel() === 'complaint'" [class.panel-hidden]="expandedPanel() === 'email'">
+              <div class="panel-header">
+                <h3><i class="pi pi-th-large"></i> Complaint Details</h3>
+                <button class="expand-btn" (click)="toggleExpand('complaint')">
+                  @if (expandedPanel() === 'complaint') { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-arrows-alt"></i> }
+                </button>
+              </div>
+
+              <!-- Basic Details Section -->
+              <div class="form-section" [class.open]="sectionOpen.basic">
+                <div class="section-header" (click)="sectionOpen.basic = !sectionOpen.basic">
+                  <span><i class="pi pi-chart-bar"></i> Basic Details</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.basic" [class.pi-chevron-up]="!sectionOpen.basic"></i>
+                </div>
+                @if (sectionOpen.basic) {
+                  <div class="section-body">
+                    <div class="field-grid-2">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.subject)"
+                           (blur)="onFieldBlur()">
+                        <label>Subject</label>
+                        <span class="field-value">{{ complaint()!.subject || '—' }}</span>
+                      </div>
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.category)"
+                           (blur)="onFieldBlur()">
+                        <label>Category</label>
+                        <span class="field-value">{{ complaint()!.category || '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="field-item full focusable-field" tabindex="0"
+                         (focus)="onFieldFocus(complaint()!.description)"
+                         (blur)="onFieldBlur()">
+                      <label>Description</label>
+                      <p class="field-readonly">{{ complaint()!.description || '—' }}</p>
+                    </div>
+                    <div class="field-grid-2">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.registeredAt)"
+                           (blur)="onFieldBlur()">
+                        <label>Registered At</label>
+                        <span class="field-value">{{ complaint()!.registeredAt || '—' }}</span>
+                      </div>
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.slaDueDate)"
+                           (blur)="onFieldBlur()">
+                        <label>SLA Due Date</label>
+                        <span class="field-value">{{ complaint()!.slaDueDate || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Complainant Details Section -->
+              <div class="form-section" [class.open]="sectionOpen.complainant">
+                <div class="section-header" (click)="sectionOpen.complainant = !sectionOpen.complainant">
+                  <span><i class="pi pi-user"></i> Complainant Details</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.complainant" [class.pi-chevron-up]="!sectionOpen.complainant"></i>
+                </div>
+                @if (sectionOpen.complainant) {
+                  <div class="section-body">
+                    <div class="field-grid-2">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantName)"
+                           (blur)="onFieldBlur()">
+                        <label>Name</label>
+                        <span class="field-value">{{ complaint()!.complainantName || '—' }}</span>
+                      </div>
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantEmail)"
+                           (blur)="onFieldBlur()">
+                        <label>Email</label>
+                        <span class="field-value">{{ complaint()!.complainantEmail || '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="field-grid-2">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantPhone)"
+                           (blur)="onFieldBlur()">
+                        <label>Phone</label>
+                        <span class="field-value">{{ complaint()!.complainantPhone || '—' }}</span>
+                      </div>
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.complainantAddress)"
+                           (blur)="onFieldBlur()">
+                        <label>Address</label>
+                        <span class="field-value">{{ complaint()!.complainantAddress || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Entity Details Section -->
+              <div class="form-section" [class.open]="sectionOpen.entity">
+                <div class="section-header" (click)="sectionOpen.entity = !sectionOpen.entity">
+                  <span><i class="pi pi-building"></i> Entity Details</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.entity" [class.pi-chevron-up]="!sectionOpen.entity"></i>
+                </div>
+                @if (sectionOpen.entity) {
+                  <div class="section-body">
+                    <div class="field-grid-2">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityName)"
+                           (blur)="onFieldBlur()">
+                        <label>Entity Name</label>
+                        <span class="field-value">{{ complaint()!.entityName || '—' }}</span>
+                      </div>
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityType)"
+                           (blur)="onFieldBlur()">
+                        <label>Entity Type</label>
+                        <span class="field-value">{{ complaint()!.entityType || '—' }}</span>
+                      </div>
+                    </div>
+                    <div class="field-grid-2">
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityBranch)"
+                           (blur)="onFieldBlur()">
+                        <label>Branch</label>
+                        <span class="field-value">{{ complaint()!.entityBranch || '—' }}</span>
+                      </div>
+                      <div class="field-item focusable-field" tabindex="0"
+                           (focus)="onFieldFocus(complaint()!.entityLocation)"
+                           (blur)="onFieldBlur()">
+                        <label>Location</label>
+                        <span class="field-value">{{ complaint()!.entityLocation || '—' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- MRE Copilot Assessment Section -->
+              <div class="form-section copilot-section" [class.open]="sectionOpen.copilot">
+                <div class="section-header" (click)="sectionOpen.copilot = !sectionOpen.copilot; sectionOpen.copilot && loadCopilot()">
+                  <span><i class="pi pi-bolt"></i> MRE Copilot — Maintainability Assessment</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.copilot" [class.pi-chevron-up]="!sectionOpen.copilot"></i>
+                </div>
+                @if (sectionOpen.copilot) {
+                  <div class="section-body">
+                    @if (copilotLoading()) {
+                      <div class="copilot-loading"><i class="pi pi-spin pi-spinner"></i> Analyzing complaint against RB-IOS 2026 rules...</div>
+                    } @else if (copilotData()?.error) {
+                      <div class="copilot-error">
+                        <i class="pi pi-exclamation-triangle"></i>
+                        <span>MRE Assessment service unavailable. Please try again later.</span>
+                      </div>
+                    } @else if (copilotData()) {
+                      <div class="copilot-content">
+                        <div class="copilot-verdict">
+                          <span class="verdict-badge" [class.maintainable]="copilotData().suggestedDetermination === 'MAINTAINABLE'" [class.non-maintainable]="copilotData().suggestedDetermination !== 'MAINTAINABLE'">
+                            {{ copilotData().suggestedDetermination }}
+                          </span>
+                          <span class="verdict-signal">Overall: {{ copilotData().mreVerdict?.overallSignal }}</span>
+                        </div>
+                        @if (copilotData().mreVerdict?.grounds?.length) {
+                          <div class="copilot-grounds">
+                            <h5>Objective Grounds (RB-IOS 2026)</h5>
+                            @for (ground of copilotData().mreVerdict.grounds; track ground.groundId) {
+                              <div class="ground-item" [class.pass]="ground.verdict === 'PASS'" [class.fail]="ground.verdict === 'FAIL'">
+                                <span class="ground-status">{{ ground.verdict === 'PASS' ? '✓' : ground.verdict === 'FAIL' ? '✗' : '?' }}</span>
+                                <span class="ground-desc">{{ ground.description }}</span>
+                                <span class="ground-clause">{{ ground.clauseRef }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                        @if (copilotData().compensationBand) {
+                          <div class="copilot-compensation">
+                            <h5>Compensation Precedent (₹30L cap)</h5>
+                            <p>Similar cases: ₹{{ copilotData().compensationBand.minAmount | number }} — ₹{{ copilotData().compensationBand.maxAmount | number }}</p>
+                            <p class="comp-note">Cap: ₹30,00,000 consequential + ₹3,00,000 time/harassment (RB-IOS Q22/Q23)</p>
+                          </div>
+                        }
+                        @if (copilotData().draftRationale) {
+                          <div class="copilot-rationale">
+                            <h5>Draft Rationale (editable)</h5>
+                            <textarea class="rationale-text" rows="4">{{ copilotData().draftRationale }}</textarea>
+                          </div>
+                        }
+                        @if (copilotData().precedentCases?.length) {
+                          <div class="copilot-precedents">
+                            <h5>Similar Precedents ({{ copilotData().precedentCases.length }})</h5>
+                            @for (pc of copilotData().precedentCases.slice(0, 3); track $index) {
+                              <div class="precedent-item">
+                                <span class="prec-outcome">{{ pc.outcome }}</span>
+                                <span class="prec-reason">{{ pc.reason }}</span>
+                                <span class="prec-entity">{{ pc.entityCode }}</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </div>
+                    } @else {
+                      <button class="btn btn-outline copilot-trigger-btn" (click)="loadCopilot()">
+                        <i class="pi pi-bolt"></i> Run MRE Assessment
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- ═══ RBIO CONCILIATION ═══ -->
+              @if (showRbioConciliation()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-conciliation [complaint]="complaint()!"></app-rbio-conciliation>
+                </div>
+              }
+
+              <!-- ═══ RBIO ADJUDICATION ═══ -->
+              @if (showRbioAdjudication()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-adjudication [complaint]="complaint()!"></app-rbio-adjudication>
+                </div>
+              }
+
+              <!-- ═══ RBIO ADVISORY ═══ -->
+              @if (showRbioAdvisory()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-advisory [complaint]="complaint()!"></app-rbio-advisory>
+                </div>
+              }
+
+              <!-- ═══ RBIO DEPUTY OMBUDSMAN DECISION (UST758) ═══ -->
+              @if (showDeputyDecision()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-deputy-decision [complaint]="complaint()!" (decisionSubmitted)="onDeputyDecisionSubmitted($event)"></app-rbio-deputy-decision>
+                </div>
+              }
+
+              <!-- ═══ RBIO ADD ENTITY (UST487-495) ═══ -->
+              @if (showAddEntity()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-add-entity [complaint]="complaint()!"></app-rbio-add-entity>
+                </div>
+              }
+
+              <!-- ═══ RBIO FORWARD TO REGULATORY BODY (UST766) ═══ -->
+              @if (showForwardRegulatory()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-forward-regulatory [complaint]="complaint()!"></app-rbio-forward-regulatory>
+                </div>
+              }
+
+              <!-- ═══ RBIO LEGAL CASE TAB (UST553-555) ═══ -->
+              @if (showLegalCase()) {
+                <div class="form-section" [class.open]="true">
+                  <app-rbio-legal-case [complaint]="complaint()!"></app-rbio-legal-case>
+                </div>
+              }
+
+              <!-- ═══ RBIO ACTION OVERRIDE HISTORY (UST639-642) ═══ -->
+              @if (isRbioComplaint()) {
+                <div class="form-section" [class.open]="showOverrideHistory()">
+                  <div class="section-header" (click)="toggleOverrideHistory()">
+                    <span><i class="pi pi-history"></i> Action Override History</span>
+                    <i class="pi" [class.pi-chevron-down]="showOverrideHistory()" [class.pi-chevron-up]="!showOverrideHistory()"></i>
+                  </div>
+                  @if (showOverrideHistory()) {
+                    <div class="section-body">
+                      <app-rbio-action-override-history [complaint]="complaint()!"></app-rbio-action-override-history>
+                    </div>
+                  }
+                </div>
+              }
+
+              <!-- Action Panel Section -->
+              <div class="form-section action-section" [class.open]="sectionOpen.actions" #actionSection>
+                <div class="section-header" (click)="sectionOpen.actions = !sectionOpen.actions">
+                  <span><i class="pi pi-send"></i> Take Action</span>
+                  <i class="pi" [class.pi-chevron-down]="sectionOpen.actions" [class.pi-chevron-up]="!sectionOpen.actions"></i>
+                </div>
+                @if (sectionOpen.actions) {
+                  <div class="section-body">
+                    <!--
+                      OUTSIDE the three branches below, because the outcome of an action must outlive the
+                      actions. A transition that closes the complaint, or that hands it to the next role,
+                      empties availableActions() — so the re-fetch that follows swapped this panel for a
+                      banner and destroyed the very confirmation the officer had just earned. The write
+                      succeeded and the screen said nothing about it.
+                    -->
+                    @if (actionResult()) {
+                      <div class="result-msg" role="status" aria-live="polite" data-testid="action-result"
+                           [class.success]="actionSuccess()" [class.error]="!actionSuccess()">
+                        {{ actionResult() }}
+                      </div>
+                    }
+
+                    @if (isTerminalState()) {
+                      <div class="closed-banner">
+                        <span class="closed-icon"><i class="pi pi-check-circle"></i></span>
+                        <h4>Complaint {{ complaint()!.status }}</h4>
+                        <p>No further actions available. This complaint has been processed.</p>
+                      </div>
+                    } @else if (availableActions().length === 0) {
+                      <div class="closed-banner">
+                        <span class="closed-icon"><i class="pi pi-info-circle"></i></span>
+                        <h4>Status: {{ complaint()!.status | uppercase }}</h4>
+                        <p>No actions available for your role. This complaint is awaiting action from the next role in the workflow.</p>
+                      </div>
+                    } @else {
+                      <app-workflow-action-bar
+                        layout="pills"
+                        [actions]="actionBarActions()"
+                        [selectedId]="selectedAction()"
+                        [processing]="processing()"
+                        [(remarks)]="remarks"
+                        [speech]="true"
+                        [commitSpinner]="true"
+                        [remarksRows]="3"
+                        [remarksLabel]="remarksLabel()"
+                        [commitLabel]="confirmLabel()"
+                        [extras]="closureAndDraftFields"
+                        [commitExtras]="saveDraftButton"
+                        [templateSlot]="commentTemplateSlot"
+                        (select)="selectAction($event.id)"
+                        (commit)="originalSubmitAction()"
+                        (cancel)="cancelAction()" />
+
+                      <!--
+                        §5.3.6: saved remark templates. `insert` comes from the bar's context and
+                        APPENDS, so an officer who has already typed keeps what they wrote.
+                        The category follows the pending action so a closure offers closure wording.
+                      -->
+                      <ng-template #commentTemplateSlot let-insert="insert">
+                        <app-comment-template-picker
+                          [category]="commentTemplateCategory()"
+                          (apply)="insert($event)" />
+                      </ng-template>
+
+                      <ng-template #closureAndDraftFields>
+                          <!-- UST576, UST581-584: Final Decision fields for CLOSE_COMPLAINT -->
+                          @if (selectedAction() === 'CLOSE_COMPLAINT') {
+                            <div class="closure-fields" style="margin-top:12px; padding:12px; background:#f8f9fa; border-radius:6px; border:1px solid #e0e0e0;">
+                              <h5 style="margin:0 0 10px; font-size:13px; color:#333;"><i class="pi pi-file-check"></i> Final Decision</h5>
+
+                              <!-- Closure Clause Picker (UST581-584) -->
+                              <div class="field-item" style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Closure Clause</label>
+                                <select [ngModel]="closureClause()" (ngModelChange)="onClosureClauseChange($event)" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" (focus)="loadClosureClauses()">
+                                  <option value="">Select Closure Clause</option>
+                                  @for (clause of allowedClosureClauses(); track clause.code) {
+                                    <option [value]="clause.code">{{ clause.code }} - {{ clause.label }}</option>
+                                  }
+                                </select>
+                              </div>
+
+                              <!-- Custom Closure Text (UST576) -->
+                              <div class="field-item" style="margin-bottom:10px;">
+                                <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Custom Closure Text (optional)</label>
+                                <textarea [ngModel]="customClosureText()" (ngModelChange)="customClosureText.set($event)" rows="3" maxlength="2000" placeholder="Enter custom text to be included in the closure letter..." style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px; resize:vertical;"></textarea>
+                                <span style="font-size:11px; color:#666; float:right;">{{ customClosureTextLength }} / 2000</span>
+                              </div>
+                            </div>
+                          }
+
+                          <!-- UST656: Email validation error -->
+                          @if (emailValidationError()) {
+                            <div style="margin-top:8px; padding:8px 12px; background:#fff3f3; border:1px solid #ffcdd2; border-radius:4px; color:#c62828; font-size:12px;">
+                              <i class="pi pi-exclamation-triangle"></i> {{ emailValidationError() }}
+                            </div>
+                          }
+
+                          <!-- UST675: a colleague already has this complaint open. Advisory — the save is
+                               still permitted, and is gated by the version check, not by this notice. -->
+                          @if (otherEditors().length > 0) {
+                            <div class="concurrent-edit-warning" data-testid="concurrent-edit-warning">
+                              <i class="pi pi-users"></i>
+                              @for (editor of otherEditors(); track editor.userId) {
+                                <span>{{ editor.displayName || editor.userId }}</span>
+                              }
+                              is also editing this complaint. Whoever saves second will be asked to reload.
+                            </div>
+                          }
+
+                          @if (draftError()) {
+                            <div class="draft-failed-badge" data-testid="draft-failed">
+                              <i class="pi pi-times-circle"></i> {{ draftError() }}
+                            </div>
+                          }
+                          @if (draftSavedAt() && !draftError()) {
+                            <div class="draft-saved-badge" data-testid="draft-saved-at">
+                              Draft saved at {{ draftSavedAt() }}
+                            </div>
+                          }
+                      </ng-template>
+
+                      <!-- UST674: the Conciliation / Forward / Final Decision save point, unique to this
+                           screen — hence a projected template rather than an input on the shared bar. -->
+                      <ng-template #saveDraftButton>
+                        <button type="button" class="btn btn-outline"
+                                [disabled]="savingDraft() || processing() || !remarks.trim()"
+                                (click)="saveDraft()" data-testid="save-draft">
+                          @if (savingDraft()) { <i class="pi pi-spin pi-spinner"></i> Saving... } @else { Save in Draft }
+                        </button>
+                      </ng-template>
+
+                      <!-- UST675: the concurrent-save refusal. A 409 is not a validation error, so it gets
+                           its own treatment and a reload affordance — repeating the same request with a
+                           stale version would just conflict again. -->
+                      @if (conflictWarning()) {
+                        <div class="conflict-warning" data-testid="record-conflict">
+                          <i class="pi pi-exclamation-triangle"></i>
+                          <span>{{ conflictWarning() }}</span>
+                          <button class="btn btn-sm btn-primary" (click)="reloadAfterConflict()"
+                                  data-testid="reload-after-conflict">Reload</button>
+                        </div>
+                      }
+
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- ═══ Comments — shared app-comment-thread ═══ -->
+              <!--
+                complaintId, not the route's :id. The two are usually the same string, but the route
+                param is whatever the task grid linked with, whereas complaintId is echoed by
+                /api/v1/complaints/{id} from COMPLAINTS.complaint_number — which is the key the
+                comment API resolves. Threading on the loaded record cannot drift from it.
+              -->
+              <app-comment-thread
+                [complaintNumber]="complaint()!.complaintId || complaint()!.complaintNumber"
+                [audienceRoles]="commentAudienceRoles()" />
+
+              <!-- Timeline Section -->
+              @if (complaint()!.timeline?.length) {
+                <div class="form-section" [class.open]="sectionOpen.timeline">
+                  <div class="section-header" (click)="sectionOpen.timeline = !sectionOpen.timeline">
+                    <span><i class="pi pi-history"></i> Timeline</span>
+                    <i class="pi" [class.pi-chevron-down]="sectionOpen.timeline" [class.pi-chevron-up]="!sectionOpen.timeline"></i>
+                  </div>
+                  @if (sectionOpen.timeline) {
+                    <div class="section-body">
+                      <app-workflow-timeline
+                        mode="inline"
+                        [entries]="complaint()!.timeline"
+                        emptyText="No timeline entries yet." />
+                    </div>
+                  }
+                </div>
+              }
+
+            </div><!-- /col-complaint -->
+
+          </div><!-- /main-content-layout -->
+        </div><!-- /content-box -->
+
+      </div><!-- /left-main-area -->
+
+      <!-- ═══ RIGHT SIDEBAR ═══ -->
+      <div class="col-right-sidebar">
+        <!-- Reference Section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-cog"></i> Reference</h4>
+          </div>
+        </div>
+
+        <!-- Past Complaints Section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-folder"></i> Past Complaints <span class="sidebar-count-badge">{{ pastComplaints().length }}</span></h4>
+            <button class="sidebar-expand-btn" (click)="loadPastComplaints()"><i class="pi pi-refresh"></i></button>
+          </div>
+          <div class="sidebar-section-body">
+            <div class="sidebar-search">
+              <i class="pi pi-search"></i>
+              <input type="text" placeholder="Search past complaints" [ngModel]="pastComplaintSearch()" (ngModelChange)="pastComplaintSearch.set($event)" />
+            </div>
+            @if (loadingPastComplaints()) {
+              <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> Loading...</p>
+            } @else if (filteredPastComplaints().length > 0) {
+              @for (pc of filteredPastComplaints(); track pc.complaintId) {
+                <div class="past-complaint-card" [class.pc-completed-card]="pc.status === 'RESOLVED' || pc.status === 'CLOSED'">
+                  <div class="pc-status-row">
+                    <span class="pc-status" [class.completed]="pc.status === 'RESOLVED' || pc.status === 'CLOSED'" [class.active]="pc.status !== 'RESOLVED' && pc.status !== 'CLOSED'">
+                      @if (pc.status === 'RESOLVED' || pc.status === 'CLOSED') {
+                        <i class="pi pi-check-circle"></i>
+                      } @else {
+                        <i class="pi pi-circle-fill"></i>
+                      }
+                      {{ pc.status }}
+                    </span>
+                  </div>
+                  <div class="pc-details">
+                    <span class="pc-field">ID: <strong>{{ pc.complaintId }}</strong></span>
+                    <span class="pc-field">Filed: <strong>{{ pc.filedDate }}</strong></span>
+                  </div>
+                  <p class="pc-subject">{{ pc.subject }}</p>
+                </div>
+              }
+            } @else if (pastComplaintsError()) {
+              <!--
+                A distinct message, NOT the empty state. "No past complaints found" over a failed
+                lookup is an assertion about the complainant that the screen has no basis for, and it
+                is what concealed this panel being broken.
+              -->
+              <p class="sidebar-error" role="alert">
+                Past complaints could not be loaded.
+                <button type="button" class="link-btn" (click)="loadPastComplaints()">Retry</button>
+              </p>
+            } @else {
+              <p class="sidebar-empty">No past complaints found</p>
+            }
+          </div>
+        </div>
+
+        <!-- Reference Documents Section -->
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-file"></i> Reference Documents</h4>
+          </div>
+          <div class="sidebar-section-body">
+            @if (complaint()!.attachments?.length) {
+              @for (att of complaint()!.attachments; track att.id || $index) {
+                <div class="doc-item">
+                  <div class="doc-icon">
+                    @if (att.type?.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                    @else if (att.type?.includes('image')) { <i class="pi pi-image"></i> }
+                    @else { <i class="pi pi-file"></i> }
+                  </div>
+                  <div class="doc-info">
+                    <span class="doc-name">{{ att.name }}</span>
+                    <span class="doc-meta">{{ att.size }}</span>
+                  </div>
+                  <div class="doc-actions">
+                    <button title="View"><i class="pi pi-eye"></i></button>
+                    <button title="Download"><i class="pi pi-download"></i></button>
+                  </div>
+                </div>
+              }
+            } @else {
+              <p class="sidebar-empty">No documents attached</p>
+            }
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /page-body-layout -->
+
+    <!--
+      ═══ SIMILAR CASES PANEL (slides in from right) ═══
+      The drawer chrome (fixed position, 380px, slide-in) stays here because the offsets belong to this
+      screen's header; the contents are the shared app-similar-cases. The panel fetches on first open,
+      so the host does nothing but toggle a boolean.
+    -->
+    @if (showSimilarPanel()) {
+      <div class="history-panel similar-panel">
+        <app-similar-cases
+          [open]="showSimilarPanel()"
+          [text]="similarSearchText()"
+          (closePanel)="showSimilarPanel.set(false)" />
+      </div>
+    }
+
+    <!-- ═══ HISTORY PANEL (slides in from right) ═══ -->
+    @if (showHistoryPanel()) {
+      <div class="history-panel">
+        <div class="history-panel-header">
+          <h3><i class="pi pi-history"></i> History</h3>
+          <button class="expand-btn" (click)="showHistoryPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
+        </div>
+        <app-workflow-timeline
+          mode="history"
+          [commentsToggle]="true"
+          [entries]="complaint()!.timeline"
+          emptyText="No history available" />
+      </div>
+    }
+
+    <!-- ═══ LEFT ICON SIDEBAR ═══ -->
+    <div class="icon-sidebar">
+      <button class="icon-sidebar-btn active" title="Complaint view"><i class="pi pi-file"></i></button>
+      <button class="icon-sidebar-btn" title="Back to Tasks" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
+      <div class="sidebar-spacer"></div>
+      <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+      <button class="icon-sidebar-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
+      <div class="sidebar-spacer"></div>
+    </div>
+
+    <!-- ═══ NO EMAIL CLOSURE POPUP (UST549, UST764) ═══ -->
+    @if (showNoEmailClosurePopup()) {
+      <div class="modal-overlay" (click)="dismissNoEmailPopup()">
+        <div class="modal-dialog no-email-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-icon warning"><i class="pi pi-exclamation-triangle"></i></div>
+            <div>
+              <h3>Cannot Close Complaint</h3>
+              <p>Complainant email is not populated. Direct closure is blocked.</p>
+            </div>
+            <button class="modal-close" (click)="dismissNoEmailPopup()">&times;</button>
+          </div>
+          <div class="modal-body">
+            <p class="modal-explanation">Select an alternative action or route back to DO to collect email:</p>
+            <div class="alternative-actions">
+              @for (alt of noEmailAlternativeActions; track alt.value) {
+                <button class="alt-action-btn" (click)="selectAlternativeAction(alt.value)">{{ alt.label }}</button>
+              }
+            </div>
+            <div class="modal-divider"></div>
+            <button class="btn btn-outline route-back-btn" (click)="routeBackToDo()">
+              <i class="pi pi-arrow-left"></i> Route Back to DO
+            </button>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="dismissNoEmailPopup()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ MANUAL REASSIGN MODAL (UST759) ═══ -->
+    @if (showReassignModal()) {
+      <div class="modal-overlay" (click)="cancelReassignModal()">
+        <div class="modal-dialog reassign-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <div class="modal-icon warning"><i class="pi pi-exclamation-circle"></i></div>
+            <div>
+              <h3>Manual Reassignment Required</h3>
+              <p>{{ reassignError() }}</p>
+            </div>
+            <button class="modal-close" (click)="cancelReassignModal()">&times;</button>
+          </div>
+          <div class="modal-body">
+            @if (reassignCandidate()) {
+              <div class="candidate-info">
+                <p><strong>Last Officer:</strong> {{ reassignCandidate()!.name }} ({{ reassignCandidate()!.role }})</p>
+                <p><strong>Status:</strong>
+                  @if (!reassignCandidate()!.isActive) { Inactive }
+                  @else if (reassignCandidate()!.isOnLeave) { On Leave }
+                </p>
+              </div>
+            }
+            <div class="form-field">
+              <label>Select Officer (User ID) *</label>
+              <input type="text" [(ngModel)]="manualAssigneeId" placeholder="Enter officer user ID" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="cancelReassignModal()">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!manualAssigneeId.trim()" (click)="confirmManualReassign()">Reassign</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ CLOSURE CONFIRMATION POPUP (UST577) ═══ -->
+    @if (showClosureConfirmPopup()) {
+      <div class="modal-overlay" (click)="editClosureForm()">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:480px;">
+          <div class="modal-header">
+            <div class="modal-icon" style="background:#e8f5e9;"><i class="pi pi-check-circle" style="color:#2e7d32;"></i></div>
+            <div>
+              <h3>Closure Confirmation</h3>
+              <p>Closure letter will be dispatched to the complainant via email.</p>
+            </div>
+            <button class="modal-close" (click)="editClosureForm()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding:16px 20px;">
+            <p style="font-size:13px; color:#555; margin:0 0 12px;">The closure letter will be automatically sent to: <strong>{{ complaint()?.complainantEmail }}</strong></p>
+            <p style="font-size:12px; color:#777;">Send date will be auto-captured and cannot be edited.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="editClosureForm()"><i class="pi pi-pencil"></i> Edit</button>
+            <button class="btn btn-primary" (click)="confirmClosureDispatch()"><i class="pi pi-check"></i> OK - Dispatch Letter</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ NO EMAIL - GENERATE LETTER POPUP (UST507-509, UST520) ═══ -->
+    @if (showNoEmailPopup()) {
+      <div class="modal-overlay">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:520px;">
+          <div class="modal-header">
+            <div class="modal-icon warning"><i class="pi pi-exclamation-triangle"></i></div>
+            <div>
+              <h3>Manual Closure Letter Required</h3>
+              <p>Complainant has no email. Please generate and dispatch the closure letter manually.</p>
+            </div>
+            <button class="modal-close" (click)="showNoEmailPopup.set(false)">&times;</button>
+          </div>
+          <div class="modal-body" style="padding:16px 20px;">
+            <!-- Generate Letter Button -->
+            <div style="margin-bottom:16px;">
+              <button class="btn btn-primary" (click)="generateClosureLetterPdf()" style="width:100%;">
+                <i class="pi pi-file-pdf"></i> Generate Closure Letter PDF
+              </button>
+            </div>
+
+            <!-- Upload signed letter -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Upload Signed Letter *</label>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="onClosureLetterFileUpload($event)" style="font-size:12px;" />
+              @if (closureLetterFile()) {
+                <span style="font-size:11px; color:#2e7d32; margin-top:4px; display:block;">Uploaded: {{ closureLetterFile()!.name }}</span>
+              }
+            </div>
+
+            <!-- Date of Sending -->
+            <div style="margin-bottom:12px;">
+              <label style="font-size:12px; font-weight:600; display:block; margin-bottom:4px;">Date of Sending *</label>
+              <input type="date" [ngModel]="dateOfSending()" (ngModelChange)="dateOfSending.set($event)" style="width:100%; padding:6px 10px; border:1px solid #ccc; border-radius:4px; font-size:13px;" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="showNoEmailPopup.set(false)">Cancel</button>
+            <button class="btn btn-primary" [disabled]="!dateOfSending() || !closureLetterFile()" (click)="completeManualClosure()">
+              <i class="pi pi-check"></i> Complete Closure
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ═══ SAMPLE CLOSURE LETTER MODAL (UST521) ═══ -->
+    @if (showSampleLetterModal()) {
+      <div class="modal-overlay">
+        <div class="modal-dialog" (click)="$event.stopPropagation()" style="max-width:600px;">
+          <div class="modal-header">
+            <div class="modal-icon" style="background:#e3f2fd;"><i class="pi pi-info-circle" style="color:#1565c0;"></i></div>
+            <div>
+              <h3>Sample Closure Letter</h3>
+              <p>Please review the sample letter for clause: {{ sampleLetterClause() }}</p>
+            </div>
+            <button class="modal-close" (click)="acknowledgeSampleLetter()">&times;</button>
+          </div>
+          <div class="modal-body" style="padding:16px 20px; max-height:400px; overflow-y:auto;">
+            <div style="background:#fafafa; padding:16px; border:1px solid #e0e0e0; border-radius:6px; font-family:'Times New Roman',serif; font-size:13px; line-height:1.6;">
+              <p style="text-align:center; font-weight:bold;">RESERVE BANK OF INDIA<br/>Integrated Ombudsman Scheme</p>
+              <p><strong>Ref:</strong> [Complaint Number]<br/><strong>Date:</strong> [Date]</p>
+              <p>Dear [Complainant Name],</p>
+              <p>With reference to your complaint filed under the Reserve Bank - Integrated Ombudsman Scheme, 2021, we wish to inform you that after careful examination of the facts and circumstances of your case, the complaint is being closed under <strong>Clause {{ sampleLetterClause() }}</strong> of the Scheme.</p>
+              <p><em>[Clause-specific reasoning would be inserted here based on the selected closure clause]</em></p>
+              <p>You may note that this decision has been taken after due consideration of the submissions made by you and the regulated entity.</p>
+              <p>Yours faithfully,<br/>[Authority Name]<br/>[Designation]</p>
+              <p style="font-size:11px;color:#888;">System-generated letter. Not a digitally signed document.</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-primary" (click)="acknowledgeSampleLetter()">
+              <i class="pi pi-check"></i> I have reviewed
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+  }
+</div>

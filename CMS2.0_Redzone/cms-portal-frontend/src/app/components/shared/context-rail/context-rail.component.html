@@ -1,0 +1,35 @@
+<!--
+  The icon strip is ALWAYS rendered, so the panels behind the rail never shift width as it opens and
+  closes. `e2e/ui-homogenisation/rbio-three-panel.spec.ts:54-58` asserts `.rail-icons` is visible and
+  that there is one `.rail-icon` per panel.
+-->
+<div class="rail-icons">
+  @for (panel of panels(); track panel.key) {
+    <button type="button" class="rail-icon"
+            [class.active]="open() === panel.key"
+            [title]="panel.label"
+            [attr.aria-pressed]="open() === panel.key"
+            (click)="toggle(panel.key)">
+      <i class="pi" [class]="panel.icon"></i>
+    </button>
+  }
+</div>
+
+<!--
+  `@if`, not `[hidden]`: the same spec at line 55 asserts `.rail-body` has COUNT 0 while collapsed, so a
+  hidden body would fail it. Safe to destroy because a rail panel holds material the officer READS —
+  unsaved input lives in the centre region, which is why RBIO hides that one rather than removing it.
+-->
+@if (activePanel(); as panel) {
+  <div class="rail-body">
+    <div class="rail-header">
+      <h4>{{ panel.label }}</h4>
+      <button type="button" class="rail-close" title="Collapse" [attr.aria-label]="'Collapse ' + panel.label"
+              (click)="close()"><i class="pi pi-chevron-right"></i></button>
+    </div>
+
+    @if (body()) {
+      <ng-container [ngTemplateOutlet]="body()!" [ngTemplateOutletContext]="{ $implicit: panel.key }" />
+    }
+  </div>
+}

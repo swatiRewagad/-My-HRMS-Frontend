@@ -1,0 +1,117 @@
+@switch (field.type) {
+  @case ('text') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    @if (field.prefix) {
+      <div class="phone-input">
+        <span class="prefix">{{ field.prefix }}</span>
+        <input type="text" [formControl]="control" [placeholder]="field.placeholder || ''" [maxlength]="field.maxLength || 200" autocomplete="off" (paste)="onPaste($event)" (input)="onTextInput($event)" />
+        @if (field.hasVerify) {
+          <button type="button" class="verify-btn" (click)="onVerify()">Verify</button>
+        }
+      </div>
+    } @else {
+      <input type="text" [formControl]="control" [placeholder]="field.placeholder || ''" [maxlength]="field.maxLength || 200" autocomplete="off" (paste)="onPaste($event)" (input)="onTextInput($event)" />
+    }
+  }
+
+  @case ('email') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <input type="email" [formControl]="control" [placeholder]="field.placeholder || ''" maxlength="254" autocomplete="off" (paste)="onPaste($event)" />
+  }
+
+  @case ('tel') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <div class="phone-input">
+      @if (field.prefix) {
+        <span class="prefix">{{ field.prefix }}</span>
+      }
+      <input type="tel" [formControl]="control" [placeholder]="field.placeholder || ''" maxlength="10" autocomplete="off" (input)="onNumericInput($event)" (keypress)="onNumericKeypress($event)" />
+      @if (field.hasVerify) {
+        <button type="button" class="verify-btn" (click)="onVerify()">Verify</button>
+      }
+    </div>
+  }
+
+  @case ('select') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <select [formControl]="control">
+      <option value="">Select</option>
+      @for (opt of (resolvedOptions.length ? resolvedOptions : field.options || []); track opt.value) {
+        <option [value]="opt.value">{{ opt.label }}</option>
+      }
+    </select>
+  }
+
+  @case ('textarea') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <div class="textarea-wrap" [class.has-voice]="field.hasVoice">
+      <textarea [formControl]="control" [rows]="field.rows || 3" [placeholder]="field.placeholder || ''" [maxlength]="5000" (paste)="onPaste($event)"></textarea>
+      @if (field.hasVoice) {
+        <button type="button" class="voice-icon" (click)="voiceClicked.emit(field.key)">
+          <i class="pi pi-microphone"></i>
+        </button>
+      }
+    </div>
+    <span class="char-count">{{ (control.value || '').length }} / 5000</span>
+  }
+
+  @case ('date') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <input type="date" [formControl]="control" class="date-input" [max]="todayDate" min="1900-01-01" />
+  }
+
+  @case ('radio') {
+    <label class="radio-label">{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <div class="yes-no-btns">
+      @for (opt of (field.options || []); track opt.value) {
+        <button type="button" [class.active]="control.value === opt.value" (click)="selectRadio(opt.value)">{{ opt.label }}</button>
+      }
+    </div>
+  }
+
+  @case ('file') {
+    <label>{{ field.label }}@if (field.required) { <span class="required-mark">*</span> }</label>
+    <div class="upload-area" [class.has-error]="fileError">
+      <label class="upload-trigger" [for]="'file_' + field.key">
+        <span class="browse-text">Browse File</span>
+      </label>
+      <input type="file" [id]="'file_' + field.key" hidden [multiple]="field.multiple" [accept]="field.accept || ''" (change)="onFileChange($event)" />
+      @if (field.hint) {
+        <p class="upload-hint">{{ field.hint }}</p>
+      }
+    </div>
+    @if (fileError) {
+      <span class="field-error file-error">{{ fileError }}</span>
+    }
+  }
+}
+
+@if (control.invalid && control.touched) {
+  <span class="field-error">
+    @if (control.errors?.['required']) {
+      This field is required
+    } @else if (control.errors?.['email']) {
+      {{ control.errors?.['email'] }}
+    } @else if (control.errors?.['phone']) {
+      {{ control.errors?.['phone'] }}
+    } @else if (control.errors?.['pincode']) {
+      {{ control.errors?.['pincode'] }}
+    } @else if (control.errors?.['name']) {
+      {{ control.errors?.['name'] }}
+    } @else if (control.errors?.['maxLength']) {
+      {{ control.errors?.['maxLength'] }}
+    } @else if (control.errors?.['xss']) {
+      {{ control.errors?.['xss'] }}
+    } @else if (control.errors?.['sqlInjection']) {
+      {{ control.errors?.['sqlInjection'] }}
+    } @else if (control.errors?.['amount']) {
+      {{ control.errors?.['amount'] }}
+    } @else if (control.errors?.['accountNumber']) {
+      {{ control.errors?.['accountNumber'] }}
+    } @else if (control.errors?.['date']) {
+      {{ control.errors?.['date'] }}
+    } @else {
+      Invalid input
+    }
+  </span>
+}

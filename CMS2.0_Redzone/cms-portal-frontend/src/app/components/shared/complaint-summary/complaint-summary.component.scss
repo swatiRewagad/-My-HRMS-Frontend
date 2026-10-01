@@ -1,0 +1,77 @@
+// The reconciled treatment is CRPC draft-assessment's: it was the only one of the five copies written
+// entirely in design tokens, so the others' raw hex and 13px values fold into it rather than the reverse.
+.meta-row {
+  display: flex; align-items: center; gap: 20px; padding: 14px 24px;
+  background: var(--surface-card); flex-wrap: nowrap;
+  border: 1px solid var(--border-subtle);
+  border-top: 3px solid var(--state-warning-solid);
+  border-radius: 10px;
+  margin: 12px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow-x: auto;
+}
+
+.back-arrow {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: none; border: none;
+  cursor: pointer; font-size: 18px; color: var(--text-heading);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  &:hover { background: var(--surface-subtle); }
+}
+
+.meta-item {
+  display: flex; align-items: center; gap: 10px;
+  padding-left: 20px;
+  border-left: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+
+  // The separator belongs between items, so the leftmost one drops it — whether or not a back
+  // affordance precedes it, which is why this is :first-of-type and not :first-child.
+  &:first-of-type { border-left: none; padding-left: 0; }
+}
+
+.meta-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent-indigo-solid), var(--brand-primary));
+
+  i { font-size: 14px; color: var(--text-on-brand); }
+
+  &.owner { background: linear-gradient(135deg, var(--text-heading), var(--text-body)); }
+  &.info { background: linear-gradient(135deg, var(--brand-primary), var(--brand-primary-hover)); }
+  &.success { background: linear-gradient(135deg, var(--state-success-solid), var(--state-success-fg)); }
+  &.warn { background: linear-gradient(135deg, var(--state-warning-solid), var(--state-warning-fg)); }
+  &.muted { background: linear-gradient(135deg, var(--text-subtle), var(--text-muted)); }
+}
+
+.meta-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+
+.meta-label {
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.4px; font-weight: 500; white-space: nowrap;
+  display: flex; align-items: center; gap: 3px;
+  i { font-size: 10px; color: var(--text-subtle); }
+}
+
+.meta-value {
+  font-size: 14px; color: var(--text-heading); font-weight: 600;
+  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+
+.sla-badge {
+  padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;
+
+  // RBIO's copy painted every SLA value danger-red including the healthy ones, because its only
+  // modifier was `.breach` and the base style was already red. Severity now has to be stated.
+  &.ok { background: var(--state-success-bg); color: var(--state-success-fg); }
+  &.warn { background: var(--state-warning-bg); color: var(--state-warning-fg); }
+  &.danger { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+}
+
+.meta-actions {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
+}

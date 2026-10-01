@@ -1,0 +1,216 @@
+<!--
+  Class names carry BOTH this component's own vocabulary and the `.comments-section` / `.comment-item`
+  names that rbio-complaint-detail's mock markup used, so the swap is invisible to anything that was
+  targeting the old DOM. No e2e spec pins either set today; keeping both costs nothing and the RBIO
+  names were the only ones a BA screenshot review had already seen.
+-->
+<section class="comment-thread comments-section" [attr.data-testid]="'comment-thread'">
+
+  <header class="thread-header">
+    <h3 class="section-title">
+      {{ 'comments.section_title' | translate }}
+      @if (total() > 0) { <span class="thread-count">{{ total() }}</span> }
+    </h3>
+    <!-- Deliberately prominent: an officer must never write a comment believing the citizen will read it. -->
+    <p class="staff-only-notice" role="note">
+      <i class="pi pi-eye-slash"></i>
+      <span>{{ 'comments.staff_only_notice' | translate }}</span>
+    </p>
+  </header>
+
+  @if (error()) {
+    <div class="error-banner" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ error() | translate }}</span>
+    </div>
+  }
+
+  <!-- ═══ COMPOSER ═══ -->
+  <div class="comment-composer add-comment">
+    <label class="composer-label" for="newComment">{{ 'comments.add_label' | translate }}</label>
+    <textarea
+      id="newComment"
+      class="composer-input"
+      rows="3"
+      [ngModel]="newBody()"
+      (ngModelChange)="newBody.set($event)"
+      [attr.placeholder]="'comments.add_placeholder' | translate"></textarea>
+
+    <div class="visibility-picker" role="radiogroup"
+         [attr.aria-label]="'comments.visibility.legend' | translate">
+      @for (v of ['PUBLIC', 'RESTRICTED', 'PRIVATE']; track v) {
+        <button
+          type="button"
+          class="visibility-option"
+          [class.selected]="newVisibility() === v"
+          [attr.data-visibility]="v"
+          [attr.aria-checked]="newVisibility() === v"
+          role="radio"
+          (click)="newVisibility.set($any(v))">
+          <i class="pi" [class.pi-users]="v === 'PUBLIC'"
+                        [class.pi-user-edit]="v === 'RESTRICTED'"
+                        [class.pi-lock]="v === 'PRIVATE'"></i>
+          {{ visibilityLabelKey($any(v)) | translate }}
+        </button>
+      }
+    </div>
+
+    <p class="visibility-hint">{{ visibilityLabelKey(newVisibility()) + '.hint' | translate }}</p>
+
+    @if (newVisibility() === 'RESTRICTED' && audienceRoles().length > 0) {
+      <div class="audience-picker">
+        <span class="audience-label">{{ 'comments.audience_label' | translate }}</span>
+        <div class="audience-chips">
+          @for (role of audienceRoles(); track role.value) {
+            <button
+              type="button"
+              class="audience-chip"
+              [class.selected]="selectedRoles().includes(role.value)"
+              [attr.data-role]="role.value"
+              (click)="toggleRole(role.value)">
+              {{ role.labelKey ? (role.labelKey | translate) : role.label }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="composer-actions">
+      <button type="button" class="btn-post add-comment-btn" (click)="post()" [disabled]="posting()">
+        @if (posting()) { <span class="spinner-sm"></span> }
+        {{ 'comments.post_button' | translate }}
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══ THREAD ═══ -->
+  @if (loading()) {
+    <div class="loading-state"><span class="spinner-sm"></span></div>
+  } @else if (comments().length === 0) {
+    <p class="empty-state">{{ 'comments.none_yet' | translate }}</p>
+  } @else {
+    <ul class="comment-list">
+      @for (comment of comments(); track comment.id) {
+        <li class="comment-item" [attr.data-comment-id]="comment.id"
+            [attr.data-visibility]="comment.visibility">
+
+          <div class="comment-avatar">{{ initial(comment.author.name) }}</div>
+
+          <div class="comment-body">
+            <div class="comment-meta">
+              <span class="comment-author">{{ comment.author.name }}</span>
+              <span class="comment-role">{{ comment.author.role }}</span>
+              <time class="comment-time">{{ comment.createdAt }}</time>
+              <span class="visibility-badge" [attr.data-visibility]="comment.visibility">
+                <i class="pi" [class.pi-users]="comment.visibility === 'PUBLIC'"
+                              [class.pi-user-edit]="comment.visibility === 'RESTRICTED'"
+                              [class.pi-lock]="comment.visibility === 'PRIVATE'"></i>
+                {{ visibilityLabelKey(comment.visibility) | translate }}
+              </span>
+              @if (comment.updatedAt) {
+                <span class="edited-marker">({{ 'comments.edited_marker' | translate }})</span>
+              }
+            </div>
+
+            @if (comment.visibility === 'RESTRICTED' && comment.restrictedToRoles.length > 0) {
+              <p class="restricted-to">
+                {{ 'comments.restricted_to' | translate }}
+                {{ comment.restrictedToRoles.join(', ') }}
+              </p>
+            }
+
+            @if (editingId() === comment.id) {
+              <textarea class="comment-edit-input" rows="3"
+                        [ngModel]="editBody()" (ngModelChange)="editBody.set($event)"></textarea>
+              <div class="edit-actions">
+                <button type="button" class="save-btn" (click)="saveEdit(comment.id)" [disabled]="posting()">
+                  {{ 'comments.save_button' | translate }}
+                </button>
+                <button type="button" class="cancel-btn" (click)="cancelEdit()">
+                  {{ 'comments.cancel_button' | translate }}
+                </button>
+              </div>
+            } @else {
+              <p class="comment-text">{{ comment.body }}</p>
+
+              <div class="comment-actions">
+                <button type="button" class="reply-btn" (click)="startReply(comment.id)">
+                  <i class="pi pi-reply"></i> {{ 'comments.reply_button' | translate }}
+                </button>
+                @if (comment.editable) {
+                  <button type="button" class="edit-btn" (click)="startEdit(comment)">
+                    <i class="pi pi-pencil"></i> {{ 'comments.edit_button' | translate }}
+                  </button>
+                }
+              </div>
+            }
+
+            <!-- Replies inherit the parent's visibility, so they carry no picker of their own. -->
+            @if (comment.replies.length > 0) {
+              <ul class="reply-list">
+                @for (reply of comment.replies; track reply.id) {
+                  <li class="comment-item reply-item" [attr.data-comment-id]="reply.id">
+                    <div class="comment-avatar sm">{{ initial(reply.author.name) }}</div>
+                    <div class="comment-body">
+                      <div class="comment-meta">
+                        <span class="comment-author">{{ reply.author.name }}</span>
+                        <span class="comment-role">{{ reply.author.role }}</span>
+                        <time class="comment-time">{{ reply.createdAt }}</time>
+                        @if (reply.updatedAt) {
+                          <span class="edited-marker">({{ 'comments.edited_marker' | translate }})</span>
+                        }
+                      </div>
+
+                      @if (editingId() === reply.id) {
+                        <textarea class="comment-edit-input" rows="2"
+                                  [ngModel]="editBody()" (ngModelChange)="editBody.set($event)"></textarea>
+                        <div class="edit-actions">
+                          <button type="button" class="save-btn" (click)="saveEdit(reply.id)" [disabled]="posting()">
+                            {{ 'comments.save_button' | translate }}
+                          </button>
+                          <button type="button" class="cancel-btn" (click)="cancelEdit()">
+                            {{ 'comments.cancel_button' | translate }}
+                          </button>
+                        </div>
+                      } @else {
+                        <p class="comment-text">{{ reply.body }}</p>
+                        @if (reply.editable) {
+                          <div class="comment-actions">
+                            <button type="button" class="edit-btn" (click)="startEdit(reply)">
+                              <i class="pi pi-pencil"></i> {{ 'comments.edit_button' | translate }}
+                            </button>
+                          </div>
+                        }
+                      }
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+
+            @if (replyingTo() === comment.id) {
+              <div class="reply-composer">
+                <textarea class="composer-input" rows="2"
+                          [ngModel]="replyBody()" (ngModelChange)="replyBody.set($event)"
+                          [attr.placeholder]="'comments.reply_placeholder' | translate"></textarea>
+                <p class="visibility-hint">
+                  <i class="pi pi-info-circle"></i>
+                  {{ 'comments.reply_inherits_visibility' | translate }}
+                  <strong>{{ visibilityLabelKey(comment.visibility) | translate }}</strong>
+                </p>
+                <div class="edit-actions">
+                  <button type="button" class="save-btn" (click)="postReply(comment)" [disabled]="posting()">
+                    {{ 'comments.post_reply_button' | translate }}
+                  </button>
+                  <button type="button" class="cancel-btn" (click)="cancelReply()">
+                    {{ 'comments.cancel_button' | translate }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  }
+</section>

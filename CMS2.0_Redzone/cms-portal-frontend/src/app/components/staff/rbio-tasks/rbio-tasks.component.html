@@ -1,0 +1,242 @@
+<div class="rbio-home">
+  <!-- Header Bar -->
+  <header class="cms-header">
+    <div class="header-left">
+      <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="rbi-logo" onerror="this.style.display='none'" />
+      <span class="cms-title">CMS</span>
+      <span class="cms-subtitle">RBIO - Complaint Management</span>
+    </div>
+    <div class="header-right">
+      @if (auth.currentUser(); as user) {
+        <span class="user-avatar">{{ (user.firstName || 'U').charAt(0) }}</span>
+        <div class="user-details">
+          <span class="user-name">{{ user.firstName }} {{ user.lastName }}</span>
+          <span class="user-role">RBIO Officer</span>
+        </div>
+      }
+      <!-- A literal, because ui.common.logout is not seeded and a missing key renders the key itself. -->
+      <button class="btn-logout" (click)="logout()" aria-label="Logout">
+        <i class="pi pi-sign-out" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Sidebar + Content -->
+  <div class="main-layout">
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-item active">
+        <i class="pi pi-list" aria-hidden="true"></i>
+        <span>RBIO Complaints</span>
+      </div>
+      <div class="sidebar-item">
+        <i class="pi pi-chart-bar" aria-hidden="true"></i>
+        <span>Dashboard</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="content">
+      <div class="content-header">
+        <h1>RBIO Complaints</h1>
+        <div class="header-actions">
+          <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">Advanced Search</button>
+          <label class="sr-only" for="rbio-queue">{{ 'rbio.grid.filter_queue' | translate }}</label>
+          <select id="rbio-queue" class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
+            <option value="">All Complaints</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="escalated">Escalated</option>
+            <option value="resolved">Resolved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <button class="create-btn" (click)="navigateToCreateComplaint()">
+            <i class="pi pi-plus" aria-hidden="true"></i> Create Complaint
+          </button>
+        </div>
+      </div>
+
+      <!--
+        KPI cards. Clickable, and each one sets the queue filter it counts — a card that shows a number
+        the officer cannot act on is just decoration.
+      -->
+      <div class="stats-bar">
+        <button type="button" class="stat-card" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
+          <span class="stat-value">{{ stats().total }}</span>
+          <span class="stat-label">Total Complaints</span>
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'assigned'" (click)="filterStatus.set('assigned')">
+          <span class="stat-value">{{ stats().assigned }}</span>
+          <span class="stat-label">Assigned</span>
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
+          <span class="stat-value">{{ stats().inProgress }}</span>
+          <span class="stat-label">In Progress</span>
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
+          <span class="stat-value">{{ stats().escalated }}</span>
+          <span class="stat-label">Escalated</span>
+        </button>
+        <button type="button" class="stat-card" [class.active]="filterStatus() === 'resolved'" (click)="filterStatus.set('resolved')">
+          <span class="stat-value">{{ stats().resolved }}</span>
+          <span class="stat-label">Resolved</span>
+        </button>
+      </div>
+
+      <!-- Status Tabs -->
+      <div class="status-tabs">
+        <button class="tab" [class.active]="filterStatus() === ''" (click)="filterStatus.set('')">
+          All <span class="tab-count">{{ stats().total }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'assigned'" (click)="filterStatus.set('assigned')">
+          Assigned <span class="tab-count">{{ stats().assigned }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'in_progress'" (click)="filterStatus.set('in_progress')">
+          In Progress <span class="tab-count">{{ stats().inProgress }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'escalated'" (click)="filterStatus.set('escalated')">
+          Escalated <span class="tab-count">{{ stats().escalated }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'resolved'" (click)="filterStatus.set('resolved')">
+          Resolved <span class="tab-count">{{ stats().resolved }}</span>
+        </button>
+        <button class="tab" [class.active]="filterStatus() === 'rejected'" (click)="filterStatus.set('rejected')">
+          Rejected <span class="tab-count">{{ stats().rejected }}</span>
+        </button>
+      </div>
+
+      <!--
+        The three RBIO-specific toggles. Filters over THIS module's fields (visited state, attachments,
+        triage signal), not grid mechanics, so they stay here and reach the grid's own header bar through
+        its headerActions slot — otherwise this screen would carry a second row of controls above the one
+        the grid already renders.
+      -->
+      <ng-template #rbioToggles>
+        <label class="toggle-filter">
+          <span class="toggle-switch" [class.active]="filterUnread()">
+            <input type="checkbox" [checked]="filterUnread()" (change)="filterUnread.set(!filterUnread())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Unread
+        </label>
+        <label class="toggle-filter">
+          <span class="toggle-switch" [class.active]="filterWithoutAttachments()">
+            <input type="checkbox" [checked]="filterWithoutAttachments()" (change)="filterWithoutAttachments.set(!filterWithoutAttachments())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Without Attachments
+        </label>
+        <label class="toggle-filter">
+          <span class="toggle-switch" [class.active]="filterSatisfiesRules()">
+            <input type="checkbox" [checked]="filterSatisfiesRules()" (change)="filterSatisfiesRules.set(!filterSatisfiesRules())" />
+            <span class="toggle-slider"></span>
+          </span>
+          Satisfies Rules
+        </label>
+      </ng-template>
+
+      <!--
+        A module-specific empty state. It distinguishes "your search matched nothing" from "this queue is
+        empty", which a generic "no records" would flatten — and an officer reading "no records" after a
+        search cannot tell whether their criteria were too narrow or their queue is genuinely clear.
+      -->
+      <ng-template #rbioEmpty>
+        <span class="empty-state">
+          @if (advSearchActive()) {
+            {{ 'rbio.search.no_results' | translate }}
+          } @else {
+            {{ 'rbio.grid.no_complaints' | translate }}
+          }
+        </span>
+      </ng-template>
+
+      <app-task-grid
+        [rows]="filteredTasks()"
+        [columns]="gridColumns"
+        [titleKey]="'ui.grid.complaints'"
+        rowKey="complaintNumber"
+        [loading]="loading()"
+        [errorKey]="loadError()"
+        [retryable]="true"
+        [pageSize]="25"
+        [pageSizeOptions]="[10, 25, 50]"
+        [rowClass]="rowClass"
+        [headerActions]="rbioToggles"
+        [emptyState]="rbioEmpty"
+        (rowClick)="openTask($event)"
+        (retry)="loadTasks()">
+      </app-task-grid>
+    </main>
+  </div>
+</div>
+
+<!--
+  Advanced Search. Eight RBIO criteria over RBIO's own fields, so it stays with this module rather than
+  becoming a generic feature of the shared grid.
+-->
+@if (showAdvancedSearch()) {
+  <div class="modal-overlay" (click)="showAdvancedSearch.set(false)">
+    <div class="modal-dialog search-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-title">
+        Advanced Search
+        <button class="modal-close" [attr.aria-label]="'ui.common.close' | translate" (click)="showAdvancedSearch.set(false)">&times;</button>
+      </div>
+      <div class="search-grid">
+        <div class="search-field">
+          <label for="adv-complaint-number">Complaint Number</label>
+          <input id="adv-complaint-number" type="text" [(ngModel)]="advSearch.complaintNumber" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label for="adv-complaint-id">Complaint Id</label>
+          <input id="adv-complaint-id" type="text" [(ngModel)]="advSearch.complaintId" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label for="adv-status">Status</label>
+          <select id="adv-status" [(ngModel)]="advSearch.statusCode">
+            <option value="">Select a Value</option>
+            <option value="assigned">Assigned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="escalated">Escalated</option>
+            <option value="resolved">Resolved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        <div class="search-field">
+          <label for="adv-complainant">Complainant Name</label>
+          <input id="adv-complainant" type="text" [(ngModel)]="advSearch.complainantName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label for="adv-entity">Entity Name</label>
+          <input id="adv-entity" type="text" [(ngModel)]="advSearch.entityName" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label for="adv-priority">Priority</label>
+          <select id="adv-priority" [(ngModel)]="advSearch.priority">
+            <option value="">Select a Value</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+        </div>
+        <div class="search-field full-width">
+          <label for="adv-subject">Subject</label>
+          <input id="adv-subject" type="text" [(ngModel)]="advSearch.subject" placeholder="Enter a value" />
+        </div>
+        <div class="search-field">
+          <label for="adv-officer">Assigned Officer</label>
+          <input id="adv-officer" type="text" [(ngModel)]="advSearch.assignedOfficer" placeholder="Enter a value" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <!-- Clear, not just Cancel: an active search had no way off except reloading the page. -->
+        @if (advSearchActive()) {
+          <button class="btn btn-outline" (click)="clearAdvancedSearch(); showAdvancedSearch.set(false)">
+            {{ 'ui.common.clear_filters' | translate }}
+          </button>
+        }
+        <button class="btn btn-outline" (click)="showAdvancedSearch.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="applyAdvancedSearch()">Search</button>
+      </div>
+    </div>
+  </div>
+}
