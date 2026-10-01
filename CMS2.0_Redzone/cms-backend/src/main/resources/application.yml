@@ -164,9 +164,17 @@ cms:
   cors:
     allowed-origins: ${CMS_CORS_ORIGINS:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300}
   similar-cases:
-    enabled: ${SIMILAR_CASES_ENABLED:true}
-    opensearch-url: ${OPENSEARCH_URL:http://localhost:9200}
-    index: ${SIMILAR_CASES_INDEX:complaints}
+    # Ships DISABLED. This was `true` while the index name below was wrong, so the lookup has been
+    # enabled and non-functional in every deployed profile; turning it on is a new-feature decision,
+    # not a restoration. Enable per environment once the index is known to be populated.
+    enabled: ${SIMILAR_CASES_ENABLED:false}
+    elasticsearch-url: ${ELASTICSEARCH_URL:http://localhost:9200}
+    # Must match the index cms-search-service actually writes. It read `complaints` while the writer
+    # used `cms-complaints`, so every query hit a non-existent index and the empty result was
+    # swallowed as "no similar cases found".
+    index: ${SIMILAR_CASES_INDEX:cms-complaints}
+    connect-timeout-ms: ${SIMILAR_CASES_CONNECT_TIMEOUT_MS:1000}
+    read-timeout-ms: ${SIMILAR_CASES_READ_TIMEOUT_MS:2000}
   geo:
     enabled: ${GEO_ENABLED:false}
     maxmind-db-path: ${GEO_MAXMIND_DB:}

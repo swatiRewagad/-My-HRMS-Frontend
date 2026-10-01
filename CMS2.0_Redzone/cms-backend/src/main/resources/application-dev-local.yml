@@ -113,9 +113,11 @@ cms:
   cors:
     allowed-origins: http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300
   similar-cases:
-    enabled: false
-    opensearch-url: http://localhost:9200
-    index: complaints
+    # Enabled locally: a real Elasticsearch 8.15.3 node with analysis-icu runs on 9200 in dev, so this
+    # is the one profile where the feature can actually be exercised.
+    enabled: true
+    elasticsearch-url: http://localhost:9200
+    index: cms-complaints
   geo:
     enabled: false
   tat:

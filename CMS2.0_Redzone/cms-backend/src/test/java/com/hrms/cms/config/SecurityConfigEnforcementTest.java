@@ -103,6 +103,21 @@ class SecurityConfigEnforcementTest {
             return "categories";
         }
 
+        // ── Similar cases: staff only (Brief 21) ──
+        // This endpoint returns OTHER complaints' numbers and subjects as precedent, so the matcher
+        // keeping it inside STAFF_ROLES is a disclosure control, not a convenience. Both routes are
+        // stubbed: /search reads complaint text, and /status reveals whether a search backend exists.
+
+        @PostMapping("/api/v1/similar-cases/search")
+        String similarCasesSearch() {
+            return "similar-search";
+        }
+
+        @GetMapping("/api/v1/similar-cases/status")
+        String similarCasesStatus() {
+            return "similar-status";
+        }
+
         // ── Master data: anonymous READ, admin WRITE (UST456) ──
         // Reads and writes are separate handlers on the same paths because the whole point of the fix
         // is that the verb decides. A single handler could not express "GET open, POST closed".
@@ -413,6 +428,49 @@ class SecurityConfigEnforcementTest {
         // Widening to RBIO_ADMIN must not widen to every RBIO role — the user directory is not a
         // dealing official's screen.
         mockMvc.perform(get("/api/v1/keycloak/users/all").with(jwtWithRole("RBIO_DEALING_OFFICIAL")))
+                .andExpect(status().isForbidden());
+    }
+
+    // ───────────── Similar cases is staff-only precedent, not public data (Brief 21) ─────────────
+    //
+    // Written as refusals on purpose. A guard that fails OPEN still passes a happy-path test, because
+    // a guard admitting everyone admits the right role too. Only the denials can detect it.
+
+    @Test
+    void similarCasesAdmitsStaff() throws Exception {
+        mockMvc.perform(post("/api/v1/similar-cases/search").with(jwtWithRole("CEPC_REVIEWER")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void similarCasesRefusesAnonymous() throws Exception {
+        mockMvc.perform(post("/api/v1/similar-cases/search"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * The case the {@code anyRequest().authenticated()} fallback would admit.
+     *
+     * <p>A citizen holding a tracking session is authenticated. If the STAFF_ROLES matcher for
+     * {@code /api/v1/similar-cases/**} were ever removed or reordered below the fallback, this request
+     * would succeed and one citizen's complaint subjects would be readable by another.
+     */
+    @Test
+    void similarCasesRefusesAnAuthenticatedCitizen() throws Exception {
+        mockMvc.perform(post("/api/v1/similar-cases/search").with(jwtWithRole("CITIZEN")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void similarCasesRefusesARegulatedEntityUser() throws Exception {
+        mockMvc.perform(post("/api/v1/similar-cases/search").with(jwtWithRole("RE_USER")))
+                .andExpect(status().isForbidden());
+    }
+
+    /** Availability of a search backend is not public metadata either. */
+    @Test
+    void similarCasesStatusIsAlsoStaffOnly() throws Exception {
+        mockMvc.perform(get("/api/v1/similar-cases/status").with(jwtWithRole("CITIZEN")))
                 .andExpect(status().isForbidden());
     }
 
