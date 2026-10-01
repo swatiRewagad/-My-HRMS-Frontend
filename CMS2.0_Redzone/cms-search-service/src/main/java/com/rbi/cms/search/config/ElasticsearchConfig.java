@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 @Slf4j
 @Configuration
@@ -31,12 +32,27 @@ public class ElasticsearchConfig {
      * the socket is allowed to.
      */
     @Bean(destroyMethod = "close")
+    @Primary
     public RestClient elasticsearchRestClient() {
         return buildRestClient(properties.getSocketTimeoutMs());
     }
 
+    /**
+     * The default client, and deliberately the {@link Primary} one of the two.
+     *
+     * <p>Both this and {@code bulkElasticsearchClient} are {@code ElasticsearchClient}s, so an
+     * injection point that does not qualify has to be resolved by something. Making the
+     * short-timeout search client primary means a consumer that forgets to qualify inherits the 2s
+     * read timeout that protects user-facing search, rather than the multi-second bulk one — the
+     * failure mode of the wrong default is then a timed-out query, not an exhausted request pool.
+     *
+     * <p>{@code ReindexJob} is the only caller that wants the other client and asks for it by name.
+     */
     @Bean
-    public ElasticsearchClient elasticsearchClient(RestClient restClient, ObjectMapper objectMapper) {
+    @Primary
+    public ElasticsearchClient elasticsearchClient(
+            @Qualifier("elasticsearchRestClient") RestClient restClient,
+            ObjectMapper objectMapper) {
         return new ElasticsearchClient(new RestClientTransport(restClient, new JacksonJsonpMapper(objectMapper)));
     }
 
