@@ -437,3 +437,47 @@ Stated plainly so nothing here is read as more verified than it is.
   `git add` + `git commit` races another session's staging and silently enlarges the commit.
 - Migration numbers were re-checked immediately before use: high-water was MySQL **V110** / Oracle
   **V107**; this session's reserved ranges (MySQL V111-V115, Oracle V108-V112) were still free.
+
+### 6.1 The real index did not exist until it was created by hand
+
+Worth recording because it is the kind of gap that makes a feature look built when it is not. The
+`cms-complaints` index is created by **`cms-search-service`** at boot (`ComplaintIndexManager`
+`@PostConstruct` → `createVersionedIndex()` → point alias), and documents reach it over **Kafka**
+(`ComplaintIndexingListener` is a `@KafkaListener` on the `COMPLAINT_*` topics). In this environment
+Kafka (9092) is **not running** and `cms-search-service` is **not running** — only `cms-backend` (8092),
+MySQL (3306), Keycloak (9090) and Elasticsearch (9200) are. All earlier §3 evidence was therefore
+gathered against a hand-built `probe-cms-complaints` index, not the real one, and the live cluster had
+**no `cms-complaints` index or alias at all**.
+
+It now does. A concrete `cms-complaints-20261001-044533` was created directly from the two committed
+resource files and the alias pointed at it, deliberately reproducing `ComplaintIndexManager`'s own
+shape (timestamped concrete index behind a stable alias) rather than inventing a different layout.
+Confirmed on the live alias: `dynamic: strict`, 29 top-level fields, `subject` carrying
+`[bn, en, hi, keyword, ur]`.
+
+Analyzer behaviour re-measured against the **real** index, which is the evidence for §3 that previously
+only existed against the probe:
+
+| probe | field | analyzer | in → out |
+|---|---|---|---|
+| Hindi inflected plural | `description` | `cms_indic` | शिकायतों → `शिकायतों` (**unstemmed**) |
+| Hindi inflected plural | `description.hi` | `hindi` | शिकायतों → `शिकायत` (**stemmed to the root**) |
+| Hindi root | `description.hi` | `hindi` | शिकायत → `शिकायत` (agrees with the line above) |
+| Bengali genitive | `description.bn` | `bengali` | অভিযোগের → `অভিযোগ` (stemmed) |
+| Urdu | `description.ur` | `cms_urdu` | شکایات → `شكايات` (Arabic-script normalised, not stemmed) |
+| Tamil plural | `description` | `cms_indic` | புகார்கள் → `புகாரகள` (folded only, **not stemmed**) |
+| English plural | `description.en` | `english` | complaints → `complaint` (stemmed) |
+
+Rows 1–3 are the measured justification for querying the `.hi`/`.bn`/`.ur` subfields alongside the base
+field, and the Tamil row is the hard evidence for open ask 2: for the 9 languages with no stemmer, a
+query matches a surface form and nothing else.
+
+**Consequence for the corpus seeder.** Because indexing runs over Kafka from a service that is not
+running, a seeder that only writes complaint rows to MySQL will **not** populate Elasticsearch in this
+environment. Any claim that seeded documents are searchable has to be backed by a query against the
+index, not by the rows existing in the database.
+
+**Platform note for anyone reproducing the probes.** This shell mangles non-ASCII on the command line:
+the same `_analyze` call returns `{"tokens":[]}` via inline `curl -d` and the correct tokens when the
+body is written as UTF-8 bytes from a script file. An empty token list here is a quoting artefact, not
+an analyzer defect — do not "fix" the analyzer on that evidence.
