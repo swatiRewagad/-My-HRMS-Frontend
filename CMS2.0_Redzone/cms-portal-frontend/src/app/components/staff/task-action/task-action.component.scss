@@ -552,24 +552,10 @@
   .history-loading { text-align: center; padding: 2rem; color: #64748b; font-size: 13px; }
 }
 
-.similar-cases-list {
-  .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-  .pc-id { font-size: 12px; font-weight: 600; color: #1e293b; }
-  .pc-date { font-size: 11px; color: #94a3b8; display: block; margin-top: 6px; }
-  .similarity-score {
-    display: flex; align-items: center; gap: 8px; margin-top: 6px;
-    .score-label { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 600; }
-    .score-bar-wrap { flex: 1; height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; }
-    .score-bar { height: 100%; background: #3b82f6; border-radius: 2px; }
-    .score-pct { font-size: 11px; font-weight: 600; color: #3b82f6; }
-  }
-}
-
-.similar-empty {
-  text-align: center; padding: 2rem; color: #94a3b8;
-  i { font-size: 2rem; display: block; margin-bottom: 0.75rem; }
-  p { font-size: 13px; }
-}
+// `.similar-cases-list`, `.similarity-score` and `.similar-empty` used to be styled here. They are
+// now inside shared/similar-cases, whose own stylesheet is encapsulated — rules left behind here would
+// match nothing and only mislead the next reader. `.similar-panel` above keeps the drawer geometry,
+// which genuinely belongs to this screen's header offsets.
 
 .empty-text { text-align: center; color: #94a3b8; font-size: 13px; padding: 2rem; }
 

@@ -64,6 +64,29 @@
 
       @if (remarksRequired()) {
         <div class="form-field">
+          <!--
+            §5.3.6 TEMPLATE SLOT. Rendered only when a host passes one, so the DOM for every other
+            screen is byte-identical to before — `.action-form textarea` stays a single-element match
+            for the seven specs that fill it (aa/workflow 75,193,327; cepc/workflow-actions
+            81,108,132,156,228,267,306; cepc/contact-person 140; rbio/officer-workflow 67;
+            rbio/supervisor-workflow 57,89,122,155).
+
+            The container carries NO class a host styles. Projected content is styled by the declaring
+            component, and the three hosts' `.form-field` rules disagree (task-action's is nested
+            inside a modal block), so the slot's own content must bring its own encapsulated styles —
+            see comment-template-picker.component.scss for the full note. Putting it INSIDE
+            `.form-field` and above the label also means `.form-field label` and `.form-field
+            textarea` keep matching exactly what they always did.
+
+            `insert` appends to the remarks model rather than replacing it.
+          -->
+          @if (templateSlot()) {
+            <div class="action-template-slot" data-testid="action-template-slot">
+              <ng-container [ngTemplateOutlet]="templateSlot()!"
+                            [ngTemplateOutletContext]="{ $implicit: action, insert: insertTemplate }" />
+            </div>
+          }
+
           <label for="action-remarks">{{ resolvedRemarksLabel() }}</label>
           <!-- The `.textarea-with-speech` wrapper is emitted for all three hosts even though aa has no
                microphone: every spec reaches the control through a DESCENDANT selector

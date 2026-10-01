@@ -21,12 +21,14 @@ import { ComplaintSummaryComponent } from '../../shared/complaint-summary/compla
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
 import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
+import { SimilarCasesComponent } from '../../shared/similar-cases/similar-cases.component';
+import { CommentTemplatePickerComponent } from '../../shared/comment-template-picker/comment-template-picker.component';
 import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.util';
 
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent],
+  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent, SimilarCasesComponent, CommentTemplatePickerComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })
@@ -77,6 +79,22 @@ export class TaskActionComponent implements OnInit, OnDestroy {
       requiresRemarks: true,
     })));
 
+  /**
+   * Which saved-remark templates the §5.3.6 picker offers, derived from the pending action (§5.3.6).
+   *
+   * COMMENT_TEMPLATES.category is a free-text column the admin screen constrains to
+   * GENERAL | CLOSURE | REJECTION | FOLLOWUP, so only those four are ever worth asking for. Anything
+   * unmapped falls back to GENERAL rather than to null: null means "every active template", which
+   * would offer closure wording while an officer is forwarding a complaint.
+   */
+  commentTemplateCategory = computed(() => {
+    const action = this.selectedAction();
+    if (action.includes('CLOSE') || action.includes('RESOLVE')) return 'CLOSURE';
+    if (action.includes('REJECT') || action.includes('NON_MAINTAIN')) return 'REJECTION';
+    if (action.includes('FOLLOW') || action.includes('REMIND')) return 'FOLLOWUP';
+    return 'GENERAL';
+  });
+
   /** Both captions name the pending transition, so an officer cannot confirm the wrong one by habit. */
   remarksLabel = computed(() => `Remarks for "${this.selectedAction()}"`);
   confirmLabel = computed(() => `Confirm ${this.selectedAction()}`);
@@ -108,8 +126,19 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   // Sliding panels
   showSimilarPanel = signal(false);
   showHistoryPanel = signal(false);
-  loadingSimilarCases = signal(false);
-  similarCases = signal<any[]>([]);
+
+  /**
+   * What the shared similar-cases panel searches on.
+   *
+   * Subject plus description, because the endpoint runs `more_like_this` over those two indexed fields.
+   * No category is passed: `/api/v1/complaints/{n}` returns the RESOLVED category NAME, and the search
+   * filter is a term query on the indexed `categoryId`, so sending the name would filter every document
+   * out and present as a genuine no-match — the exact class of silent failure this screen already had.
+   */
+  similarSearchText = computed(() => {
+    const c = this.complaint();
+    return [c?.subject, c?.description].filter(Boolean).join(' ').trim();
+  });
 
   // Right sidebar - Past Complaints
   pastComplaints = signal<any[]>([]);
@@ -293,34 +322,13 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     this.expandedPanel.set(this.expandedPanel() === panel ? null : panel);
   }
 
+  /** Pure toggle. The shared panel does its own lazy fetch the first time it is opened. */
   toggleSimilarPanel() {
-    const isOpen = !this.showSimilarPanel();
-    this.showSimilarPanel.set(isOpen);
-    if (isOpen && this.similarCases().length === 0) {
-      this.loadSimilarCases();
-    }
+    this.showSimilarPanel.set(!this.showSimilarPanel());
   }
 
   toggleHistoryPanel() {
     this.showHistoryPanel.set(!this.showHistoryPanel());
-  }
-
-  loadSimilarCases() {
-    const c = this.complaint();
-    const cid = c?.id || c?.complaintId;
-    if (!cid) return;
-    this.loadingSimilarCases.set(true);
-    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/complaints/${cid}/similar`)
-      .subscribe({
-        next: (res) => {
-          this.similarCases.set(res.data || res || []);
-          this.loadingSimilarCases.set(false);
-        },
-        error: () => {
-          this.similarCases.set([]);
-          this.loadingSimilarCases.set(false);
-        }
-      });
   }
 
   loadPastComplaints() {

@@ -1496,45 +1496,22 @@
 
     </div><!-- /page-body-layout -->
 
-    <!-- ═══ SIMILAR CASES PANEL (slides in from right) ═══ -->
+    <!--
+      ═══ SIMILAR CASES PANEL (slides in from right) ═══
+      Drawer geometry stays with this screen (its own header offset and the 44px icon rail); the
+      contents are the shared app-similar-cases, which fetches on first open.
+
+      `selectable` is on because this screen CAN act on a hit — it already has a past-complaint detail
+      modal — and the modal is keyed by complaint number, which is what the API returns.
+    -->
     @if (showSimilarPanel()) {
       <div class="history-panel similar-panel">
-        <div class="history-panel-header">
-          <h3><i class="pi pi-search"></i> Similar Cases</h3>
-          <button class="expand-btn" (click)="showSimilarPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
-        </div>
-
-        @if (loadingSimilarCases()) {
-          <div class="history-loading"><i class="pi pi-spin pi-spinner"></i> Searching...</div>
-        } @else if (similarCases().length > 0) {
-          <div class="similar-cases-list">
-            @for (sc of similarCases(); track sc.complaintId) {
-              <div class="past-complaint-card" (click)="openPastComplaintDetail(sc.complaintId)">
-                <div class="pc-header">
-                  <span class="pc-id">{{ sc.complaintId }}</span>
-                  <span class="pc-status" [class.active]="sc.status === 'ACTIVE'" [class.completed]="sc.status === 'COMPLETED' || sc.status === 'RESOLVED'">{{ sc.status }}</span>
-                </div>
-                <p class="pc-subject">{{ sc.subject }}</p>
-                @if (sc.similarityScore) {
-                  <div class="similarity-score">
-                    <span class="score-label">Match</span>
-                    <span class="score-bar-wrap"><span class="score-bar" [style.width.%]="sc.similarityScore * 100"></span></span>
-                    <span class="score-pct">{{ (sc.similarityScore * 100) | number:'1.0-0' }}%</span>
-                  </div>
-                }
-                <span class="pc-date">{{ sc.filedDate }}</span>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="similar-empty">
-            <i class="pi pi-search"></i>
-            <p>No similar cases found</p>
-            <button class="btn btn-outline" style="margin-top:12px;font-size:12px;" (click)="loadSimilarCases()">
-              <i class="pi pi-refresh"></i> Retry
-            </button>
-          </div>
-        }
+        <app-similar-cases
+          [open]="showSimilarPanel()"
+          [text]="similarSearchText()"
+          [selectable]="true"
+          (selectCase)="openPastComplaintDetail($event.complaintNumber)"
+          (close)="showSimilarPanel.set(false)" />
       </div>
     }
 

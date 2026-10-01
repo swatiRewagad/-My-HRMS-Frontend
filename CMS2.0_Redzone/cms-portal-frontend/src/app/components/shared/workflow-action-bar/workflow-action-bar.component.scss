@@ -145,6 +145,26 @@
   }
 }
 
+// ═══ §5.3.6 TEMPLATE SLOT ═══
+//
+// Spacing only. The slot's CONTENT cannot be styled from here and must not be attempted: Angular's
+// emulated encapsulation stamps each component's attribute onto the elements it declares, and a
+// projected `ngTemplateOutlet` template was declared by the HOST — so every selector in this file
+// carries the bar's attribute and matches none of it. (The reverse also bites: a host rule anchored
+// on an ancestor that stays behind, like `.action-panel > .form-field`, stops matching once the
+// element renders in here. That is the ancestor-selector breakage this repo has hit before.)
+//
+// Hence `.action-template-slot` is a bare box and the picker inside it is a component with its own
+// encapsulated stylesheet, which is the only arrangement that looks identical in all three hosts.
+//
+// `display: contents` is deliberately NOT used: it would make the slot's children direct flex/grid
+// items of `.form-field`, so a host that later lays `.form-field` out as a grid would reflow the
+// picker's internals. A block keeps the slot a single unit.
+.action-template-slot {
+  display: block;
+  margin-bottom: var(--space-4);
+}
+
 .textarea-with-speech {
   display: flex;
   gap: var(--space-3);

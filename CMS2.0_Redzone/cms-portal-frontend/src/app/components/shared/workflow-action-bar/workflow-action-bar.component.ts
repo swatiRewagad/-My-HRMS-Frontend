@@ -97,6 +97,25 @@ export class WorkflowActionBarComponent<T extends WorkflowAction = WorkflowActio
 
   /** Rendered above the remarks box — target pickers. See the class doc. */
   readonly fields = input<TemplateRef<unknown> | null>(null);
+
+  /**
+   * §5.3.6 — rendered immediately above the remarks LABEL, for a saved-remark template picker.
+   *
+   * A template rather than a boolean flag, so a screen that does not want one is bit-for-bit
+   * unaffected: when this is null the slot container is not rendered at all, and the DOM between
+   * `.action-form` and its textarea is exactly what it was before. That matters because seven specs
+   * locate the remarks control as `.action-form textarea` / `.remarks-section textarea`.
+   *
+   * It sits ABOVE the label rather than below the textarea because an officer picks a template before
+   * writing, and because `extras` below the box is already crowded with closure fields and draft
+   * badges on the one host that uses both.
+   *
+   * The slot receives `{ $implicit: action, insert: fn }`. `insert` APPENDS to the remarks model
+   * rather than replacing it — a template chosen after the officer has started typing must not
+   * discard the sentence they were mid-way through. Hosts should bind it as
+   * `let-insert="insert"` and call `insert(content)`.
+   */
+  readonly templateSlot = input<TemplateRef<unknown> | null>(null);
   /** Rendered below the remarks box — closure fields, warnings, draft badges. */
   readonly extras = input<TemplateRef<unknown> | null>(null);
   /** Rendered between commit and cancel — staff's "Save in Draft". */
@@ -146,6 +165,24 @@ export class WorkflowActionBarComponent<T extends WorkflowAction = WorkflowActio
   onRemarksInput(value: string) {
     this.remarks.set(value);
   }
+
+  /**
+   * Appends a template body to the remarks, handed to the §5.3.6 slot as its `insert` context member.
+   *
+   * An arrow property, not a method: it is passed as a value into `ngTemplateOutletContext` and called
+   * from the host's template, where a plain method reference would lose `this`.
+   *
+   * APPENDS rather than replaces, for the same reason the speech transcription does — an officer who
+   * has typed half a sentence and then reaches for a template must not silently lose it. Separated by
+   * a blank line so the two blocks read as distinct paragraphs, and trimmed so picking a template
+   * first does not leave the remarks starting with whitespace (which `canCommit`'s trim tolerates but
+   * which looks like a bug in the saved record).
+   */
+  readonly insertTemplate = (content: string): void => {
+    if (!content) return;
+    const current = this.remarks();
+    this.remarks.set(current.trim() ? `${current.trimEnd()}\n\n${content}` : content);
+  };
 
   onTranscription(text: string) {
     this.remarks.set(`${this.remarks()} ${text}`);

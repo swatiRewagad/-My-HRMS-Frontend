@@ -14,6 +14,7 @@ import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.ut
 import { UploadLimitsService } from '../../../services/upload-limits.service';
 import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { SimilarCasesComponent } from '../../shared/similar-cases/similar-cases.component';
 
 interface MaintainabilityQuestion {
   id: string;
@@ -44,7 +45,7 @@ interface EmailCorrespondence {
 @Component({
   selector: 'app-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent, ComplaintSummaryComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent, ComplaintSummaryComponent, SimilarCasesComponent],
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
@@ -513,11 +514,32 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   entityDropdownLeft = 0;
   entityDropdownWidth = 300;
 
-  // ─── Past & Similar Complaints ───
+  // ─── Past Complaints ───
   pastComplaints = signal<any[]>([]);
-  similarCases = signal<any[]>([]);
   loadingPastComplaints = signal(false);
-  loadingSimilarCases = signal(false);
+
+  /**
+   * What the shared similar-cases panel searches on.
+   *
+   * Replaces a POST to `/api/v1/past-complaints/similar`, which is a Groq LLM prompt with a keyword
+   * fallback — out of scope for Brief 21, which bans LLM inference from this feature.
+   *
+   * `subject` and `description` are plain fields rather than signals on this screen, so they are read
+   * through `draftRevision()` — bumped by loadDraft and by applySuggestion — to give the computed
+   * something to depend on. Without that the panel would search whatever the fields held the first
+   * time it was opened and never notice an edit.
+   *
+   * No category is sent: `this.category` is a category NAME typed by the officer, and the server
+   * filters on the indexed `categoryId` term, so passing it would filter out every document and look
+   * exactly like a genuine no-match.
+   */
+  similarSearchText = computed(() => {
+    this.draftRevision();
+    return [this.subject, this.description].filter(Boolean).join(' ').trim();
+  });
+
+  /** Bumped whenever the assessed fields are replaced wholesale, so similarSearchText recomputes. */
+  private draftRevision = signal(0);
 
   // ─── Past Complaint Detail Modal ───
   showPastComplaintDetail = signal(false);
@@ -661,24 +683,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       });
   }
 
-  loadSimilarCases() {
-    if (!this.subject) return;
-    this.loadingSimilarCases.set(true);
-
-    this.http.post<any>(`${environment.apiBaseUrl}/api/v1/past-complaints/similar`, {
-      subject: this.subject,
-      description: this.description,
-      category: this.category,
-      excludeId: this.draftId
-    }).subscribe({
-      next: (res) => {
-        this.similarCases.set(res?.data || []);
-        this.loadingSimilarCases.set(false);
-      },
-      error: () => this.loadingSimilarCases.set(false)
-    });
-  }
-
   openPastComplaintDetail(complaintId: string) {
     this.showPastComplaintDetail.set(true);
     this.loadingPastDetail.set(true);
@@ -718,6 +722,9 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
     const updated = suggs.map((sg, i) => i === index ? { ...sg, applied: true } : sg);
     this.suggestions.set(updated);
+    // Accepting a Subject suggestion changes what "similar" means, and `subject` is a plain field the
+    // computed cannot observe, so the revision is bumped to invalidate the panel's cached search.
+    this.draftRevision.update(n => n + 1);
   }
 
   applyAllSuggestions() {
@@ -828,6 +835,10 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Opens the drawer. No fetch here: the shared panel searches on first open and caches until the
+   * subject changes, which is also why re-opening it no longer re-queries.
+   */
   toggleSimilarPanel() {
     if (this.showSimilarPanel()) {
       this.showSimilarPanel.set(false);
@@ -835,7 +846,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.showSimilarPanel.set(true);
       this.showHistoryPanel.set(false);
       this.showAttachmentsPanel.set(false);
-      this.loadSimilarCases();
     }
   }
 
@@ -922,7 +932,9 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.updateEmailHighlight();
       if (this.complainantState) this.loadDistrictsForState(this.complainantState);
       this.loadPastComplaints();
-      this.loadSimilarCases();
+      // Similar cases are NOT searched here any more: the shared panel fetches on first open. The old
+      // eager call ran a search on every screen load whose result most officers never looked at.
+      this.draftRevision.update(n => n + 1);
     } else {
       this.http.get<any>(`${environment.apiBaseUrl}/api/v1/email-syndication/drafts/${this.draftId}`)
         .subscribe({
@@ -1009,7 +1021,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
             this.updateEmailHighlight();
             if (this.complainantState) this.loadDistrictsForState(this.complainantState);
             this.loadPastComplaints();
-            this.loadSimilarCases();
+            // See the physical-letter branch: the similar-cases search is lazy now.
+            this.draftRevision.update(n => n + 1);
           },
           error: () => {
             this.loading.set(false);

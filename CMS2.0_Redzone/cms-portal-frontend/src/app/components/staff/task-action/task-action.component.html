@@ -472,9 +472,21 @@
                         [commitLabel]="confirmLabel()"
                         [extras]="closureAndDraftFields"
                         [commitExtras]="saveDraftButton"
+                        [templateSlot]="commentTemplateSlot"
                         (select)="selectAction($event.id)"
                         (commit)="originalSubmitAction()"
                         (cancel)="cancelAction()" />
+
+                      <!--
+                        §5.3.6: saved remark templates. `insert` comes from the bar's context and
+                        APPENDS, so an officer who has already typed keeps what they wrote.
+                        The category follows the pending action so a closure offers closure wording.
+                      -->
+                      <ng-template #commentTemplateSlot let-insert="insert">
+                        <app-comment-template-picker
+                          [category]="commentTemplateCategory()"
+                          (apply)="insert($event)" />
+                      </ng-template>
 
                       <ng-template #closureAndDraftFields>
                           <!-- UST576, UST581-584: Final Decision fields for CLOSE_COMPLAINT -->
@@ -666,42 +678,18 @@
 
     </div><!-- /page-body-layout -->
 
-    <!-- ═══ SIMILAR CASES PANEL (slides in from right) ═══ -->
+    <!--
+      ═══ SIMILAR CASES PANEL (slides in from right) ═══
+      The drawer chrome (fixed position, 380px, slide-in) stays here because the offsets belong to this
+      screen's header; the contents are the shared app-similar-cases. The panel fetches on first open,
+      so the host does nothing but toggle a boolean.
+    -->
     @if (showSimilarPanel()) {
       <div class="history-panel similar-panel">
-        <div class="history-panel-header">
-          <h3><i class="pi pi-search"></i> Similar Cases</h3>
-          <button class="expand-btn" (click)="showSimilarPanel.set(false)"><i class="pi pi-chevron-right"></i></button>
-        </div>
-        @if (loadingSimilarCases()) {
-          <div class="history-loading"><i class="pi pi-spin pi-spinner"></i> Searching...</div>
-        } @else if (similarCases().length > 0) {
-          <div class="similar-cases-list">
-            @for (sc of similarCases(); track sc.complaintId) {
-              <div class="past-complaint-card">
-                <div class="pc-header">
-                  <span class="pc-id">{{ sc.complaintId }}</span>
-                  <span class="pc-status" [class.completed]="sc.status === 'RESOLVED'">{{ sc.status }}</span>
-                </div>
-                <p class="pc-subject">{{ sc.subject }}</p>
-                @if (sc.similarityScore) {
-                  <div class="similarity-score">
-                    <span class="score-label">Match</span>
-                    <span class="score-bar-wrap"><span class="score-bar" [style.width.%]="sc.similarityScore * 100"></span></span>
-                    <span class="score-pct">{{ (sc.similarityScore * 100) | number:'1.0-0' }}%</span>
-                  </div>
-                }
-                <span class="pc-date">{{ sc.filedDate }}</span>
-              </div>
-            }
-          </div>
-        } @else {
-          <div class="similar-empty">
-            <i class="pi pi-search"></i>
-            <p>No similar cases found</p>
-            <button class="btn btn-outline" (click)="loadSimilarCases()"><i class="pi pi-refresh"></i> Retry</button>
-          </div>
-        }
+        <app-similar-cases
+          [open]="showSimilarPanel()"
+          [text]="similarSearchText()"
+          (close)="showSimilarPanel.set(false)" />
       </div>
     }
 

@@ -1,0 +1,62 @@
+<!--
+  NO TEXTAREA IN HERE, and that is load-bearing.
+
+  Seven specs reach the action bar's remarks control through `.action-form textarea` and
+  `.remarks-section textarea` (e2e/aa/workflow.spec.ts:75,193,327; e2e/cepc/workflow-actions.spec.ts
+  :81,108,132,156,228,267,306; e2e/cepc/contact-person.spec.ts:140; e2e/rbio/officer-workflow.spec.ts
+  :67; e2e/rbio/supervisor-workflow.spec.ts:57,89,122,155). Those are strict single-element locators,
+  so a second textarea rendered inside the action form would break every `fill()` with a strict-mode
+  violation rather than an assertion failure. The template preview is therefore read-only prose.
+
+  The wrapper is `.template-slot`, NOT `.form-field`: `.form-field` is styled by whichever host
+  DECLARES the projected template (see the action bar's class doc), and the three hosts style it
+  differently — task-action's rule only applies inside a modal, so this control would have come out
+  unstyled there and modal-styled nowhere. A name of its own keeps the appearance with this component.
+-->
+<div class="template-slot" data-testid="comment-template-picker">
+
+  @if (failed()) {
+    <!-- role=alert: a silent empty list is indistinguishable from "no templates were ever written". -->
+    <p class="template-error" role="alert" data-testid="template-load-error">
+      {{ 'templates.error_load_failed' | translate }}
+      <button type="button" class="template-retry" (click)="load()">
+        {{ 'templates.retry' | translate }}
+      </button>
+    </p>
+  } @else if (loading()) {
+    <p class="template-hint" role="status">{{ 'templates.loading' | translate }}</p>
+  } @else if (templates().length === 0) {
+    <p class="template-hint">{{ 'templates.none_available' | translate }}</p>
+  } @else {
+    <label class="template-label" for="comment-template-select">
+      {{ 'templates.pick_label' | translate }}
+    </label>
+
+    <div class="template-row">
+      <select id="comment-template-select" class="template-select"
+              data-testid="comment-template-select"
+              (change)="onSelect($any($event.target).value)">
+        <option value="">{{ 'templates.pick_placeholder' | translate }}</option>
+        @for (t of templates(); track t.id) {
+          <option [value]="t.id">{{ t.title }}</option>
+        }
+      </select>
+
+      <button type="button" class="template-apply" data-testid="comment-template-apply"
+              [disabled]="!selected()"
+              (click)="applySelected()">
+        {{ 'templates.insert_button' | translate }}
+      </button>
+    </div>
+
+    @if (selected(); as t) {
+      <!-- A paragraph, not a textarea. See the header. -->
+      <p class="template-preview" data-testid="comment-template-preview">{{ t.content }}</p>
+      @if (t.description) {
+        <p class="template-hint">{{ t.description }}</p>
+      }
+    }
+
+    <p class="template-hint">{{ 'templates.append_note' | translate }}</p>
+  }
+</div>
