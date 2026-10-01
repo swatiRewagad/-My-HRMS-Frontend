@@ -29,6 +29,14 @@ import java.util.Optional;
 public interface ComplaintRepository
         extends JpaRepository<Complaint, Long>, JpaSpecificationExecutor<Complaint> {
     Optional<Complaint> findByComplaintNumber(String complaintNumber);
+
+    /**
+     * Counts one complaint-number series. Used by the dev seeders to decide whether their OWN rows are
+     * already present, which a count of the whole table cannot answer: this database carries several
+     * unrelated series ({@code CMP-*}, {@code N2026*}, {@code CEPC/*}), so a total-row threshold is
+     * tripped by other people's data and silently disables the seeder for good.
+     */
+    long countByComplaintNumberStartingWith(String prefix);
     List<Complaint> findByStatusOrderByCreatedAtDesc(String status);
     List<Complaint> findByComplainantEmailOrderByCreatedAtDesc(String email);
     List<Complaint> findByComplainantPhoneOrderByCreatedAtDesc(String phone);

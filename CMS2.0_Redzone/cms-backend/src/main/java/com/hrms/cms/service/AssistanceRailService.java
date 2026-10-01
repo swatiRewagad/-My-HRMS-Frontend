@@ -77,8 +77,13 @@ public class AssistanceRailService {
      * a statistic and the content of an anecdote, and an officer has no way to tell from the rail
      * which they are looking at. So the signal is withheld, rather than shown with a caveat nobody
      * reads.
+     *
+     * <p>Public because {@code DemoDataSeeder}'s closed cohort is sized against it and
+     * {@code DemoDataSeederClosureCohortTest} asserts the fixture clears it. Referencing the constant
+     * rather than copying the number means raising this guard fails that test, instead of silently
+     * leaving the fixture too small — which is how the prior came to have no sample to report at all.
      */
-    static final int MIN_CLOSURE_SAMPLE = 5;
+    public static final int MIN_CLOSURE_SAMPLE = 5;
 
     /** Suppresses the "last viewed" signal when the officer was here moments ago. */
     static final Duration LAST_VIEWED_SUPPRESS_WINDOW = Duration.ofMinutes(5);
