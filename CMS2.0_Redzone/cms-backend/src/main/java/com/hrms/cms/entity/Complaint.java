@@ -498,12 +498,34 @@ public class Complaint {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    /**
+     * Defaults the audit timestamps, and only defaults them.
+     *
+     * <p>These four assignments used to be unconditional, which made a caller-supplied date
+     * unwritable: the setter ran, {@code @PrePersist} then overwrote it, and the row landed with the
+     * insert time. Nothing failed, so the loss was silent.
+     *
+     * <p>It had already cost us real data. {@code DemoDataSeeder} spreads its 60 complaints over 90
+     * days on purpose; every row persisted inside the same 122 ms instead. Because those rows keep the
+     * {@code closed_at} the seeder chose, closure then PRECEDED creation on most of them, and anything
+     * measuring a filing-to-closure window had to discard them as negative — which is why the
+     * assistance rail's category-closure prior had no usable sample to report.
+     *
+     * <p>Conditional assignment is the whole fix: a null field still gets {@code now()}, so the real
+     * filing path is unchanged and no caller has to remember to set anything. Only a caller that
+     * deliberately set a date keeps it.
+     *
+     * <p>{@code createdAt} is not merely cosmetic here — {@code AppealClassificationService} derives
+     * the appeal window from it, so a complaint whose creation date is really its insert date carries
+     * a wrong statutory deadline.
+     */
     @PrePersist
     protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        this.filedAt = LocalDateTime.now();
-        this.lastStatusChangeDate = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        if (this.createdAt == null) this.createdAt = now;
+        if (this.updatedAt == null) this.updatedAt = now;
+        if (this.filedAt == null) this.filedAt = now;
+        if (this.lastStatusChangeDate == null) this.lastStatusChangeDate = now;
         if (this.status == null) this.status = "pending";
         if (this.priority == null) this.priority = "medium";
     }
