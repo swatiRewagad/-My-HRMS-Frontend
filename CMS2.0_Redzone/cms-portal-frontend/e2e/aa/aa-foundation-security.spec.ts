@@ -60,11 +60,22 @@ const RE_OTHER_ENTITY = 'State Bank of India';
 const C_RE_OWN = `${PREFIX}-RE-OWN`;
 const C_RE_OTHER = `${PREFIX}-RE-OTHER`;
 
+/**
+ * stderr is 'inherit', NOT 'ignore'.
+ *
+ * It was 'ignore', which DISCARDED mysql's own error message. execFileSync still threw, but all the
+ * report carried was "Command failed" — so a broken seed (a missing NOT-NULL column, a collation
+ * mismatch, a renamed table) was indistinguishable from the product misbehaving, and the real
+ * diagnosis — e.g. "ERROR 1364: Field 'record_version' doesn't have a default value" — was thrown
+ * away at exactly the moment it was needed. Several AA "failures" this session were seed bugs
+ * wearing that disguise. The only cost of 'inherit' is mysql's password warning on stderr, which is
+ * noise worth paying for a real error message.
+ */
 function sql(statement: string): string {
   return execFileSync(
     MYSQL,
     ['-u', 'cms_user', '-pcms_pass', 'cms_db', '--default-character-set=utf8mb4', '-N', '-B', '-e', statement],
-    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }
   ).trim();
 }
 
