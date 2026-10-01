@@ -59,17 +59,19 @@ test.describe('RE Portal - Respond to Complaint', () => {
     await expect(statusBadge).toBeVisible();
   });
 
-  // PRODUCT DEFECT, not a test defect: GET /api/v1/re-portal/complaints/{n} never returns
-  // `responseDeadline` (RePortalController.getComplaintDetail builds the map by hand and omits it,
-  // along with category/filedDate/forwardedDate). ReComplaintDetailComponent.deadlineCountdown()
-  // returns `expired: true` whenever responseDeadline is falsy, and isResponseWindowOpen() is
-  // derived from it — so [disabled]="!isResponseWindowOpen()" latches the textarea, the file input
-  // and the submit button off forever. The API even computes the answer correctly and returns
-  // `withinResponseWindow: true`, but the component never reads that field. Verified against a
-  // freshly forwarded complaint whose tracker windowExpiresAt is 2026-10-23 (37 days out): the
-  // header still renders "Response window expired". No RE can submit a response through the UI.
-  // Unblocks when the API emits responseDeadline, or the component reads withinResponseWindow.
-  test.fixme('Response form shows when within 15-day window', async ({ page, request }) => {
+  /**
+   * UN-FIXME'D: the product defect this test was parked on is fixed.
+   *
+   * <p>The defect, for the record: GET /api/v1/re-portal/complaints/{n} never returns
+   * `responseDeadline` (RePortalController.getComplaintDetail builds the map by hand and omits it),
+   * ReComplaintDetailComponent derived its window gate from that field, and so
+   * `[disabled]="!isResponseWindowOpen()"` latched the textarea, the file input and the submit button
+   * off on EVERY complaint — no RE could respond through the portal at all. The API was computing
+   * the answer correctly in `withinResponseWindow` the whole time and the component never read it.
+   * It does now, so this test asserts the thing it was always meant to: a freshly forwarded
+   * complaint offers a usable response form.
+   */
+  test('Response form shows when within 15-day window', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     const complaint = await createForwardedComplaint(request, RE_ENTITY);
@@ -86,12 +88,17 @@ test.describe('RE Portal - Respond to Complaint', () => {
     await expect(textarea).toBeEnabled();
   });
 
-  // Blocked by the same product defect as the test above: the missing `responseDeadline` in the
-  // detail payload leaves isResponseWindowOpen() false, so #responseText and .submit-btn are
-  // permanently disabled and the response can never be submitted through the UI. The backend path
-  // itself is sound — POST /re-portal/complaints/{n}/respond succeeds when called directly, which is
-  // what the 'Response disabled after window expiry' test below relies on.
-  test.fixme('Submit response succeeds (status changes)', async ({ page, request }) => {
+  /**
+   * UN-FIXME'D with the test above, and for the same reason: the permanently-disabled form was the
+   * only thing stopping it. This is the one test that drives the whole statutory path through the
+   * UI — fill, submit, server accepts — so it is also the regression guard for that gate ever being
+   * re-derived from a field the API does not send.
+   *
+   * <p>It asserts the resulting STATE as well as the banner. The component reloads the complaint
+   * after a successful POST, and the response of record having been filed must close the window:
+   * a form still inviting input after submission would be inviting a 409.
+   */
+  test('Submit response succeeds (status changes)', async ({ page, request }) => {
     test.skip(!keycloakUp, 'Keycloak is not available');
 
     const complaint = await createForwardedComplaint(request, RE_ENTITY);
@@ -109,6 +116,12 @@ test.describe('RE Portal - Respond to Complaint', () => {
 
     const successBanner = page.locator('.success-banner');
     await expect(successBanner).toBeVisible({ timeout: 10000 });
+
+    // The complaint is now answered, so the window must be shut behind the entity. Asserted on the
+    // reloaded detail rather than on the banner alone, because the banner is a client-side string
+    // and would show even if the POST had changed nothing.
+    await expect(page.locator('.submit-btn')).toBeDisabled({ timeout: 10000 });
+    await expect(page.locator('.window-expired-notice')).toBeVisible();
   });
 
   /**

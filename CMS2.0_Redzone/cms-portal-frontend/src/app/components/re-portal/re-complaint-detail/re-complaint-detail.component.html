@@ -1,204 +1,336 @@
 <div class="re-complaint-detail">
-  <!-- Back button -->
-  <button class="back-btn" (click)="goBack()">
-    <i class="pi pi-arrow-left"></i> Back to Dashboard
-  </button>
-
   @if (loading()) {
     <div class="loading-state">
       <div class="spinner"></div>
       <p>Loading complaint details...</p>
     </div>
-  } @else if (complaint()) {
-    <!-- Header -->
-    <div class="detail-header">
-      <div class="header-left">
-        <h2 class="complaint-number">{{ complaint()!.complaintNumber }}</h2>
-        <app-status-badge [status]="complaint()!.status" />
-        @if (complaint()!.reActivityStatus) {
-          <!-- UST846/847: the RBI side renders this through the same component, so both agree. -->
-          <app-status-badge
-            [status]="complaint()!.reActivityStatus!"
-            [labelKey]="complaint()!.reActivityStatusKey ?? null" />
-        }
-      </div>
-      <div class="deadline-countdown" [class.expired]="deadlineCountdown().expired">
-        @if (deadlineCountdown().expired) {
-          <i class="pi pi-exclamation-triangle"></i>
-          <span>Response window expired</span>
-        } @else {
-          <i class="pi pi-clock"></i>
-          <span>{{ deadlineCountdown().days }}d {{ deadlineCountdown().hours }}h remaining</span>
-        }
-      </div>
-    </div>
+  } @else if (complaint(); as c) {
+    <!--
+      ═══ SUMMARY STRIP ═══
+      The shared app-complaint-summary, as on RBIO, CEPC, AA and the three CRPC screens. It carries the
+      back affordance too, which is why the old standalone `.back-btn` above the header is gone from
+      this branch (the error branch below still has one — there is no strip to host it there).
 
-    <!-- Complaint Info -->
-    <div class="info-grid">
-      <div class="info-card">
-        <h3 class="card-title">Complaint Details</h3>
-        <div class="info-rows">
-          <div class="info-row">
-            <span class="info-label">Subject</span>
-            <span class="info-value">{{ complaint()!.subject }}</span>
+      The `actions` slot is deliberately NOT used. It is occupied in all five existing hosts and this
+      screen has no strip-level action to put there: the entity's one action is Submit Response, which
+      belongs with the form it submits.
+    -->
+    <app-complaint-summary [items]="summaryItems()" (back)="goBack()" />
+
+    <!--
+      ═══ MAIN CONTENT: THREE REGIONS ═══
+      LEFT is the complaint as forwarded (read-only facts). CENTRE is everything the entity DOES —
+      the response form, the query thread and its internal notes. RIGHT is a thin rail holding the
+      activity timeline, which is consulted rather than worked in.
+
+      `.re-complaint-detail` is pinned by respond.spec.ts:48, activity-status.spec.ts and
+      query-threads.spec.ts as the "screen has loaded" signal, so it stays on the root element. The
+      region classes are ADDITIVE.
+    -->
+    <div class="detail-content">
+      <!-- ── LEFT: the complaint as forwarded ── -->
+      <div class="left-panel">
+        <div class="panel-card">
+          <div class="detail-header">
+            <div class="header-left">
+              <!--
+                `.complaint-number` and `.header-left .status-badge` are both spec contracts
+                (respond.spec.ts:50,58 — and the spec expects TWO badges here, scoping to .first()).
+                Both stay on the same elements inside this header even though the strip above now also
+                carries the number and the status.
+              -->
+              <h2 class="complaint-number">{{ c.complaintNumber }}</h2>
+              <app-status-badge [status]="c.status" />
+              @if (c.reActivityStatus) {
+                <!-- UST846/847: the RBI side renders this through the same component, so both agree. -->
+                <app-status-badge
+                  [status]="c.reActivityStatus!"
+                  [labelKey]="c.reActivityStatusKey ?? null" />
+              }
+            </div>
           </div>
-          <div class="info-row">
-            <span class="info-label">Description</span>
-            <span class="info-value description">{{ complaint()!.description }}</span>
+
+          <div class="section-block">
+            <h4>Complaint Details</h4>
+            <div class="field full-width">
+              <label>Subject</label>
+              <span>{{ c.subject }}</span>
+            </div>
+            <div class="field full-width">
+              <label>Description</label>
+              <span class="description">{{ c.description }}</span>
+            </div>
+            <div class="field">
+              <label>Complainant</label>
+              <!-- Masked for a respondent entity, as it always was. -->
+              <span>{{ maskName(c.complainantName) }}</span>
+            </div>
+            @if (c.reliefSought) {
+              <div class="field full-width">
+                <label>Relief Sought</label>
+                <span>{{ c.reliefSought }}</span>
+              </div>
+            }
+            <div class="field-group">
+              @if (c.priority) {
+                <div class="field">
+                  <label>Priority</label>
+                  <span>{{ c.priority }}</span>
+                </div>
+              }
+              @if (c.filingType) {
+                <div class="field">
+                  <label>Filing Type</label>
+                  <span>{{ c.filingType }}</span>
+                </div>
+              }
+            </div>
           </div>
-          <div class="info-row">
-            <span class="info-label">Complainant</span>
-            <span class="info-value">{{ maskName(complaint()!.complainantName) }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Category</span>
-            <span class="info-value">{{ complaint()!.category }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Filed Date</span>
-            <span class="info-value">{{ complaint()!.filedDate | date:'dd MMM yyyy' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Forwarded Date</span>
-            <span class="info-value">{{ complaint()!.forwardedDate | date:'dd MMM yyyy' }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Response Deadline</span>
-            <span class="info-value deadline" [class.expired]="deadlineCountdown().expired">
-              {{ complaint()!.responseDeadline | date:'dd MMM yyyy, HH:mm' }}
-            </span>
+
+          <!--
+            ═══ DATES ═══
+            Only the dates the endpoint actually emits. `category`, `filedDate` and `forwardedDate`
+            were rendered here as empty rows because GET /re-portal/complaints/{n} does not return
+            them (RePortalController.getComplaintDetail builds its map by hand), so an entity read
+            four captions with nothing beside them. `createdAt` IS emitted, and it is the date the
+            complaint was registered, so it is the one shown.
+
+            The RESPONSE DEADLINE is the significant absence: the server computes the window
+            internally but emits only the boolean `withinResponseWindow`. Until it emits the date,
+            this section states the window's STATE rather than inventing a date for it — see the
+            class doc on isResponseWindowOpen.
+          -->
+          <div class="section-block">
+            <h4>Dates &amp; Response Window</h4>
+            <div class="field-group">
+              @if (c.createdAt) {
+                <div class="field">
+                  <label>Registered</label>
+                  <span>{{ c.createdAt | date:'dd MMM yyyy' }}</span>
+                </div>
+              }
+              @if (c.forwardedDate) {
+                <div class="field">
+                  <label>Forwarded</label>
+                  <span>{{ c.forwardedDate | date:'dd MMM yyyy' }}</span>
+                </div>
+              }
+            </div>
+            <div class="field full-width">
+              <label>Response Window</label>
+              @if (c.responseDeadline) {
+                <span class="deadline" [class.expired]="!isResponseWindowOpen() && !alreadyAnswered()">
+                  {{ c.responseDeadline | date:'dd MMM yyyy, HH:mm' }}
+                </span>
+              } @else {
+                <span class="deadline" [class.expired]="!isResponseWindowOpen() && !alreadyAnswered()">
+                  @if (alreadyAnswered()) {
+                    Closed — your response has been submitted
+                  } @else {
+                    {{ isResponseWindowOpen() ? 'Open — you may submit a response' : 'Closed' }}
+                  }
+                </span>
+              }
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Response Form -->
-    <div class="response-section">
-      <h3 class="section-title">Submit Response</h3>
+      <!-- ── CENTRE: what the entity does ── -->
+      <div class="right-panel">
+        <!--
+          ═══ RESPONSE FORM ═══
+          `.response-form`, `#responseText`, `.submit-btn`, `.success-banner` and
+          `.window-expired-notice` are all spec contracts (respond.spec.ts:81,84,107,110,141-143) and
+          keep their elements.
 
-      @if (responseSuccess()) {
-        <div class="success-banner">
-          <i class="pi pi-check-circle"></i>
-          <span>{{ responseSuccess() }}</span>
-        </div>
-      }
+          The controls are gated on isResponseWindowOpen(), which now reads the server's
+          `withinResponseWindow` rather than a `responseDeadline` the endpoint never sends. Before
+          that fix every control on this form was permanently disabled for every entity.
+        -->
+        <div class="panel-card response-section">
+          <h3 class="section-title">Submit Response</h3>
 
-      @if (responseError()) {
-        <div class="error-banner">
-          <i class="pi pi-exclamation-triangle"></i>
-          <span>{{ responseError() }}</span>
-        </div>
-      }
-
-      <div class="response-form">
-        <div class="form-group">
-          <label for="responseText">Response Text</label>
-          <textarea
-            id="responseText"
-            [ngModel]="responseText()"
-            (ngModelChange)="responseText.set($event)"
-            placeholder="Enter your detailed response to this complaint..."
-            rows="5"
-            [disabled]="!isResponseWindowOpen()"
-          ></textarea>
-        </div>
-
-        <div class="form-group">
-          <label>Supporting Documents</label>
-          <div class="file-upload-area">
-            <input
-              type="file"
-              id="fileUpload"
-              (change)="onFileSelect($event)"
-              multiple
-              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
-              [disabled]="!isResponseWindowOpen()"
-              class="file-input"
-            />
-            <label for="fileUpload" class="file-upload-label">
-              <i class="pi pi-upload"></i>
-              <span>Click to upload or drag files here</span>
-              <span class="file-hint">PDF, DOC, DOCX, JPG, PNG, XLS (Max {{ uploadLimits.maxFileSizeMb() }}MB each)</span>
-            </label>
+          <!--
+            `.expired` is reserved for the window having RUN OUT. An entity that has already answered
+            also has no open window, but telling it "expired" would accuse it of missing a deadline it
+            in fact met, so that case gets its own, non-alarming line.
+          -->
+          <div class="deadline-countdown" [class.expired]="!isResponseWindowOpen() && !alreadyAnswered()"
+               [class.answered]="alreadyAnswered()">
+            @if (alreadyAnswered()) {
+              <i class="pi pi-check-circle"></i>
+              <span>Response already submitted</span>
+            } @else if (!isResponseWindowOpen()) {
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>Response window expired</span>
+            } @else if (deadlineCountdown().known) {
+              <i class="pi pi-clock"></i>
+              <span>{{ deadlineCountdown().days }}d {{ deadlineCountdown().hours }}h remaining</span>
+            } @else {
+              <!--
+                Open, but with no date to count down to. Saying "0d 0h remaining" — which is what the
+                old template did whenever the deadline was absent — tells the entity the opposite of
+                the truth.
+              -->
+              <i class="pi pi-clock"></i>
+              <span>Response window open</span>
+            }
           </div>
 
-          @if (selectedFiles().length > 0) {
-            <div class="file-list">
-              @for (file of selectedFiles(); track file.name; let i = $index) {
-                <div class="file-item">
-                  <i class="pi pi-file"></i>
-                  <span class="file-name">{{ file.name }}</span>
-                  <span class="file-size">{{ (file.size / 1024).toFixed(1) }} KB</span>
-                  <button class="remove-file-btn" (click)="removeFile(i)" aria-label="Remove file">
-                    <i class="pi pi-times"></i>
-                  </button>
+          @if (responseSuccess()) {
+            <div class="success-banner">
+              <i class="pi pi-check-circle"></i>
+              <span>{{ responseSuccess() }}</span>
+            </div>
+          }
+
+          @if (responseError()) {
+            <div class="error-banner">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>{{ responseError() }}</span>
+            </div>
+          }
+
+          <div class="response-form">
+            <div class="form-group">
+              <label for="responseText">Response Text</label>
+              <textarea
+                id="responseText"
+                [ngModel]="responseText()"
+                (ngModelChange)="responseText.set($event)"
+                placeholder="Enter your detailed response to this complaint..."
+                rows="5"
+                [disabled]="!isResponseWindowOpen()"
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label>Supporting Documents</label>
+              <div class="file-upload-area">
+                <input
+                  type="file"
+                  id="fileUpload"
+                  (change)="onFileSelect($event)"
+                  multiple
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xls,.xlsx"
+                  [disabled]="!isResponseWindowOpen()"
+                  class="file-input"
+                />
+                <label for="fileUpload" class="file-upload-label">
+                  <i class="pi pi-upload"></i>
+                  <span>Click to upload or drag files here</span>
+                  <span class="file-hint">PDF, DOC, DOCX, JPG, PNG, XLS (Max {{ uploadLimits.maxFileSizeMb() }}MB each)</span>
+                </label>
+              </div>
+
+              @if (selectedFiles().length > 0) {
+                <div class="file-list">
+                  @for (file of selectedFiles(); track file.name; let i = $index) {
+                    <div class="file-item">
+                      <i class="pi pi-file"></i>
+                      <span class="file-name">{{ file.name }}</span>
+                      <span class="file-size">{{ (file.size / 1024).toFixed(1) }} KB</span>
+                      <button class="remove-file-btn" (click)="removeFile(i)" aria-label="Remove file">
+                        <i class="pi pi-times"></i>
+                      </button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+
+            <div class="form-actions">
+              <button
+                class="submit-btn"
+                (click)="submitResponse()"
+                [disabled]="!isResponseWindowOpen() || submittingResponse()"
+              >
+                @if (submittingResponse()) {
+                  <span class="spinner-sm"></span> Submitting...
+                } @else {
+                  <i class="pi pi-send"></i> Submit Response
+                }
+              </button>
+            </div>
+
+            <!--
+              `.window-expired-notice` is a spec contract (respond.spec.ts:141) and is one of the
+              three accepted renderings of "you cannot submit". It therefore covers BOTH closed cases,
+              with the sentence that is true of each: a duplicate response is refused 409 by the
+              server, which is a different fact from a missed deadline.
+            -->
+            @if (!isResponseWindowOpen()) {
+              <div class="window-expired-notice" [class.answered]="alreadyAnswered()">
+                <i class="pi pi-info-circle"></i>
+                @if (alreadyAnswered()) {
+                  Your response has been recorded. Only one response may be filed per complaint.
+                } @else {
+                  The response window has closed. You cannot submit a response.
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <!--
+          ═══ CORRESPONDENCE ═══
+          Both stay in the CENTRE region, not the rail: the entity COMPOSES in them, and the rail
+          destroys its body on collapse (@if, not [hidden]), which would throw away a half-written
+          query. app-query-thread is also the reason there is no app-comment-thread here — the comment
+          service's isStaff() allowlist refuses RE roles with a 403.
+        -->
+        <!-- Queries & Correspondence (UST853-857) -->
+        <app-query-thread
+          [complaintNumber]="c.complaintNumber"
+          side="RE"
+          [entityCode]="entityCode()" />
+
+        <!-- Internal Notes (UST860) — entity-side only -->
+        <app-internal-notes
+          [complaintNumber]="c.complaintNumber"
+          [entityCode]="entityCode()" />
+      </div>
+
+      <!--
+        ═══ RIGHT RAIL ═══
+        The shared app-context-rail, collapsed to a 48px icon strip until asked for. One panel, because
+        only one has a served source — see `railPanels` for why there is no attachments or email panel
+        on an RE screen.
+      -->
+      <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+
+      <ng-template #railBody let-open>
+        @switch (open) {
+          @case ('history') {
+            <div class="timeline-section">
+              @if (timeline().length === 0) {
+                <p class="no-timeline">No activity recorded yet.</p>
+              } @else {
+                <div class="timeline">
+                  @for (entry of timeline(); track entry.timestamp + entry.action) {
+                    <div class="timeline-item">
+                      <div class="timeline-dot"></div>
+                      <div class="timeline-content">
+                        <div class="timeline-header">
+                          <span class="timeline-action">{{ entry.action }}</span>
+                          <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, HH:mm' }}</span>
+                        </div>
+                        @if (entry.actor) {
+                          <span class="timeline-actor">by {{ entry.actor }}</span>
+                        }
+                        @if (entry.remarks) {
+                          <p class="timeline-remarks">{{ entry.remarks }}</p>
+                        }
+                      </div>
+                    </div>
+                  }
                 </div>
               }
             </div>
           }
-        </div>
-
-        <div class="form-actions">
-          <button
-            class="submit-btn"
-            (click)="submitResponse()"
-            [disabled]="!isResponseWindowOpen() || submittingResponse()"
-          >
-            @if (submittingResponse()) {
-              <span class="spinner-sm"></span> Submitting...
-            } @else {
-              <i class="pi pi-send"></i> Submit Response
-            }
-          </button>
-        </div>
-
-        @if (!isResponseWindowOpen()) {
-          <div class="window-expired-notice">
-            <i class="pi pi-info-circle"></i>
-            The 15-day response window has expired. You cannot submit a response.
-          </div>
         }
-      </div>
-    </div>
-
-    <!-- Queries & Correspondence (UST853-857) -->
-    <app-query-thread
-      [complaintNumber]="complaint()!.complaintNumber"
-      side="RE"
-      [entityCode]="entityCode()" />
-
-    <!-- Internal Notes (UST860) — entity-side only -->
-    <app-internal-notes
-      [complaintNumber]="complaint()!.complaintNumber"
-      [entityCode]="entityCode()" />
-
-    <!-- Timeline -->
-    <div class="timeline-section">
-      <h3 class="section-title">Activity Timeline</h3>
-
-      @if (timeline().length === 0) {
-        <p class="no-timeline">No activity recorded yet.</p>
-      } @else {
-        <div class="timeline">
-          @for (entry of timeline(); track entry.timestamp) {
-            <div class="timeline-item">
-              <div class="timeline-dot"></div>
-              <div class="timeline-content">
-                <div class="timeline-header">
-                  <span class="timeline-action">{{ entry.action }}</span>
-                  <span class="timeline-date">{{ entry.timestamp | date:'dd MMM yyyy, HH:mm' }}</span>
-                </div>
-                @if (entry.actor) {
-                  <span class="timeline-actor">by {{ entry.actor }}</span>
-                }
-                @if (entry.remarks) {
-                  <p class="timeline-remarks">{{ entry.remarks }}</p>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
+      </ng-template>
     </div>
   } @else {
     <div class="error-state">

@@ -5,7 +5,8 @@ import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
-import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { TaskGridComponent } from '../../shared/task-grid/task-grid.component';
+import { TaskGridColumn } from '../../shared/task-grid/task-grid.types';
 
 interface DashboardStats {
   totalForwarded: number;
@@ -22,19 +23,42 @@ interface ReComplaint {
    * Optional because /re-portal/complaints does not return them today: the list row carries
    * complaintNumber, subject, complainantName, status, priority, createdAt, filingType and the
    * reActivity* fields only. `forwardedDate` is populated from createdAt below; `responseDeadline`
-   * has no source on this endpoint, so the deadline column renders '-' rather than a wrong date.
-   * Both getters already guard against a missing value. Surfacing the real forwarded-at and the
-   * statutory response deadline needs a server change (see the session report).
+   * has no source on this endpoint, so the deadline column renders empty rather than a wrong date.
+   * Surfacing the real forwarded-at and the statutory response deadline needs a server change
+   * (see the session report).
    */
   forwardedDate?: string;
   responseDeadline?: string;
   category?: string;
+  complainantName?: string;
+  reActivityStatus?: string;
 }
 
+/**
+ * The entity's own queue, on the shared task grid.
+ *
+ * <h2>Why this screen is the shared grid now</h2>
+ * The RE portal was the last module still rendering its queue as a hand-rolled `<table>`, so it
+ * disagreed with every RBI-side queue about sorting, column filtering, the empty state and paging —
+ * an entity could not sort by status or search within a column at all. The grid is the canonical
+ * screen (see {@link TaskGridComponent}); converging means an entity meets the same queue mechanics
+ * an RBIO officer does, which is the whole point of the homogenisation pass.
+ *
+ * <h2>The KPI cards are clickable, and each one is backed by a real figure</h2>
+ * Every card reads a field the server actually emits from GET /api/v1/re-portal/dashboard
+ * (RePortalService.getDashboardStats → totalForwarded / pending / responded / breached). None is
+ * computed here and none is wired to an endpoint that does not exist. Clicking a card applies the
+ * matching queue filter, so the number and the rows below it can never describe different things.
+ *
+ * <h2>Why the metrics are an ENTITY's, not an officer's</h2>
+ * An RE is a respondent. Its questions are "how much is awaiting a reply from us", "how much have we
+ * already answered" and "how much have we let breach" — not caseload-per-officer, which is an RBI
+ * supervision concern and is served by the PNO dashboard instead.
+ */
 @Component({
   selector: 'app-re-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, StatusBadgeComponent],
+  imports: [CommonModule, FormsModule, TaskGridComponent],
   templateUrl: './re-dashboard.component.html',
   styleUrl: './re-dashboard.component.scss'
 })
@@ -50,6 +74,28 @@ export class ReDashboardComponent implements OnInit {
 
   entityName = signal('');
   nodalOfficer = signal('');
+
+  /**
+   * Columns for the shared grid.
+   *
+   * <p>Headers are keys from the shared `ui.col.*` vocabulary (seeded in all ten locales by
+   * TaskGridTranslationSeeder), not literals and not new RE-specific keys: the entity reads the same
+   * column captions the RBI side does, and inventing `re.col.*` duplicates would be how the two drift
+   * apart again.
+   *
+   * <p>The deadline column is present but will render empty until the list endpoint emits
+   * `responseDeadline`. It is NOT a phantom — GET /re-portal/complaints is served; only this one field
+   * is missing from its row — so keeping the column means it populates the day the server adds it,
+   * rather than the column having to be rediscovered.
+   */
+  readonly gridColumns: TaskGridColumn<ReComplaint>[] = [
+    { key: 'complaintNumber', labelKey: 'ui.col.complaint_number', width: '190px' },
+    { key: 'subject', labelKey: 'ui.col.subject' },
+    { key: 'complainantName', labelKey: 'ui.col.complainant_name', visible: false },
+    { key: 'forwardedDate', labelKey: 'ui.col.created_at', kind: 'date', width: '130px' },
+    { key: 'responseDeadline', labelKey: 'ui.col.deadline', kind: 'date', width: '130px' },
+    { key: 'status', labelKey: 'ui.col.status', kind: 'status', width: '150px' }
+  ];
 
   /**
    * The dropdown expresses the RE's own view of the work ("pending a reply from us"), which is not
@@ -129,6 +175,15 @@ export class ReDashboardComponent implements OnInit {
     });
   }
 
+  /**
+   * Row tint by how close the response deadline is, passed to the grid's `rowClass`.
+   *
+   * <p>Kept through the migration deliberately: it is how a nodal officer sees what is about to
+   * breach without reading every date. It returns '' while the list endpoint omits the deadline, so
+   * the cue is dormant rather than wrong.
+   */
+  readonly urgencyClass = (complaint: ReComplaint): string => this.getUrgencyClass(complaint);
+
   getUrgencyClass(complaint: ReComplaint): string {
     if (!complaint.responseDeadline) return '';
     const deadline = new Date(complaint.responseDeadline);
@@ -158,5 +213,16 @@ export class ReDashboardComponent implements OnInit {
   onFilterChange(event: Event) {
     const select = event.target as HTMLSelectElement;
     this.filterStatus.set(select.value);
+  }
+
+  /**
+   * A KPI card click applies its own filter, and clicking the active card clears it.
+   *
+   * <p>Toggling matters: a card that could only ever narrow the queue would leave the entity with no
+   * way back to the full list except the dropdown, and a KPI that cannot be un-clicked reads as a
+   * broken control.
+   */
+  selectCard(filter: string) {
+    this.filterStatus.update(current => (current === filter ? '' : filter));
   }
 }

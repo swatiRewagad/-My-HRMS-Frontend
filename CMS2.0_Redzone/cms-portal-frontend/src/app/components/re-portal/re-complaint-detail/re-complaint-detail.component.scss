@@ -6,9 +6,82 @@ $border-color: var(--border-subtle);
 $success: var(--state-success-solid);
 $danger: var(--state-danger-solid-hover);
 
+// The 900px single column is gone: this screen is the three-region layout now, and the regions need
+// the full width. `.re-complaint-detail` itself stays — three specs wait on it as the load signal.
 .re-complaint-detail {
-  max-width: 900px;
   margin: 0 auto;
+}
+
+// ═══ THREE REGIONS ═══
+// The same grid as the reference screen: facts | work | 48px rail. The rail's column is FIXED at 48px
+// whether open or closed, because its body overlays leftward — a column that widened would shift the
+// response textarea under the officer's cursor mid-edit.
+.detail-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr 48px;
+  gap: 20px;
+  align-items: start;
+  padding: 20px 0;
+}
+
+.left-panel,
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.panel-card {
+  background: var(--surface-card);
+  border: 1px solid $border-color;
+  border-radius: 12px;
+  padding: 20px 24px;
+}
+
+// ── The left region's read-only facts, in the reference screen's field vocabulary ──
+.section-block {
+  & + & { margin-top: 20px; padding-top: 16px; border-top: 1px solid $border-color; }
+
+  h4 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: $text-muted;
+  }
+}
+
+.field-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin-bottom: 12px;
+
+  &.full-width { grid-column: 1 / -1; }
+
+  label {
+    font-size: 12px;
+    font-weight: 600;
+    color: $text-muted;
+  }
+
+  span {
+    font-size: 14px;
+    color: $text-dark;
+    word-break: break-word;
+
+    &.description { white-space: pre-wrap; line-height: 1.6; }
+    &.deadline.expired { color: $danger; font-weight: 600; }
+  }
 }
 
 .back-btn {
@@ -27,12 +100,13 @@ $danger: var(--state-danger-solid-hover);
   &:hover { text-decoration: underline; }
 }
 
-// Header
+// Header — now inside the left panel's card rather than spanning the screen, so no space-between.
 .detail-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid $border-color;
   flex-wrap: wrap;
   gap: 12px;
 }
@@ -55,11 +129,14 @@ $danger: var(--state-danger-solid-hover);
 // and the `[class]` binding feeding them replaced the base class outright, so even the padding was
 // lost at runtime.
 
+// Now sits inside the response card, above the form it qualifies, rather than opposite the complaint
+// number in a full-width header — the window is a property of the ACTION, not of the identity band.
 .deadline-countdown {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
+  margin-bottom: 16px;
   border-radius: 8px;
   background: var(--state-success-bg);
   color: var(--state-success-fg);
@@ -70,70 +147,24 @@ $danger: var(--state-danger-solid-hover);
     background: var(--state-danger-bg);
     color: $danger;
   }
-}
 
-// Info Grid
-.info-grid {
-  margin-bottom: 28px;
-}
-
-.info-card {
-  background: var(--surface-card);
-  border: 1px solid $border-color;
-  border-radius: 12px;
-  padding: 24px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: $text-dark;
-  margin: 0 0 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid $border-color;
-}
-
-.info-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.info-row {
-  display: flex;
-  gap: 16px;
-}
-
-.info-label {
-  min-width: 140px;
-  font-size: 13px;
-  font-weight: 600;
-  color: $text-muted;
-  flex-shrink: 0;
-}
-
-.info-value {
-  font-size: 14px;
-  color: $text-dark;
-
-  &.description {
-    white-space: pre-wrap;
-    line-height: 1.6;
-  }
-
-  &.deadline.expired {
-    color: $danger;
-    font-weight: 600;
+  // Answered, not expired. The default tone here is already the success one, so this only has to
+  // keep `.expired` off it — it is declared so the state is named in the stylesheet rather than
+  // being an accident of the default.
+  &.answered {
+    background: var(--state-success-bg);
+    color: var(--state-success-fg);
   }
 }
 
-// Response & Query Sections
+// The `.info-grid` / `.info-card` / `.info-row` / `.info-label` / `.info-value` vocabulary is gone:
+// the left region uses the reference screen's `.section-block` / `.field` shape above, so keeping a
+// second set of fact-row rules would be two definitions of the same thing. `.card-title` goes with
+// them — the summary strip and the section headings carry that job now.
+
+// The response card takes its frame from `.panel-card`; only its own spacing is left here.
 .response-section, .query-section {
-  background: var(--surface-card);
-  border: 1px solid $border-color;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
+  margin-bottom: 0;
 }
 
 .section-title {
@@ -329,6 +360,14 @@ $danger: var(--state-danger-solid-hover);
   color: $danger;
 
   i { font-size: 16px; }
+
+  // The element is a spec contract, so it carries the already-answered case too — but that case is
+  // the entity having complied, and a red panel would read as a fault on its part.
+  &.answered {
+    background: var(--surface-subtle);
+    border-color: $border-color;
+    color: $text-muted;
+  }
 }
 
 // Banners
@@ -358,12 +397,10 @@ $danger: var(--state-danger-solid-hover);
   font-size: 14px;
 }
 
-// Timeline
+// Timeline — now the rail's body, so it supplies no frame of its own: the rail already draws the
+// panel, and a card inside a card reads as a rendering fault.
 .timeline-section {
-  background: var(--surface-card);
-  border: 1px solid $border-color;
-  border-radius: 12px;
-  padding: 24px;
+  padding: 0;
 }
 
 .no-timeline {
@@ -478,10 +515,16 @@ $danger: var(--state-danger-solid-hover);
 @keyframes spin { to { transform: rotate(360deg); } }
 
 // Responsive
+// The rail KEEPS its column at every width — it is 48px, it overlays its body, and dropping it would
+// take the activity timeline off the screen entirely on a tablet. The two working regions stack.
+@media (max-width: 1024px) {
+  .detail-content { grid-template-columns: 1fr 48px; }
+  .left-panel, .right-panel { grid-column: 1; }
+}
+
 @media (max-width: 768px) {
   .detail-header { flex-direction: column; align-items: flex-start; }
-  .info-row { flex-direction: column; gap: 2px; }
-  .info-label { min-width: unset; }
+  .field-group { grid-template-columns: 1fr; }
   .form-actions { flex-direction: column; }
   .submit-btn, .query-btn { width: 100%; justify-content: center; }
 }

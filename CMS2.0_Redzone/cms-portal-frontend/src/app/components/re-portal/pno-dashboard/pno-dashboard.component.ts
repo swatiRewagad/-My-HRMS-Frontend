@@ -1,7 +1,10 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { ReassignmentService, OfficerWorkload } from '../../../services/reassignment.service';
+import { TaskGridComponent } from '../../shared/task-grid/task-grid.component';
+import { TaskGridColumn } from '../../shared/task-grid/task-grid.types';
 
 /**
  * The Principal Nodal Officer's view of their own entity (UST838 + UST844).
@@ -40,12 +43,13 @@ interface HistorySummaryRow2Way {
 @Component({
   selector: 'app-re-pno-dashboard',
   standalone: true,
-  imports: [CommonModule, TranslatePipe],
+  imports: [CommonModule, TranslatePipe, TaskGridComponent],
   templateUrl: './pno-dashboard.component.html',
   styleUrl: './pno-dashboard.component.scss'
 })
 export class PnoDashboardComponent implements OnInit {
   private reassignment = inject(ReassignmentService);
+  private router = inject(Router);
 
   // ═══ Team workload (UST838) ═══
   workloadLoading = signal(true);
@@ -57,6 +61,42 @@ export class PnoDashboardComponent implements OnInit {
   /** Most loaded first — that is the officer a PNO is looking for. Ties keep a stable order. */
   sortedOfficers = computed(() =>
     [...this.officers()].sort((a, b) => b.workload - a.workload || a.userId.localeCompare(b.userId)));
+
+  /**
+   * Columns for the workload grid.
+   *
+   * <p>Reuses the already-seeded `re.pno.*` captions rather than the shared `ui.col.*` vocabulary,
+   * because neither "Officer" nor "Open records" exists there and `ui.col.assigned_officer`
+   * ("Assigned Officer") states something different — this column is the officer HOLDING the records,
+   * not one assigned to a complaint. No new key is introduced.
+   *
+   * <p>The workload column is NOT sortable through the grid: the rows arrive most-loaded-first, which
+   * is the order a PNO reads, and the figure must equal what the reassignment popup shows (UST838).
+   * Sorting it is harmless, but a DATE kind or a formatter here would re-derive the number, so the
+   * column is deliberately the plainest possible passthrough.
+   */
+  readonly workloadColumns: TaskGridColumn<OfficerWorkload>[] = [
+    { key: 'userId', labelKey: 're.pno.officer_column' },
+    { key: 'workload', labelKey: 're.pno.workload_column', width: '160px' }
+  ];
+
+  /**
+   * Columns for the history summary. Both direction captions are already seeded.
+   *
+   * <p>The officer column falls back to the id when the summary carries no display name, which is the
+   * behaviour the hand-rolled table had. It is a FORMATTER rather than a pre-flattened field so the
+   * grid filters and sorts the same text it shows — filtering a blank `displayName` while rendering
+   * the id is the exact trap `TaskGridColumn.formatter` is documented against.
+   */
+  readonly historyColumns: TaskGridColumn<HistorySummaryRow2Way>[] = [
+    {
+      key: 'displayName',
+      labelKey: 're.pno.officer_column',
+      formatter: row => row.displayName || row.userId
+    },
+    { key: 'inbound', labelKey: 're.reassign.summary_inbound', width: '180px' },
+    { key: 'outbound', labelKey: 're.reassign.summary_outbound', width: '180px' }
+  ];
 
   // ═══ Approvals awaiting this PNO (UST843) ═══
   approvalsLoading = signal(true);
@@ -168,6 +208,18 @@ export class PnoDashboardComponent implements OnInit {
         this.historyLoading.set(false);
       }
     });
+  }
+
+  /**
+   * Opens the approvals queue the pending-approvals KPI counts.
+   *
+   * <p>The card used to be an inert tile carrying a text hint, on the stated grounds that "no route is
+   * registered for the approvals screen in app.routes.ts". That is no longer true — `re-portal/
+   * reassignment/approvals` is registered (app.routes.ts) and loads PnoApprovalsComponent — so the
+   * number can now take the PNO to the records it counts, which is what a KPI card is for.
+   */
+  openApprovals(): void {
+    this.router.navigate(['/re-portal/reassignment/approvals']);
   }
 
   /**

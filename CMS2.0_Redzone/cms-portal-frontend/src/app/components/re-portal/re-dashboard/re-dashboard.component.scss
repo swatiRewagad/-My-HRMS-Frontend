@@ -42,6 +42,8 @@ $border-color: var(--border-subtle);
   margin-bottom: 32px;
 }
 
+// The three filtering cards are <button>s now, so the reset is here rather than relying on the tile
+// having been a div: a button inherits a centred, UA-styled box that would otherwise break the row.
 .stat-card {
   background: var(--surface-card);
   border-radius: 12px;
@@ -50,10 +52,32 @@ $border-color: var(--border-subtle);
   align-items: center;
   gap: 16px;
   border: 1px solid $border-color;
-  transition: box-shadow 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  width: 100%;
+  text-align: left;
+  font: inherit;
 
   &:hover {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+}
+
+// Only the filtering cards offer a pointer. The breached tile is a read-only indicator (see the
+// template), and a pointer cursor on it would promise a click that deliberately does nothing.
+button.stat-card {
+  cursor: pointer;
+
+  // A visible focus ring, because these are now the primary way to filter the queue and a
+  // keyboard-only nodal officer has to be able to see which card they are on.
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+  }
+
+  // The selected card and the rows below it describe the same set; the tint is what says so.
+  &.active {
+    border-color: $primary;
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.12);
   }
 }
 
@@ -90,30 +114,15 @@ $border-color: var(--border-subtle);
   margin-top: 2px;
 }
 
-// Complaints Section
-.complaints-section {
-  background: var(--surface-card);
-  border-radius: 12px;
-  border: 1px solid $border-color;
-  overflow: hidden;
-}
+// ═══ THE QUEUE ═══
+// The table, its header bar, its empty/loading states, its row hover and its paging now belong to the
+// shared app-task-grid, so the ~90 lines that styled a hand-rolled `.complaints-table` here are gone
+// rather than kept as a second, divergable definition of the same grid. What remains below is only
+// what is genuinely RE-specific: the projected status dropdown and the deadline row tint.
 
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  border-bottom: 1px solid $border-color;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: $text-dark;
-  margin: 0;
-}
-
-.status-filter {
+// Projected into the grid's headerActions slot, so the DOM lives in the grid's component while the
+// template belongs to this one — ::ng-deep is what styles it, following rbio-tasks.
+:host ::ng-deep .status-filter {
   padding: 8px 16px;
   border: 1px solid $border-color;
   border-radius: 8px;
@@ -129,119 +138,15 @@ $border-color: var(--border-subtle);
   }
 }
 
-// Table
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.complaints-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th {
-    text-align: left;
-    padding: 12px 16px;
-    font-size: 12px;
-    font-weight: 600;
-    color: $text-muted;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    background: var(--surface-subtle);
-    border-bottom: 1px solid $border-color;
-  }
-
-  td {
-    padding: 14px 16px;
-    font-size: 14px;
-    color: $text-dark;
-    border-bottom: 1px solid var(--surface-subtle);
-  }
-}
-
-.complaint-row {
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover { background: var(--surface-page); }
-
+// The deadline tint, applied to grid rows through the grid's `rowClass` input. Also projected DOM, so
+// also ::ng-deep. Dormant until the list endpoint emits responseDeadline (the class function returns
+// '' without one), but kept so the cue returns with the field rather than having to be rebuilt.
+:host ::ng-deep .data-grid tbody tr {
   &.urgency-green { border-left: 3px solid var(--state-success-solid); }
   &.urgency-yellow { border-left: 3px solid #eab308; }
   &.urgency-red { border-left: 3px solid var(--state-danger-solid); }
   &.urgency-breached { border-left: 3px solid #7c2d12; background: var(--state-danger-bg); }
 }
-
-.complaint-number {
-  font-weight: 600;
-  color: $primary;
-  font-size: 13px;
-}
-
-.complaint-subject {
-  max-width: 240px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.deadline-text {
-  display: block;
-  font-size: 13px;
-}
-
-.days-remaining {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
-  margin-top: 2px;
-  padding: 2px 6px;
-  border-radius: 4px;
-
-  &.urgency-green { color: var(--state-success-solid); background: var(--state-success-bg); }
-  &.urgency-yellow { color: #ca8a04; background: #fefce8; }
-  &.urgency-red { color: var(--state-danger-solid-hover); background: var(--state-danger-bg); }
-  &.urgency-breached { color: #7c2d12; background: var(--state-danger-bg); }
-}
-
-// Status badge styling moved to the shared app-status-badge component (UST847).
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-  background: $primary-light;
-  color: $primary;
-  border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-
-  &:hover { background: #d6e4fc; }
-}
-
-// Loading / Empty
-.loading-state, .empty-state {
-  padding: 48px;
-  text-align: center;
-  color: $text-muted;
-
-  i { font-size: 32px; margin-bottom: 12px; opacity: 0.4; }
-  p { font-size: 14px; margin: 8px 0 0; }
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--border-subtle);
-  border-top-color: $primary;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto 12px;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
 
 // Responsive
 @media (max-width: 1024px) {
@@ -250,15 +155,8 @@ $border-color: var(--border-subtle);
 
 @media (max-width: 768px) {
   .stats-grid { grid-template-columns: 1fr; gap: 12px; }
-
-  .section-header {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .complaints-table th:nth-child(3),
-  .complaints-table td:nth-child(3) { display: none; }
+  // The grid owns its own narrow-screen behaviour now, so the column-hiding rules that used to live
+  // here would have had no element to match.
 }
 
 @media (max-width: 480px) {
