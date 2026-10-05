@@ -221,8 +221,14 @@ public class SecurityAdminController {
             row.put("description", p.getDescription());
             try {
                 row.put("rowsPastRetention", retentionService.preview(p));
+                // Forward-looking companion to rowsPastRetention. That field counts records that
+                // have ALREADY expired, which is too late for the review a purge is supposed to
+                // follow; this one names the records a reviewer still has time to act on.
+                row.put("rowsApproachingRetention", retentionService.approachingRetention(p));
+                row.put("reviewWindowDays", retentionService.reviewWindowDays());
             } catch (Exception e) {
                 row.put("rowsPastRetention", null);
+                row.put("rowsApproachingRetention", null);
                 row.put("previewError", e.getMessage());
             }
             return row;
@@ -231,6 +237,7 @@ public class SecurityAdminController {
         return ResponseEntity.ok(Map.of(
                 "success", true,
                 "data", enriched,
+                "reviewWindowDays", retentionService.reviewWindowDays(),
                 "destructiveEnabled",
                         systemConfigService.getBoolean(RetentionService.CFG_DESTRUCTIVE, false)));
     }

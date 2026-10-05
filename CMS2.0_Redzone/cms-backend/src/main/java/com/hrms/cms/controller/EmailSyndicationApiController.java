@@ -727,6 +727,8 @@ public class EmailSyndicationApiController {
             draft.setDeoDecision((String) request.get("deoDecision"));
             draft.setDeoRemarks((String) request.get("deoRemarks"));
             draft.setNonMaintainableReason((String) request.get("nonMaintainableReason"));
+            if (request.containsKey("closureClause")) draft.setClosureClause((String) request.get("closureClause"));
+            if (request.containsKey("autoClosureResponsesJson")) draft.setAutoClosureResponsesJson((String) request.get("autoClosureResponsesJson"));
             draft.setReceivedAt(java.time.LocalDateTime.now());
 
             draftRepository.save(draft);

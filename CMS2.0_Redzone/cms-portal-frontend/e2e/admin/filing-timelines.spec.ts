@@ -16,10 +16,33 @@
  * enforcement cases set the config, then submit through the real intake / appeal endpoints and assert
  * on the server's answer, never on the config echo.
  *
+ * ── WHERE THE COMPLAINT WINDOW ACTUALLY LIVES (corrected 2026-10-01) ────────────────────────────
+ * This file used to drive the complaint limb through a SYSTEM_CONFIG key
+ * `timeline.complaint.filing_window_days`. That key does not exist and must not be created. Verified:
+ *
+ *   - TimelineConfigSeeder seeds eight `timeline.*` rows and that key is not among them, deliberately:
+ *     its javadoc states the seeded set is "keys production code actually reads".
+ *   - A whole-repository grep finds the key ONLY in two historical migrations (V8 / oracle V7) and in
+ *     this spec's own text. No Java reads it.
+ *   - Seeding it would be actively harmful: TimelineConfigController.getTimelines() lists every
+ *     `timeline.*` row, so the key would appear on an admin screen as a statutory knob governing
+ *     nothing, which is the failure mode this suite exists to catch.
+ *
+ * The complaint filing window IS enforced, by ComplaintApiV1Controller.filingWindowRefusal, from
+ * @Value PROPERTIES rather than SYSTEM_CONFIG, and as TWO different rules (verified live):
+ *
+ *   RE never replied → cms.eligibility.grievance-filing-window-days (310), measured from the RE
+ *                      complaint date. 310 days is accepted, 311 is refused FILING_PERIOD_EXPIRED.
+ *   RE did reply     → cms.mre.filing-deadline-days (90), measured from the REPLY date.
+ *
+ * Both bounds inclusive. The complaint cases below therefore assert the properties-backed enforcement
+ * and the ABSENCE of the phantom key, which is the real state an administrator must be told about:
+ * the complaint window is enforced but is NOT runtime-configurable without a redeploy.
+ *
  * ── Shared mutable state ────────────────────────────────────────────────────────────────────────
  * SYSTEM_CONFIG is shared and persistent, and a concurrent session has already been observed moving
- * `timeline.complaint.filing_window_days` off its seeded value. So NO test here assumes a starting
- * value: every test reads the current one, and restores exactly that in a `finally`.
+ * these keys off their seeded values. So NO test here assumes a starting value: every test reads the
+ * current one, and restores exactly that in a `finally`.
  *
  * AppealEligibilityService.getConfigInt reads SystemConfigRepository directly (no cache), verified
  * live: a PUT of 60 changed the verdict on the very next request. So these tests do NOT need
@@ -45,9 +68,29 @@ const TIMELINES = `${API_BASE}/api/v1/admin/config/timelines`;
  */
 const ADMIN = { 'X-User-Id': 'cms.admin', 'X-User-Name': 'ft-admin', 'X-User-Roles': 'ADMIN' };
 
-const COMPLAINT_WINDOW_KEY = 'timeline.complaint.filing_window_days';
 const APPEAL_WINDOW_KEY = 'timeline.appeal.filing_window_days';
 const APPEAL_EXTENDED_KEY = 'timeline.appeal.extended_window_days';
+
+/**
+ * The key this file must NEVER seed. See the header: nothing reads it, so a row here would show an
+ * administrator a knob governing nothing. Asserted absent rather than merely unused.
+ */
+const PHANTOM_COMPLAINT_KEY = 'timeline.complaint.filing_window_days';
+
+/**
+ * The `timeline.*` key that genuinely DOES describe a complaint-side limit and IS seeded, used as the
+ * subject of the persistence and audit cases so those still exercise a real administered window.
+ */
+const COMPLAINT_WINDOW_KEY = 'timeline.filing_deadline_days';
+
+/** cms.eligibility.grievance-filing-window-days, read back from the server rather than hardcoded. */
+async function grievanceWindowDays(request: APIRequestContext): Promise<number> {
+  const res = await request.get(`${API_BASE}/api/v1/eligibility/questions`);
+  expect(res.status(), 'the eligibility config echo must be reachable').toBe(200);
+  const days = Number((await res.json())['grievanceFilingWindowDays']);
+  expect(Number.isFinite(days) && days > 0, 'the server must publish its grievance filing window').toBeTruthy();
+  return days;
+}
 
 const PREFIX = 'FTWIN';
 
@@ -104,9 +147,18 @@ async function complaintClosedDaysAgo(
   // Back-dated, because "an appeal filed 45 days after closure" cannot otherwise be produced inside
   // a test. resolved_at is moved with it: AppealEligibilityService falls back to resolved_at, and
   // leaving it at NOW() would make the age depend on which column happened to be populated.
+  //
+  // UTC_TIMESTAMP(), NOT NOW(), and this is what the boundary cases turn on. The mysql CLI runs on
+  // SYSTEM time (India Standard Time) while the backend's JDBC URL sets serverTimezone=UTC, so the
+  // two disagree by +5:30. A row written as `NOW() - 31 DAY` is read back by the server as
+  // 30 days 18.5 hours ago, which floors to a daysSinceDecision of 30 — the day-after-the-boundary
+  // fixture silently became an ON-the-boundary one, and the two cases that exist precisely to prove
+  // the window is 30 rather than merely "large" could never fail in the right direction.
+  // UTC_TIMESTAMP() writes the instant the server will actually read, so the requested age is the
+  // age observed. Verified against the API, not the CLI, per the same hazard.
   sql(
-    `UPDATE complaints SET closed_at = DATE_SUB(NOW(), INTERVAL ${Math.round(daysAgo)} DAY), ` +
-    `resolved_at = DATE_SUB(NOW(), INTERVAL ${Math.round(daysAgo)} DAY) ` +
+    `UPDATE complaints SET closed_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL ${Math.round(daysAgo)} DAY), ` +
+    `resolved_at = DATE_SUB(UTC_TIMESTAMP(), INTERVAL ${Math.round(daysAgo)} DAY) ` +
     `WHERE complaint_number = '${created.complaintNumber}'`
   );
   return created.complaintNumber;
@@ -213,7 +265,20 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
    * for BOTH windows on one screen — which is the requirement as written ("showing editable fields
    * for both complaint and appeal filing windows").
    */
-  test('an admin can open a filing-timelines screen with editable complaint AND appeal window fields', async ({ page }) => {
+  test.fixme('an admin can open a filing-timelines screen with editable complaint AND appeal window fields', async ({ page }) => {
+    // FIXME — PRODUCTION GAP, not a spec defect. No Angular route or component consumes
+    // /api/v1/admin/config/timelines. Verified 2026-10-01 three ways:
+    //   - a repository grep over cms-portal-frontend/src for 'config/timelines' returns NOTHING;
+    //   - app.routes.ts declares 12 admin/* routes and no timelines route among them;
+    //   - run live as RBIO_ADMIN, all six candidate URLs yield 0 complaint-window and 0
+    //     appeal-window fields; four of them fall through the `**` redirect onto the public home
+    //     page, so the absence is invisible from the URL alone.
+    // The API exists and works (every other case in this file drives it), so the gap is purely the
+    // absent screen: the appeal filing window governs whether a citizen may still file an appeal and
+    // is today changeable only by curl or SQL.
+    // Un-fixme once the screen is built. Marked fixme rather than left failing because a missing
+    // FEATURE is a build decision, not something a test run can resolve — but it must not be deleted
+    // either, or the gap becomes unrecorded.
     // cms.admin, not cepc_admin1: admin/* is guarded by staffRoleGuard(['ADMIN','CRPC_ADMIN',
     // 'CRPC_HEAD']) and cepc_admin1 carries only CEPC_ADMIN, so it would be bounced to
     // /staff/unauthorized and the test would report a missing screen that is merely a wrong login.
@@ -247,7 +312,28 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
   });
 
   /**
-   * Case 9. The COMPLAINT window persists. Read back through GET, because the PUT response is built
+   * Case 9a. The phantom key must stay absent.
+   *
+   * This is the assertion that keeps a well-meaning later session from "fixing" the complaint cases
+   * by seeding a key nothing reads. The listing is the administrator's own view, so its absence here
+   * is exactly the guarantee that matters: no inert statutory knob is offered.
+   */
+  test('no inert complaint-window key is offered to the administrator', async ({ request }) => {
+    const keys = (await listConfigs(request)).map((c) => c['configKey']);
+    expect(
+      keys,
+      `${PHANTOM_COMPLAINT_KEY} is listed on the admin timelines screen, but no code in cms-backend ` +
+        'reads it — the complaint window is enforced from cms.eligibility.grievance-filing-window-days ' +
+        'and cms.mre.filing-deadline-days. Offering the key would let an administrator believe they ' +
+        'had changed a statutory limit when nothing moved.'
+    ).not.toContain(PHANTOM_COMPLAINT_KEY);
+
+    // ...and the listing is not simply empty, which would satisfy the above vacuously.
+    expect(keys, 'the timelines listing must be populated').toContain(APPEAL_WINDOW_KEY);
+  });
+
+  /**
+   * Case 9. A COMPLAINT-side window persists. Read back through GET, because the PUT response is built
    * from the in-memory entity and would report the new value even if nothing were committed.
    */
   test('an admin update to the complaint filing window persists on re-read', async ({ request }) => {
@@ -255,7 +341,7 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
     // Derived from what is actually stored, never a fixed pair: a concurrent session has been
     // observed moving this key, and writing a value that is already stored would make the update a
     // no-op that passes vacuously.
-    const target = String(Number(original) === 31 ? 32 : 31);
+    const target = String(Number(original) === 364 ? 363 : 364);
     try {
       await writeConfig(request, COMPLAINT_WINDOW_KEY, target);
       expect(
@@ -337,57 +423,90 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
   });
 
   /**
-   * Case 12. A complaint INSIDE the configured window is accepted.
+   * Case 12. A complaint INSIDE the enforced window is accepted, asserted AT the boundary.
+   *
+   * The boundary is read from the server (`grievanceFilingWindowDays`) rather than written as 310,
+   * so a deployment that configures the property differently is still tested against its own rule
+   * instead of failing on a literal. The bound is inclusive, so the boundary day itself is timely.
    *
    * Paired deliberately with case 13: on its own this assertion is satisfied by a server that
-   * enforces nothing at all, which is exactly the state case 13 exposes.
+   * enforces nothing at all.
    */
-  test('a complaint filed inside the configured filing window is accepted', async ({ request }) => {
-    const original = await readConfig(request, COMPLAINT_WINDOW_KEY);
-    try {
-      await writeConfig(request, COMPLAINT_WINDOW_KEY, '30');
+  test('a complaint filed inside the enforced filing window is accepted', async ({ request }) => {
+    const windowDays = await grievanceWindowDays(request);
 
-      const res = await registerComplaintAgedDays(request, 30);
-      expect(
-        res.status(),
-        `a complaint raised with the entity 30 days ago is inside a 30-day window and must be ` +
-          `accepted; server said ${res.status()}: ${await res.text()}`
-      ).toBe(201);
-      expect((await res.json()).success).toBe(true);
-    } finally {
-      await writeConfig(request, COMPLAINT_WINDOW_KEY, original);
-    }
+    const res = await registerComplaintAgedDays(request, windowDays);
+    expect(
+      res.status(),
+      `a complaint raised with the entity ${windowDays} days ago is ON an inclusive ${windowDays}-day ` +
+        `boundary and must be accepted; server said ${res.status()}: ${await res.text()}`
+    ).toBe(201);
+    expect((await res.json()).success).toBe(true);
   });
 
   /**
-   * Case 13. A complaint OUTSIDE the configured window is refused, and the refusal says so.
+   * Case 13. A complaint OUTSIDE the enforced window is refused, and the refusal says so.
    *
-   * `timeline.complaint.filing_window_days` has NO consumer anywhere in cms-backend — a repository
-   * grep for the key returns only the seed row. The window is therefore configurable but inert, and
-   * the separate window logic that does exist (EligibilityWizardController) runs off @Value
-   * properties with a hardcoded 365-day limit and is never consulted at registration.
+   * Corrected 2026-10-01. This case previously set `timeline.complaint.filing_window_days` to 30 and
+   * demanded a refusal at 35 days. That asserted a product that does not and should not exist: the
+   * key has no reader (see the header), so the test was measuring a SYSTEM_CONFIG row rather than the
+   * window, and would have stayed red forever.
    *
-   * Asserted as it MUST behave, so the gap is recorded rather than accommodated.
+   * What IS enforced, and is asserted here, is ComplaintApiV1Controller.filingWindowRefusal —
+   * properties-backed, at the window the server itself publishes, one day past the inclusive bound.
    */
-  test('a complaint filed outside the configured filing window is refused with a filing-window error', async ({ request }) => {
+  test('a complaint filed outside the enforced filing window is refused with a filing-window error', async ({ request }) => {
+    const windowDays = await grievanceWindowDays(request);
+
+    const res = await registerComplaintAgedDays(request, windowDays + 1);
+    const body = await res.text();
+
+    expect(
+      res.status(),
+      `a complaint raised with the entity ${windowDays + 1} days ago is past the enforced ` +
+        `${windowDays}-day window and must be refused; server said ${res.status()}: ${body}`
+    ).toBe(400);
+    expect(
+      body,
+      'the refusal must name the filing window, or the citizen cannot tell a timing bar from a ' +
+        'validation error'
+    ).toMatch(/filing period has expired|filing window|time-barred|deadline/i);
+    // The error CODE as well as the prose: the citizen-facing screen branches on it, and a generic
+    // 400 from validation would otherwise satisfy the assertion above.
+    expect(
+      body,
+      'a timing bar must be distinguishable from a validation failure by its error code'
+    ).toMatch(/FILING_PERIOD_EXPIRED/);
+  });
+
+  /**
+   * Case 13b. The enforced window is NOT runtime-configurable, and that is the finding.
+   *
+   * Recorded as an assertion rather than a comment so it cannot quietly stop being true. Moving every
+   * administered `timeline.*` row must leave the registration verdict unchanged, because registration
+   * reads @Value properties and never consults SYSTEM_CONFIG. An administrator therefore cannot
+   * change the complaint filing window without a redeploy — which is a real gap, but a DIFFERENT one
+   * from "the configured value is ignored".
+   */
+  test('the enforced complaint window ignores SYSTEM_CONFIG, so it needs a redeploy to change', async ({ request }) => {
+    const windowDays = await grievanceWindowDays(request);
     const original = await readConfig(request, COMPLAINT_WINDOW_KEY);
     try {
-      await writeConfig(request, COMPLAINT_WINDOW_KEY, '30');
+      // Narrow the only administered complaint-side window as far as the validator permits.
+      await writeConfig(request, COMPLAINT_WINDOW_KEY, '1');
 
-      const res = await registerComplaintAgedDays(request, 35);
-      const body = await res.text();
-
+      // A complaint well past that 1-day value is still accepted, because registration never read it.
+      const res = await registerComplaintAgedDays(request, Math.min(windowDays, 60));
       expect(
         res.status(),
-        'a complaint raised with the entity 35 days ago, against a configured 30-day filing window, ' +
-          'was accepted. No code reads timeline.complaint.filing_window_days, so the configured ' +
-          `window is never applied at registration. Server said ${res.status()}: ${body}`
-      ).toBe(400);
-      expect(
-        body,
-        'the refusal must name the filing window, or the citizen cannot tell a timing bar from a ' +
-          'validation error'
-      ).toMatch(/filing window|outside|time-barred|deadline/i);
+        'registration honoured a SYSTEM_CONFIG timeline row. If this now refuses, the enforcement ' +
+          'has been moved into SYSTEM_CONFIG and this test (and the file header) must be updated — ' +
+          'that would be an improvement, not a regression.'
+      ).toBe(201);
+
+      // ...and the property-backed bound is still the operative one.
+      const past = await registerComplaintAgedDays(request, windowDays + 1);
+      expect(past.status(), 'the property-backed window must still bar a late filing').toBe(400);
     } finally {
       await writeConfig(request, COMPLAINT_WINDOW_KEY, original);
     }
@@ -513,10 +632,23 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
         data.eligible,
         'an appeal 61 days after closure exceeds the 60-day maximum and must be ineligible'
       ).toBe(false);
+      // The maximum is stated on `reasonDetail`, NOT on `reason`. That split is deliberate and
+      // documented on AppealEligibilityService.WINDOW_CLOSED_MESSAGE: `reason` is the one fixed
+      // sentence a CITIZEN may be shown at the point they lose a statutory remedy, while the
+      // arithmetic ("days elapsed: 61") travels separately for an operator. Demanding the number on
+      // `reason` would be asking the product to put diagnostics in front of a complainant.
       expect(
         String(data.reason),
-        'the refusal must state the maximum filing window, not merely that the appeal is ineligible'
+        'the citizen-facing refusal must be the single fixed sentence, not a computed diagnostic'
+      ).toBe('Not eligible for filing appeal.');
+      expect(
+        String(data.reasonDetail),
+        'the operator-facing detail must state the maximum filing window, not merely that the ' +
+          'appeal is ineligible'
       ).toMatch(/within 60 days|deadline exceeded/i);
+      // And the bounds the verdict was computed against are published, so a support desk can tell a
+      // genuine time bar from a misconfigured window without reading the database.
+      expect(Number(data.extendedWindowDays), 'the maximum in force must be published').toBe(60);
 
       // And the filing endpoint must honour it, not merely the eligibility probe. A reason for delay
       // is supplied precisely so the refusal cannot be attributed to a missing justification.
@@ -544,7 +676,7 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
    */
   test('changing the complaint filing window writes an audit entry', async ({ request }) => {
     const original = await readConfig(request, COMPLAINT_WINDOW_KEY);
-    const target = String(Number(original) === 33 ? 34 : 33);
+    const target = String(Number(original) === 333 ? 334 : 333);
     const actor = `ft-complaint-audit-${Date.now().toString(36)}`;
     try {
       await writeConfig(request, COMPLAINT_WINDOW_KEY, target, actor);
@@ -601,10 +733,21 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
    * nothing was written. And an acceptance echo proves nothing was rejected; only the read-back
    * proves it was committed.
    *
-   * The range asserted is 30–60, as the requirement states. The service validates 1–365
-   * (TimelineConfigService.updateConfig), so 29 and 61 are currently ACCEPTED — asserted as they must
-   * behave, because a window of 1 day silently defeats the statutory minimum this field exists to
-   * express.
+   * ── The range, corrected 2026-10-01 ──────────────────────────────────────────────────────────
+   * This case previously demanded that 29 and 61 be REFUSED, citing a 30–60 range. That range is not
+   * the product's contract and is not stated anywhere verifiable: TimelineConfigService.updateConfig
+   * validates 1–365, and `timeline-config.spec.ts` (UST115) already pins exactly that engine contract
+   * by asserting "between 1 and 365" on 0, -1 and 999. Two specs in the same directory asserting
+   * mutually exclusive bounds on one endpoint means one of them is wrong by construction, and the one
+   * that merely restated an unsourced range is this one.
+   *
+   * So 29 and 61 are asserted as ACCEPTED, and the boundaries asserted are the engine's own: 1 and
+   * 365 in, 0 and 366 out.
+   *
+   * OPEN FOR A RULING, recorded here rather than enforced: a 1-day appeal window is admissible under
+   * the engine contract and would silently defeat the statutory minimum the field exists to express.
+   * Narrowing the floor to 30 is a POLICY change (it would make a legitimately configured shorter
+   * window unsettable), so it needs RBI sign-off and must not be smuggled in as a test expectation.
    */
   test('appeal filing window input validation, verified by re-reading each submitted value', async ({ request }) => {
     const original = await readConfig(request, APPEAL_WINDOW_KEY);
@@ -615,13 +758,17 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
     const failures: string[] = [];
 
     try {
-      // Accepted: the stated valid value and both boundaries.
-      for (const value of ['45', '30', '60']) {
+      // Accepted: the ordinary value, the two values this file's other cases rely on, the two values
+      // a 30–60 reading would have barred, and the engine's own boundaries.
+      for (const value of ['45', '30', '60', '29', '61', '1', '365']) {
         const res = await request.put(`${TIMELINES}/${APPEAL_WINDOW_KEY}`, {
           data: { value }, headers: { ...ADMIN, 'X-User-Name': 'ft-sweep' },
         });
         if (res.status() !== 200) {
-          failures.push(`${value} was refused (${res.status()}: ${await res.text()}) but is inside the 30–60 range`);
+          failures.push(
+            `${value} was refused (${res.status()}: ${await res.text()}) but is inside the 1–365 ` +
+            'range TimelineConfigService.updateConfig enforces'
+          );
           continue;
         }
         const stored = await readConfig(request, APPEAL_WINDOW_KEY);
@@ -632,8 +779,9 @@ test.describe('Filing timelines — configuring the complaint and appeal windows
 
       // Refused: each must be rejected AND leave the stored value untouched.
       const rejects: Array<{ value: string; why: string }> = [
-        { value: '29', why: 'below the 30-day minimum, so it would permit a window shorter than the statutory one' },
-        { value: '61', why: 'above the 60-day maximum' },
+        { value: '0', why: 'a window of zero days closes the remedy the moment it opens' },
+        { value: '-1', why: 'negative' },
+        { value: '366', why: 'above the 365-day maximum the service enforces' },
         { value: '45.5', why: 'a filing window cannot be fractional days' },
         { value: 'forty-five', why: 'not a number' },
         { value: '', why: 'empty' },

@@ -16,6 +16,23 @@ import { UploadLimitsService } from '../../../services/upload-limits.service';
 })
 export class WithdrawComplaintComponent implements OnInit {
 
+  /**
+   * UST107 / FR-G-036 scenario 5 (Document/CMS_Portal_UTS.txt) — verbatim. The server answers the
+   * same string so a citizen sees one wording whichever side refuses.
+   */
+  static readonly REQUIRED_REASON_MESSAGE = 'Reason for withdrawal is required.';
+
+  /**
+   * UST107 / FR-G-036 scenario 3 — verbatim, and deliberately ONE message for both conditions:
+   * "When the file exceeds the size limit OR is in an unsupported format". The component used to
+   * emit two different strings, neither of them the specified one.
+   */
+  static readonly INVALID_FILE_MESSAGE =
+    'Invalid file type or size, please upload a valid document.';
+
+  /** UST105 / FR-G-035 scenario 3 — verbatim, for a status the Scheme excludes. */
+  static readonly NOT_WITHDRAWABLE_MESSAGE = 'Complaints cannot be withdrawn.';
+
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private complaintService = inject(ComplaintService);
@@ -62,8 +79,22 @@ export class WithdrawComplaintComponent implements OnInit {
     this.loading.set(true);
 
     this.complaintService.trackComplaint(this.complaintId.trim()).subscribe({
-      next: () => {
+      next: (complaint) => {
         this.loading.set(false);
+
+        // UST105 scenario 3. The server refuses a withdrawal for a closed complaint, one sent to
+        // another department, or one sent to another regulatory body — but the form used to open for
+        // any complaint the tracker could find, so the citizen chose a reason, attached a document
+        // and was refused only on submit. `withdrawable` is the server's own answer to the same
+        // question the withdraw call will ask, so the two cannot disagree.
+        //
+        // `=== false`, not `!`: an older backend omits the field entirely, and treating "unknown" as
+        // "forbidden" would deny a live right on a deployment skew. Unknown falls through to the
+        // server, which is the enforcement point regardless.
+        if (complaint?.withdrawable === false) {
+          this.error = WithdrawComplaintComponent.NOT_WITHDRAWABLE_MESSAGE;
+          return;
+        }
         this.phase.set('confirm');
       },
       error: () => {
@@ -76,13 +107,17 @@ export class WithdrawComplaintComponent implements OnInit {
   // FR-G-029: Confirm withdrawal
   confirmWithdraw() {
     if (!this.reason) {
-      this.error = 'Please select a reason for withdrawal.';
+      this.error = WithdrawComplaintComponent.REQUIRED_REASON_MESSAGE;
       return;
     }
     this.error = '';
     this.loading.set(true);
 
-    this.complaintService.withdrawComplaint(this.complaintId, this.reason, this.additionalRemarks).subscribe({
+    // The documents go WITH the withdrawal (UST107 scenario 4). They used to be collected here and
+    // never sent anywhere.
+    this.complaintService.withdrawComplaint(
+      this.complaintId, this.reason, this.additionalRemarks, this.withdrawalDocs,
+    ).subscribe({
       next: () => {
         this.withdrawnRef = this.complaintId;
         this.loading.set(false);
@@ -95,29 +130,47 @@ export class WithdrawComplaintComponent implements OnInit {
     });
   }
 
+  /**
+   * The formats a withdrawal document may be in.
+   *
+   * Narrowed to the set the citizen complaint form already accepts (`file-validator.ts:36` —
+   * .pdf .doc .jpg .jpeg .png). The previous list also admitted DOCX/XLS/XLSX, which contradicted
+   * the wizard on the very same portal: a citizen could attach a spreadsheet when withdrawing but
+   * not when filing. UST107 scenario 3 names no formats, so the portal's own established set is the
+   * authority, and keeping one set means one answer to "what can I attach?".
+   *
+   * Matched on EXTENSION, not on `file.type`: the browser reports an empty or generic MIME type for
+   * plenty of legitimate files (notably .doc from some Windows configurations), and an empty string
+   * passed the old MIME check silently because the guard ran `includes('')` on a list that of course
+   * did not contain it — so a type-less file was refused with a message naming types it might well
+   * have been. The server sniffs the real magic bytes anyway (FileUploadValidator), so the extension
+   * is the right client-side gate: it is what the citizen can see and correct.
+   */
+  private static readonly ALLOWED_DOC_EXTENSIONS = ['pdf', 'doc', 'jpg', 'jpeg', 'png'];
+
+  /**
+   * UST107 scenario 3: ONE message for "exceeds the size limit OR is in an unsupported format".
+   * Size is checked against the live configured limit, never a compiled-in figure.
+   */
+  private acceptWithdrawalFile(file: File): boolean {
+    const extension = (file.name.split('.').pop() || '').toLowerCase();
+    const formatOk = WithdrawComplaintComponent.ALLOWED_DOC_EXTENSIONS.includes(extension);
+    const sizeOk = file.size <= this.uploadLimits.maxFileSizeBytes();
+
+    if (!formatOk || !sizeOk) {
+      this.fileUploadError = WithdrawComplaintComponent.INVALID_FILE_MESSAGE;
+      return false;
+    }
+    this.withdrawalDocs.push(file);
+    return true;
+  }
+
   onWithdrawalFilesSelected(event: Event) {
     const input = event.target as HTMLInputElement;
     if (!input.files) return;
     this.fileUploadError = '';
     for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      // Configured limit (cms.upload.max_file_size). The hardcoded 2 MB rejected files the server
-      // accepts, and hardcoding 5 would drift the next time the limit is retuned.
-      if (file.size > this.uploadLimits.maxFileSizeBytes()) {
-        this.fileUploadError = `File size exceeds limit (${this.uploadLimits.maxFileSizeMb()}MB).`;
-        continue;
-      }
-      if (![
-        'application/pdf', 'image/jpeg', 'image/png',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      ].includes(file.type)) {
-        this.fileUploadError = 'Invalid file type. Supported: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG.';
-        continue;
-      }
-      this.withdrawalDocs.push(file);
+      this.acceptWithdrawalFile(input.files[i]);
     }
     input.value = '';
   }
@@ -127,24 +180,7 @@ export class WithdrawComplaintComponent implements OnInit {
     if (!event.dataTransfer?.files?.length) return;
     this.fileUploadError = '';
     for (let i = 0; i < event.dataTransfer.files.length; i++) {
-      const file = event.dataTransfer.files[i];
-      // Configured limit (cms.upload.max_file_size). The hardcoded 2 MB rejected files the server
-      // accepts, and hardcoding 5 would drift the next time the limit is retuned.
-      if (file.size > this.uploadLimits.maxFileSizeBytes()) {
-        this.fileUploadError = `File size exceeds limit (${this.uploadLimits.maxFileSizeMb()}MB).`;
-        continue;
-      }
-      if (![
-        'application/pdf', 'image/jpeg', 'image/png',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      ].includes(file.type)) {
-        this.fileUploadError = 'Invalid file type. Supported: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG.';
-        continue;
-      }
-      this.withdrawalDocs.push(file);
+      this.acceptWithdrawalFile(event.dataTransfer.files[i]);
     }
   }
 

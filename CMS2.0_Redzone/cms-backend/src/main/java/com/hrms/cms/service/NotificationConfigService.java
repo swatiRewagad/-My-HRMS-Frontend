@@ -80,6 +80,20 @@ public class NotificationConfigService {
             "notification.recipients.upload_link_expired";
 
     /**
+     * Who is told when a complainant withdraws a complaint (UST108 / FR-G-037).
+     *
+     * <p>Three parties by default, because all three are actively working a case that has just been
+     * abandoned: the Processing Officer holding it, and the regulated entity's Nodal and Principal
+     * Nodal Officers who were asked for comments. Nothing told any of them before — the withdrawal
+     * handler published no event at all, so an officer went on working a dead complaint.
+     *
+     * <p>Note what is NOT in the default: the complainant. They performed the action and already get
+     * the on-screen confirmation the withdrawal response promises, so adding them here would
+     * double-notify. An administrator can still add COMPLAINANT.
+     */
+    public static final String KEY_RECIPIENTS_WITHDRAWAL = "notification.recipients.withdrawal";
+
+    /**
      * Departments the department-scoped scans iterate.
      *
      * <p>Was {@code List.of("RBIO","CEPC","CRPC")} repeated in three methods, so standing up a fourth
@@ -171,6 +185,12 @@ public class NotificationConfigService {
 
     public Set<String> uploadLinkExpiredRecipients() {
         return recipients(KEY_RECIPIENTS_UPLOAD_LINK_EXPIRED, RECIPIENT_COMPLAINT_OWNER);
+    }
+
+    /** UST108: the Processing Officer plus the concerned entity's NO and PNO. */
+    public Set<String> withdrawalRecipients() {
+        return recipients(KEY_RECIPIENTS_WITHDRAWAL,
+                RECIPIENT_COMPLAINT_OWNER, RECIPIENT_NODAL_OFFICER, RECIPIENT_PNO);
     }
 
     public Set<String> scannedDepartments() {

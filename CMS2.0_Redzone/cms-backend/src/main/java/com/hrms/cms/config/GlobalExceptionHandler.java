@@ -4,6 +4,7 @@ import com.hrms.cms.exception.ClosureCommunicationIncompleteException;
 import com.hrms.cms.exception.ImpleadedPartyIncompleteException;
 import com.hrms.cms.exception.ComplaintNotEditableException;
 import com.hrms.cms.exception.MandatoryFieldBlankException;
+import com.hrms.cms.exception.RetentionPeriodActiveException;
 import com.hrms.cms.exception.UploadLinkActiveException;
 import com.hrms.cms.service.AppealClassificationService;
 import com.hrms.cms.service.ClauseConfigurationAlertService;
@@ -127,6 +128,29 @@ public class GlobalExceptionHandler {
      * revoked. Carries a translation key so the refusal renders in the officer's own language, plus the
      * link expiry so they know when the block lifts rather than having to guess.
      */
+    /**
+     * A permanent deletion was refused because the record is still inside its retention period.
+     *
+     * <p>409 CONFLICT, for the same reason as the refusals around it: the request is well-formed and
+     * the caller authorised, but it conflicts with the record's current state and becomes valid once
+     * the declared period lapses. The message names the period and the closure date it is measured
+     * from, so the caller learns WHEN rather than only that the answer is no.
+     */
+    @ExceptionHandler(RetentionPeriodActiveException.class)
+    public ResponseEntity<Map<String, Object>> handleRetentionPeriodActive(
+            RetentionPeriodActiveException ex) {
+        log.warn("Permanent deletion refused for complaint {} — {}",
+                ex.getComplaintNumber(), ex.getMessage());
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", false);
+        response.put("message", ex.getMessage());
+        response.put("messageKey", "retention.error.period_active");
+        response.put("complaintNumber", ex.getComplaintNumber());
+        response.put("timestamp", LocalDateTime.now().toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
     @ExceptionHandler(UploadLinkActiveException.class)
     public ResponseEntity<Map<String, Object>> handleUploadLinkActive(UploadLinkActiveException ex) {
         log.warn("Action refused for complaint {} — secure upload link active until {}",

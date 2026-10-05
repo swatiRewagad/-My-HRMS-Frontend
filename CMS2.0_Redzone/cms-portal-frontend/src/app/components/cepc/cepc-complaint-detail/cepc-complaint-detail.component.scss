@@ -22,6 +22,41 @@
 // ── Detail Panel (LEFT region) ──
 .detail-panel { display: flex; flex-direction: column; gap: 16px; }
 
+// ── Milestone ladder (top of the CENTRE region) ──
+// A horizontal rung list; rungs already passed read muted, the current one is emphasised. States come
+// from `data-state` so the colour rule has one place to live and the spec can read the phase.
+.milestone-strip {
+  list-style: none; margin: 0 0 16px; padding: 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+
+  .milestone {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-muted);
+    padding: 4px 10px 4px 6px; border-radius: 999px;
+
+    // The connector between rungs, drawn as a leading rule rather than a pseudo-element on the dot so
+    // it never appears before the first rung.
+    & + .milestone::before {
+      content: ''; width: 14px; height: 1px; background: var(--border-subtle);
+      margin-right: 2px; flex: none;
+    }
+  }
+
+  .milestone-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex: none;
+    background: var(--border-subtle);
+  }
+
+  .milestone[data-state='done'] {
+    color: var(--text-default);
+    .milestone-dot { background: var(--brand-primary-strong); }
+  }
+  .milestone[data-state='current'] {
+    color: white; background: var(--brand-primary-strong); font-weight: 600;
+    .milestone-dot { background: white; }
+  }
+}
+
 // The one audit trail, below the grid rather than in the rail. See the template for the two specs that
 // require it visible without a click.
 .trail-section { margin-top: 20px; }

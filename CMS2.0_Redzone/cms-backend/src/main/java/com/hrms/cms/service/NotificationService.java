@@ -15,6 +15,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.Collection;
 import java.util.List;
@@ -52,10 +54,50 @@ public class NotificationService {
                 .build();
         notification = notificationRepository.save(notification);
 
-        messagingTemplate.convertAndSendToUser(
-                targetUserId, "/queue/notifications",
-                Map.of("id", notification.getId(), "type", type, "title", title, "message", message)
-        );
+        pushAfterCommit(targetUserId,
+                Map.of("id", notification.getId(), "type", type, "title", title, "message", message));
+    }
+
+    /**
+     * Publishes the websocket frame only once the row it refers to is COMMITTED.
+     *
+     * <p>WHY: the push used to be sent inline, still inside this method's {@code @Transactional}
+     * boundary. The client treats a push as a signal to RE-READ over REST rather than as a row to
+     * render (see the frontend NotificationService.onPush), and that re-read is a separate
+     * connection which cannot see this transaction's uncommitted insert. The frame therefore raced
+     * its own row: {@code GET /unread-count} answered with the count from BEFORE the notification
+     * existed, the badge stayed one behind, and the only way to see the new item was the page
+     * refresh the whole live channel exists to avoid. Reproduced end to end — CONNECT / CONNECTED /
+     * SUBSCRIBE / MESSAGE all arrived correctly and the badge still did not move.
+     *
+     * <p>Deferring also removes a worse failure mode: a frame for a row whose transaction later
+     * rolls back, which told an officer about work that does not exist and sent them to a 404.
+     *
+     * <p>With no active transaction (a direct unit-test call, or a caller outside a transaction) the
+     * frame goes out immediately, so behaviour there is unchanged. Delivery failure is logged and
+     * never propagated: the notification is already persisted and the REST path still serves it, so
+     * a broker problem must not turn into a failed business operation.
+     */
+    private void pushAfterCommit(String targetUserId, Map<String, Object> payload) {
+        Runnable push = () -> {
+            try {
+                messagingTemplate.convertAndSendToUser(targetUserId, "/queue/notifications", payload);
+            } catch (Exception e) {
+                log.warn("Could not push notification {} to {}: {}",
+                        payload.get("id"), targetUserId, e.getMessage());
+            }
+        };
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    push.run();
+                }
+            });
+        } else {
+            push.run();
+        }
     }
 
     /**
@@ -113,6 +155,21 @@ public class NotificationService {
         }
     }
 
+    /**
+     * KNOWN LIMITATION — the same before-commit push race {@link #pushAfterCommit} fixes in
+     * {@link #send} is still present here, and is deliberately NOT fixed in the same change.
+     *
+     * <p>The push below is sent inside {@code raiseEvent}'s transaction, so a client that reacts by
+     * re-reading over REST can still miss this row. The reason it is left alone is that the
+     * {@link NotificationDeliveryLog} status written a few lines down is derived from whether this
+     * very call threw. Deferring the push to {@code afterCommit} would mean logging SENT before the
+     * outcome is known, which turns an audit row that currently records a real delivery attempt into
+     * an optimistic guess. Choosing between "accurate log" and "no re-read race" on this path is an
+     * audit-semantics decision, not a bug fix, so it is raised rather than taken unilaterally.
+     *
+     * <p>Impact is limited: this path serves the configurable multi-channel fan-out, whose consumers
+     * read the delivery log rather than the live bell. The bell's own producer is {@link #send}.
+     */
     private Long persistInApp(String target, String type, String title, String message,
                               String relatedEntityId, String relatedEntityType, String actionUrl) {
         InAppNotification notification = notificationRepository.save(InAppNotification.builder()

@@ -14,6 +14,27 @@ function containsUnsafeContent(text: string): boolean {
   return pattern.test(text);
 }
 
+/**
+ * UST109 scenarios 4 and 5 (FR-G-038, Document/CMS_Portal_UTS.txt) refuse free text that "exceeds
+ * 500 characters OR contains special characters", with one message covering both conditions. Only
+ * the length half was implemented, so a citizen could paste markup-adjacent punctuation into a
+ * field the Scheme says must be plain prose.
+ *
+ * ALLOW-list, not a deny-list: letters, digits, whitespace and the punctuation ordinary prose needs
+ * — full stop, comma, hyphen, apostrophe, parentheses, slash, colon, semicolon, question mark.
+ * Everything else (@ # % ! $ * ^ ~ | \ { } [ ] = + " < > and friends) is a special character.
+ *
+ * Deliberately permissive about sentence punctuation: the staff-visibility suite stores real
+ * sentences ("Send a closure SMS as well as the email.") and a rule that rejected a full stop would
+ * refuse every honest answer.
+ */
+const SPECIAL_CHARACTERS = /[^A-Za-z0-9\s.,\-'()\/:;?]/;
+
+function containsSpecialCharacters(text: string): boolean {
+  if (!text) return false;
+  return SPECIAL_CHARACTERS.test(text);
+}
+
 @Component({
   selector: 'app-submit-feedback',
   standalone: true,
@@ -22,6 +43,14 @@ function containsUnsafeContent(text: string): boolean {
   styleUrl: './submit-feedback.component.scss'
 })
 export class SubmitFeedbackComponent {
+
+  /** UST109 scenario 4 — verbatim. Covers over-length AND special characters in one message. */
+  static readonly FEEDBACK_LIMIT_MESSAGE =
+    'Feedback must be within 500 characters and cannot contain special characters.';
+
+  /** UST109 scenario 5 — verbatim, for the "Others" source box. */
+  static readonly OTHERS_LIMIT_MESSAGE =
+    'Input must be within 500 characters and cannot contain special characters.';
 
   private router = inject(Router);
   private feedbackService = inject(FeedbackService);
@@ -97,12 +126,19 @@ export class SubmitFeedbackComponent {
       this.error = 'Please select CMS Portal awareness level.';
       return;
     }
-    if (this.feedbackText.length > 500) {
-      this.error = 'Feedback must be within 500 characters.';
+    // UST109 scenario 5: the "Others" free text carries its own wording ("Input …"), checked before
+    // the feedback fields so the message names the box the citizen actually typed in.
+    if (this.sourceOtherText.length > 500 || containsSpecialCharacters(this.sourceOtherText)) {
+      this.error = SubmitFeedbackComponent.OTHERS_LIMIT_MESSAGE;
       return;
     }
-    if (this.suggestions.length > 500) {
-      this.error = 'Suggestions must be within 500 characters.';
+    // UST109 scenario 4: one message for BOTH the length and the special-character rule.
+    if (this.feedbackText.length > 500 || containsSpecialCharacters(this.feedbackText)) {
+      this.error = SubmitFeedbackComponent.FEEDBACK_LIMIT_MESSAGE;
+      return;
+    }
+    if (this.suggestions.length > 500 || containsSpecialCharacters(this.suggestions)) {
+      this.error = SubmitFeedbackComponent.FEEDBACK_LIMIT_MESSAGE;
       return;
     }
 

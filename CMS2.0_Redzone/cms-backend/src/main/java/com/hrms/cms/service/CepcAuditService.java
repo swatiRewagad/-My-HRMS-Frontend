@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -72,6 +73,29 @@ public class CepcAuditService {
         AuditLog saved = auditLogRepository.save(auditLog);
         log.debug("Audit logged: complaint={}, action={}, actor={}, role={}", complaintNumber, action, actor, role);
         return saved;
+    }
+
+    /**
+     * Writes the audit row in its OWN transaction, so it survives the caller rolling back.
+     *
+     * <p>WHY THIS EXISTS: {@link #logAction} joins the caller's transaction. That is right for a
+     * workflow action — the audit row and the change it describes must stand or fall together. It is
+     * exactly WRONG for auditing a REFUSAL, where the caller is about to throw: the audit row would
+     * be rolled back by the very exception it exists to record, and the attempt would leave no
+     * trace. A refused attempt to destroy a record inside its retention period is precisely the
+     * event an investigator has to be able to find.
+     *
+     * <p>Not {@code @Async}: the attempt must be on disk before the refusal is returned to the
+     * caller, and an async write could lose the row if the JVM stops in between. Synchronous and
+     * independently committed.
+     *
+     * <p>MUST be called through the bean, not {@code this} — a self-invocation bypasses the proxy and
+     * silently joins the caller's transaction, reinstating the bug.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public AuditLog logInOwnTransaction(String complaintNumber, String action, String actor,
+                                        String role, String remarks, Map<String, Object> metadata) {
+        return logAction(complaintNumber, action, actor, role, remarks, metadata, null, null);
     }
 
     /**

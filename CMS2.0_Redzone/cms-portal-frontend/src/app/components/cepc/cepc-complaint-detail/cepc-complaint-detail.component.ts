@@ -17,6 +17,10 @@ import { ComplaintSummaryComponent } from '../../shared/complaint-summary/compla
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { ContextRailComponent } from '../../shared/context-rail/context-rail.component';
 import { ContextRailPanel } from '../../shared/context-rail/context-rail.types';
+// Reused as-is from the RBIO detail screen: both are complaint-scoped, not vertical-specific. See
+// railPanels for the endpoints that were verified live before wiring them in here.
+import { RbioEmailCommunicationComponent } from '../../rbio/rbio-email-communication/rbio-email-communication.component';
+import { RbioLegalCaseComponent } from '../../rbio/rbio-legal-case/rbio-legal-case.component';
 import { ToastService } from '../../../services/toast.service';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
 
@@ -32,7 +36,7 @@ interface TimelineEntry {
 type CepcRole = 'CEPC_DO' | 'CEPC_REVIEWER' | 'CEPC_INCHARGE' | 'CEPC_CLOSING_AUTHORITY' | 'CEPC_ADMIN' | 'CEPC_CONTACT_PERSON';
 
 /** The rail panels this screen can populate. The audit trail is NOT one; see the template. */
-type RailKey = 'documents' | 'comments';
+type RailKey = 'documents' | 'comments' | 'email' | 'legal';
 
 /** The shared action contract plus the target picker only this module renders. */
 interface ActionDef extends WorkflowAction {
@@ -47,7 +51,7 @@ interface ActionDef extends WorkflowAction {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent, ComplaintSummaryComponent, ContextRailComponent],
+  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent, ComplaintSummaryComponent, ContextRailComponent, RbioEmailCommunicationComponent, RbioLegalCaseComponent],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })
@@ -128,6 +132,45 @@ export class CepcComplaintDetailComponent implements OnInit {
     ];
   });
 
+  // ═══ Milestone ladder ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * The coarse PHASE ladder — Register → Assessment → Conciliation → Forward → Final decision — and
+   * which rung this complaint is on.
+   *
+   * <p>SERVER DATA, not a literal list here. Both arrive on the existing detail response
+   * (`GET /api/v1/complaints/{n}` → `data.milestones` and `data.milestone`), where the ladder is
+   * derived from `RBIO_STATUS_MASTER.MILESTONE_CODE` ordered by DISPLAY_ORDER and the current rung is
+   * resolved from the complaint's STATUS through that same table. Holding the five names in the
+   * component instead would have given the officer a ladder that could disagree with the status filter
+   * tabs, which are built from the same master rows.
+   *
+   * <p>If the server sends neither — an older build, or a complaint whose status maps to no milestone
+   * — the strip renders NOTHING rather than a guessed ladder. A phase display that invents its own
+   * content is worse than an absent one.
+   */
+  readonly milestones = computed<readonly { code: string; label: string }[]>(() => {
+    const raw = this.complaint()?.milestones;
+    return Array.isArray(raw) ? raw.filter((m: any) => m?.code && m?.label) : [];
+  });
+
+  readonly currentMilestone = computed<string | null>(() => this.complaint()?.milestone ?? null);
+
+  /** Index of the current rung, or -1 when the status maps to no milestone. */
+  readonly currentMilestoneIndex = computed(() => {
+    const code = this.currentMilestone();
+    if (!code) return -1;
+    return this.milestones().findIndex(m => m.code.toUpperCase() === String(code).toUpperCase());
+  });
+
+  /** A rung is 'done' once passed, 'current' on arrival, 'todo' ahead. */
+  milestoneState(index: number): 'done' | 'current' | 'todo' {
+    const at = this.currentMilestoneIndex();
+    if (at < 0) return 'todo';
+    if (index < at) return 'done';
+    return index === at ? 'current' : 'todo';
+  }
+
   // ═══ Right context rail ════════════════════════════════════════════════════════════════════════
   // Documents and the comment thread are material an officer CONSULTS; the action cards are what they
   // work in. Both used to be full-width blocks stacked under the complaint facts, so a complaint with
@@ -135,8 +178,30 @@ export class CepcComplaintDetailComponent implements OnInit {
 
   railOpen = signal<RailKey | null>(null);
 
+  /**
+   * Four panels. Documents and Comments were already here; Email Communication and Legal Case
+   * Details are new, and they are REUSED components rather than CEPC copies — the same
+   * `app-rbio-email-communication` and `app-rbio-legal-case` the RBIO detail screen renders.
+   *
+   * <p>Neither is RBIO-specific in anything but its selector prefix: both take a complaint number and
+   * read complaint-scoped routes that answer for a CEPC complaint too. Verified live on 8092 against
+   * a real CEPC complaint rather than assumed — `GET /api/v1/complaints/{n}/emails` → 200
+   * {"success":true,"data":[]} and `GET /api/v1/complaints/{n}/legal-case` → 200. That check mattered:
+   * this repo has a documented history of UI built against routes the server never served, and
+   * `/api/v1/templates`, `/api/v1/legal-cases`, `/api/v1/reference-documents` and
+   * `/api/v1/references` are all still 404 today.
+   *
+   * <p>They are rail panels and not a tab strip ON PURPOSE. RBIO carries exactly this material in its
+   * own rail (`railPanels` = history / attachments / email, rbio-complaint-detail.component.ts:237-241)
+   * because it is material an officer CONSULTS; what the officer WORKS in stays in the centre region.
+   * Adding a tab strip here would have undone the three-region layout the homogenisation pass just
+   * put in, and the spec contracts the template records (`.detail-layout`, `.detail-panel`,
+   * `.action-panel`) exist to stop exactly that.
+   */
   readonly railPanels: readonly ContextRailPanel<RailKey>[] = [
-    { key: 'documents', label: 'Documents', icon: 'pi-paperclip' },
+    { key: 'documents', label: 'Attachments', icon: 'pi-paperclip' },
+    { key: 'email', label: 'Email Communications', icon: 'pi-envelope' },
+    { key: 'legal', label: 'Legal case details', icon: 'pi-briefcase' },
     { key: 'comments', label: 'Comments', icon: 'pi-comments' }
   ];
 

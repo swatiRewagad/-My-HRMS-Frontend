@@ -154,35 +154,49 @@
   margin-bottom: 20px;
 
   h1 { font-size: 20px; font-weight: 700; color: var(--text-heading); margin: 0; }
+}
 
-  .header-actions {
-    display: flex; align-items: center; gap: 10px;
+// ═══ HEADER ACTIONS ═══
+// These controls are projected into <app-shell>'s .content-header, so they must be
+// top-level selectors — nesting them under .content-header puts the ancestor in the
+// shell's style scope and the rules silently never match.
+.btn-link {
+  background: none; border: none; cursor: pointer;
+  color: var(--brand-primary); font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px;
+  i { font-size: 13px; }
+  &:hover { text-decoration: underline; }
+  &.btn-link-danger { color: var(--state-danger-fg); }
+}
 
-    .btn-link {
-      background: none; border: none; color: var(--brand-primary); font-size: 13px; cursor: pointer; font-weight: 500;
-      &:hover { text-decoration: underline; }
-    }
+.filters-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 4px;
+  i { font-size: 13px; }
+  &:hover { color: var(--brand-primary); }
+}
 
-    .queue-select {
-      padding: 8px 14px; border: 1px solid var(--border-subtle); border-radius: 8px;
-      font-size: 12px; color: var(--text-secondary); background: white; cursor: pointer;
-      &:focus { outline: none; border-color: var(--brand-primary); }
-    }
+.queue-select {
+  min-width: 210px;
+  padding: 9px 34px 9px 14px;
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  font-size: 13px; color: var(--text-heading); background-color: white; cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%236b7280' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px;
+  &:focus { outline: none; border-color: var(--brand-primary); }
+  &.role-select { min-width: 160px; }
+}
 
-    .filters-btn {
-      padding: 8px 16px; font-size: 13px; border-radius: 8px;
-      background: var(--surface-card); color: var(--text-secondary); border: 1px solid var(--border-subtle); cursor: pointer;
-      display: flex; align-items: center; gap: 6px; font-weight: 500;
-      &:hover { background: var(--surface-subtle); border-color: var(--brand-primary); color: var(--brand-primary); }
-    }
-
-    .create-btn {
-      padding: 9px 18px; font-size: 13px; border-radius: 8px;
-      background: var(--brand-primary); color: white; border: none; cursor: pointer;
-      display: flex; align-items: center; gap: 6px; font-weight: 600;
-      &:hover { background: var(--brand-primary-hover); }
-    }
-  }
+.create-btn {
+  padding: 10px 18px; font-size: 13px; border-radius: 8px;
+  background: var(--brand-primary); color: white; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; font-weight: 600;
+  white-space: nowrap;
+  &:hover { background: var(--brand-primary-hover); }
 }
 
 // ═══ STATS BAR ═══
@@ -228,7 +242,7 @@
     .stat-value { font-size: 20px; font-weight: 700; color: var(--text-heading); line-height: 1.2; }
     .stat-label {
       font-size: 11px; color: var(--text-muted); font-weight: 500; letter-spacing: 0.2px;
-      display: flex; align-items: center; gap: 4px;
+      display: flex; align-items: center; gap: 4px; white-space: nowrap;
       i { font-size: 10px; color: var(--text-subtle); }
     }
 
@@ -240,7 +254,12 @@
       .pending-col {
         display: flex; flex-direction: column; align-items: center;
         .pending-range { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
-        .pending-count { font-size: 16px; font-weight: 700; color: var(--text-heading); }
+        .pending-count {
+          font-size: 16px; font-weight: 700; color: var(--text-heading);
+          &.danger { color: var(--state-danger-fg); }
+          &.warning { color: var(--state-warning-solid); }
+          &.success { color: var(--state-success-fg); }
+        }
       }
     }
   }
@@ -264,15 +283,15 @@
     margin-bottom: -2px;
     transition: all 0.2s;
     font-weight: 500;
+    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
 
     &.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); font-weight: 600; }
     &:hover { color: var(--brand-primary); }
 
     .tab-count {
-      background: var(--brand-primary); color: var(--surface-card); padding: 2px 8px; border-radius: 10px;
-      font-size: 11px; margin-left: 6px; font-weight: 600;
+      background: var(--brand-primary); color: var(--surface-card); padding: 1px 8px; border-radius: 10px;
+      font-size: 11px; font-weight: 600; line-height: 18px;
     }
-    &:not(.active) .tab-count { background: var(--border-subtle); color: var(--text-muted); }
   }
 }
 
@@ -396,18 +415,16 @@
 
   .status-badge {
     padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;
-    display: inline-block;
-    &[data-status="DRAFT"] { background: var(--state-warning-bg); color: var(--state-warning-fg); }
-    &[data-status="IN_PROGRESS"], &[data-status="SENT_TO_REVIEWER"] { background: var(--brand-primary-bg-strong); color: var(--brand-primary-strong); }
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+    i { font-size: 10px; line-height: 1; }
+    &[data-status="DRAFT"] { background: var(--state-neutral-bg); color: var(--state-neutral-fg); }
+    &[data-status="SENT_TO_REVIEWER"] { background: var(--brand-primary-bg-strong); color: var(--brand-primary-strong); }
+    &[data-status="SENT_BACK_TO_DEO"] { background: var(--state-warning-bg); color: var(--state-warning-fg); }
     &[data-status="APPROVED"] { background: var(--state-success-bg); color: var(--state-success-fg); }
-    &[data-status="REJECTED_BY_REVIEWER"] { background: var(--state-danger-bg); color: var(--state-danger-fg); }
+    &[data-status="CLOSED_NOT_A_COMPLAINT"] { background: var(--state-danger-bg); color: var(--state-danger-fg); }
   }
 
-  .mode-badge {
-    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;
-    &[data-mode="EMAIL"] { background: var(--accent-indigo-bg); color: var(--accent-indigo-fg); }
-    &[data-mode="PHYSICAL_LETTER"] { background: var(--accent-pink-bg); color: var(--accent-pink-fg); }
-  }
+  .mode-text { font-size: 12px; color: var(--text-body); }
 
   .ageing-badge {
     padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600;

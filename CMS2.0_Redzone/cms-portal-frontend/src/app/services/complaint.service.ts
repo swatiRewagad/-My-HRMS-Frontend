@@ -50,9 +50,37 @@ export class ComplaintService {
     ).pipe(map(res => res.data));
   }
 
-  withdrawComplaint(complaintId: string, reason: string, remarks: string): Observable<void> {
-    return this.http.post<ApiResponse<void>>(`${this.baseUrl}/${complaintId}/withdraw`, { reason, remarks })
-      .pipe(map(() => undefined));
+  /**
+   * Withdraws a complaint, carrying the supporting documents when the citizen attached any.
+   *
+   * Two request shapes on purpose. With no documents this posts JSON exactly as it always has, so
+   * nothing about the common case changes. With documents it posts multipart — and the files are
+   * actually SENT, which they previously were not: the withdrawal form collected them, showed a
+   * chip per file, then posted a JSON body with no document field at all, so every supporting
+   * document a citizen attached to a withdrawal was discarded in the browser.
+   *
+   * `documents` is the multipart field name the server's multipart arm binds.
+   */
+  withdrawComplaint(
+    complaintId: string,
+    reason: string,
+    remarks: string,
+    documents: File[] = [],
+  ): Observable<void> {
+    const url = `${this.baseUrl}/${complaintId}/withdraw`;
+
+    if (!documents.length) {
+      return this.http.post<ApiResponse<void>>(url, { reason, remarks })
+        .pipe(map(() => undefined));
+    }
+
+    const formData = new FormData();
+    formData.append('reason', reason);
+    formData.append('remarks', remarks ?? '');
+    documents.forEach(file => formData.append('documents', file, file.name));
+
+    // No explicit Content-Type: the browser must set it so the multipart boundary is included.
+    return this.http.post<ApiResponse<void>>(url, formData).pipe(map(() => undefined));
   }
 
   saveDraft(payload: DraftPayload): Observable<{ draftId: string }> {

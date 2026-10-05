@@ -16,11 +16,23 @@ import { ComplaintSummaryComponent } from '../../shared/complaint-summary/compla
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { SimilarCasesComponent } from '../../shared/similar-cases/similar-cases.component';
 
-interface MaintainabilityQuestion {
+interface EligibilityQuestion {
   id: string;
   question: string;
-  answer: 'YES' | 'NO' | 'NA' | null;
-  weight: number;
+  answer: 'YES' | 'NO' | null;
+  /**
+   * The answer that makes the complaint non-maintainable on its own. Omitted for questions
+   * that only feed a further rule — a "no reply from the Entity" is not fatal by itself,
+   * it is fatal only while the Entity's 30-day window has not elapsed.
+   */
+  closeOn?: 'YES' | 'NO';
+  /** Plain-language reason shown to the DEO when this answer closes the complaint. */
+  closureReason: string;
+  /** Which department's question set this belongs to; ANY shows for both. */
+  scope: 'RBIO' | 'CEPC' | 'ANY';
+  /** Shown only when the parent question carries this answer. */
+  dependsOn?: { id: string; answer: 'YES' | 'NO' };
+  closureClause: string;
 }
 
 interface Attachment {
@@ -127,6 +139,35 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   isEmailMode(): boolean {
     return (this.modeOfReceipt || '').toUpperCase() === 'EMAIL';
+  }
+
+  receiptDateDisplay(): string {
+    if (!this.receivedDate) return '—';
+    const [y, m, d] = this.receivedDate.split('-');
+    return y && m && d ? `${d}-${m}-${y}` : this.receivedDate;
+  }
+
+  modeOfReceiptLabel(): string {
+    switch (this.modeOfReceipt) {
+      case 'PHYSICAL_LETTER': return 'Physical Letter';
+      case 'PORTAL': return 'Portal';
+      case 'CPGRAMS': return 'CPGRAMS';
+      default: return 'Email';
+    }
+  }
+
+  onIsCpgramChange(checked: boolean) {
+    this.isCpgram = checked;
+    if (!checked) this.cpgramsReference = '';
+  }
+
+  onCpgramsNumberInput(raw: string) {
+    this.cpgramsReference = (raw || '').replace(/\D/g, '').slice(0, 16);
+  }
+
+  get cpgramsNumberError(): string | null {
+    if (!this.isCpgram || !this.cpgramsReference) return null;
+    return this.cpgramsReference.length === 16 ? null : 'CPGRAMS number must be exactly 16 digits.';
   }
 
   onFieldFocus(fieldValue: string | undefined | null) {
@@ -240,6 +281,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   modeOfReceipt: 'EMAIL' | 'PHYSICAL_LETTER' | 'PORTAL' | 'CPGRAMS' = 'EMAIL';
   cpgramsReference = '';
+  isCpgram = false;
   category = '';
   subCategory = '';
   entityName = '';
@@ -280,7 +322,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   complaintSubCategory1 = '';
   complaintSubCategory2 = '';
   filingDate = '';
-  registrationDateValid = true;
 
   // ─── Reminder & Financial Details ───
   reminderSent = true;
@@ -345,17 +386,213 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     { key: 'supportingDocs', label: 'List of Supporting Documents', include: false },
   ];
 
-  // ─── Maintainability Assessment ───
-  maintainabilityQuestions: MaintainabilityQuestion[] = [
-    { id: 'MQ1', question: 'Is the complaint against a Regulated Entity (Bank/NBFC/Payment System)?', answer: null, weight: 3 },
-    { id: 'MQ2', question: 'Does the complaint fall under the grounds specified in the RBI Ombudsman Scheme?', answer: null, weight: 3 },
-    { id: 'MQ3', question: 'Has the complainant first approached the RE and waited the stipulated period?', answer: null, weight: 2 },
-    { id: 'MQ4', question: 'Is the complaint within the limitation period (1 year)?', answer: null, weight: 2 },
-    { id: 'MQ5', question: 'Is the matter NOT sub-judice before any court/tribunal/forum?', answer: null, weight: 3 },
-    { id: 'MQ6', question: 'Is the complainant identifiable (not anonymous)?', answer: null, weight: 1 },
-    { id: 'MQ7', question: 'Does the complaint contain sufficient details to proceed?', answer: null, weight: 1 },
-    { id: 'MQ8', question: 'Is the relief sought quantifiable or specific?', answer: null, weight: 1 },
-  ];
+  // ─── Eligibility Check (RBIO / CEPC question sets) ───
+  eligibilityQuestions = signal<EligibilityQuestion[]>([
+    { id: 'EQ1', scope: 'RBIO', closeOn: 'YES', closureClause: 'PENDING_BEFORE_FORUM', closureReason: 'the same grievance is already pending before a Court, Tribunal, Arbitrator or other judicial / quasi-judicial forum', answer: null,
+      question: 'Is the same grievance already pending before any Court, Tribunal, Arbitrator or any other judicial / quasi-judicial forum? (excluding criminal proceedings / police investigation)' },
+    { id: 'EQ2', scope: 'RBIO', closeOn: 'YES', closureClause: 'SETTLED_BEFORE_FORUM', closureReason: 'the same grievance has already been settled or dealt with by a Court, Tribunal, Arbitrator or other judicial / quasi-judicial forum', answer: null,
+      question: 'Is the same grievance already settled or dealt with before any Court, Tribunal, Arbitrator or any other judicial / quasi-judicial forum? (excluding criminal proceedings / police investigation)' },
+    { id: 'EQ3', scope: 'RBIO', closeOn: 'YES', closureClause: 'THROUGH_ADVOCATE', closureReason: 'the complaint is made through an advocate who is not the Complainant', answer: null,
+      question: 'Is the complaint being made through an advocate?' },
+    { id: 'EQ4', scope: 'RBIO', closeOn: 'NO', closureClause: 'NOT_THE_COMPLAINANT', closureReason: 'the complaint is made through an advocate who is not the Complainant', answer: null,
+      dependsOn: { id: 'EQ3', answer: 'YES' },
+      question: 'If yes, then is it the Complainant?' },
+    { id: 'EQ5', scope: 'RBIO', closeOn: 'YES', closureClause: 'PENDING_BEFORE_OMBUDSMAN', closureReason: 'the same grievance is already pending before the Ombudsman', answer: null,
+      question: 'Is the same grievance already pending before the Ombudsman?' },
+    { id: 'EQ6', scope: 'RBIO', closeOn: 'YES', closureClause: 'SETTLED_BY_OMBUDSMAN', closureReason: 'the same grievance has already been settled or dealt with on merits by the Ombudsman', answer: null,
+      question: 'Is the same grievance already settled or dealt with on merits by the Ombudsman?' },
+    { id: 'EQ7', scope: 'RBIO', closeOn: 'YES', closureClause: 'STAFF_EMPLOYER_MATTER', closureReason: 'the Complainant is staff of the Regulated Entity and the matter concerns the employer-employee relationship', answer: null,
+      question: 'Is the Complainant a staff of the Regulated Entity and the complaint involves an employer-employee relationship?' },
+    { id: 'EQ8', scope: 'CEPC', closeOn: 'YES', closureClause: 'ALREADY_FILED_WITH_CEPC', closureReason: 'the Complainant has already filed a complaint on the same matter with CEPC or RBI', answer: null,
+      question: 'Has the Complainant previously filed a complaint on the same matter with CEPC or RBI?' },
+    { id: 'EQ9', scope: 'CEPC', closeOn: 'YES', closureClause: 'EMPLOYEE_OF_RE', closureReason: 'the Complainant is an employee of the Regulated Entity complained against', answer: null,
+      question: 'Is the Complainant an employee of the Regulated Entity against whom this complaint is filed?' },
+    { id: 'EQ10', scope: 'CEPC', closeOn: 'YES', closureClause: 'EMPLOYEE_EMPLOYER_MATTER', closureReason: 'the matter concerns the employee-employer relationship of the Regulated Entity', answer: null,
+      dependsOn: { id: 'EQ9', answer: 'YES' },
+      question: 'If yes, does the complaint involve the employee-employer relationship of the Regulated Entity?' },
+    { id: 'EQ11', scope: 'ANY', closeOn: 'NO', closureClause: 'NOT_APPROACHED_RE', closureReason: 'the Complainant has not first filed a complaint with the Regulated Entity', answer: null,
+      question: 'Has the Complainant filed a written / electronic complaint with the Regulated Entity?' },
+    // No closeOn: a missing reply is fatal only while the Entity's 30-day window is still
+    // running, which registrationDateValid() decides from the filing date.
+    { id: 'EQ13', scope: 'ANY', closureClause: 'NO_RE_REPLY', closureReason: 'the Regulated Entity has not replied and its 30-day window has not elapsed', answer: null,
+      dependsOn: { id: 'EQ11', answer: 'YES' },
+      question: 'Did the Complainant receive any reply from the Entity?' },
+  ]);
+
+  /** Date the complaint was first filed with the RE (EQ12 in the spec). */
+  reFiledDate = '';
+  /** Date of the RE's reply (EQ14 in the spec). */
+  reReplyDate = '';
+
+  /** Department whose question set applies, derived from the selected entity. */
+  eligibilityDepartment = signal<'RBIO' | 'CEPC'>('RBIO');
+
+  /** Questions visible for the current department, with unmet dependencies filtered out. */
+  visibleEligibilityQuestions = computed(() => {
+    const dept = this.eligibilityDepartment();
+    const all = this.eligibilityQuestions();
+    return all.filter(q => {
+      if (q.scope !== 'ANY' && q.scope !== dept) return false;
+      if (!q.dependsOn) return true;
+      const parent = all.find(p => p.id === q.dependsOn!.id);
+      return !!parent && parent.answer === q.dependsOn.answer;
+    });
+  });
+
+  /** True once every visible question has an answer and both required dates are filled. */
+  eligibilityComplete(): boolean {
+    const answered = this.visibleEligibilityQuestions().every(q => q.answer !== null);
+    if (!answered) return false;
+    if (this.showReFiledDate() && !this.reFiledDate) return false;
+    if (this.showReReplyDate() && !this.reReplyDate) return false;
+    return true;
+  }
+
+  /** The first question whose answer makes the complaint non-maintainable on its own. */
+  eligibilityFailure = computed(() => {
+    return this.visibleEligibilityQuestions()
+      .find(q => !!q.closeOn && q.answer !== null && q.answer === q.closeOn) || null;
+  });
+
+  private answerOf(id: string): 'YES' | 'NO' | null {
+    return this.eligibilityQuestions().find(q => q.id === id)?.answer ?? null;
+  }
+
+  showReFiledDate(): boolean {
+    return this.answerOf('EQ11') === 'YES';
+  }
+
+  showReReplyDate(): boolean {
+    return this.answerOf('EQ13') === 'YES';
+  }
+
+  private todayIso(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  get maxEligibilityDate(): string {
+    return this.todayIso();
+  }
+
+  /**
+   * Scheme clause 10(1)(a): the RE gets 30 days to respond before the complaint is
+   * admissible, so a complaint filed with the RE less than 30 days ago is premature
+   * unless the RE has already replied.
+   */
+  // Not computed(): reFiledDate / reReplyDate are plain ngModel properties, not signals, so a
+  // computed() would cache its first value and never see a date change.
+  reWindowDays(): number | null {
+    if (!this.reFiledDate) return null;
+    const filed = new Date(this.reFiledDate + 'T00:00:00').getTime();
+    if (Number.isNaN(filed)) return null;
+    const today = new Date(this.todayIso() + 'T00:00:00').getTime();
+    return Math.floor((today - filed) / 86400000);
+  }
+
+  registrationDateValid(): boolean {
+    const days = this.reWindowDays();
+    if (days === null) return false;
+    if (days < 0) return false;
+    if (days >= 30) return true;
+    return this.answerOf('EQ13') === 'YES';
+  }
+
+  get reFiledDateError(): string | null {
+    if (!this.reFiledDate) return null;
+    if (this.reFiledDate > this.todayIso()) return 'A future date is not allowed.';
+    return null;
+  }
+
+  get reReplyDateError(): string | null {
+    if (!this.reReplyDate) return null;
+    if (this.reReplyDate > this.todayIso()) return 'A future date is not allowed.';
+    if (this.reFiledDate && this.reReplyDate < this.reFiledDate) {
+      return 'The reply date cannot be before the date the complaint was filed with the Entity.';
+    }
+    return null;
+  }
+
+  /** Reason the complaint would be auto-closed, or null when it is eligible so far. */
+  eligibilityAutoCloseReason(): string | null {
+    const failed = this.eligibilityFailure();
+    if (failed) return failed.closureClause;
+    if (this.reFiledDate && !this.reFiledDateError && !this.registrationDateValid()) return 'NO_RE_REPLY';
+    return null;
+  }
+
+  eligibilityAutoCloseMessage(): string {
+    const failed = this.eligibilityFailure();
+    if (failed) {
+      return `The complaint will be closed as non-maintainable because ${failed.closureReason}.`;
+    }
+    if (this.eligibilityAutoCloseReason() === 'NO_RE_REPLY') {
+      return 'The Entity has had fewer than 30 days to respond and has not replied, so the complaint is premature and will be closed on submission.';
+    }
+    return '';
+  }
+
+  /** True when every visible question already carries its maintainable answer. */
+  allMarkedEligible = computed(() =>
+    this.visibleEligibilityQuestions().every(q => q.answer !== null && q.answer !== q.closeOn)
+  );
+
+  nonMaintainableReasonLabel(): string {
+    if (!this.nonMaintainableReason) return '—';
+    return this.nonMaintainableReasons.find(r => r.value === this.nonMaintainableReason)?.label
+      || this.nonMaintainableReason;
+  }
+
+  displayDate(iso: string): string {
+    if (!iso) return '—';
+    const [y, m, d] = iso.split('-');
+    return y && m && d ? `${d}-${m}-${y}` : iso;
+  }
+
+  onMarkAllEligibleChange(checked: boolean) {
+    if (checked) this.markAllAsEligible();
+    else this.clearEligibilityAnswers();
+  }
+
+  /**
+   * The eligibility answers ride on the existing auto-closure columns rather than new ones:
+   * `closureClause` already drives closure downstream, and `autoClosureResponsesJson` is the
+   * only place the individual answers can be replayed when the screen is reopened.
+   */
+  private eligibilityPayload() {
+    const answered = this.eligibilityQuestions().filter(q => q.answer !== null);
+    return {
+      closureClause: this.eligibilityAutoCloseReason() || '',
+      autoClosureResponsesJson: JSON.stringify({
+        department: this.eligibilityDepartment(),
+        reFiledDate: this.reFiledDate,
+        reReplyDate: this.reReplyDate,
+        answers: answered.map(q => ({ id: q.id, answer: q.answer })),
+      }),
+    };
+  }
+
+  /** Restores eligibility answers saved by {@link eligibilityPayload}. */
+  private hydrateEligibility(json: string | null | undefined) {
+    if (!json) return;
+    let saved: any;
+    try {
+      saved = JSON.parse(json);
+    } catch {
+      return;
+    }
+    if (!Array.isArray(saved?.answers)) return;
+    if (saved.department === 'CEPC' || saved.department === 'RBIO') {
+      this.eligibilityDepartment.set(saved.department);
+    }
+    this.reFiledDate = saved.reFiledDate || '';
+    this.reReplyDate = saved.reReplyDate || '';
+    const byId = new Map<string, 'YES' | 'NO'>(
+      saved.answers
+        .filter((a: any) => a?.answer === 'YES' || a?.answer === 'NO')
+        .map((a: any) => [a.id, a.answer])
+    );
+    this.eligibilityQuestions.update(list => list.map(q => ({ ...q, answer: byId.get(q.id) ?? null })));
+  }
 
   // ─── Auto-Closure Screening (Sequential) ───
   screeningQuestions = signal([
@@ -446,21 +683,6 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     if (!this.selectedReviewer) return false;
     const rev = this.reviewers().find(r => r.id === this.selectedReviewer);
     return rev?.isOnLeave || false;
-  });
-
-  maintainabilityScore = computed(() => {
-    let score = 0;
-    let maxScore = 0;
-    for (const q of this.maintainabilityQuestions) {
-      if (q.answer === 'NA') continue;
-      maxScore += q.weight;
-      if (q.answer === 'YES') score += q.weight;
-    }
-    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-  });
-
-  allQuestionsAnswered = computed(() => {
-    return this.maintainabilityQuestions.every(q => q.answer !== null);
   });
 
   // ─── Read-Only Mode (view-only for statuses beyond DRAFT/ASSIGNED) ───
@@ -650,6 +872,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.entityState = (entity as any).state || '';
     this.entitySearchText = entity.name;
     this.showEntityDropdown.set(false);
+    this.eligibilityDepartment.set(entity.department === 'CEPC' ? 'CEPC' : 'RBIO');
   }
 
   onEntityFocus(inputEl: HTMLInputElement) {
@@ -889,6 +1112,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.entityName = draft?.entityName || '';
       this.entitySearchText = this.entityName;
       this.entityType = draft?.entityType || 'BANK';
+      this.resolveEligibilityDepartment(this.entityName);
       this.subject = draft?.subject || '';
       this.description = draft?.description || '';
       this.amountInvolved = draft?.amountInvolved || null;
@@ -954,11 +1178,13 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
             this.modeOfReceipt = (draft.modeOfReceipt as any) || 'EMAIL';
             this.cpgramsReference = draft.cpgramsNumber || '';
+            this.isCpgram = !!this.cpgramsReference || this.modeOfReceipt === 'CPGRAMS';
             this.complaintReferenceNumber = draft.complaintReferenceNumber || draft.acknowledgementNumber || '';
             this.category = draft.category || '';
             this.entityName = draft.entityName || '';
             this.entitySearchText = this.entityName;
             this.entityType = draft.entityType || 'BANK';
+            this.resolveEligibilityDepartment(this.entityName);
             this.subject = draft.subject || draft.complaintSummary || '';
             this.description = draft.body || '';
             this.amountInvolved = draft.amountInvolved || null;
@@ -968,10 +1194,13 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
             this.draftStatus = draft.status || 'ASSIGNED';
             this.selectedReviewer = draft.assignedTo || '';
             this.deoAssessmentDecision = draft.deoDecision || '';
+            this.deoDecision = draft.deoDecision || '';
+            this.nonMaintainableReason = draft.nonMaintainableReason || '';
             this.deoAssessmentRemarks = draft.deoRemarks || '';
             this.systemSuggestion = draft.systemSuggestion || 'PENDING';
             this.vernacular = draft.isVernacular || false;
             this.vernacularLanguage = draft.languageName || '';
+            this.hydrateEligibility(draft.autoClosureResponsesJson);
 
             const attachments = (draft.attachments || []).map((a: any, i: number) => {
               const attId = a.id || `ATT-${i + 1}`;
@@ -1484,6 +1713,11 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       entityType: this.entityType,
       cpgramsNumber: this.cpgramsReference,
       complaintReferenceNumber: this.complaintReferenceNumber,
+      // Without the decision the eligibility answers cannot be shown again on reload: the
+      // question set only renders for a New Complaint.
+      deoDecision: this.deoDecision,
+      nonMaintainableReason: this.nonMaintainableReason,
+      ...this.eligibilityPayload(),
     }).subscribe({
       next: () => {
         this.savingDraft.set(false);
@@ -1523,7 +1757,12 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   // ─── Validation for Send for Approval ───
   canSendForApproval(): boolean {
-    return this.selectedReviewerName.trim().length > 0;
+    if (!this.selectedReviewerName.trim()) return false;
+    if (this.deoDecision === 'NON_MAINTAINABLE') return !!this.nonMaintainableReason;
+    if (this.deoDecision === 'MAINTAINABLE') {
+      return this.eligibilityComplete() && !this.reFiledDateError && !this.reReplyDateError;
+    }
+    return false;
   }
 
   sendForApproval() {
@@ -1559,6 +1798,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       nonMaintainableReason: this.nonMaintainableReason,
       complaintReferenceNumber: this.complaintReferenceNumber,
       receivedAt: this.receivedDate ? this.receivedDate + 'T00:00:00' : new Date().toISOString(),
+      ...this.eligibilityPayload(),
     };
 
     const isPhysicalLetter = this.draftId.startsWith('DRF-');
@@ -1602,14 +1842,58 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   onDeoDecisionChange(decision: string) {
     this.deoDecision = decision as any;
-    if (decision === 'MAINTAINABLE') {
-      this.maintainabilityQuestions.forEach(q => q.answer = 'YES');
+    if (decision !== 'MAINTAINABLE') this.clearEligibilityAnswers();
+    if (decision !== 'NON_MAINTAINABLE') this.nonMaintainableReason = '';
+  }
+
+  setEligibilityAnswer(id: string, answer: 'YES' | 'NO') {
+    this.eligibilityQuestions.update(list => list.map(q => q.id === id ? { ...q, answer } : q));
+    if (!this.showReFiledDate()) {
+      this.reFiledDate = '';
+      this.reReplyDate = '';
+    } else if (!this.showReReplyDate()) {
+      this.reReplyDate = '';
     }
   }
 
-  onEligibilityAnswer(id: string, answer: string) {
-    const q = this.maintainabilityQuestions.find(mq => mq.id === id);
-    if (q) q.answer = answer as any;
+  /** The answer that keeps the complaint maintainable. Questions with no closeOn take Yes. */
+  private eligibleAnswer(q: EligibilityQuestion): 'YES' | 'NO' {
+    return q.closeOn === 'YES' ? 'NO' : 'YES';
+  }
+
+  /** Answers every visible question with the value that keeps the complaint maintainable. */
+  markAllAsEligible() {
+    const fill = (ids: Set<string>) => this.eligibilityQuestions.update(list => list.map(q =>
+      ids.has(q.id) ? { ...q, answer: this.eligibleAnswer(q) } : q
+    ));
+    fill(new Set(this.visibleEligibilityQuestions().map(q => q.id)));
+    // Answering the gate questions "Yes" reveals dependents the pass above could not see.
+    fill(new Set(this.visibleEligibilityQuestions().filter(q => q.answer === null).map(q => q.id)));
+  }
+
+  clearEligibilityAnswers() {
+    this.eligibilityQuestions.update(list => list.map(q => ({ ...q, answer: null })));
+    this.reFiledDate = '';
+    this.reReplyDate = '';
+  }
+
+  /**
+   * The RBIO and CEPC question sets are mutually exclusive, so the entity decides which
+   * one the DEO is asked. Falls back to RBIO, matching the backend's routing default.
+   */
+  private resolveEligibilityDepartment(entityName: string) {
+    if (!entityName?.trim()) {
+      this.eligibilityDepartment.set('RBIO');
+      return;
+    }
+    this.http.get<any>(`${environment.apiBaseUrl}/api/v1/routing/resolve-by-name`, { params: { entityName } })
+      .subscribe({
+        next: (res) => {
+          const dept = res?.data?.department;
+          this.eligibilityDepartment.set(dept === 'CEPC' ? 'CEPC' : 'RBIO');
+        },
+        error: () => this.eligibilityDepartment.set('RBIO')
+      });
   }
 
   goToAssignment() {

@@ -17,10 +17,27 @@
 import { test, expect } from '@playwright/test';
 import { sql, API_BASE } from '../aa/aa-shared-fixtures';
 import { identityHeadersFor } from '../utils/test-data';
+// The real Keycloak login. /rbio is behind staffRoleGuard(RBIO_ROLES), so without it the goto below
+// lands on /staff/login and the bell is never mounted — which reads as "the server never pushed".
+import { loginAsRbioRole } from '../utils/auth';
 
 const PREFIX = 'S2CB';
 const ROLE_GROUP = `${PREFIX}_AA_DO`;
-const OFFICER = `${PREFIX}-do1`;
+/**
+ * The officer MUST be the Keycloak account the browser logs in as, not a synthetic `S2CB-do1`.
+ *
+ * Both identity paths prefer the TOKEN over the X-User-Id dev header —
+ * AaIdentityResolver.resolveActor() reads preferred_username/sub first and only falls through to the
+ * header, and StompIdentityChannelInterceptor does the same. Once loginAsRbioRole performs a real
+ * Keycloak login the page carries a token, so the sessionStorage dev id below is outranked on BOTH
+ * the REST re-read and the STOMP CONNECT. Seeding a synthetic id therefore pushed the notification
+ * to a user nobody was listening as, and the badge sat still — which reads as "the server never
+ * pushed" when in fact it pushed to the wrong principal.
+ *
+ * Kept in sync with RBIO_ENV_MAP.RBIO_OFFICER in e2e/utils/auth.ts, which is the account the login
+ * below uses. RBIO_OFFICER_USER overrides it there, so it is honoured here too.
+ */
+const OFFICER = process.env['RBIO_OFFICER_USER'] || 'rbio.officer';
 
 /** Absolute, because the configured baseURL is the developer's port and must not be assumed. */
 const UI_BASE =
@@ -31,15 +48,18 @@ const UI_BASE =
 
 const ADMIN = identityHeadersFor('aa_admin_001', 'AA');
 
+/**
+ * Everything removed here is keyed on this suite's own PREFIX or on its own role group — never on
+ * the officer's user id alone. OFFICER is now a REAL shared Keycloak account, so
+ * `DELETE ... WHERE user_id = OFFICER` would strip pool rows and notifications that other suites
+ * seeded for the same person.
+ */
 function purge(): void {
-  sql(`DELETE FROM aa_assignment_record WHERE appeal_number LIKE '${PREFIX}-%'
-        OR assigned_user_id LIKE '${PREFIX}-%'`);
-  sql(`DELETE FROM aa_assignment_audit WHERE role_group LIKE '${PREFIX}-%'
-        OR subject_user_id LIKE '${PREFIX}-%'`);
-  sql(`DELETE FROM wf_officer_pool WHERE user_id LIKE '${PREFIX}-%' OR role_group LIKE '${PREFIX}-%'`);
-  sql(`DELETE FROM wf_assignment_counter WHERE role_group LIKE '${PREFIX}-%'`);
-  sql(`DELETE FROM in_app_notifications WHERE target_user_id LIKE '${PREFIX}-%'
-        OR related_entity_id LIKE '${PREFIX}-%'`);
+  sql(`DELETE FROM aa_assignment_record WHERE appeal_number LIKE '${PREFIX}-%'`);
+  sql(`DELETE FROM aa_assignment_audit WHERE role_group LIKE '${PREFIX}%'`);
+  sql(`DELETE FROM wf_officer_pool WHERE role_group LIKE '${PREFIX}%'`);
+  sql(`DELETE FROM wf_assignment_counter WHERE role_group LIKE '${PREFIX}%'`);
+  sql(`DELETE FROM in_app_notifications WHERE related_entity_id LIKE '${PREFIX}-%'`);
 }
 
 test.describe('S2C notification bell — real-time push', () => {
@@ -93,6 +113,10 @@ test.describe('S2C notification bell — real-time push', () => {
     // The live channel has to be UP before a push can be asserted. Without this the test races the
     // STOMP handshake and a connection failure is indistinguishable from a server that never pushed.
     const bell = page.getByTestId('notification-bell');
+    // The badge SPAN is rendered only while hasUnread() is true, so this locator legitimately
+    // resolves to zero elements at a starting count of zero — hence the count() guard at the poll
+    // below rather than a visibility wait here.
+    const badge = page.getByTestId('notification-badge');
     await expect(bell).toBeVisible({ timeout: 30_000 });
     await expect
       .poll(() => bell.getAttribute('data-connected'), {

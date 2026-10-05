@@ -39,6 +39,17 @@ public class RetentionService {
     public static final String CFG_BATCH_LIMIT = "cms.security.retention.batch_limit";
 
     /**
+     * How many days ahead of expiry a row is surfaced for human review.
+     *
+     * Configurable, because how much notice a reviewer needs is an operational decision, not a
+     * constant. The default is 90 days: long enough that a quarterly review cycle sees every record
+     * before it expires.
+     */
+    public static final String CFG_REVIEW_WINDOW_DAYS = "cms.security.retention.review_window_days";
+
+    private static final int DEFAULT_REVIEW_WINDOW_DAYS = 90;
+
+    /**
      * Tables a policy is permitted to touch.
      *
      * Policies name their own table, and those rows are editable by an admin. Without a compiled-in
@@ -49,6 +60,12 @@ public class RetentionService {
             "AUDIT_LOG", "CONFIG_AUDIT_LOG", "PII_REVEAL_AUDIT", "SECURITY_EVENT", "SECURITY_ALERT",
             "DELETION_LOG", "IN_APP_NOTIFICATIONS", "COMPLAINT_HISTORY", "COMPLAINTS",
             "COMPLAINT_QUERY", "COMPLAINT_QUERY_MESSAGE", "OUTBOX_EVENT", "ATTACHMENT_METADATA",
+            // COMPLAINT_TIMELINE is the table that actually exists for complaint history in this
+            // schema; COMPLAINT_HISTORY above was whitelisted but has no table behind it. Without
+            // this entry the 7-year history policy seeded by V114 would be refused at run time with
+            // "targets a table that is not permitted" — i.e. the obligation would be declared and
+            // then be unenforceable, which is worse than not declaring it.
+            "COMPLAINT_TIMELINE",
             "COMPLAINT_ATTACHMENTS", "ELIGIBILITY_AUDIT", "COMPLAINT_DRAFT");
 
     private static final Pattern SAFE_IDENTIFIER = Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
@@ -106,6 +123,42 @@ public class RetentionService {
                 "SELECT COUNT(*) FROM " + policy.getTargetTable()
                         + " WHERE " + policy.getTimestampColumn() + " < ?",
                 Integer.class, cutoff);
+        return count == null ? 0 : count;
+    }
+
+    /** The review window currently in force, in days. */
+    public int reviewWindowDays() {
+        int days = systemConfigService.getInt(CFG_REVIEW_WINDOW_DAYS, DEFAULT_REVIEW_WINDOW_DAYS);
+        return days > 0 ? days : DEFAULT_REVIEW_WINDOW_DAYS;
+    }
+
+    /**
+     * Counts rows that are APPROACHING the end of the retention period but have not reached it —
+     * the forward-looking signal a human review has to act on.
+     *
+     * <p>WHY THIS EXISTS: {@link #preview} is backward-looking. It counts rows that are ALREADY past
+     * retention, which is exactly too late to review: by the time a record appears in that number
+     * the only remaining decision is whether to purge it, not whether purging it is correct. So
+     * nothing anywhere surfaced "these records are about to expire, look at them first", and a purge
+     * would run with no prior human review of anything.
+     *
+     * <p>The band is half-open on both sides and deliberately EXCLUDES the already-expired rows
+     * {@code preview} counts, so the two numbers never double-count the same record and
+     * "approaching" cannot be satisfied by a backlog of overdue ones.
+     */
+    public int approachingRetention(RetentionPolicy policy) {
+        validate(policy);
+        LocalDateTime now = LocalDateTime.now();
+        // Older than this -> inside the review window.
+        LocalDateTime reviewFrom = now.minusDays(policy.getRetentionDays() - (long) reviewWindowDays());
+        // Older than this -> already expired, counted by preview() instead.
+        LocalDateTime expired = now.minusDays(policy.getRetentionDays());
+
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM " + policy.getTargetTable()
+                        + " WHERE " + policy.getTimestampColumn() + " < ?"
+                        + "   AND " + policy.getTimestampColumn() + " >= ?",
+                Integer.class, reviewFrom, expired);
         return count == null ? 0 : count;
     }
 

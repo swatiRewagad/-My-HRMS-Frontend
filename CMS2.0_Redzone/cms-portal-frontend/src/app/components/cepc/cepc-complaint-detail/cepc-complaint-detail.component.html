@@ -195,6 +195,35 @@
              the RBIO screen and its layout spec already call it, and one vocabulary beats an accurate
              one nobody else shares. -->
         <div class="action-panel right-panel">
+          <!--
+            ═══ MILESTONE LADDER ═══
+            The coarse phase the complaint is in, above the actions that move it on. It sits HERE and
+            not in the left region because its only use is to tell the officer where in the ladder the
+            action they are about to take lands; next to the facts it would be decoration.
+
+            The rungs are server data (`data.milestones`), derived from RBIO_STATUS_MASTER.MILESTONE_CODE
+            — the same master rows the dashboard's status tabs are built from, so the two cannot drift.
+            Nothing renders when the server sends no ladder; see `milestones` in the component.
+
+            SLA is deliberately NOT a rung, and there is deliberately no SECOND SLA indicator here.
+            A breached deadline is a condition that can hold in any phase, not a phase of its own; the
+            one app-cepc-sla-indicator lives in the left header. A copy in this panel would also be a
+            Playwright strict-mode violation — `e2e/cepc/sla.spec.ts:37,116` call toBeVisible and
+            textContent on `.sla-indicator` UNQUALIFIED, so two instances break four passing tests.
+          -->
+          @if (milestones().length > 0) {
+            <ol class="milestone-strip" aria-label="Complaint milestones">
+              @for (m of milestones(); track m.code; let i = $index) {
+                <li class="milestone" [attr.data-milestone]="m.code"
+                    [attr.data-state]="milestoneState(i)"
+                    [attr.aria-current]="milestoneState(i) === 'current' ? 'step' : null">
+                  <span class="milestone-dot" aria-hidden="true"></span>
+                  <span class="milestone-label">{{ m.label }}</span>
+                </li>
+              }
+            </ol>
+          }
+
           @if (isTerminalState()) {
             <div class="closed-banner">
               <span class="closed-icon">&#10003;</span>
@@ -260,8 +289,11 @@
 
         <!--
           ═══ RIGHT RAIL ═══
-          The documents and the comment thread, which were full-width blocks in the left column — which
-          is what pushed the action cards below the fold on a complaint with any history at all.
+          Attachments, Email Communications, Legal case details and the comment thread. The first and
+          last were full-width blocks in the left column — which is what pushed the action cards below
+          the fold on a complaint with any history at all. Email and Legal are NEW here, reused from
+          the RBIO detail screen; see `railPanels` in the component for the live endpoint checks and
+          for why they are rail panels and not a tab strip.
 
           The AUDIT TRAIL is NOT here, and that is a spec contract rather than an oversight. Two specs
           (`workflow-actions.spec.ts:177`, `contact-person.spec.ts:217`) assert the trail is VISIBLE as
@@ -303,6 +335,23 @@
                   </div>
                 }
               </div>
+            }
+            @case ('email') {
+              <!--
+                The RBIO component, not a CEPC copy. It reads GET /api/v1/complaints/{n}/emails, which
+                is complaint-scoped and answers for a CEPC complaint — verified live before wiring,
+                because this repo has a history of panels built against routes that 404.
+                It also carries the Templates affordance (a searchable communication-template picker,
+                rbio-email-communication.component.html:25-33) backed by
+                /api/v1/communication-templates, which is live and returns real rows.
+              -->
+              <app-rbio-email-communication
+                [complaintNumber]="complaint().complaintNumber || complaint().complaintId" />
+            }
+            @case ('legal') {
+              <!-- GET/PUT /api/v1/complaints/{n}/legal-case. Read-only unless the caller holds an
+                   Ombudsman-admin role, which the component itself enforces (isReadOnly). -->
+              <app-rbio-legal-case [complaint]="complaint()" />
             }
             @case ('comments') {
               <!--

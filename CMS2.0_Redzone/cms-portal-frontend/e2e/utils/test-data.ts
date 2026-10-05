@@ -70,6 +70,13 @@ export interface CreateComplaintPayload {
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   filingType: 'CEPC_MANUAL' | 'PHYSICAL_LETTER' | 'EMAIL';
   createdBy: string;
+  /**
+   * A COMPLAINT_CATEGORIES name, resolved to CATEGORY_ID server-side and case-insensitively — the
+   * same way the citizen filing path and the CRPC physical-letter intake resolve it. Seeded
+   * complaints are therefore classified the way real ones are, so the grid's Category column has
+   * something to render. (The CEPC create endpoint used to drop this field entirely.)
+   */
+  category: string;
 }
 
 /**
@@ -89,6 +96,9 @@ export function buildComplaint(overrides: Partial<CreateComplaintPayload> = {}):
     priority: 'MEDIUM',
     filingType: 'CEPC_MANUAL',
     createdBy: 'cepc_do_001',
+    // A real COMPLAINT_CATEGORIES row (id 1 of the ten seeded by the citizen catalogue), NOT one of
+    // the CATEGORY_MASTER "S1 authority e2e probe" rows that database/V63 PART 2 records as pollution.
+    category: 'ATM / Debit Card',
     ...overrides,
   };
 }

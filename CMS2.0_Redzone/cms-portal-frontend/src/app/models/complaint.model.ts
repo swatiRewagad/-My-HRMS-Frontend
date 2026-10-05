@@ -67,6 +67,15 @@ export interface ComplaintStatus {
   appealFiled?: boolean;
   appealNumber?: string | null;
   appealFiledAt?: string | null;
+  /**
+   * Whether the server would accept a withdrawal of this complaint (UST105 scenario 3).
+   *
+   * Computed server-side from the Scheme's exclusion list so the portal cannot drift from it; the
+   * server still enforces the rule on the withdraw call itself. Optional because an older backend
+   * omits the field — `undefined` means "unknown", and the withdrawal screen treats it as
+   * permitted so a stale server cannot lock a citizen out of a right they have.
+   */
+  withdrawable?: boolean;
 }
 
 export interface StatusTransition {

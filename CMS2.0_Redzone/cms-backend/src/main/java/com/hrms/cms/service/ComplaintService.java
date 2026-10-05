@@ -5,6 +5,7 @@ import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.exception.ComplaintNotEditableException;
 import com.hrms.cms.exception.MandatoryFieldBlankException;
+import com.hrms.cms.exception.RetentionPeriodActiveException;
 import com.hrms.cms.repository.*;
 import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.service.mre.MreEntityCoverageService;
@@ -39,6 +40,9 @@ public class ComplaintService {
     private final OfficeRoutingService officeRoutingService;
     private final NodalOfficerRecordService nodalOfficerRecordService;
     private final OfficeAssignmentStrategyService officeAssignmentStrategyService;
+    private final RetentionPolicyRepository retentionPolicyRepository;
+    private final CepcAuditService cepcAuditService;
+    private final AnomalyDetectionService anomalyDetectionService;
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -319,9 +323,117 @@ public class ComplaintService {
         }
     }
 
+    /** The policy that declares how long a complaint record is kept. Seeded by V17. */
+    private static final String COMPLAINT_RETENTION_CATEGORY = "COMPLAINT_PII";
+
+    /**
+     * Fallback period, in days, used only if the COMPLAINT_PII policy row is missing.
+     *
+     * Seven years, matching every row V17 seeds. Fails CLOSED on purpose: a missing policy must not
+     * read as "no retention applies", which would make deleting the row easier than keeping it.
+     */
+    private static final int DEFAULT_COMPLAINT_RETENTION_DAYS = 2555;
+
+    /**
+     * Permanently destroys a complaint — refused while the record is inside its retention period.
+     *
+     * WHY THIS CHANGED: the entire body used to be {@code complaintRepository.deleteById(id)}. There
+     * was no retention check and no audit write, so any staff caller could irreversibly erase a
+     * complaint one day into a seven-year statutory retention period, and the record and the
+     * evidence that it had been destroyed disappeared together. The retention obligation was declared
+     * in RETENTION_POLICY and consulted by the nightly sweep, while this endpoint — the only way to
+     * destroy a single named record on demand — ignored it entirely.
+     *
+     * The period comes from the RETENTION_POLICY row, not a constant here, so an administrator
+     * changing the declared period changes what this endpoint permits. The row's ENABLED flag is
+     * deliberately NOT consulted: that flag governs whether the sweep may PURGE, and a disabled
+     * policy still declares the obligation. Reading it would mean the record becomes freely
+     * deletable exactly while automatic purging is switched off.
+     *
+     * Measured from closure. A complaint that is not yet closed has not started its retention clock
+     * and is refused outright — deleting a live complaint is never a retention-expiry case.
+     *
+     * Every ATTEMPT is audited, permitted or refused, before the outcome is known. An attempt to
+     * destroy a record inside its retention period is itself the event an investigator needs to
+     * find, and auditing only successes would hide precisely the interesting ones.
+     */
     @Transactional
     public void deleteComplaint(Long id) {
+        Complaint complaint = complaintRepository.findById(id).orElse(null);
+        if (complaint == null) {
+            // Nothing to destroy and nothing to attribute the attempt to. Idempotent, as before.
+            return;
+        }
+
+        int retentionDays = retentionPolicyRepository.findByCategory(COMPLAINT_RETENTION_CATEGORY)
+                .map(RetentionPolicy::getRetentionDays)
+                .filter(days -> days > 0)
+                .orElse(DEFAULT_COMPLAINT_RETENTION_DAYS);
+
+        LocalDateTime closedAt = complaint.getClosedAt();
+        boolean retentionExpired = closedAt != null
+                && closedAt.plusDays(retentionDays).isBefore(LocalDateTime.now());
+
+        String reason = closedAt == null
+                ? "the complaint is not closed, so its retention period has not begun"
+                : "the complaint is inside its " + retentionDays + "-day retention period"
+                        + " (closed " + closedAt.toLocalDate() + ")";
+
+        auditDeletionAttempt(complaint, retentionDays, retentionExpired, reason);
+
+        if (!retentionExpired) {
+            throw new RetentionPeriodActiveException(complaint.getComplaintNumber(), reason);
+        }
+
         complaintRepository.deleteById(id);
+    }
+
+    /**
+     * Records the attempt in AUDIT_LOG, and raises a security alert when it was a retention breach.
+     *
+     * Written BEFORE the outcome is known, in its OWN transaction. Both details matter:
+     *
+     *  - BEFORE, because an audit row conditional on the delete succeeding would record only the
+     *    permitted deletions and hide exactly the attempts worth investigating.
+     *  - OWN TRANSACTION ({@code logInOwnTransaction}), because a refusal throws, and a row written
+     *    in the caller's transaction would be rolled back by the very exception it exists to record.
+     *    That is why {@code logAction} is not used here.
+     *
+     * Neither the audit nor the alert is allowed to fail the request. The guard's job is to stop the
+     * deletion; a logging outage must not become a way to make the refusal itself fail.
+     */
+    private void auditDeletionAttempt(Complaint complaint, int retentionDays,
+                                      boolean permitted, String reason) {
+        try {
+            cepcAuditService.logInOwnTransaction(
+                    complaint.getComplaintNumber(),
+                    permitted ? "COMPLAINT_DELETED" : "COMPLAINT_DELETE_REFUSED_RETENTION",
+                    "system",
+                    null,
+                    reason,
+                    Map.of("retentionDays", retentionDays,
+                            "closedAt", String.valueOf(complaint.getClosedAt()),
+                            "permitted", permitted));
+        } catch (Exception e) {
+            log.error("Could not audit the deletion attempt on {}: {}",
+                    complaint.getComplaintNumber(), e.getMessage());
+        }
+
+        if (permitted) {
+            return;
+        }
+
+        // An attempt to destroy a record inside its statutory retention period has to reach the
+        // administrator who would have to investigate it. The AUDIT_LOG row above is the record;
+        // nobody reads it unprompted, so it is not on its own a control.
+        try {
+            anomalyDetectionService.raiseDirectViolation(
+                    "RETENTION_VIOLATION_ATTEMPT", "HIGH", complaint.getComplaintNumber(),
+                    "Attempt to permanently delete a complaint inside its retention period: " + reason);
+        } catch (Exception e) {
+            log.error("Could not raise a retention-violation alert for {}: {}",
+                    complaint.getComplaintNumber(), e.getMessage());
+        }
     }
 
     @Transactional(readOnly = true)

@@ -34,9 +34,24 @@ const ALNUM_500 = 'A1b2C3d4E5'.repeat(50);                    // exactly 500, no
 const ALNUM_510 = ALNUM_500 + 'Z9y8X7w6V5';                   // 510, still no special characters
 const SPECIALS_SHORT = 'Refund of Rs. 5,000 @ 12% #ref! <ok>'; // well under 500, special chars only
 
-/** The exact message UST109 scenarios 4 and 5 require for both over-length AND special characters. */
+/**
+ * The exact messages UST109 requires for both over-length AND special characters.
+ *
+ * Scenarios 4 and 5 specify DIFFERENT wording — verified against the authority,
+ * Document/CMS_Portal_UTS.txt:
+ *
+ *   scenario 4 (Q4 "Any other feedback"): "Feedback must be within 500 characters and cannot
+ *                                          contain special characters."
+ *   scenario 5 (Q5 "Others" source box):  "Input must be within 500 characters and cannot
+ *                                          contain special characters."
+ *
+ * They were originally asserted with one shared constant. Since toContainText is a substring match,
+ * that made the Q5 cases demand the Q4 wording and the spec, not the product, was wrong.
+ */
 const LIMIT_AND_SPECIALS_MESSAGE =
   'Feedback must be within 500 characters and cannot contain special characters.';
+const OTHERS_LIMIT_AND_SPECIALS_MESSAGE =
+  'Input must be within 500 characters and cannot contain special characters.';
 
 /**
  * Lets the CREDENTIALED citizen-auth calls through as well as the ordinary ones.
@@ -579,7 +594,7 @@ test.describe('Feedback questionnaire — citizen (UST109 / FR-G-038)', () => {
     await form.submit(page).click();
 
     await expect(form.error(page)).toBeVisible({ timeout: 15000 });
-    await expect(form.error(page)).toContainText(LIMIT_AND_SPECIALS_MESSAGE);
+    await expect(form.error(page)).toContainText(OTHERS_LIMIT_AND_SPECIALS_MESSAGE);
 
     // Refused, therefore nothing stored.
     const stored = await request.get(`${API_BASE}/api/v1/feedback/${complaint.complaintNumber}`);
@@ -602,7 +617,7 @@ test.describe('Feedback questionnaire — citizen (UST109 / FR-G-038)', () => {
     await form.submit(page).click();
 
     await expect(form.error(page)).toBeVisible({ timeout: 15000 });
-    await expect(form.error(page)).toContainText(LIMIT_AND_SPECIALS_MESSAGE);
+    await expect(form.error(page)).toContainText(OTHERS_LIMIT_AND_SPECIALS_MESSAGE);
 
     const stored = await request.get(`${API_BASE}/api/v1/feedback/${complaint.complaintNumber}`);
     expect(stored.status(), 'a refused submission must not have been saved').toBe(404);

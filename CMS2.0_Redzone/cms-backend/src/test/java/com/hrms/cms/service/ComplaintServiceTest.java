@@ -7,6 +7,7 @@ import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.exception.ComplaintNotEditableException;
 import com.hrms.cms.exception.MandatoryFieldBlankException;
+import com.hrms.cms.exception.RetentionPeriodActiveException;
 import com.hrms.cms.repository.*;
 import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.service.mre.MreEntityCoverageService;
@@ -22,6 +23,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +47,9 @@ class ComplaintServiceTest {
     @Mock private OfficeRoutingService officeRoutingService;
     @Mock private NodalOfficerRecordService nodalOfficerRecordService;
     @Mock private OfficeAssignmentStrategyService officeAssignmentStrategyService;
+    @Mock private RetentionPolicyRepository retentionPolicyRepository;
+    @Mock private CepcAuditService cepcAuditService;
+    @Mock private AnomalyDetectionService anomalyDetectionService;
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -717,16 +722,142 @@ class ComplaintServiceTest {
         }
     }
 
+    /**
+     * Deletion is now guarded by the retention period. The previous single test asserted the
+     * unguarded behaviour — that deleteById is simply called — which is exactly the defect: a
+     * complaint one day into a seven-year statutory period could be erased irreversibly, with no
+     * audit row to show it had happened.
+     */
     @Nested
     class DeleteComplaint {
 
+        private static final int SEVEN_YEARS = 2555;
+
+        private Complaint closedAgo(long days) {
+            return Complaint.builder()
+                    .id(1L)
+                    .complaintNumber("CMP-RETENTION-1")
+                    .closedAt(LocalDateTime.now().minusDays(days))
+                    .build();
+        }
+
+        private void policy(int retentionDays) {
+            when(retentionPolicyRepository.findByCategory("COMPLAINT_PII"))
+                    .thenReturn(Optional.of(RetentionPolicy.builder()
+                            .category("COMPLAINT_PII")
+                            .targetTable("COMPLAINTS")
+                            .timestampColumn("CLOSED_AT")
+                            .retentionDays(retentionDays)
+                            .build()));
+        }
+
         @Test
-        void shouldDeleteById() {
-            doNothing().when(complaintRepository).deleteById(1L);
+        void shouldDeleteOnceTheRetentionPeriodHasElapsed() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(closedAgo(SEVEN_YEARS + 1)));
+            policy(SEVEN_YEARS);
 
             complaintService.deleteComplaint(1L);
 
             verify(complaintRepository).deleteById(1L);
+        }
+
+        @Test
+        void shouldRefuseWhileInsideTheRetentionPeriod() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(closedAgo(1)));
+            policy(SEVEN_YEARS);
+
+            assertThatThrownBy(() -> complaintService.deleteComplaint(1L))
+                    .isInstanceOf(RetentionPeriodActiveException.class)
+                    .hasMessageContaining("CMP-RETENTION-1");
+
+            verify(complaintRepository, never()).deleteById(anyLong());
+        }
+
+        /**
+         * An open complaint has not started its retention clock, so it is never an expiry case.
+         * Guards against a null closedAt being read as "retention has elapsed".
+         */
+        @Test
+        void shouldRefuseWhenTheComplaintIsNotClosed() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(
+                    Complaint.builder().id(1L).complaintNumber("CMP-OPEN-1").build()));
+            policy(SEVEN_YEARS);
+
+            assertThatThrownBy(() -> complaintService.deleteComplaint(1L))
+                    .isInstanceOf(RetentionPeriodActiveException.class);
+
+            verify(complaintRepository, never()).deleteById(anyLong());
+        }
+
+        /**
+         * Fails CLOSED with no policy row. A missing policy must not read as "no retention applies",
+         * which would make a record easier to destroy than to keep.
+         */
+        @Test
+        void shouldFailClosedWhenNoPolicyRowExists() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(closedAgo(100)));
+            when(retentionPolicyRepository.findByCategory("COMPLAINT_PII")).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> complaintService.deleteComplaint(1L))
+                    .isInstanceOf(RetentionPeriodActiveException.class);
+
+            verify(complaintRepository, never()).deleteById(anyLong());
+        }
+
+        /**
+         * The period is configuration. Shortening the declared period makes a record deletable that
+         * was not before — proving the guard reads the row rather than a compiled-in constant.
+         */
+        @Test
+        void shouldHonourAnAdministratorsShorterPeriod() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(closedAgo(100)));
+            policy(30);
+
+            complaintService.deleteComplaint(1L);
+
+            verify(complaintRepository).deleteById(1L);
+        }
+
+        /** The refused attempt must be recorded and alerted, or it leaves no trace at all. */
+        @Test
+        void shouldAuditAndAlertARefusedAttempt() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(closedAgo(1)));
+            policy(SEVEN_YEARS);
+
+            assertThatThrownBy(() -> complaintService.deleteComplaint(1L))
+                    .isInstanceOf(RetentionPeriodActiveException.class);
+
+            verify(cepcAuditService).logInOwnTransaction(
+                    eq("CMP-RETENTION-1"), eq("COMPLAINT_DELETE_REFUSED_RETENTION"),
+                    anyString(), isNull(), anyString(), anyMap());
+            verify(anomalyDetectionService).raiseDirectViolation(
+                    eq("RETENTION_VIOLATION_ATTEMPT"), eq("HIGH"), eq("CMP-RETENTION-1"), anyString());
+        }
+
+        /** A permitted deletion is audited too, but is not a violation and must not raise an alert. */
+        @Test
+        void shouldAuditAPermittedDeletionWithoutAlerting() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.of(closedAgo(SEVEN_YEARS + 1)));
+            policy(SEVEN_YEARS);
+
+            complaintService.deleteComplaint(1L);
+
+            verify(cepcAuditService).logInOwnTransaction(
+                    eq("CMP-RETENTION-1"), eq("COMPLAINT_DELETED"),
+                    anyString(), isNull(), anyString(), anyMap());
+            verify(anomalyDetectionService, never())
+                    .raiseDirectViolation(anyString(), anyString(), anyString(), anyString());
+        }
+
+        /** Unknown id stays idempotent, as before, and must not be reported as a violation. */
+        @Test
+        void shouldDoNothingForAnUnknownId() {
+            when(complaintRepository.findById(1L)).thenReturn(Optional.empty());
+
+            complaintService.deleteComplaint(1L);
+
+            verify(complaintRepository, never()).deleteById(anyLong());
+            verifyNoInteractions(anomalyDetectionService);
         }
     }
 

@@ -6,6 +6,7 @@ import com.hrms.cms.security.RbioRoleGuard;
 import com.hrms.cms.service.RbioActionOverrideService;
 import com.hrms.cms.service.RbioAdditionalEntityService;
 import com.hrms.cms.service.RbioCaseAssignmentHistoryService;
+import com.hrms.cms.service.RbioFinalDecisionService;
 import com.hrms.cms.service.RbioLegalCaseService;
 import com.hrms.cms.service.RbioRoles;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,7 @@ public class RbioCaseFileController {
     private final RbioActionOverrideService actionOverrideService;
     private final RbioLegalCaseService legalCaseService;
     private final RbioCaseAssignmentHistoryService assignmentHistoryService;
+    private final RbioFinalDecisionService finalDecisionService;
     private final RbioIdentityResolver identityResolver;
 
     // ═══════════════════════════ Additional entities (UST487-495) ═══════════════════════════
@@ -221,6 +223,53 @@ public class RbioCaseFileController {
                 .map(RbioCaseFileController::toTrailPayload)
                 .toList();
         return ResponseEntity.ok(envelope(true, "Assignment history retrieved", trail));
+    }
+
+    // ═══════════════════════════ Final-decision status (the FIFTH phantom) ═══════════════════════════
+
+    /**
+     * Whether a FINAL DECISION has already been taken on this complaint, and by whom.
+     *
+     * <p>A fifth phantom in exactly the family this controller was created for.
+     * {@code rbio-workflow.service.ts:243} has always called
+     * {@code GET /api/v1/complaints/{n}/final-decision-status} and no controller served it, so the
+     * {@code catchError(() => of({hasFinalDecision: false}))} two screens later
+     * ({@code task-action.component.ts:1103}, {@code rbio-complaint-detail.component.ts:419}) made
+     * every complaint look as though no decision had been taken.
+     *
+     * <p>That mattered: {@code isFieldReadOnlyDueToDecision()} is the guard that stops a Dealing
+     * Official editing a file after the Ombudsman has decided it, and it reads this flag. With the
+     * route 404ing, the guard FAILED OPEN on every complaint in the product — a 404 presenting as a
+     * permission. It was also the one unexplained 404 left in
+     * {@code e2e/cepc/references.spec.ts:406}, which watches for failing API calls while the
+     * complaint-detail screen renders.
+     *
+     * <p><b>Resolved from recorded history, not from a new column.</b> The authority is
+     * {@code RBIO_WORKFLOW_TRANSITION}: the action codes whose {@code TO_MILESTONE} is
+     * {@code FINAL_DECISION} are, by definition, the ones that take a final decision (ADJUDICATION_AWARD,
+     * DECIDE_NON_MAINTAINABLE, FACILITATION, SETTLED, ADVISORY_COMPLIED and the rest). A complaint has
+     * a final decision iff {@code COMPLAINT_TIMELINE} holds an entry for one of them. Nothing is
+     * compiled in here and no table was added, so the answer cannot drift from the ladder the
+     * transitions actually walk.
+     *
+     * <p>A complaint with no such entry answers 200 with {@code hasFinalDecision: false} — the
+     * refusal convention of this codebase, not a 404. "No decision yet" is a legitimate state of a
+     * live complaint, not a missing resource.
+     *
+     * <p>CEPC roles are admitted alongside RBIO's because {@code staff/task-action} is ONE component
+     * serving both {@code /staff/rbio/task/:id} and {@code /staff/cepc/task/:id}, and it issues this
+     * call on every load. Guarding it to RBIO only would have replaced the 404 with a 403 and left the
+     * same read-only guard failing open for CEPC.
+     */
+    @GetMapping("/{complaintNumber}/final-decision-status")
+    @RbioRoleGuard(roles = {RbioRoles.OFFICER, RbioRoles.SUPERVISOR, RbioRoles.CONCILIATOR,
+            RbioRoles.ADJUDICATOR, RbioRoles.ADMIN, RbioRoles.DEALING_OFFICIAL, RbioRoles.REVIEWER,
+            RbioRoles.DEPUTY_OMBUDSMAN, RbioRoles.OMBUDSMAN,
+            "CEPC_DO", "CEPC_REVIEWER", "CEPC_INCHARGE", "CEPC_CLOSING_AUTHORITY", "CEPC_ADMIN",
+            "CEPC_CONTACT_PERSON"})
+    public ResponseEntity<Map<String, Object>> finalDecisionStatus(@PathVariable String complaintNumber) {
+        return ResponseEntity.ok(envelope(true, "Final-decision status resolved",
+                finalDecisionService.statusFor(complaintNumber)));
     }
 
     private static Map<String, Object> toTrailPayload(RbioCaseAssignmentHistory row) {

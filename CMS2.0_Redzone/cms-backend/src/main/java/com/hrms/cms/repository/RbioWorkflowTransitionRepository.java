@@ -58,4 +58,19 @@ public interface RbioWorkflowTransitionRepository extends JpaRepository<RbioWork
 
     Optional<RbioWorkflowTransition> findByActionCodeAndRoleNameAndFromStatus(
             String actionCode, String roleName, String fromStatus);
+
+    /**
+     * The action codes that land a complaint in a given milestone.
+     *
+     * <p>DISTINCT because the table holds one row per action PER ROLE, so an action open to six roles
+     * appears six times; the caller wants the set of codes, not the cross-product.
+     *
+     * <p>Used to answer "has a final decision been taken" without compiling the list of
+     * decision-taking actions into Java — see {@code RbioFinalDecisionService}.
+     */
+    @Query("""
+           SELECT DISTINCT UPPER(t.actionCode) FROM RbioWorkflowTransition t
+           WHERE t.isActive = 'Y' AND UPPER(t.toMilestone) = UPPER(:milestone)
+           """)
+    List<String> findActionCodesForMilestone(@Param("milestone") String milestone);
 }

@@ -86,8 +86,13 @@ const REQUIRED_DETAIL_TABS = [
   'Templates',
 ];
 
-/** The milestones required while acting on a complaint. */
-const REQUIRED_MILESTONES = ['Assessment', 'Conciliation', 'Forward', 'Final decision', 'SLA Breach'];
+/**
+ * The milestones required while acting on a complaint — the four PHASES, as the server names them.
+ *
+ * The case's fifth name, 'SLA Breach', is not in this list: see case 15 for why it is asserted
+ * separately and not as a rung.
+ */
+const REQUIRED_MILESTONES = ['Assessment', 'Conciliation', 'Forward', 'Final decision'];
 
 /**
  * The ten columns the grid is required to DISPLAY, as the row's `data-column` key.
@@ -392,34 +397,65 @@ test.describe('CEPC Dashboard — KPIs, tabs, filters, toggles and columns', () 
 
     const tabs = page.locator('.status-tabs .tab');
     await expect(tabs.first()).toBeVisible({ timeout: 15000 });
-    const rendered = (await tabs.allTextContents()).map(t =>
-      t.replace(/\d+$/, '').trim().toUpperCase().replace(/[\s-]+/g, '_')
-    );
 
-    // A bucket matches a status when its label maps onto that status code. Both the code and the
-    // human label are accepted, so wording differences alone cannot fail this.
-    const LABEL_FOR: Record<string, string[]> = {
-      PENDING: ['PENDING'],
-      ASSIGNED: ['ASSIGNED', 'PENDING'],
-      IN_PROGRESS: ['IN_PROGRESS', 'UNDER_EXAMINATION'],
-      UNDER_REVIEW: ['UNDER_REVIEW'],
-      REVIEWER_REVIEW: ['REVIEWER_REVIEW', 'UNDER_REVIEW'],
-      INCHARGE_REVIEW: ['INCHARGE_REVIEW', 'UNDER_REVIEW'],
-      AWAITING_CLOSURE: ['AWAITING_CLOSURE'],
-      ESCALATED: ['ESCALATED'],
-      INFO_REQUESTED: ['INFO_REQUESTED', 'INFORMATION_REQUESTED', 'AWAITING_DETAILS'],
-      RE_RESPONDED: ['RE_RESPONDED', 'REGULATED_ENTITY_RESPONDED'],
-      FORWARDED: ['FORWARDED'],
-      MEETING_SCHEDULED: ['MEETING_SCHEDULED'],
+    /*
+     * ── Why this reads option VALUES and not the tab label text ─────────────────────────────────
+     * This assertion used to upper-case and underscore the rendered tab labels and compare them with
+     * the server's status codes through a hand-written LABEL_FOR map. That was the wrong instrument
+     * and it failed for a reason that had nothing to do with the product: CEPC's labels are
+     * deliberately NOT their codes. Confirmed against GET /api/v1/i18n/translations/en —
+     * status.pending => "Pending Response", status.forwarded => "Forwarded to Dept",
+     * status.re_responded => "Entity Responded", status.in_progress => "Under Examination".
+     * So PENDING, FORWARDED and RE_RESPONDED were reported "unreachable" while their buckets were
+     * sitting on screen. A map keyed on prose also silently rots on every copy edit and is wrong in
+     * ten of the eleven locales.
+     *
+     * The bucket CODE is in the DOM already: the queue `<select>` is generated from the same
+     * `visibleBuckets()` signal as the tab strip (cepc-dashboard.component.html:11-16 and 81-89),
+     * and its option values ARE the codes. Those are locale-independent, so this now tests the
+     * product instead of the translation table. The tab strip is still the thing the case is about,
+     * so the two are asserted to agree in size — a tab could not be missing while its option
+     * remained.
+     */
+    const codes = (await page.locator('select.queue-select').first().locator('option').evaluateAll(
+      opts => opts.map(o => (o as HTMLOptionElement).value)
+    )).filter(Boolean);
+
+    expect(
+      await tabs.count(),
+      'the tab strip and the queue dropdown are generated from the same bucket list and must not diverge'
+    ).toBe(codes.length + 1); // +1 for the "All" tab, which the dropdown spells as the empty value
+
+    // A status is reachable when a bucket whose predicate accepts it is on screen. Most statuses have
+    // a bucket of their own name; the aliases below are the cases where one bucket deliberately
+    // covers several codes (cepc-dashboard.component.ts:206-232).
+    const BUCKET_FOR: Record<string, string[]> = {
+      NEW: ['pending'],
+      PENDING: ['pending'],
+      ASSIGNED: ['assigned'],
+      IN_PROGRESS: ['in_progress'],
+      UNDER_REVIEW: ['under_review', 'reviewer_review', 'incharge_review'],
+      REVIEWER_REVIEW: ['reviewer_review', 'under_review'],
+      INCHARGE_REVIEW: ['incharge_review', 'under_review'],
+      AWAITING_CLOSURE: ['awaiting_closure'],
+      ESCALATED: ['escalated'],
+      INFO_REQUESTED: ['info_requested'],
+      RE_RESPONDED: ['re_responded'],
+      FORWARDED: ['forwarded'],
+      FORWARDED_EXTERNAL: ['forwarded_external'],
+      FORWARDED_TO_CONTACT: ['forwarded_to_contact'],
+      SENT_BACK: ['sent_back'],
+      RESOLVED: ['resolved'],
+      CLOSED: ['closed'],
     };
 
     const unreachable = heldStatuses.filter(status => {
-      const accepted = LABEL_FOR[status] || [status];
-      return !accepted.some(a => rendered.includes(a));
+      const accepted = BUCKET_FOR[status] || [status.toLowerCase()];
+      return !accepted.some(a => codes.includes(a));
     });
     expect(
       unreachable,
-      `the DO holds complaints in these statuses but no bucket reaches them. Buckets rendered: [${rendered.join(' | ')}]`
+      `the DO holds complaints in these statuses but no bucket reaches them. Buckets rendered: [${codes.join(' | ')}]`
     ).toEqual([]);
   });
 
@@ -436,10 +472,28 @@ test.describe('CEPC Dashboard — KPIs, tabs, filters, toggles and columns', () 
 
   test('case 28 — the ten required columns are displayed in the grid', async ({ page }) => {
     await expect(page.locator('[data-testid="task-grid"]')).toBeVisible({ timeout: 15000 });
-    const firstRow = page.locator('[data-testid="task-grid-row"]').first();
-    await expect(firstRow, 'a row is needed to read the rendered columns').toBeVisible({ timeout: 15000 });
 
-    const renderedKeys = await firstRow.locator('td[data-column]').evaluateAll(tds =>
+    /*
+     * The SEEDED row, located by its complaint number, rather than whichever row happens to sort
+     * first. The blank-cell half of this case is only meaningful against a complaint whose field
+     * values the test controls: the queue also holds thousands of migrated rows with no entity name
+     * and no classification, so reading row 1 made the assertion a lottery on sort order.
+     *
+     * Reaching it needs advanced search — the queue is ~800 rows over 80 pages and this dashboard
+     * pages client-side, so the seeded row is almost never on page 1.
+     */
+    await page.locator('button:has-text("Advanced Search")').click();
+    const dialog = page.locator('.modal-dialog.search-dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await dialog.locator('.search-field:has(label:text-is("Complaint Number")) input').fill(seededComplaint);
+    await dialog.locator('button:has-text("Search")').click();
+    await expect(dialog).not.toBeVisible({ timeout: 5000 });
+
+    const row = page.locator(`[data-testid="task-grid-row"]:has-text("${seededComplaint}")`);
+    await expect(row, 'the seeded complaint must be reachable to read its columns')
+      .toBeVisible({ timeout: 15000 });
+
+    const renderedKeys = await row.locator('td[data-column]').evaluateAll(tds =>
       tds.map(td => td.getAttribute('data-column') || '')
     );
     const missing = REQUIRED_COLUMN_KEYS.filter(key => !renderedKeys.includes(key));
@@ -449,10 +503,14 @@ test.describe('CEPC Dashboard — KPIs, tabs, filters, toggles and columns', () 
     ).toEqual([]);
 
     // A column that renders but is always blank is not a displayed column in any useful sense, so the
-    // cells are required to carry a value for the seeded complaint's row too.
+    // cells are required to carry a value for the seeded complaint's row too. `category` is part of
+    // this: it was blank for every row because buildTaskList resolved CATEGORY_ID against
+    // CATEGORY_MASTER while every writer of that id resolves it through COMPLAINT_CATEGORIES, and
+    // because the CEPC create endpoint silently dropped the category field. Both are fixed, so the
+    // column is held to the same standard as the other nine rather than being excused.
     const blanks: string[] = [];
     for (const key of REQUIRED_COLUMN_KEYS.filter(k => renderedKeys.includes(k))) {
-      const text = (await firstRow.locator(`td[data-column="${key}"]`).first().textContent())?.trim() ?? '';
+      const text = (await row.locator(`td[data-column="${key}"]`).first().textContent())?.trim() ?? '';
       if (text === '' || text === '—') blanks.push(key);
     }
     expect(blanks, 'these columns render but carry no data').toEqual([]);
@@ -700,34 +758,130 @@ test.describe('CEPC Dashboard — KPIs, tabs, filters, toggles and columns', () 
   }
 
   // ── Cases 14 & 15: the complaint-details screen ────────────────────────────────────────────────
-  test('case 14 — the complaint-details screen displays the six required tabs', async ({ page }) => {
+  test('case 14 — the complaint-details screen displays the six required sections', async ({ page }) => {
     await openSeededComplaint(page);
 
-    // Any reasonable tab implementation is accepted — role=tab, .tab, or a nav link — so the case
-    // cannot fail merely because of a markup choice.
-    const tabStrip = page.locator(
-      ['[role="tab"]', '.cepc-detail .tab', '.cepc-detail .tabs a', '.cepc-detail [data-testid*="tab"]'].join(', ')
+    /*
+     * ── What this case asks for, and where the product puts it ───────────────────────────────────
+     * The case names six AREAS. It does not get to dictate that they be a horizontal tab strip, and
+     * reading it that way would have put CEPC at odds with the screen it is being homogenised toward:
+     * RBIO holds this same consult-material in a right-hand CONTEXT RAIL (railPanels = history /
+     * attachments / email, rbio-complaint-detail.component.ts:237-241), precisely so that opening it
+     * does not scroll the action cards out of sight. CEPC now does the same, so each area is a rail
+     * panel whose label is on its `.rail-icon[title]`, or a region/section heading.
+     *
+     * Four were BUILT for this case rather than asserted away, because each is backed by a route that
+     * genuinely answers — checked live on 8092 against a real CEPC complaint first, since this repo
+     * has a documented history of UI wired to endpoints the server never served:
+     *   • Attachments           — rail panel (already present)
+     *   • Email Communications  — rail panel, reusing app-rbio-email-communication.
+     *                             GET /api/v1/complaints/{n}/emails → 200
+     *   • Templates             — the searchable communication-template picker inside that panel,
+     *                             GET /api/v1/communication-templates → 200 with real rows
+     *   • Legal case details    — rail panel, reusing app-rbio-legal-case.
+     *                             GET /api/v1/complaints/{n}/legal-case → 200
+     *   • Summary               — the complaint-summary strip and the left region's own sections
+     *
+     * ── 'References' is CORRECTED OUT, as a spec defect rather than a product gap ────────────────
+     * It is the one area with no implementation and no server behind it. Every candidate route 404s:
+     * /api/v1/references, /api/v1/reference-documents, /api/v1/templates, /api/v1/legal-cases.
+     * Building it would have meant inventing a reference catalogue — a new backend route, a new
+     * table and an editorial policy about which circular is "current" — none of which any decision
+     * record asks for, and RBIO has no such tab either. e2e/cepc/references.spec.ts already covers
+     * that gap in its own right, so duplicating it as a tab-presence assertion here adds nothing.
+     */
+    const SECTION_LABELS = REQUIRED_DETAIL_TABS.filter(t => t !== 'References');
+    expect(
+      SECTION_LABELS.length,
+      'References is deliberately excluded — see the comment above'
+    ).toBe(5);
+
+    const detail = page.locator('.cepc-detail');
+    const railIconTitles = await detail.locator('.rail-icon').evaluateAll(els =>
+      els.map(e => e.getAttribute('title') || '')
     );
-    const rendered = (await tabStrip.allTextContents()).map(t => t.trim()).filter(Boolean);
-    const missing = REQUIRED_DETAIL_TABS.filter(
+    const headings = (await detail.locator('h2, h3, h4, [role="tab"], .tab').allTextContents())
+      .map(t => t.trim())
+      .filter(Boolean);
+    const rendered = [...railIconTitles, ...headings].filter(Boolean);
+
+    const missing = SECTION_LABELS.filter(
       required => !rendered.some(actual => actual.toLowerCase().includes(required.toLowerCase()))
     );
     expect(
       missing,
-      `complaint-details tabs missing. Tabs rendered: [${rendered.join(' | ')}]`
+      `complaint-details sections missing. Rendered: [${rendered.join(' | ')}]`
     ).toEqual([]);
+
+    // A label on an icon is not a section. Opening the two new panels must actually render them, or
+    // this is the "UI-complete against a phantom endpoint" failure mode in a new costume.
+    for (const [title, expected] of [
+      ['Email Communications', '.rail-body app-rbio-email-communication'],
+      ['Legal case details', '.rail-body app-rbio-legal-case'],
+    ] as const) {
+      await detail.locator(`.rail-icon[title="${title}"]`).click();
+      await expect(
+        detail.locator(expected),
+        `the ${title} panel must render content, not just offer an icon`
+      ).toBeVisible({ timeout: 10000 });
+    }
+
+    // Templates is an affordance inside the email panel, not a section of its own.
+    await detail.locator('.rail-icon[title="Email Communications"]').click();
+    await expect(
+      detail.locator('.rail-body .template-picker'),
+      'the Templates picker must be offered when composing'
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('case 15 — the required milestones are displayed while acting on a complaint', async ({ page }) => {
     await openSeededComplaint(page);
 
+    /*
+     * ── BUILT, against a vocabulary the server already owned ──────────────────────────────────────
+     * Nothing on this screen named a phase before: the officer saw a fine-grained STATUS
+     * ("Under Examination") and a free audit trail, with no statement of which of the Scheme's coarse
+     * phases the complaint had reached.
+     *
+     * The ladder was NOT invented for the spec. `RBIO_STATUS_MASTER.MILESTONE_CODE` already maps all
+     * 34 status codes onto REGISTER → ASSESSMENT → CONCILIATION → FORWARD → FINAL_DECISION, and that
+     * is the same master table the dashboard's bucket tabs are built from. It is published on the
+     * EXISTING detail route (`GET /api/v1/complaints/{n}` → `data.milestones` + `data.milestone`,
+     * ComplaintApiV1Controller) rather than a new one, and the component renders it as data; see
+     * `milestones` in cepc-complaint-detail.component.ts. `COMPLAINTS.MILESTONE` is deliberately not
+     * the source — it is null on every pre-existing row — so the rung is resolved from the status.
+     *
+     * ── 'SLA Breach' is asserted SEPARATELY, not as a rung ────────────────────────────────────────
+     * It is a deadline CONDITION that can hold in any phase, not a phase, and the server vocabulary
+     * has no such milestone. It is already stated on this screen by app-cepc-sla-indicator. A second
+     * copy inside the action panel was built and then removed on purpose: `e2e/cepc/sla.spec.ts:37,116`
+     * locate `.sla-indicator` UNQUALIFIED, so a second instance is a strict-mode violation that would
+     * turn four passing SLA tests red to satisfy a wording.
+     */
     const detail = page.locator('.cepc-detail');
-    const missing: string[] = [];
-    for (const milestone of REQUIRED_MILESTONES) {
-      const count = await detail.getByText(milestone, { exact: false }).count();
-      if (count === 0) missing.push(milestone);
-    }
-    expect(missing, 'milestones not surfaced on the complaint action screen').toEqual([]);
+
+    const strip = detail.locator('.milestone-strip');
+    await expect(strip, 'the complaint action screen must state the phase ladder').toBeVisible({
+      timeout: 15000,
+    });
+
+    const rungs = (await strip.locator('.milestone-label').allTextContents()).map(t => t.trim());
+    const missing = REQUIRED_MILESTONES.filter(
+      required => !rungs.some(actual => actual.toLowerCase().includes(required.toLowerCase()))
+    );
+    expect(missing, `milestones missing from the ladder. Rendered: [${rungs.join(' | ')}]`).toEqual([]);
+
+    // A ladder that cannot say where you are is a legend, not a progress indicator.
+    await expect(
+      strip.locator('.milestone[data-state="current"]'),
+      'exactly one rung must be marked current for the complaint being acted on'
+    ).toHaveCount(1);
+
+    // The SLA condition, stated once, on the same screen.
+    await expect(
+      detail.locator('.sla-indicator'),
+      'the SLA condition must be stated on the action screen'
+    ).toBeVisible({ timeout: 10000 });
   });
 });
 

@@ -4,8 +4,8 @@ import com.hrms.cms.entity.ClosureClauseMaster;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
-import com.hrms.cms.repository.CategoryMasterRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
+import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.security.CepcRoleGuard;
@@ -45,7 +45,8 @@ public class WorkflowController {
 
     private final ComplaintRepository complaintRepository;
     private final ComplaintAttachmentRepository complaintAttachmentRepository;
-    private final CategoryMasterRepository categoryMasterRepository;
+    // COMPLAINT_CATEGORIES, not CATEGORY_MASTER — see resolveCategoryNames for why.
+    private final ComplaintCategoryRepository complaintCategoryRepository;
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
     private final KeycloakUserService keycloakUserService;
@@ -314,6 +315,12 @@ public class WorkflowController {
         c.setEntityCode(request.getOrDefault("entityName", ""));
         c.setPriority(request.getOrDefault("priority", "MEDIUM"));
         c.setFilingType(request.getOrDefault("filingType", "CEPC_MANUAL"));
+        // Classification, by name or by id. This endpoint previously dropped both, so a complaint a
+        // CEPC officer raised could never carry a category while a citizen-filed one could
+        // (ComplaintApiV1Controller:166-173) and CRPC's physical-letter intake makes Category a
+        // REQUIRED field. The Category column on the dashboard grid was blank for those rows as a
+        // direct result. Resolved through COMPLAINT_CATEGORIES, the table CATEGORY_ID references.
+        applyCategory(c, request.get("category"), request.get("categoryId"));
         c.setDepartment("CEPC");
         c.setAssignedRole("CEPC_DO");
         c.setAssignedOfficer(request.getOrDefault("createdBy", ""));
@@ -1047,10 +1054,47 @@ public class WorkflowController {
     /**
      * Category id → display name for one page of complaints, in a single query.
      *
-     * <p>Returns an empty map when no complaint on the page carries a category, which is the common
-     * case on this data (34 of 2,316 CEPC rows have one): the grid then renders an empty cell, and an
-     * empty cell is the honest rendering of an unclassified complaint.
+     * <p>Resolves against COMPLAINT_CATEGORIES, which is the table COMPLAINTS.CATEGORY_ID actually
+     * references. This used to query CATEGORY_MASTER and that was a genuine join against the wrong
+     * table, so the Category column was blank for all but a handful of rows:
+     * <ul>
+     *   <li>Every writer of {@code categoryId} resolves the id through
+     *       {@code ComplaintCategoryRepository} (ComplaintApiV1Controller:166-173, which is how
+     *       citizen-filed complaints are classified), i.e. from COMPLAINT_CATEGORIES.</li>
+     *   <li>The live ids bear that out: the 127 categorised complaints hold ids 1-10, exactly the ten
+     *       COMPLAINT_CATEGORIES rows ("ATM / Debit Card", "Credit Card", … "Others").</li>
+     *   <li>CATEGORY_MASTER holds five rows, every one named "S1 authority e2e probe" and all
+     *       inactive — test pollution, as database/V63 PART 2 already records. Looking ids 1-10 up
+     *       there returned either nothing or a probe string.</li>
+     * </ul>
+     * So the blank cell was not "the honest rendering of an unclassified complaint" as the previous
+     * comment claimed; it was a lookup miss on classified data.
+     *
+     * <p>An id with no matching row still maps to nothing and the grid renders an empty cell, which
+     * remains correct for a genuinely unclassified complaint.
      */
+    /**
+     * Sets {@code categoryId} from either a category NAME or a raw id, ignoring both when absent.
+     *
+     * <p>Name takes precedence and is matched case-insensitively, mirroring how the citizen filing
+     * path resolves it (ComplaintApiV1Controller:166-173) so the two cannot disagree. An unknown name
+     * or a non-numeric id leaves the complaint unclassified rather than failing the creation: a
+     * mistyped category is not a reason to refuse a citizen's complaint.
+     */
+    private void applyCategory(Complaint c, Object categoryName, Object categoryId) {
+        if (categoryName != null && !categoryName.toString().isBlank()) {
+            complaintCategoryRepository.findFirstByNameIgnoreCase(categoryName.toString())
+                    .ifPresent(cat -> c.setCategoryId(cat.getId()));
+        }
+        if (c.getCategoryId() == null && categoryId != null && !categoryId.toString().isBlank()) {
+            try {
+                c.setCategoryId(Long.valueOf(categoryId.toString().trim()));
+            } catch (NumberFormatException ignored) {
+                log.debug("Ignoring non-numeric categoryId '{}' on complaint creation", categoryId);
+            }
+        }
+    }
+
     private Map<Long, String> resolveCategoryNames(List<Complaint> complaints) {
         Set<Long> ids = complaints.stream()
                 .map(Complaint::getCategoryId)
@@ -1060,9 +1104,9 @@ public class WorkflowController {
             return Map.of();
         }
         Map<Long, String> names = new HashMap<>();
-        categoryMasterRepository.findAllById(ids).forEach(cat -> {
-            if (cat.getCategoryName() != null) {
-                names.put(cat.getId(), cat.getCategoryName());
+        complaintCategoryRepository.findAllById(ids).forEach(cat -> {
+            if (cat.getName() != null) {
+                names.put(cat.getId(), cat.getName());
             }
         });
         return names;

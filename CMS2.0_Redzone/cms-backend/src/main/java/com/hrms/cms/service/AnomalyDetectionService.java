@@ -185,6 +185,33 @@ public class AnomalyDetectionService {
                 "Attempted access to " + distinct + " distinct entities within " + windowMinutes + " minutes", ip);
     }
 
+    /**
+     * Raises an alert for a violation that was OBSERVED DIRECTLY, rather than inferred from a count
+     * of events crossing a threshold.
+     *
+     * <p>WHY THIS IS SEPARATE from the threshold evaluators above: those exist because no single
+     * denial is conclusive, so they look for a pattern over a window. An attempt to permanently
+     * destroy a record inside its statutory retention period needs no corroboration — one is already
+     * the whole event — so it is reported with a count and threshold of 1 rather than being made to
+     * wait for a second occurrence that must never be allowed to happen.
+     *
+     * <p>Suppression still applies, keyed on subject + alert type, so a script hammering the delete
+     * endpoint cannot bury the console it is meant to inform. The AUDIT_LOG row written by the
+     * refusing service is the per-attempt record; this is the signal that someone should look.
+     *
+     * <p>REQUIRES_NEW, like every other entry point on this class, and here it is load-bearing rather
+     * than conventional: the caller is about to THROW the refusal. An alert written in the caller's
+     * transaction would be rolled back by the very exception it exists to report, leaving no alert —
+     * observed exactly that way before this annotation was added.
+     *
+     * @param subject who or what the alert is about — a complaint number for a retention breach
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void raiseDirectViolation(String alertType, String severity, String subject,
+                                     String details) {
+        raise(alertType, severity, subject, 1, 1, "single occurrence", details, null);
+    }
+
     private void raise(String alertType, String severity, String subject, int count, int threshold,
                        String windowLabel, String details, String ip) {
         int suppressionMinutes = systemConfigService.getInt(CFG_ALERT_SUPPRESSION_MINUTES, 60);

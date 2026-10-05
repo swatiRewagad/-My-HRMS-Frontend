@@ -1140,10 +1140,24 @@
 
   label { font-size: 13px; font-weight: 400; color: var(--text-muted); }
 
+  .req { color: var(--state-danger-fg); font-weight: 600; }
+
+  .field-error { font-size: 12px; color: var(--state-danger-fg); }
+
+  .checkbox-inline {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font-size: 14px; color: var(--text-heading); padding: 10px 0;
+    input[type="checkbox"] {
+      width: 16px; height: 16px; margin: 0; padding: 0;
+      cursor: pointer; accent-color: var(--brand-primary);
+    }
+  }
+
   input, select, textarea {
     padding: 10px 12px; border: 1px solid var(--border-input); border-radius: 6px; font-size: 14px;
     transition: border-color 0.2s; background: var(--surface-card);
     &:focus { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 2px rgba(59,130,246,.1); }
+    &:disabled { background: var(--surface-subtle); color: var(--text-subtle); cursor: not-allowed; }
   }
   textarea { resize: vertical; }
 
@@ -1157,6 +1171,23 @@
     border: 1px solid var(--border-subtle);
     border-radius: 6px;
     padding: 8px 12px;
+  }
+
+  // Read-only Complaint Details: 2 lines then ellipsis, matching the summary layout.
+  .complaint-details-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.5;
+  }
+
+  &.cpgram-flag { justify-content: center; }
+
+  .checkbox-inline.readonly {
+    cursor: default;
+    input[type="checkbox"] { cursor: default; }
+    span { color: var(--text-muted); font-size: 13px; font-weight: 400; }
   }
 
   .comment-tools {
@@ -1176,7 +1207,13 @@
   }
 
   .field-static { font-size: 15px; color: #111827; font-weight: 600; }
-  .field-value { font-size: 15px; color: #111827; font-weight: 600; padding: 2px 0; }
+
+  // Read-only values are plain bold text. The global `.field-value` rule gives them
+  // input-like chrome, which must be cleared here or they look like disabled inputs.
+  .field-value {
+    font-size: 15px; color: #111827; font-weight: 600; padding: 2px 0;
+    background: none; border: none; border-radius: 0;
+  }
 }
 
 .radio-group {
@@ -2120,6 +2157,92 @@ select:disabled {
         }
       }
     }
+  }
+}
+
+// ═══ ELIGIBILITY CHECK ═══
+// The Figma shows the reason as a searchable field, so the native select keeps the
+// magnifier affordance; the icon sits inside the control and must not swallow clicks.
+.reason-search-wrapper {
+  position: relative;
+
+  select {
+    width: 100%;
+    padding-right: 32px;
+  }
+
+  .reason-search-icon {
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: var(--text-subtle);
+    pointer-events: none;
+  }
+}
+
+.eligibility-block {
+  margin-top: 16px;
+
+  .eligibility-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+  }
+
+  .eligibility-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+
+    .toggle-switch {
+      position: relative; width: 36px; height: 20px; display: inline-block; flex-shrink: 0;
+      input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 2; margin: 0; }
+      .toggle-slider {
+        position: absolute; inset: 0;
+        background: var(--border-strong); border-radius: 10px; transition: background 0.2s;
+        pointer-events: none;
+        &::before {
+          content: ''; position: absolute; width: 16px; height: 16px;
+          left: 2px; bottom: 2px; background: var(--surface-card); border-radius: 50%;
+          transition: transform 0.2s;
+        }
+      }
+      &.active .toggle-slider {
+        background: var(--brand-primary);
+        &::before { transform: translateX(16px); }
+      }
+    }
+  }
+
+  // A question answered the closing way is the reason the complaint will be rejected,
+  // so it is tinted rather than left to look like every other answered row.
+  .radio-field-row.failed {
+    background: var(--state-danger-bg);
+    > label { color: var(--state-danger-fg); }
+  }
+
+  .eligibility-dates {
+    margin-top: 12px;
+  }
+
+  .eligibility-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--state-danger-bg);
+    border: 1px solid var(--state-danger-solid);
+    font-size: 13px;
+    color: var(--state-danger-fg);
+    i { font-size: 14px; margin-top: 1px; }
   }
 }
 

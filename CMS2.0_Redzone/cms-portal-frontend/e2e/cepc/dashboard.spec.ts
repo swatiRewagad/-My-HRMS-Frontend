@@ -54,9 +54,22 @@ test.describe('CEPC Dashboard', () => {
     const statsBar = page.locator('.stats-bar');
     await expect(statsBar).toBeVisible({ timeout: 10000 });
 
+    // These five are the RBIO KPI set the CEPC dashboard was homogenised onto — they are
+    // role-relevant QUEUES a DO can act on, not a roll-call of statuses. The previous expectation
+    // ('Total Complaints', 'Pending', 'Under Examination', 'Under Review', 'Escalated') described
+    // the pre-homogenisation cards and became stale when the component adopted
+    // cepc.stats.total_pending / pending_with_me / pending_contact_person / pending_meeting /
+    // sla_breach (cepc-dashboard.component.html:41-73). Verified against
+    // GET /api/v1/i18n/translations/en rather than hardcoded guesses.
     const labels = (await statsBar.locator('.stat-label').allTextContents()).map(l => l.trim());
     expect(labels).toEqual(
-      expect.arrayContaining(['Total Complaints', 'Pending', 'Under Examination', 'Under Review', 'Escalated'])
+      expect.arrayContaining([
+        'Total Pending Complaints',
+        'Pending with Me',
+        'Pending with Contact Person',
+        'Meeting Scheduled',
+        'SLA Breach',
+      ])
     );
 
     // A stat card showing a blank or NaN is a failure, not a pass.
@@ -120,37 +133,99 @@ test.describe('CEPC Dashboard', () => {
     await expect.poll(async () => rows.count(), { timeout: 8000 }).toBeGreaterThan(1);
   });
 
-  test.fixme(
-    'per-column search boxes filter the grid',
-    async () => {
-      // FIXME — PRODUCTION DEFECT (missing reactivity), identical to the RBIO task list.
-      // `columnFilters` is a PLAIN OBJECT (cepc-dashboard.component.ts:61) read inside the
-      // `filteredComplaints` computed (line 165). `[(ngModel)]="columnFilters[col.key]"` mutates a
-      // property of that object, which no signal observes, so the computed never recomputes.
-      // Verified in the browser: typing an impossible value into the first `.col-search` box leaves
-      // all 10 rows on screen.
-      //
-      // Note the contrast — `allColumns` on this same component IS a signal and its toggle correctly
-      // uses `.update(...)` (line 345), so the column config works while the column search does not.
-      // Un-fixme once `columnFilters` is a signal.
-    }
-  );
+  /**
+   * Was `test.fixme` for a REAL reactivity defect: `columnFilters` on the dashboard was a plain
+   * object read inside the `filteredComplaints` computed, so `[(ngModel)]` mutated a property no
+   * signal observed and the computed never recomputed — typing an impossible value left every row
+   * on screen.
+   *
+   * Fixed, and in a better place than the original fixme anticipated: the dashboard now delegates to
+   * the shared `app-task-grid`, which owns the filter boxes itself
+   * (task-grid.component.html:94-110 `input.col-search[data-column]`) and holds them in a genuine
+   * signal updated through `setColumnFilter` → `columnFilters.update(...)`
+   * (task-grid.component.ts:141,346-348), feeding its own `filtered` computed (line 227).
+   * Un-fixme'd and asserted end-to-end rather than taken on trust.
+   */
+  test('per-column search boxes filter the grid', async ({ page }) => {
+    await page.waitForSelector('.data-grid', { timeout: 15000 });
 
-  test.fixme(
-    'status filter narrows the grid to the chosen status',
-    async () => {
-      // FIXME — PRODUCTION DEFECT (case mismatch). The status dropdown emits lowercase values
-      // (`<option value="in_progress">`, cepc-dashboard.component.html:61) and `filteredComplaints`
-      // compares them with `c.status === status` (component ts:150), but the tasks endpoint returns
-      // status UPPERCASED — `task.put("status", c.getStatus().toUpperCase())`,
-      // WorkflowController.java:893, verified live: ["RE_RESPONDED","FORWARDED","ASSIGNED",
-      // "IN_PROGRESS","INFO_REQUESTED"]. 'IN_PROGRESS' === 'in_progress' is false, so selecting
-      // "Under Examination" empties the grid even though 2 such complaints are present.
-      //
-      // The 'pending' and 'under_review' options use `.includes()` against lowercase arrays and are
-      // broken the same way. Un-fixme once the comparison is case-normalised.
+    const rows = page.locator('[data-testid="task-grid-row"]');
+    await expect
+      .poll(async () => rows.count(), { message: 'rows must exist before filtering is meaningful' })
+      .toBeGreaterThan(0);
+    const before = await rows.count();
+
+    // An impossible value must empty the grid. Under the old defect this left `before` rows.
+    const subjectFilter = page.locator('input.col-search[data-column="subject"]');
+    await expect(subjectFilter, 'the grid must offer a per-column search box').toHaveCount(1);
+    await subjectFilter.fill('zzz-no-such-subject-zzz');
+    await expect
+      .poll(async () => rows.count(), {
+        message: 'an unmatchable per-column filter must leave no rows',
+        timeout: 8000,
+      })
+      .toBe(0);
+
+    // And a real value must narrow to the seeded row rather than merely clearing everything.
+    await subjectFilter.fill('S4-CEPC Dashboard Fixture');
+    await expect
+      .poll(async () => rows.count(), {
+        message: 'a matching per-column filter must restore the matching rows',
+        timeout: 8000,
+      })
+      .toBeGreaterThan(0);
+    expect(await rows.count(), 'the filter must still exclude non-matching rows').toBeLessThanOrEqual(before);
+    for (const t of await rows.allTextContents()) {
+      expect(t, 'every remaining row must match the column filter').toContain('S4-CEPC Dashboard Fixture');
     }
-  );
+  });
+
+  /**
+   * Was `test.fixme` for a REAL case-mismatch defect: the status dropdown emitted lowercase values
+   * while `GET /workflow/cepc/tasks` returns status UPPERCASED
+   * (`task.put("status", c.getStatus().toUpperCase())`), so `'IN_PROGRESS' === 'in_progress'` was
+   * false and choosing "Under Examination" emptied a grid that held such complaints.
+   *
+   * Fixed on BOTH sides: `mapComplaint` now lower-cases the incoming status
+   * (cepc-dashboard.component.ts:450) and the dropdown no longer carries a fixed option list — it is
+   * generated from `visibleBuckets()`, whose predicates match the normalised value
+   * (allBuckets, component.ts:206-232). The fixed list was itself a second defect: it stranded
+   * FORWARDED / RE_RESPONDED / INFO_REQUESTED complaints behind no reachable option at all.
+   */
+  test('status filter narrows the grid to the chosen status', async ({ page }) => {
+    await page.waitForSelector('.data-grid', { timeout: 15000 });
+
+    const rows = page.locator('[data-testid="task-grid-row"]');
+    await expect
+      .poll(async () => rows.count(), { message: 'rows must exist before filtering is meaningful' })
+      .toBeGreaterThan(0);
+    const before = await rows.count();
+
+    // The queue select is generated from the occupied buckets, so "Under Examination" is only
+    // offered when such complaints are loaded — and beforeAll advances the fixture to in_progress.
+    const statusSelect = page.locator('select.queue-select').first();
+    await expect(
+      statusSelect.locator('option[value="in_progress"]'),
+      'the bucket the fixture sits in must be offered as an option'
+    ).toHaveCount(1);
+
+    await statusSelect.selectOption('in_progress');
+
+    // The defect's signature was an EMPTY grid, so the load-bearing assertion is that rows survive.
+    await expect
+      .poll(async () => rows.count(), {
+        message: 'selecting an occupied status bucket must not empty the grid',
+        timeout: 8000,
+      })
+      .toBeGreaterThan(0);
+    expect(await rows.count(), 'a status filter must narrow, not widen').toBeLessThanOrEqual(before);
+
+    // Every surviving row must actually carry that status, or the filter is decorative.
+    const statuses = await rows.locator('td[data-column="status"]').allTextContents();
+    for (const s of statuses) {
+      expect(s.trim(), `a row in the Under Examination bucket read "${s}"`).toContain('Under Examination');
+    }
+  });
 
   test('pagination reports a page range and disables Previous on page one', async ({ page }) => {
     await page.waitForSelector('.data-grid, .empty-state', { timeout: 15000 });

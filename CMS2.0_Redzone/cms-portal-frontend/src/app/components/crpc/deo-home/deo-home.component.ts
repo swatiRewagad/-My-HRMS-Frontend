@@ -215,19 +215,19 @@ export class DeoHomeComponent implements OnInit {
 
   stats = computed(() => {
     const all = this.drafts();
-    const pending = all.filter(d => d.status === 'DRAFT' || d.status === 'IN_PROGRESS');
+    const pending = all.filter(d => d.status === 'DRAFT' || d.status === 'SENT_TO_REVIEWER' || d.status === 'SENT_BACK_TO_DEO');
     return {
       total: all.length,
       draft: all.filter(d => d.status === 'DRAFT').length,
-      inProgress: all.filter(d => d.status === 'IN_PROGRESS').length,
-      rejected: all.filter(d => d.status === 'REJECTED_BY_REVIEWER').length,
+      sentToReviewer: all.filter(d => d.status === 'SENT_TO_REVIEWER').length,
+      sentBackToDo: all.filter(d => d.status === 'SENT_BACK_TO_DEO').length,
       approved: all.filter(d => d.status === 'APPROVED').length,
       direct: all.filter(d => d.modeOfReceipt === 'PHYSICAL_LETTER' || (d.modeOfReceipt === 'EMAIL' && !d.fromEmailId.toLowerCase().includes('rbi.org.in') && !d.fromEmailId.toLowerCase().includes('rbi.gov.in'))).length,
       viaAbr: all.filter(d => d.modeOfReceipt === 'CPGRAMS').length,
       viaRbiDomain: all.filter(d => d.fromEmailId.toLowerCase().includes('rbi.org.in') || d.fromEmailId.toLowerCase().includes('rbi.gov.in')).length,
       pending0to3: pending.filter(d => d.ageing <= 3).length,
-      pending4to6: pending.filter(d => d.ageing >= 4 && d.ageing <= 6).length,
-      pendingOver6: pending.filter(d => d.ageing > 6).length,
+      pending4to8: pending.filter(d => d.ageing >= 4 && d.ageing <= 8).length,
+      pendingOver8: pending.filter(d => d.ageing > 8).length,
     };
   });
 
@@ -344,11 +344,11 @@ export class DeoHomeComponent implements OnInit {
   private mapStatus(status: string): string {
     switch (status) {
       case 'SENT_TO_REVIEWER':
-      case 'ASSIGNED': return 'IN_PROGRESS';
+      case 'ASSIGNED': return 'SENT_TO_REVIEWER';
       case 'APPROVED_ROUTED':
       case 'CONVERTED': return 'APPROVED';
-      case 'SENT_BACK_TO_DEO':
-      case 'CLOSED_NOT_A_COMPLAINT': return 'REJECTED_BY_REVIEWER';
+      case 'SENT_BACK_TO_DEO': return 'SENT_BACK_TO_DEO';
+      case 'CLOSED_NOT_A_COMPLAINT': return 'CLOSED_NOT_A_COMPLAINT';
       case 'DRAFT': return 'DRAFT';
       default: return 'DRAFT';
     }
@@ -442,10 +442,22 @@ export class DeoHomeComponent implements OnInit {
   getStatusLabel(status: string): string {
     switch (status) {
       case 'DRAFT': return 'Draft';
-      case 'IN_PROGRESS': return 'In Progress';
+      case 'SENT_TO_REVIEWER': return 'Sent to Reviewer';
+      case 'SENT_BACK_TO_DEO': return 'Sent back to DO';
       case 'APPROVED': return 'Approved';
-      case 'REJECTED_BY_REVIEWER': return 'Sent Back';
+      case 'CLOSED_NOT_A_COMPLAINT': return 'Not a Complaint';
       default: return status;
+    }
+  }
+
+  getStatusIcon(status: string): string {
+    switch (status) {
+      case 'DRAFT': return 'pi pi-file-edit';
+      case 'SENT_TO_REVIEWER': return 'pi pi-send';
+      case 'SENT_BACK_TO_DEO': return 'pi pi-reply';
+      case 'APPROVED': return 'pi pi-check-circle';
+      case 'CLOSED_NOT_A_COMPLAINT': return 'pi pi-ban';
+      default: return 'pi pi-circle-fill';
     }
   }
 

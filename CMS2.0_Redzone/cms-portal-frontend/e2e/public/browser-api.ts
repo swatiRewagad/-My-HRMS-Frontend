@@ -73,6 +73,32 @@ export async function installCorsShim(page: Page): Promise<void> {
         return;
       }
 
+      // ── FILE UPLOADS MUST NOT GO THROUGH route.fetch ──────────────────────────────────────────
+      //
+      // route.fetch replays the request from the Playwright process using the body Playwright can
+      // see, and for a multipart form containing a FILE that body is INCOMPLETE: Chromium reports
+      // the part headers (`Content-Disposition: form-data; name="documents"; filename="x.pdf"`) but
+      // not the file's bytes, because the renderer never had them — the upload is streamed from
+      // disk by the browser process. The replayed request therefore arrives at the server with
+      // empty file parts, which Spring binds as absent, so an upload the page genuinely performed
+      // looks to the server like no file at all.
+      //
+      // That failure is SILENT and extremely misleading: the request is a real 200, the page shows
+      // its success screen, and only the database shows nothing was stored. It is exactly how the
+      // withdrawal-attachment cases failed while a curl of the same endpoint and the same page with
+      // the shim disabled both stored the document correctly.
+      //
+      // So a multipart request is handed back to the browser with only its URL rewritten. CORS then
+      // applies for real, which is fine for the dev-server ports the backend already allow-lists
+      // (4200/4201/4202/4300 — application.yml) and is the pairing these specs run in. On a port
+      // outside the allow-list such a request now FAILS LOUDLY instead of succeeding with no file,
+      // which is the outcome we want: a dropped attachment must never look like a pass.
+      const contentType = route.request().headers()['content-type'] || '';
+      if (contentType.toLowerCase().startsWith('multipart/form-data')) {
+        await route.continue({ url });
+        return;
+      }
+
       try {
         // Origin and Referer MUST be stripped. route.fetch replays the browser's headers verbatim,
         // so the server still sees Origin: http://localhost:4296 and Spring's CorsFilter still

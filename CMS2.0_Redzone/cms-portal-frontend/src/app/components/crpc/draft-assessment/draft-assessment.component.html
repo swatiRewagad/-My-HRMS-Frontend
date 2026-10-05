@@ -345,7 +345,7 @@
                   </div>
                 </div>
                 <div class="field-item full">
-                  <label>Subject</label>
+                  <label>Subject <span class="req">*</span></label>
                   @if (editMode()) {
                     <input type="text" [(ngModel)]="subject" placeholder="Subject"
                            (focus)="onFieldFocus(subject)" (blur)="onFieldBlur()" />
@@ -355,7 +355,7 @@
                   }
                 </div>
                 <div class="field-item full">
-                  <label>Complaint Details</label>
+                  <label>Complaint Details <span class="req">*</span></label>
                   @if (editMode()) {
                     <div class="textarea-with-speech">
                       <textarea [(ngModel)]="description" rows="3" placeholder="Complaint description"
@@ -363,12 +363,12 @@
                       <app-speech-button (transcription)="description = description + ' ' + $event"></app-speech-button>
                     </div>
                   } @else {
-                    <p class="field-readonly focusable-field complaint-details-scroll" tabindex="0"
+                    <p class="field-value focusable-field complaint-details-clamp" tabindex="0"
                        (focus)="onFieldFocus(description)" (click)="onFieldClick(description)" (blur)="onFieldBlur()">{{ description || '—' }}</p>
                   }
                 </div>
                 <div class="field-item full">
-                  <label>Comments</label>
+                  <label>Comments <span class="req">*</span></label>
                   @if (editMode()) {
                     <div class="comment-tools">
                       <select class="template-select" (change)="applyTemplate($any($event.target).value); $any($event.target).value = ''">
@@ -389,15 +389,55 @@
                 </div>
                 <div class="field-grid-2">
                   <div class="field-item">
-                    <label>Mode of Receipt</label>
-                    <span class="field-value">{{ modeOfReceipt === 'PHYSICAL_LETTER' ? 'Physical Letter' : 'Email' }}</span>
+                    <label>Mode of Receipt <span class="req">*</span></label>
+                    @if (editMode()) {
+                      <select [(ngModel)]="modeOfReceipt">
+                        <option value="EMAIL">Email</option>
+                        <option value="PHYSICAL_LETTER">Physical Letter</option>
+                        <option value="PORTAL">Portal</option>
+                        <option value="CPGRAMS">CPGRAMS</option>
+                      </select>
+                    } @else {
+                      <span class="field-value">{{ modeOfReceiptLabel() }}</span>
+                    }
                   </div>
                   <div class="field-item">
                     <label>Receipt Date</label>
                     @if (editMode()) {
                       <input type="date" [(ngModel)]="receivedDate" />
                     } @else {
-                      <span class="field-value">{{ receivedDate || '—' }}</span>
+                      <span class="field-value">{{ receiptDateDisplay() }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="field-item full cpgram-flag">
+                  @if (editMode()) {
+                    <label class="checkbox-inline">
+                      <input type="checkbox" [checked]="isCpgram"
+                             (change)="onIsCpgramChange($any($event.target).checked)" />
+                      <span>Is Complaint CPGRAM</span>
+                    </label>
+                  } @else {
+                    <label class="checkbox-inline readonly">
+                      <input type="checkbox" [checked]="isCpgram" disabled />
+                      <span>Is Complaint CPGRAM</span>
+                    </label>
+                  }
+                </div>
+                <div class="field-grid-2">
+                  <div class="field-item">
+                    <label>CPGRAM Number</label>
+                    @if (editMode()) {
+                      <input type="text" inputmode="numeric"
+                             [disabled]="!isCpgram"
+                             [ngModel]="cpgramsReference"
+                             (ngModelChange)="onCpgramsNumberInput($event)"
+                             placeholder="16 digit number" />
+                      @if (cpgramsNumberError) {
+                        <span class="field-error">{{ cpgramsNumberError }}</span>
+                      }
+                    } @else {
+                      <span class="field-value">{{ cpgramsReference || '—' }}</span>
                     }
                   </div>
                 </div>
@@ -415,38 +455,41 @@
             }
           </div>
 
-          <!-- Eligibility -->
+          <!-- Eligibility Check -->
           <div class="form-section" [class.open]="sectionOpen.eligibility">
             <div class="section-header" (click)="sectionOpen.eligibility = !sectionOpen.eligibility">
-              <span><i class="pi pi-chart-bar"></i> Eligibility</span>
+              <span><i class="pi pi-chart-bar"></i> Eligibility Check</span>
               <i class="pi" [class.pi-chevron-down]="sectionOpen.eligibility" [class.pi-chevron-up]="!sectionOpen.eligibility"></i>
             </div>
             @if (sectionOpen.eligibility) {
               <div class="section-body">
                 <div class="field-grid-2">
                   <div class="field-item">
-                    <label>Proposed Complaint Type</label>
+                    <label>Proposed Complaint Type <span class="req">*</span></label>
                     @if (editMode()) {
                       <select [(ngModel)]="deoDecision" (ngModelChange)="onDeoDecisionChange($event)">
-                        <option value="">Select</option>
+                        <option value="">Select a Value</option>
                         <option value="MAINTAINABLE">New Complaint</option>
-                        <option value="NON_MAINTAINABLE">Not a Complaint</option>
+                        <option value="NON_MAINTAINABLE">Not A Complaint</option>
                       </select>
                     } @else {
-                      <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'New Complaint' : deoDecision === 'NON_MAINTAINABLE' ? 'Not a Complaint' : '—' }}</span>
+                      <span class="field-value">{{ deoDecision === 'MAINTAINABLE' ? 'New Complaint' : deoDecision === 'NON_MAINTAINABLE' ? 'Not A Complaint' : '—' }}</span>
                     }
                   </div>
                   <div class="field-item">
-                    <label>Reason for not a complaint</label>
+                    <label>Reason for not a complaint @if (deoDecision === 'NON_MAINTAINABLE') { <span class="req">*</span> }</label>
                     @if (editMode()) {
-                      <select [(ngModel)]="nonMaintainableReason" [disabled]="deoDecision !== 'NON_MAINTAINABLE'">
-                        <option value="">Select a Value</option>
-                        @for (r of nonMaintainableReasons; track r.value) {
-                          <option [value]="r.value">{{ r.label }}</option>
-                        }
-                      </select>
+                      <div class="reason-search-wrapper">
+                        <select [(ngModel)]="nonMaintainableReason" [disabled]="deoDecision !== 'NON_MAINTAINABLE'">
+                          <option value="">Select a Value</option>
+                          @for (r of nonMaintainableReasons; track r.value) {
+                            <option [value]="r.value">{{ r.label }}</option>
+                          }
+                        </select>
+                        <i class="pi pi-search reason-search-icon"></i>
+                      </div>
                     } @else {
-                      <span class="field-value">{{ nonMaintainableReason || '—' }}</span>
+                      <span class="field-value">{{ nonMaintainableReasonLabel() }}</span>
                     }
                   </div>
                 </div>
@@ -469,19 +512,82 @@
                   </div>
                 }
 
-                <!-- Eligibility Questions (shown when New Complaint selected) -->
-                @if (deoDecision === 'MAINTAINABLE' && editMode()) {
-                  <div class="eligibility-questions" style="margin-top: 16px; padding: 12px; background: var(--surface-page); border-radius: 8px;">
-                    <h4 class="sub-section-title" style="margin-bottom: 12px;">Eligibility Assessment</h4>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">Mark all eligible — all fields default to Yes</p>
-                    @for (q of maintainabilityQuestions; track q.id) {
-                      <div class="radio-field-row" style="padding: 8px 0; border-bottom: 1px solid var(--border-subtle);">
-                        <label style="flex: 1; font-size: 13px;">{{ q.question }}</label>
-                        <div class="radio-group">
-                          <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'YES'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> Yes</label>
-                          <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'NO'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> No</label>
-                          <label><input type="radio" [name]="q.id" [ngModel]="q.answer" [value]="'NA'" (ngModelChange)="onEligibilityAnswer(q.id, $event)" /> NA</label>
+                <!-- Eligibility questions: only a New Complaint is assessed for eligibility -->
+                @if (deoDecision === 'MAINTAINABLE') {
+                  <div class="eligibility-block">
+                    @if (editMode()) {
+                      <div class="eligibility-toolbar">
+                        <label class="eligibility-toggle">
+                          <span class="toggle-switch" [class.active]="allMarkedEligible()">
+                            <input type="checkbox" [checked]="allMarkedEligible()"
+                                   (change)="onMarkAllEligibleChange($any($event.target).checked)" />
+                            <span class="toggle-slider"></span>
+                          </span>
+                          <span>Mark all as eligible</span>
+                        </label>
+                      </div>
+                    }
+
+                    <div class="radio-field-list">
+                      @for (q of visibleEligibilityQuestions(); track q.id) {
+                        <div class="radio-field-row" [class.failed]="q.answer !== null && q.answer === q.closeOn">
+                          <label>{{ q.question }} <span class="req">*</span></label>
+                          @if (editMode()) {
+                            <div class="radio-group">
+                              <label><input type="radio" [name]="q.id" [checked]="q.answer === 'YES'"
+                                            (change)="setEligibilityAnswer(q.id, 'YES')" /> Yes</label>
+                              <label><input type="radio" [name]="q.id" [checked]="q.answer === 'NO'"
+                                            (change)="setEligibilityAnswer(q.id, 'NO')" /> No</label>
+                            </div>
+                          } @else {
+                            <span class="field-value">{{ q.answer === 'YES' ? 'Yes' : q.answer === 'NO' ? 'No' : '—' }}</span>
+                          }
                         </div>
+                      }
+                    </div>
+
+                    @if (showReFiledDate()) {
+                      <div class="field-grid-2 eligibility-dates">
+                        <div class="field-item">
+                          <label>Date the complaint was first filed with the Entity <span class="req">*</span></label>
+                          @if (editMode()) {
+                            <input type="date" [(ngModel)]="reFiledDate" [max]="maxEligibilityDate" />
+                            @if (reFiledDateError) { <span class="field-error">{{ reFiledDateError }}</span> }
+                          } @else {
+                            <span class="field-value">{{ displayDate(reFiledDate) }}</span>
+                          }
+                        </div>
+                        <div class="field-item">
+                          <label>Is the Registration Date Valid</label>
+                          <label class="checkbox-inline readonly">
+                            <input type="checkbox" [checked]="registrationDateValid()" disabled />
+                            <span>{{ !reFiledDate ? 'Awaiting date' : registrationDateValid() ? 'Valid' : 'Not valid' }}</span>
+                          </label>
+                          @if (reWindowDays() !== null) {
+                            <span class="field-hint">Filed with the Entity {{ reWindowDays() }} day(s) ago. The Entity has 30 days to respond.</span>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @if (showReReplyDate()) {
+                      <div class="field-grid-2 eligibility-dates">
+                        <div class="field-item">
+                          <label>Date of Reply <span class="req">*</span></label>
+                          @if (editMode()) {
+                            <input type="date" [(ngModel)]="reReplyDate" [max]="maxEligibilityDate" [min]="reFiledDate" />
+                            @if (reReplyDateError) { <span class="field-error">{{ reReplyDateError }}</span> }
+                          } @else {
+                            <span class="field-value">{{ displayDate(reReplyDate) }}</span>
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    @if (eligibilityAutoCloseReason()) {
+                      <div class="eligibility-alert">
+                        <i class="pi pi-exclamation-triangle"></i>
+                        <span>{{ eligibilityAutoCloseMessage() }}</span>
                       </div>
                     }
                   </div>
@@ -785,20 +891,6 @@
                       <input type="date" [(ngModel)]="filingDate" />
                     } @else {
                       <span class="field-value">{{ filingDate || '—' }}</span>
-                    }
-                  </div>
-                  <div class="field-item">
-                    <label>Complaint Registration Date Valid</label>
-                    @if (editMode()) {
-                      <div class="radio-group">
-                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="true" (ngModelChange)="registrationDateValid = $event" name="registrationDateValid" /> Yes</label>
-                        <label><input type="radio" [ngModel]="registrationDateValid" [value]="false" (ngModelChange)="registrationDateValid = $event" name="registrationDateValid" /> No</label>
-                      </div>
-                    } @else {
-                      <div class="radio-group">
-                        <label><input type="radio" [checked]="registrationDateValid" disabled /> Yes</label>
-                        <label><input type="radio" [checked]="!registrationDateValid" disabled /> No</label>
-                      </div>
                     }
                   </div>
                 </div>

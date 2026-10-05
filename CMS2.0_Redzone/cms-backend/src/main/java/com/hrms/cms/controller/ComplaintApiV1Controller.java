@@ -5,17 +5,23 @@ import com.hrms.cms.dto.FileComplaintRequest;
 import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.entity.RbioStatusMaster;
 import com.hrms.cms.entity.ReActivityStatus;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
+import com.hrms.cms.repository.RbioStatusMasterRepository;
 import com.hrms.cms.service.CepcAuditService;
 import com.hrms.cms.service.CitizenSessionService;
 import com.hrms.cms.service.CitizenStageMapper;
 import com.hrms.cms.service.ComplaintService;
 import com.hrms.cms.service.AnomalyDetectionService;
+import com.hrms.cms.service.FileStorageService;
+import com.hrms.cms.service.NotificationConfigService;
+import com.hrms.cms.service.NotificationService;
 import com.hrms.cms.service.PiiMaskingService;
 import com.hrms.cms.service.PiiRevealService;
+import com.hrms.cms.entity.ComplaintAttachment;
 import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.triage.IntakeTriageService;
@@ -28,8 +34,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -46,6 +54,8 @@ public class ComplaintApiV1Controller {
     private final BankRepository bankRepository;
     private final ComplaintCategoryRepository categoryRepository;
     private final ComplaintRepository complaintRepository;
+    // RBIO_STATUS_MASTER backs the milestone ladder; see milestoneLadder().
+    private final RbioStatusMasterRepository rbioStatusMasterRepository;
     private final IntakeTriageService triageService;
     private final CitizenSessionService citizenSessionService;
     private final CepcAuditService auditService;
@@ -55,6 +65,23 @@ public class ComplaintApiV1Controller {
     private final PiiMaskingService piiMaskingService;
     private final PiiRevealService piiRevealService;
     private final AnomalyDetectionService anomalyDetectionService;
+
+    /**
+     * Stores the documents a citizen submits WITH a withdrawal (UST107 / FR-G-036 scenario 4).
+     *
+     * <p>The withdrawal endpoint accepted a JSON body only, so the files the withdrawal form happily
+     * collected had nowhere to go: they were held in a browser field, the citizen saw a confirmation,
+     * and the documents were discarded on navigation. The same service the officer upload path uses
+     * is reused here so provenance, limits and byte-signature checks are identical — the only
+     * difference is the recorded source (COMPLAINANT, not OFFICER).
+     */
+    private final FileStorageService fileStorageService;
+
+    /** Tells the officers holding a case that the complainant has withdrawn it (UST108 / FR-G-037). */
+    private final NotificationService notificationService;
+
+    /** Supplies the configured withdrawal recipient list rather than a hardcoded one. */
+    private final NotificationConfigService notificationConfigService;
 
     private static final String CITIZEN_TOKEN_HEADER = "X-Citizen-Token";
 
@@ -518,6 +545,19 @@ public class ComplaintApiV1Controller {
         detail.put("closureClause", c.getClosureClause());
         detail.put("closedAt", c.getClosedAt() != null ? c.getClosedAt().toString() : null);
 
+        // ═══ Whether a withdrawal would be accepted (UST105 scenario 3) ═══
+        //
+        // The portal's withdrawal screen used to open its reason form for ANY complaint the tracker
+        // could find, so a citizen with a closed or externally-forwarded complaint was walked through
+        // choosing a reason, optionally attaching a document, and only then refused — after the work,
+        // by the server, on a screen that had already promised the action.
+        //
+        // Published from here rather than re-derived in the browser on purpose: the exclusion list is
+        // a Scheme rule (NON_WITHDRAWABLE_STATUSES below), and a second copy in TypeScript is a second
+        // thing to forget when the list changes. The server stays the enforcement point either way —
+        // this flag only stops the portal offering what the server will refuse.
+        detail.put("withdrawable", isWithdrawable(c.getStatus()));
+
         // ═══ Whether this complaint has been appealed, and under which appeal number (UST111) ═══
         //
         // This response carried nothing about appeals at all, so the citizen tracker could not tell a
@@ -547,6 +587,22 @@ public class ComplaintApiV1Controller {
 
         detail.put("currentStage", stageData.get("currentStage"));
         detail.put("stages", stageData.get("stages"));
+
+        // ═══ The milestone ladder (the coarse phase, as opposed to the fine-grained status) ═══
+        //
+        // The ladder is RBIO_STATUS_MASTER.MILESTONE_CODE, which is server-configured DATA and already
+        // populated: REGISTER → ASSESSMENT → CONCILIATION → FORWARD → FINAL_DECISION, mapped from 34
+        // status codes. Published from here rather than re-derived in the browser for the same reason
+        // the withdrawable flag above is: a second copy of the mapping in TypeScript is a second thing
+        // to forget, and the CEPC detail screen had no way to show which phase a complaint was in at
+        // all — a reader could see "INFO_REQUESTED" but not that it meant Assessment.
+        //
+        // `milestone` on the complaint row itself is NULL on every pre-existing record (see
+        // Complaint.milestone), so the CURRENT phase is resolved from the status through the same
+        // master table rather than read off the column — which is what makes this work for the
+        // thousands of migrated complaints too, instead of only for newly transitioned ones.
+        detail.put("milestones", milestoneLadder());
+        detail.put("milestone", currentMilestoneFor(c.getStatus()));
         detail.put("timeline", timeline.stream().map(t -> {
             Map<String, Object> tm = new LinkedHashMap<>();
             tm.put("fromStatus", t.getFromStatus());
@@ -664,13 +720,198 @@ public class ComplaintApiV1Controller {
 
     // ═══ UST105/107/108: Withdraw complaint ═══
 
-    private static final Set<String> WITHDRAWABLE_STATUSES = Set.of(
-            "pending", "new", "assigned", "in_progress", "under_review", "escalated");
+    /**
+     * The statuses in which a withdrawal is REFUSED. A DENY-list, deliberately.
+     *
+     * <p>This was an ALLOW-list of {pending,new,assigned,in_progress,under_review,escalated}, which
+     * refused withdrawal in five statuses that are plainly still active — {@code info_requested},
+     * {@code forwarded}, {@code reviewer_review}, {@code incharge_review}, {@code awaiting_closure}.
+     * A citizen whose complaint happened to be sitting with a Reviewer could not withdraw it, which the
+     * Scheme does not permit the product to decide. Every new active status added to the workflow since
+     * also silently joined the refusal set, because an allow-list fails closed on anything it has not
+     * heard of — and the workflow has gained statuses (adjudication, conciliation, re_responded,
+     * hearing_scheduled, sent_back, …) in every wave since this list was written.
+     *
+     * <p>The Scheme excludes exactly THREE outcomes: Complaint Closed, Sent to other Department, Sent to
+     * other Regulatory Bodies. Those map onto the stored vocabulary as {@code closed} and
+     * {@code forwarded_external} / {@code sent_to_other} — the single status
+     * {@code forwarded_external} carries BOTH forward kinds (CepcWorkflowService:529-565 sets it for
+     * FORWARD_TO_REGULATORY_BODY and FORWARD_TO_OTHER_RBI_DEPT alike, distinguished only by
+     * workflowStage), and {@code sent_to_other} is the RBIO inter-office equivalent.
+     *
+     * <p>The remaining four entries are not Scheme exclusions but arithmetic ones: a complaint that has
+     * already REACHED a settled outcome has nothing left to withdraw, and {@code withdrawn} above all
+     * must not be withdrawable twice — a second call would overwrite the first reason and date, losing
+     * the citizen's original statement. {@code resolved}/{@code rejected} are the other two settled
+     * codes in {@code cms.citizen-tracking.settled-statuses}; {@code adjudicated} and
+     * {@code conciliated} are their RBIO-ladder equivalents (RbioStatusMasterSeeder:101-106 marks all of
+     * these {@code isClosed=Y}).
+     *
+     * <p>Derived from the real vocabulary, not from guesswork: {@code SELECT DISTINCT status FROM
+     * COMPLAINTS} (22 values), every {@code setStatus("…")} literal in the backend (26 values), and the
+     * RBIO_STATUS_MASTER legacy codes. Everything NOT named here — including statuses this list has
+     * never heard of — is withdrawable, which is the correct default for a citizen right.
+     */
+    private static final Set<String> NON_WITHDRAWABLE_STATUSES = Set.of(
+            // ── The three the Scheme excludes ──
+            "closed",              // Complaint Closed
+            "forwarded_external",  // Sent to other Department AND Sent to other Regulatory Bodies
+            "sent_to_other",       // Sent to Other Office (RBIO inter-office transfer)
+            // ── Already settled: there is no live complaint left to withdraw ──
+            "withdrawn",           // must never be withdrawn twice — it would overwrite the first reason
+            "resolved",
+            "rejected",
+            "adjudicated",
+            "conciliated");
 
-    @PostMapping("/{complaintNumber}/withdraw")
+    /**
+     * The single answer to "may this complaint be withdrawn?", used by BOTH the withdraw handler and
+     * the tracker payload's {@code withdrawable} flag so the portal cannot offer what the server
+     * refuses.
+     */
+    private static boolean isWithdrawable(String status) {
+        String normalised = status != null ? status.toLowerCase() : "";
+        return !NON_WITHDRAWABLE_STATUSES.contains(normalised);
+    }
+
+    /**
+     * The milestone ladder in display order, from RBIO_STATUS_MASTER.
+     *
+     * <p>DATA, not a literal: the codes and their order come from the same master table the status
+     * filter tabs come from, so the phase a complaint is said to be in cannot drift from the phase the
+     * rest of the product computes. Each entry carries the code, a display label and a translation key
+     * so the UI need not hold a parallel mapping.
+     *
+     * <p>Order is MILESTONE_CODE's first appearance by DISPLAY_ORDER, which is the sequence the ladder
+     * is actually walked in (REGISTER → ASSESSMENT → CONCILIATION → FORWARD → FINAL_DECISION) rather
+     * than alphabetical.
+     */
+    private List<Map<String, Object>> milestoneLadder() {
+        Map<String, Map<String, Object>> byCode = new LinkedHashMap<>();
+        for (RbioStatusMaster s : rbioStatusMasterRepository.findByIsActiveOrderByDisplayOrderAsc("Y")) {
+            String code = s.getMilestoneCode();
+            if (code == null || code.isBlank() || byCode.containsKey(code)) {
+                continue;
+            }
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("code", code);
+            m.put("label", MILESTONE_LABELS.getOrDefault(code, code));
+            m.put("translationKey", "milestone." + code.toLowerCase(Locale.ROOT));
+            byCode.put(code, m);
+        }
+        return new ArrayList<>(byCode.values());
+    }
+
+    /**
+     * The milestone a complaint is currently in, resolved from its STATUS through the master table.
+     *
+     * <p>Not read from {@code COMPLAINTS.MILESTONE}: that column is null on every pre-existing row by
+     * design (back-filling it would mean inventing which phase a closed complaint was in), so reading
+     * it would leave the ladder blank for all but newly transitioned complaints. The status is always
+     * present, and the status→milestone mapping is the same one the ladder is built from.
+     */
+    private String currentMilestoneFor(String status) {
+        if (status == null || status.isBlank()) {
+            return null;
+        }
+        String wanted = status.trim().toUpperCase(Locale.ROOT);
+        return rbioStatusMasterRepository.findByIsActiveOrderByDisplayOrderAsc("Y").stream()
+                .filter(s -> wanted.equalsIgnoreCase(s.getStatusCode())
+                        || wanted.equalsIgnoreCase(s.getLegacyValue()))
+                .map(RbioStatusMaster::getMilestoneCode)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * Display labels for the milestone codes.
+     *
+     * <p>English only and held here rather than in TRANSLATION_KEYS because the ladder also carries a
+     * translationKey per entry, so a localised UI uses that and this is the fallback for callers that
+     * do not translate (and for the raw API).
+     */
+    private static final Map<String, String> MILESTONE_LABELS = Map.of(
+            "REGISTER", "Register",
+            "ASSESSMENT", "Assessment",
+            "CONCILIATION", "Conciliation",
+            "FORWARD", "Forward",
+            "FINAL_DECISION", "Final decision");
+
+    /**
+     * The formats a COMPLAINANT may attach to a withdrawal (UST107 / FR-G-036).
+     *
+     * <p>Deliberately narrower than {@code cms.attachments.allowed-types}, which is the officer set.
+     * This is the same set the citizen complaint-filing wizard offers
+     * (cms-portal-frontend file-validator.ts), so the portal gives one answer to "what can I
+     * attach?" wherever a citizen is asked for a document.
+     *
+     * <p>Matched on EXTENSION, mirroring the client gate, because the browser reports an empty or
+     * generic content type for plenty of legitimate files. The magic-byte sniff in
+     * FileUploadValidator still runs afterwards, so this is a filter on what the citizen can SEE and
+     * correct, not the only check.
+     */
+    private static final Set<String> WITHDRAWAL_DOC_EXTENSIONS =
+            Set.of("pdf", "doc", "jpg", "jpeg", "png");
+
+    private static boolean isAllowedWithdrawalDocument(String fileName) {
+        if (fileName == null || !fileName.contains(".")) {
+            return false;
+        }
+        String extension = fileName.substring(fileName.lastIndexOf('.') + 1)
+                .toLowerCase(java.util.Locale.ROOT);
+        return WITHDRAWAL_DOC_EXTENSIONS.contains(extension);
+    }
+
+    /**
+     * JSON arm — a withdrawal with no supporting documents.
+     *
+     * <p>{@code consumes} is now explicit on both arms. Without it Spring cannot tell the two apart
+     * and the multipart request below would bind {@code @RequestBody Map} against a multipart body
+     * and fail as a malformed request, which is exactly what a citizen attaching a document would
+     * have seen.
+     */
+    @PostMapping(value = "/{complaintNumber}/withdraw",
+            consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.ALL_VALUE})
     public ResponseEntity<Map<String, Object>> withdrawComplaint(
             @PathVariable String complaintNumber,
             @RequestBody Map<String, Object> body,
+            HttpServletRequest request) {
+        return performWithdrawal(complaintNumber, body, List.of(), request);
+    }
+
+    /**
+     * MULTIPART arm — a withdrawal that carries the supporting documents UST107 scenario 2 offers.
+     *
+     * <p>Separate mapping rather than one method taking an optional part, because the JSON arm has
+     * ~40 existing callers (the portal, the e2e suite, the citizen app) whose request shape must not
+     * change at all. The business rules are shared: both arms delegate to
+     * {@link #performWithdrawal}, so the eligibility, ownership, reason and audit behaviour cannot
+     * drift between them.
+     *
+     * <p>The documents are stored only AFTER every refusal has been cleared, so a rejected
+     * withdrawal leaves nothing behind.
+     */
+    @PostMapping(value = "/{complaintNumber}/withdraw", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> withdrawComplaintWithDocuments(
+            @PathVariable String complaintNumber,
+            @RequestParam(value = "reason", required = false) String reason,
+            @RequestParam(value = "remarks", required = false) String remarks,
+            @RequestParam(value = "documents", required = false) List<MultipartFile> documents,
+            HttpServletRequest request) {
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        if (reason != null) body.put("reason", reason);
+        if (remarks != null) body.put("remarks", remarks);
+
+        return performWithdrawal(complaintNumber, body,
+                documents == null ? List.of() : documents, request);
+    }
+
+    private ResponseEntity<Map<String, Object>> performWithdrawal(
+            String complaintNumber,
+            Map<String, Object> body,
+            List<MultipartFile> documents,
             HttpServletRequest request) {
 
         // Validate: complaint exists
@@ -705,7 +946,7 @@ public class ComplaintApiV1Controller {
         if (reason.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "Please select a reason for withdrawal.",
+                    "message", "Reason for withdrawal is required.",
                     "timestamp", LocalDateTime.now().toString()));
         }
         if (reason.length() > 500) {
@@ -716,8 +957,7 @@ public class ComplaintApiV1Controller {
         }
 
         // Validate: status allows withdrawal
-        String currentStatus = complaint.getStatus() != null ? complaint.getStatus().toLowerCase() : "";
-        if (!WITHDRAWABLE_STATUSES.contains(currentStatus)) {
+        if (!isWithdrawable(complaint.getStatus())) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", "This complaint cannot be withdrawn in its current status (" + complaint.getStatus().toUpperCase() + ").",
@@ -727,6 +967,56 @@ public class ComplaintApiV1Controller {
         // Build combined reason with optional remarks
         String remarks = body.get("remarks") != null ? body.get("remarks").toString().trim() : "";
         String fullReason = remarks.isEmpty() ? reason : reason + " — " + remarks;
+
+        // ═══ Store the supporting documents BEFORE the status flips ═══
+        //
+        // Order matters in both directions. Storing first means a document the validator refuses
+        // (wrong format, oversize, over the per-record cap) aborts the whole withdrawal, so the
+        // citizen is told their attachment was rejected while the complaint is still live and they
+        // can retry — rather than being left with a withdrawn complaint and a silently dropped
+        // document, which is unrecoverable because a withdrawn complaint cannot be withdrawn again.
+        //
+        // The refusal is a 400 with the validator's own citizen-facing message, matching the shape
+        // every other refusal on this endpoint uses.
+        List<ComplaintAttachment> storedDocuments = new ArrayList<>();
+        for (MultipartFile document : documents) {
+            if (document == null || document.isEmpty()) {
+                continue;
+            }
+            // The CITIZEN format gate, enforced here rather than left to FileStorageService.
+            //
+            // cms.attachments.allowed-types is the OFFICER set and legitimately includes xls/xlsx/
+            // csv/zip and the media types — a caseworker attaching a bank statement workbook to a
+            // case file is normal. A complainant withdrawing a complaint is not that caller: the
+            // portal offers them exactly pdf/doc/jpg/jpeg/png (the same set the complaint-filing
+            // wizard offers), and UST107 scenario 3 requires the unsupported ones to be refused.
+            //
+            // Enforced server-side because the client gate is bypassable by a direct call, and a
+            // format filter that exists only in the browser is not a control at all.
+            if (!isAllowedWithdrawalDocument(document.getOriginalFilename())) {
+                log.warn("Rejected withdrawal document '{}' for {}: unsupported format for a citizen"
+                        + " withdrawal (permitted: {})",
+                        document.getOriginalFilename(), complaintNumber, WITHDRAWAL_DOC_EXTENSIONS);
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Invalid file type or size, please upload a valid document.",
+                        "timestamp", LocalDateTime.now().toString()));
+            }
+            try {
+                storedDocuments.add(fileStorageService.handleSingleUpload(
+                        document, complaintNumber, complaint.getId(),
+                        complaint.getComplainantPhone(), ComplaintAttachment.SOURCE_COMPLAINANT,
+                        "WITHDRAWAL_SUPPORT"));
+            } catch (Exception e) {
+                log.warn("Rejected withdrawal document '{}' for {}: {}",
+                        document.getOriginalFilename(), complaintNumber, e.getMessage());
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", e.getMessage() != null ? e.getMessage()
+                                : "Invalid file type or size, please upload a valid document.",
+                        "timestamp", LocalDateTime.now().toString()));
+            }
+        }
 
         // Set withdrawal fields
         String previousStatus = complaint.getStatus();
@@ -740,15 +1030,39 @@ public class ComplaintApiV1Controller {
         // Save
         complaintService.updateMaintainability(complaint);
 
-        // Add timeline entry
+        // ═══ The audit trail ═══
+        //
+        // The documents are NAMED in the timeline remark, not merely stored against the complaint.
+        // "The audit trail must link to the document submitted with the withdrawal" cannot be
+        // satisfied by a row in COMPLAINT_ATTACHMENTS alone: a caseworker reading /history has no way
+        // to tell which of a complaint's attachments arrived with the withdrawal and which were filed
+        // with the original complaint.
+        String documentNote = storedDocuments.isEmpty() ? ""
+                : " Documents: " + storedDocuments.stream()
+                        .map(a -> a.getOriginalName() + " (/api/files/download/" + a.getId() + ")")
+                        .collect(Collectors.joining(", "));
+
         complaintService.addTimeline(complaint.getId(), "withdrawn", complaint.getWithdrawnBy(),
-                "Complaint withdrawn by complainant. Reason: " + fullReason,
+                "Complaint withdrawn by complainant. Reason: " + fullReason + documentNote,
                 previousStatus, "withdrawn");
 
-        // Publish Kafka event (if publisher is available)
-        // eventPublisher pattern: use the existing publishComplaintClosed for status transitions
-        // Since there's no dedicated withdrawn publisher, we skip Kafka here —
-        // the outbox/event infrastructure can be added in a future phase.
+        // ═══ Tell the officers working the case (UST108 / FR-G-037) ═══
+        //
+        // This replaced a comment that said no event was published and left it at that. The
+        // consequence was measurable: across every complaint already in status `withdrawn`,
+        // IN_APP_NOTIFICATIONS and COMMUNICATION_OUTBOX held not one withdrawal row, so the officer
+        // holding the case and the entity's NO/PNO kept working a complaint the citizen had
+        // abandoned.
+        //
+        // Recipients come from configuration (notification.recipients.withdrawal), and raiseEvent
+        // expands the per-complaint placeholders — so the NO/PNO reached are the ones for THIS
+        // complaint's entity, and no other entity's officers can be addressed.
+        //
+        // Every mandatory field FR-G-037 scenario 3 names is in the message itself rather than only
+        // in a linked record: complaint number, complainant name, withdrawal date, reason, and the
+        // download link for each document. A notification whose content lives behind a click is not
+        // one the recipient can act on from the bell.
+        notifyWithdrawal(complaint, fullReason, storedDocuments);
 
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("complaintNumber", complaint.getComplaintNumber());
@@ -764,6 +1078,57 @@ public class ComplaintApiV1Controller {
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Raises the withdrawal alert, and never lets a notification problem undo an accepted withdrawal.
+     *
+     * <p>The try/catch is the point of the separate method. The withdrawal is already committed by
+     * the time this runs; if the recipient resolver, the channel matrix or the message broker is
+     * unavailable, propagating would turn a successful, persisted withdrawal into a 500 and invite a
+     * retry that must then be refused as "already withdrawn". The citizen's action stands and the
+     * failure is logged at WARN so it is visible without being fatal.
+     */
+    private void notifyWithdrawal(Complaint complaint, String reason,
+                                  List<ComplaintAttachment> documents) {
+        try {
+            String complainant = complaint.getComplainantName() != null
+                    && !complaint.getComplainantName().isBlank()
+                    ? complaint.getComplainantName() : "the complainant";
+
+            // Date-only: the officer needs the DAY of withdrawal, and a full timestamp with
+            // nanoseconds in a bell message reads as a machine log rather than a message.
+            String withdrawalDate = complaint.getWithdrawalDate() != null
+                    ? complaint.getWithdrawalDate().toLocalDate().toString()
+                    : LocalDateTime.now().toLocalDate().toString();
+
+            // Omitted entirely when there are none, rather than rendered as an empty "Documents:"
+            // heading or — worse — the literal "null" the no-documents case explicitly forbids.
+            String documentList = documents.isEmpty() ? ""
+                    : " Supporting documents: " + documents.stream()
+                            .map(a -> a.getOriginalName() + " /api/files/download/" + a.getId())
+                            .collect(Collectors.joining(", ")) + ".";
+
+            String title = "Complaint " + complaint.getComplaintNumber() + " withdrawn by complainant";
+            String message = "Complaint " + complaint.getComplaintNumber()
+                    + " has been withdrawn by " + complainant
+                    + " on " + withdrawalDate
+                    + ". Reason for withdrawal: " + reason + "."
+                    + documentList;
+
+            notificationService.raiseEvent(
+                    notificationConfigService.withdrawalRecipients(),
+                    "COMPLAINT_WITHDRAWN",
+                    title,
+                    message,
+                    complaint.getComplaintNumber(),
+                    "COMPLAINT",
+                    "/complaints/" + complaint.getComplaintNumber(),
+                    complaint);
+        } catch (Exception e) {
+            log.warn("Withdrawal of {} succeeded but its notification could not be raised: {}",
+                    complaint.getComplaintNumber(), e.getMessage(), e);
+        }
     }
 
     @GetMapping("/recent")

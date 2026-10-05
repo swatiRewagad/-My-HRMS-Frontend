@@ -1,7 +1,9 @@
 <app-session-timeout></app-session-timeout>
 <app-shell [titleKey]="'ui.page.crpc_complaints'" [roleKey]="'ui.role.crpc_deo'">
   <div shell-actions>
-    <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">{{ 'ui.common.advanced_search' | translate }}</button>
+    <button class="btn btn-link" (click)="showAdvancedSearch.set(true)">
+      <i class="pi pi-search"></i> {{ 'ui.common.advanced_search' | translate }}
+    </button>
     @if (advSearchActive()) {
       <button class="btn btn-link btn-link-danger" (click)="clearAdvancedSearch()">{{ 'ui.common.clear_filters' | translate }}</button>
     }
@@ -12,20 +14,20 @@
         }
       </select>
     }
+    <button class="filters-btn" (click)="showAdvancedSearch.set(true)">
+      <i class="pi pi-sliders-h"></i> {{ 'ui.common.filters' | translate }}
+    </button>
     <select class="queue-select" [value]="filterStatus()" (change)="filterStatus.set($any($event.target).value)">
       <option value="">{{ 'ui.nav.crpc_complaints' | translate }}</option>
       <option value="DRAFT">{{ 'status.draft' | translate }}</option>
-      <option value="IN_PROGRESS">{{ 'status.in_progress' | translate }}</option>
-      <option value="REJECTED_BY_REVIEWER">{{ 'status.sent_back' | translate }}</option>
-      <option value="APPROVED">{{ 'crpc.status.assessment_complete' | translate }}</option>
+      <option value="SENT_TO_REVIEWER">{{ 'status.sent_to_reviewer' | translate }}</option>
+      <option value="SENT_BACK_TO_DEO">{{ 'status.sent_back' | translate }}</option>
+      <option value="APPROVED">{{ 'status.approved' | translate }}</option>
     </select>
     <select class="queue-select" [value]="assignmentFilter()" (change)="assignmentFilter.set($any($event.target).value)">
       <option value="ASSIGNED_TO_ME">{{ 'crpc.queue.assigned_to_me' | translate }}</option>
       <option value="ALL">{{ 'cepc.queue.all_complaints' | translate }}</option>
     </select>
-    <button class="filters-btn" (click)="showAdvancedSearch.set(true)">
-      <i class="pi pi-filter"></i> {{ 'ui.common.filters' | translate }}
-    </button>
     <button class="btn btn-primary create-btn" (click)="createPhysicalLetter()">
       <i class="pi pi-plus"></i> {{ 'cepc.action.create_complaint' | translate }}
     </button>
@@ -67,20 +69,20 @@
           <div class="stat-icon purple"><i class="pi pi-clock"></i></div>
           <div class="stat-content">
             <span class="stat-label">Pending <i class="pi pi-info-circle"></i></span>
-            <span class="stat-value">{{ stats().draft + stats().inProgress }}</span>
+            <span class="stat-value">{{ stats().draft + stats().sentToReviewer + stats().sentBackToDo }}</span>
           </div>
           <div class="pending-breakdown">
             <div class="pending-col">
               <span class="pending-range">0-3 Days</span>
-              <span class="pending-count">{{ stats().pending0to3 }}</span>
+              <span class="pending-count danger">{{ stats().pending0to3 }}</span>
             </div>
             <div class="pending-col">
-              <span class="pending-range">4-6 Days</span>
-              <span class="pending-count">{{ stats().pending4to6 }}</span>
+              <span class="pending-range">4-8 Days</span>
+              <span class="pending-count warning">{{ stats().pending4to8 }}</span>
             </div>
             <div class="pending-col">
-              <span class="pending-range">>6 Days</span>
-              <span class="pending-count">{{ stats().pendingOver6 }}</span>
+              <span class="pending-range">&gt;8 Days</span>
+              <span class="pending-count success">{{ stats().pendingOver8 }}</span>
             </div>
           </div>
         </div>
@@ -94,14 +96,11 @@
         <button class="tab" [class.active]="filterStatus() === 'DRAFT'" (click)="filterStatus.set('DRAFT'); filterMode.set('ALL')">
           Draft <span class="tab-count">{{ stats().draft }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'IN_PROGRESS'" (click)="filterStatus.set('IN_PROGRESS'); filterMode.set('ALL')">
-          In Progress
+        <button class="tab" [class.active]="filterStatus() === 'SENT_TO_REVIEWER'" (click)="filterStatus.set('SENT_TO_REVIEWER'); filterMode.set('ALL')">
+          Sent to Reviewer <span class="tab-count">{{ stats().sentToReviewer }}</span>
         </button>
-        <button class="tab" [class.active]="filterStatus() === 'REJECTED_BY_REVIEWER'" (click)="filterStatus.set('REJECTED_BY_REVIEWER'); filterMode.set('ALL')">
-          Sent Back @if (stats().rejected > 0) { <span class="tab-count">{{ stats().rejected }}</span> }
-        </button>
-        <button class="tab" [class.active]="filterStatus() === 'APPROVED'" (click)="filterStatus.set('APPROVED'); filterMode.set('ALL')">
-          Assessment Complete
+        <button class="tab" [class.active]="filterStatus() === 'SENT_BACK_TO_DEO'" (click)="filterStatus.set('SENT_BACK_TO_DEO'); filterMode.set('ALL')">
+          Sent Back to DO <span class="tab-count">{{ stats().sentBackToDo }}</span>
         </button>
       </div>
 
@@ -182,9 +181,11 @@
                   @for (col of visibleColumns(); track col.key) {
                     <td [class]="'cell-' + col.key">
                       @if (col.key === 'status') {
-                        <span class="status-badge" [attr.data-status]="draft.status">{{ getStatusLabel(draft.status) }}</span>
+                        <span class="status-badge" [attr.data-status]="draft.status">
+                          <i [class]="getStatusIcon(draft.status)"></i>{{ getStatusLabel(draft.status) }}
+                        </span>
                       } @else if (col.key === 'modeOfReceipt') {
-                        <span class="mode-badge" [attr.data-mode]="draft.modeOfReceipt">{{ draft.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Letter' : 'Email' }}</span>
+                        <span class="mode-text">{{ draft.modeOfReceipt === 'PHYSICAL_LETTER' ? 'Letter' : draft.modeOfReceipt === 'CPGRAMS' ? 'CPGRAMS' : 'Email' }}</span>
                       } @else if (col.key === 'ageing') {
                         <span class="ageing-badge" [class.green]="draft.ageing <= 1" [class.orange]="draft.ageing > 1 && draft.ageing <= 3" [class.red]="draft.ageing > 3">{{ draft.ageing }} {{ draft.ageing === 1 ? 'day' : 'days' }}</span>
                       } @else if (col.key === 'priority') {
@@ -284,9 +285,10 @@
           <select [(ngModel)]="advSearch.statusCode">
             <option value="">Select a Value</option>
             <option value="DRAFT">Draft</option>
-            <option value="IN_PROGRESS">In Progress</option>
             <option value="SENT_TO_REVIEWER">Sent to Reviewer</option>
+            <option value="SENT_BACK_TO_DEO">Sent back to DO</option>
             <option value="APPROVED">Approved</option>
+            <option value="CLOSED_NOT_A_COMPLAINT">Not a Complaint</option>
           </select>
         </div>
         <div class="search-field">
