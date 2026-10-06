@@ -1,1 +1,0 @@
-export { ComplaintFacadeService } from '../services';
