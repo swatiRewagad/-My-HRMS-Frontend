@@ -118,6 +118,12 @@ cms:
     enabled: true
     elasticsearch-url: http://localhost:9200
     index: cms-complaints
+  assistance:
+    # Enabled locally, overriding the disabled-by-default base profile. The rail needs no external
+    # dependency — both tiers are plain indexed reads against the same MySQL the app already uses — so
+    # dev is where it can be exercised, and a feature whose failure mode is SILENCE has to be on in the
+    # one environment where someone is actually looking at it.
+    enabled: true
   geo:
     enabled: false
   tat:

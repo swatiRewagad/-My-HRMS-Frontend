@@ -180,6 +180,26 @@ cms:
     index: ${SIMILAR_CASES_INDEX:cms-complaints}
     connect-timeout-ms: ${SIMILAR_CASES_CONNECT_TIMEOUT_MS:1000}
     read-timeout-ms: ${SIMILAR_CASES_READ_TIMEOUT_MS:2000}
+  assistance:
+    # The assistance rail's independent kill switch (Brief 21 §6.2), surfaced to the frontend as
+    # GET /api/v1/assistance/status -> {"available": <this>}, which the rail honours by not rendering
+    # the bulb at all.
+    #
+    # Ships DISABLED — the opposite of the similar-cases ruling directly above, and the asymmetry is
+    # deliberate. Similar cases is user-INITIATED: an officer clicks "find similar", so a failure has
+    # somewhere to be reported and §2.5 requires that it IS reported. The rail is AMBIENT: it loads
+    # itself beside a screen the officer is already working, and §5.1 requires a rail that cannot
+    # answer to say nothing at all. A feature whose failure mode is silence cannot be noticed going
+    # wrong in production, so it is not switched on by a default — it is switched on per environment,
+    # by someone who has looked at it there.
+    #
+    # The Java-side fallback in AssistanceRailController is also `false`, mirroring
+    # `${cms.similar-cases.enabled:false}` in ElasticsearchSimilarCasesProvider: a ConfigMap that has
+    # gone stale and no longer carries this key must land on "hide the affordance", never on a feature
+    # nobody chose to enable.
+    #
+    # Flipping it needs no deploy and no code change: set ASSISTANCE_ENABLED=true.
+    enabled: ${ASSISTANCE_ENABLED:false}
   geo:
     enabled: ${GEO_ENABLED:false}
     maxmind-db-path: ${GEO_MAXMIND_DB:}

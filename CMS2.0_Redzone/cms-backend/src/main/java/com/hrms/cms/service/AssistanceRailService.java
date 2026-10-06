@@ -17,6 +17,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -59,6 +60,21 @@ public class AssistanceRailService {
     public static final String KIND_COMPLAINANT_HISTORY = "complainant-history";
     public static final String KIND_ENTITY_CLAUSE_PRECEDENT = "entity-clause-precedent";
     public static final String KIND_CATEGORY_CLOSURE_TIME = "category-closure-time";
+
+    // ─── Keys inside Signal.params. Also a wire contract: the client looks up
+    // ─── 'assistance.signal.<kind>' with the kind VERBATIM, hyphens and all
+    // ─── (assistance.signal.last-section, NOT ...last_section) and substitutes {{name}} placeholders
+    // ─── by these exact names. A rename here leaves the localised sentence with a hole, which the
+    // ─── client DISCARDS in favour of the English title — so the locale silently reverts to English
+    // ─── rather than showing a visibly broken string, which is the harder failure to notice. The
+    // ─── matching i18n values are seeded by AssistanceRailTranslationSeeder; the client's hardcoded
+    // ─── KIND_LABEL_KEYS map is the authority on key spelling.
+    public static final String PARAM_SECTION = "section";
+    public static final String PARAM_AGE = "age";
+    public static final String PARAM_COUNT = "count";
+    public static final String PARAM_CLAUSE = "clause";
+    public static final String PARAM_DAYS = "days";
+    public static final String PARAM_SAMPLE = "sample";
 
     /**
      * Rows the median-duration prior will look at, at most.
@@ -164,10 +180,15 @@ public class AssistanceRailService {
         }
 
         if (memory.getLastSection() != null && !memory.getLastSection().isBlank()) {
+            String section = memory.getLastSection();
             signals.add(Signal.memory(KIND_LAST_SECTION,
-                    "You were last in " + memory.getLastSection(),
+                    "You were last in " + section,
                     null,
-                    null));
+                    null,
+                    // The section name is carried out separately because it is the only place it
+                    // appears: a client rendering this in Tamil would otherwise have to recover it by
+                    // stripping the English prefix off the title.
+                    Map.of(PARAM_SECTION, section)));
         }
 
         // Suppressed for a recent visit. "You were last here 20 seconds ago" is noise, and a rail that
@@ -176,10 +197,14 @@ public class AssistanceRailService {
         LocalDateTime lastViewed = memory.getLastViewedAt();
         if (lastViewed != null && Duration.between(lastViewed, LocalDateTime.now())
                 .compareTo(LAST_VIEWED_SUPPRESS_WINDOW) > 0) {
+            String age = humaniseAge(lastViewed);
             signals.add(Signal.memory(KIND_LAST_VIEWED,
-                    "You last opened this " + humaniseAge(lastViewed),
+                    "You last opened this " + age,
                     lastViewed.toString(),
-                    null));
+                    null,
+                    // The humanised phrase, not the timestamp — detail already carries the ISO
+                    // instant for a client that would rather format the age itself.
+                    Map.of(PARAM_AGE, age)));
         }
 
         return signals;
@@ -267,7 +292,10 @@ public class AssistanceRailService {
                 others,
                 // Relative route, and one that exists: cms-portal-frontend declares 'search'.
                 // A link to a route the client does not have would render a dead signal.
-                "/search?complainantEmail=" + encode(email)));
+                "/search?complainantEmail=" + encode(email),
+                // Duplicated from count(), as a string, because the i18n value interpolates
+                // {{count}} and the client should not have to special-case one param source.
+                Map.of(PARAM_COUNT, Long.toString(others))));
     }
 
     /** Complaints against the same entity closed under the same clause. */
@@ -292,7 +320,10 @@ public class AssistanceRailService {
                         + " against this entity closed under " + clause,
                 null,
                 same,
-                null));
+                null,
+                // The clause is the part no other field carries. It is NOT translated — '15(1)(a)' is
+                // a citation and must read identically in every locale.
+                Map.of(PARAM_COUNT, Long.toString(same), PARAM_CLAUSE, clause)));
     }
 
     /**
@@ -332,7 +363,11 @@ public class AssistanceRailService {
                 "This category closes in " + median + (median == 1 ? " day" : " days") + " typically",
                 "Median of " + days.size() + " closed complaints in this category",
                 median,
-                null));
+                null,
+                // 'sample' is the SURVIVING sample size, after negative durations were dropped — the
+                // same number the detail sentence reports, not the row count the query returned.
+                Map.of(PARAM_DAYS, Long.toString(median),
+                        PARAM_SAMPLE, Integer.toString(days.size()))));
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════════

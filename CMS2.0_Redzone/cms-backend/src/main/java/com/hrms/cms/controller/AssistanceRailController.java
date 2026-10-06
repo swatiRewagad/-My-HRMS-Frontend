@@ -7,6 +7,7 @@ import com.hrms.cms.service.AssistanceRailService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +36,20 @@ import java.util.Map;
  * {@code X-User-*} honoured only under dev-local via {@code cms.security.allow-dev-identity-headers}).
  * Neither accepts a user id, and the write body carries only the complaint, section and draft text.
  * Tier 0 is one officer's unsaved work, so an owner the caller could name would be no owner at all.
+ *
+ * <h2>The kill switch</h2>
+ * {@code cms.assistance.enabled} is this feature's independent switch per Brief 21 §6.2, exposed by
+ * {@link #status()} and read by {@link #rail} and {@link #rememberVisit} before they do any work. The
+ * naming follows the {@code cms.similar-cases.enabled} precedent rather than inventing a convention,
+ * and so does the Java-side fallback: {@code ElasticsearchSimilarCasesProvider} defaults its flag to
+ * {@code false}, and so does this, so a stale ConfigMap missing the key lands on "hide the affordance"
+ * rather than on a feature nobody chose to enable.
+ *
+ * <p>The DEFAULT differs from similar-cases on purpose: that one ships {@code true} in
+ * {@code application.yml} and this one ships {@code false}. Similar cases is user-initiated, so §2.5
+ * makes a failure something the panel must SAY; the rail is ambient, so §5.1 makes a failure something
+ * it must stay SILENT about. A feature that fails silently cannot be observed failing, so it is turned
+ * on per environment by someone who has looked, not by a default.
  */
 @Slf4j
 @RestController
@@ -44,6 +59,43 @@ public class AssistanceRailController {
 
     private final AssistanceRailService railService;
     private final RequestIdentityResolver identityResolver;
+
+    /**
+     * The §6.2 kill switch. Defaults to {@code false} — see the class javadoc for why this default is
+     * the safe one here while {@code cms.similar-cases.enabled} ships {@code true}.
+     *
+     * <p>Field injection rather than a constructor parameter because the class is
+     * {@code @RequiredArgsConstructor}: Lombok does not copy {@code @Value} onto generated constructor
+     * parameters (there is no {@code lombok.config} enabling {@code copyableAnnotations} in this repo),
+     * so a {@code final} field would be injected as null. This is the same shape
+     * {@code AaParentComplaintController} uses for the same reason.
+     */
+    @Value("${cms.assistance.enabled:false}")
+    private boolean assistanceEnabled;
+
+    /**
+     * Whether the assistance feature is switched on, so the frontend can hide the affordance (§6.2).
+     *
+     * <p>Shaped {@code {"available": <bool>}} to match {@code SimilarCasesController#getStatus}, minus
+     * its {@code provider} field: similar cases genuinely has providers to name, whereas the rail has
+     * no backend to be swapped and reporting one would be inventing a fact. {@code available} is the
+     * key the frontend's {@code AssistanceRailService.available()} reads.
+     *
+     * <p>Reports the SWITCH and nothing more — no probe, no repository touch, no "can I reach MySQL".
+     * A status endpoint that tested liveness would be a second failure path in front of a feature whose
+     * entire contract is to fail quietly, and the frontend already degrades a transport error to
+     * {@code false} on its own.
+     *
+     * <p>Staff-only like the rest of this namespace, via the {@code /api/v1/assistance/**} matcher.
+     * That is not over-locking a boolean: it is the only honest place to put it, since a citizen or an
+     * RE user cannot see the rail under any switch setting, so the answer would be a lie for them.
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> status() {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("available", assistanceEnabled);
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * What the rail has to say about one complaint, to this officer.
@@ -56,11 +108,28 @@ public class AssistanceRailController {
      *
      * <p>Degrading to a quiet rail is safe in a way degrading to a NOISY one would not be: a missing
      * signal costs a convenience, whereas a fabricated one would be read as fact.
+     *
+     * <p>With the switch off this returns {@link AssistanceRailResponse#empty} — a 200 carrying
+     * {@code glow: false} and no signals — WITHOUT calling the service, so neither tier issues a
+     * query. An empty rail rather than a 403 or a 404, for two reasons. First, the DTO's own rule is
+     * that {@code glow} is true iff {@code signals} is non-empty, so a disabled rail and a rail with
+     * nothing to say are the SAME state by construction and there is nothing to distinguish; a
+     * refusal would be inventing a third state the contract does not have. Second, a client that
+     * never reads {@code /status} — a bookmarked URL, an old bundle, a smoke test — must still get the
+     * single documented success shape, because this endpoint is read by a screen that must stay usable.
+     * The frontend hides the bulb from {@code /status}; this is the server making sure that even an
+     * unaware client cannot make a disabled feature look broken.
      */
     @GetMapping("/rail")
     public ResponseEntity<AssistanceRailResponse> rail(
             @RequestParam("complaintId") String complaintId,
             HttpServletRequest request) {
+
+        if (!assistanceEnabled) {
+            // No service call at all: "the rail endpoints must not do work" is the point of the switch,
+            // so this returns before identity resolution as well as before either tier's queries.
+            return ResponseEntity.ok(AssistanceRailResponse.empty(complaintId));
+        }
 
         try {
             // Null when the identity could not be established. Passed through as-is: the service
@@ -85,6 +154,12 @@ public class AssistanceRailController {
      * The inverse bug is documented on {@code StaffDraftController}: a component that set
      * {@code draftSaved(true)} in its error handler showed a confirmation for a save that failed. Here
      * the flag is the server's answer, so the client cannot invent one.
+     *
+     * <p>With the switch off this writes nothing and answers {@code success: false}, which is simply
+     * true — the row was not written. Reporting {@code true} would be the exact defect named above in a
+     * new place. Note that this is NOT a draft-loss risk: Tier 0 memory is a continuity HINT, and the
+     * officer's actual draft is persisted by {@code StaffDraftController}, which is a separate feature
+     * with its own endpoint and is not gated by this switch.
      */
     @PutMapping("/rail/memory")
     public ResponseEntity<Map<String, Object>> rememberVisit(
@@ -92,6 +167,12 @@ public class AssistanceRailController {
             HttpServletRequest request) {
 
         Map<String, Object> response = new LinkedHashMap<>();
+
+        if (!assistanceEnabled) {
+            response.put("success", false);
+            return ResponseEntity.ok(response);
+        }
+
         try {
             String userId = resolveUserIdOrNull(request);
             String complaintNumber = asText(body, "complaintNumber");
