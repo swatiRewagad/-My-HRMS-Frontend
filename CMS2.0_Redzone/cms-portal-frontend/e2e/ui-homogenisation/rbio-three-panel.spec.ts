@@ -54,8 +54,19 @@ test.describe('RBIO complaint detail — three-panel reference layout', () => {
     await expect(page.locator(`${RAIL} .rail-icons`)).toBeVisible();
     await expect(page.locator(`${RAIL} .rail-body`)).toHaveCount(0);
 
-    // One icon per panel — history, attachments, email.
-    await expect(page.locator(`${RAIL} .rail-icon`)).toHaveCount(3);
+    // One icon per panel. Asserted by TITLE rather than by a count: this spec protects the
+    // three-panel LAYOUT, not the size of the rail's inventory, and a bare `toHaveCount(3)` made
+    // every future panel a failure here — it broke when the assistance bulb was added, which is a
+    // feature landing, not a regression in this screen. Naming the three says what actually matters
+    // (these consultation surfaces are in the rail and not full-width below the fold) while leaving
+    // the rail extensible.
+    const RAIL_ICON = `${RAIL} .rail-icon`;
+    for (const title of ['Complaint History', 'Attachments', 'Email Communication']) {
+      await expect(page.locator(`${RAIL_ICON}[title="${title}"]`)).toHaveCount(1);
+    }
+
+    // Still collapsed: no panel body is open regardless of how many icons the rail offers.
+    await expect(page.locator(`${RAIL} .rail-body`)).toHaveCount(0);
   });
 
   /**
@@ -75,21 +86,22 @@ test.describe('RBIO complaint detail — three-panel reference layout', () => {
     expect(Math.abs(after!.width - before!.width)).toBeLessThan(24);
   });
 
+  // Addressed by TITLE, not by index. The rail's inventory is host-supplied and the assistance panel
+  // is appended to it conditionally, so an `nth(1)` here means "whatever is second today" — it would
+  // start clicking the wrong panel the moment a panel is inserted ahead of these three, and the
+  // failure would read as a broken rail rather than as a stale selector.
   test('each rail icon opens its own panel and the rail closes again', async ({ page }) => {
-    const icons = page.locator(`${RAIL} .rail-icon`);
+    const header = page.locator(`${RAIL} .rail-header h4`);
+    const icon = (title: string) => page.locator(`${RAIL} .rail-icon[title="${title}"]`);
 
-    await icons.nth(0).click();
-    await expect(page.locator(`${RAIL} .rail-header h4`)).toHaveText('Complaint History');
-
-    await icons.nth(1).click();
-    await expect(page.locator(`${RAIL} .rail-header h4`)).toHaveText('Attachments');
-
-    await icons.nth(2).click();
-    await expect(page.locator(`${RAIL} .rail-header h4`)).toHaveText('Email Communication');
+    for (const title of ['Complaint History', 'Attachments', 'Email Communication']) {
+      await icon(title).click();
+      await expect(header).toHaveText(title);
+    }
 
     // Clicking the active icon collapses it — the same control both ways, so there is never an open
     // rail with no visible way to shut it.
-    await icons.nth(2).click();
+    await icon('Email Communication').click();
     await expect(page.locator(`${RAIL} .rail-body`)).toHaveCount(0);
   });
 
@@ -181,7 +193,7 @@ test.describe('RBIO complaint detail — three-panel reference layout', () => {
 
     await page.reload({ waitUntil: 'networkidle' });
     await expect(page.locator('.detail-content')).toBeVisible({ timeout: 20000 });
-    await page.locator(`${RAIL} .rail-icon`).nth(1).click();
+    await page.locator(`${RAIL} .rail-icon[title="Attachments"]`).click();
     await expect(page.locator(`${RAIL} .rail-body`)).toBeVisible();
 
     // 404s from endpoints other sessions still owe are logged by the app deliberately; a NG/TS runtime
