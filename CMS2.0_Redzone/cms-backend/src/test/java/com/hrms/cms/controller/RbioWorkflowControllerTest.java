@@ -5,6 +5,7 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
+import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.security.RequestIdentityResolver;
@@ -49,6 +50,11 @@ class RbioWorkflowControllerTest {
 
     @MockBean private ComplaintRepository complaintRepository;
     @MockBean private ComplaintAttachmentRepository complaintAttachmentRepository;
+    // Unused by any assertion below, but WorkflowController takes it in its constructor, and an
+    // unmockable constructor parameter fails the whole slice at context refresh rather than in one
+    // test — 45 errors reading "ApplicationContext failure threshold exceeded", which name neither the
+    // missing bean nor the dependency that wanted it.
+    @MockBean private ComplaintCategoryRepository complaintCategoryRepository;
     @MockBean private ComplaintService complaintService;
     @MockBean private BankRepository bankRepository;
     @MockBean private KeycloakUserService keycloakUserService;

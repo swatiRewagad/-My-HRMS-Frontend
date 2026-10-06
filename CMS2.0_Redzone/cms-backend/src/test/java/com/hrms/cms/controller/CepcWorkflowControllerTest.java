@@ -5,6 +5,7 @@ import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.event.ComplaintEventPublisher;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
+import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.ComplaintTimelineRepository;
 import com.hrms.cms.security.RequestIdentityResolver;
@@ -49,6 +50,9 @@ class CepcWorkflowControllerTest {
 
     @MockBean private ComplaintRepository complaintRepository;
     @MockBean private ComplaintAttachmentRepository complaintAttachmentRepository;
+    // See the note in RbioWorkflowControllerTest: unused here, but WorkflowController's constructor
+    // takes it, and an unmockable constructor parameter fails the whole slice at context refresh.
+    @MockBean private ComplaintCategoryRepository complaintCategoryRepository;
     @MockBean private ComplaintService complaintService;
     @MockBean private BankRepository bankRepository;
     @MockBean private KeycloakUserService keycloakUserService;
