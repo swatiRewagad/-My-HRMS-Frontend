@@ -1,16 +1,33 @@
 <!--
   The icon strip is ALWAYS rendered, so the panels behind the rail never shift width as it opens and
-  closes. `e2e/ui-homogenisation/rbio-three-panel.spec.ts:54-58` asserts `.rail-icons` is visible and
-  that there is one `.rail-icon` per panel.
+  closes. `e2e/ui-homogenisation/rbio-three-panel.spec.ts` asserts `.rail-icons` is visible and that
+  each expected panel has a `.rail-icon` carrying its label as `title` — by title rather than by a
+  count, so adding a panel is not a failure in that spec.
 -->
 <div class="rail-icons">
   @for (panel of panels(); track panel.key) {
+    <!--
+      `glow` and `glowCount` are OPT-IN per panel and the HOST owns the rule — see ContextRailPanel. The
+      assistance rail is the only caller today, and its whole point is that an officer learns there is
+      something worth opening without opening it.
+
+      The badge is the non-colour channel, so glow is never the only signal. `aria-label` carries the
+      count as well, because the badge is aria-hidden and a screen-reader user would otherwise hear only
+      the panel name. Both appear only when there IS a count — a "0" on a dark icon invites a click that
+      finds nothing.
+    -->
     <button type="button" class="rail-icon"
             [class.active]="open() === panel.key"
+            [class.rail-icon--glow]="!!panel.glow"
             [title]="panel.label"
+            [attr.aria-label]="iconLabel(panel)"
+            [attr.data-signal-count]="panel.glow ? (panel.glowCount ?? 0) : null"
             [attr.aria-pressed]="open() === panel.key"
             (click)="toggle(panel.key)">
       <i class="pi" [class]="panel.icon"></i>
+      @if (panel.glow && (panel.glowCount ?? 0) > 0) {
+        <span class="rail-icon-badge" aria-hidden="true">{{ panel.glowCount }}</span>
+      }
     </button>
   }
 </div>

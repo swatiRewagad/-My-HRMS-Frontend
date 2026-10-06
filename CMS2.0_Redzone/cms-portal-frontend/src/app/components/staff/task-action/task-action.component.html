@@ -459,12 +459,19 @@
                         <p>No actions available for your role. This complaint is awaiting action from the next role in the workflow.</p>
                       </div>
                     } @else {
+                      <!--
+                        `remarks` is bound as the two halves of `[(remarks)]` rather than the
+                        banana-in-box so the keystroke can ALSO nudge the assistance rail's debounced
+                        tier-0 write. The semantics are identical — onRemarksChanged assigns the same
+                        field the two-way binding did, and nothing else changes.
+                      -->
                       <app-workflow-action-bar
                         layout="pills"
                         [actions]="actionBarActions()"
                         [selectedId]="selectedAction()"
                         [processing]="processing()"
-                        [(remarks)]="remarks"
+                        [remarks]="remarks"
+                        (remarksChange)="onRemarksChanged($event)"
                         [speech]="true"
                         [commitSpinner]="true"
                         [remarksRows]="3"
@@ -714,6 +721,24 @@
       </div>
     }
 
+    <!--
+      ═══ ASSISTANCE RAIL PANEL (slides in from right) ═══
+      Same drawer slot and the same chrome as the similar-cases panel above. The rail reads itself on
+      first open and renders nothing while closed, so the host only toggles a boolean.
+
+      complaintNumber is the LOADED record's number (see the comment-thread binding above), never the
+      route's :id — the rail keys its memory on the complaint number and a numeric id would come back
+      empty, which reads as a working feature with nothing to say.
+    -->
+    @if (showAssistancePanel()) {
+      <div class="history-panel similar-panel">
+        <app-assistance-rail
+          [open]="showAssistancePanel()"
+          [complaintNumber]="assistanceComplaintNumber()"
+          (closePanel)="showAssistancePanel.set(false)" />
+      </div>
+    }
+
     <!-- ═══ HISTORY PANEL (slides in from right) ═══ -->
     @if (showHistoryPanel()) {
       <div class="history-panel">
@@ -735,6 +760,22 @@
       <button class="icon-sidebar-btn" title="Back to Tasks" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
       <div class="sidebar-spacer"></div>
       <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+      <!--
+        The bulb, not a static icon. It PROBES the rail while the panel is CLOSED, which is the whole
+        interaction: an icon that only told the officer there was something behind it once they had
+        opened it would signal nothing. It also renders nothing at all when the assistance kill switch
+        is off, per §6.2's "honoured by the frontend as hide the affordance".
+
+        `hostClass` carries this strip's own geometry; the component contributes only the glow and the
+        count badge. complaintNumber is the LOADED record's number and never the route's :id — the rail
+        keys its tier-0 memory on the number, so an id would return an empty rail that reads exactly
+        like a working feature with nothing to say.
+      -->
+      <app-assistance-bulb
+        hostClass="icon-sidebar-btn"
+        [complaintNumber]="assistanceComplaintNumber()"
+        [open]="showAssistancePanel()"
+        (togglePanel)="toggleAssistancePanel()" />
       <button class="icon-sidebar-btn" [class.active]="showHistoryPanel()" title="History" (click)="toggleHistoryPanel()"><i class="pi pi-history"></i></button>
       <div class="sidebar-spacer"></div>
     </div>

@@ -118,9 +118,13 @@
 
         <!-- ═══ TABS (Read-only mode only) ═══ -->
         @if (!editMode()) {
+          <!--
+            Switching tab moves the officer, so it changes assistanceSection() — nudged through the
+            SAME debounce as the Comments box, so tab-hopping is one write rather than one per click.
+          -->
           <div class="page-tabs">
-            <button class="page-tab" [class.active]="currentTab() === 'details'" (click)="currentTab.set('details')">Summary</button>
-            <button class="page-tab" [class.active]="currentTab() === 'attachments'" (click)="currentTab.set('attachments')">Email Communication</button>
+            <button class="page-tab" [class.active]="currentTab() === 'details'" (click)="currentTab.set('details'); onAssistanceActivity()">Summary</button>
+            <button class="page-tab" [class.active]="currentTab() === 'attachments'" (click)="currentTab.set('attachments'); onAssistanceActivity()">Email Communication</button>
           </div>
         }
 
@@ -379,9 +383,16 @@
                       </select>
                     </div>
                     <div class="textarea-with-speech">
-                      <textarea [(ngModel)]="deoRemarks" rows="2" placeholder="Enter comments"
+                      <!--
+                        ngModelChange feeds the assistance rail's tier-0 write, debounced in the
+                        component — never a PUT per keystroke. It is a silent background write with
+                        no success UI either way.
+                      -->
+                      <textarea [ngModel]="deoRemarks" rows="2" placeholder="Enter comments"
+                                (ngModelChange)="deoRemarks = $event; onAssistanceActivity()"
                                 (focus)="onFieldFocus(deoRemarks)" (blur)="onFieldBlur()"></textarea>
-                      <app-speech-button (transcription)="deoRemarks = deoRemarks + ' ' + $event"></app-speech-button>
+                      <!-- Dictation lands in the same box, so it is the same unsaved text to record. -->
+                      <app-speech-button (transcription)="deoRemarks = deoRemarks + ' ' + $event; onAssistanceActivity()"></app-speech-button>
                     </div>
                   } @else {
                     <span class="field-value">{{ deoRemarks || '—' }}</span>
@@ -1455,6 +1466,16 @@
             <button class="iib-btn iib-search-btn" [class.active]="showSimilarPanel()" title="Search / Similar cases" (click)="toggleSimilarPanel()">
               <i class="pi pi-search"></i>
             </button>
+            <!--
+              The bulb PROBES the rail while the panel is closed, so it can say there is something to
+              look at before the officer looks — and renders nothing when the §6.2 kill switch is off.
+              `hostClass` passes this bar's geometry; the component adds only glow and the badge.
+            -->
+            <app-assistance-bulb
+              hostClass="iib-btn"
+              [complaintNumber]="assistanceComplaintNumber()"
+              [open]="showAssistancePanel()"
+              (togglePanel)="toggleAssistancePanel()" />
             <button class="iib-btn iib-attach-btn" [class.has-attachments]="attachments().length > 0"
               title="Attachments ({{ attachments().length }})"
               (click)="showAttachmentsPanel() ? closeAttachmentsPanel() : openAttachmentsPanel()">
@@ -1607,6 +1628,23 @@
       </div>
     }
 
+    <!--
+      ═══ ASSISTANCE RAIL PANEL (slides in from right) ═══
+      Shares this screen's drawer slot and chrome with the similar-cases panel above. The rail reads
+      itself on first open and renders nothing while closed, so the host only toggles a boolean.
+
+      complaintNumber is the converted complaint NUMBER where one exists, else the draft id — see
+      assistanceComplaintNumber(); the numeric route param is never passed.
+    -->
+    @if (showAssistancePanel()) {
+      <div class="history-panel similar-panel">
+        <app-assistance-rail
+          [open]="showAssistancePanel()"
+          [complaintNumber]="assistanceComplaintNumber()"
+          (closePanel)="showAssistancePanel.set(false)" />
+      </div>
+    }
+
     <!-- ═══ HISTORY PANEL (slides in from right) ═══ -->
     @if (showHistoryPanel()) {
       <div class="history-panel">
@@ -1654,6 +1692,15 @@
       <button class="icon-sidebar-btn" title="Dashboard" (click)="goBack()"><i class="pi pi-chart-bar"></i></button>
       <div class="sidebar-spacer"></div>
       <button class="icon-sidebar-btn" [class.active]="showSimilarPanel()" title="Similar cases" (click)="toggleSimilarPanel()"><i class="pi pi-search"></i></button>
+      <!--
+        NO BULB IN THIS STRIP, deliberately. `.icon-sidebar` is `display: none` in this screen's
+        stylesheet — its own comment says "icons moved inline" — so the live affordance is the one in
+        `.inline-icon-bar` above and this block is superseded markup kept beside it.
+
+        A second bulb here would be worse than useless. It would render a duplicate
+        `[data-testid="assistance-bulb"]`, and a Playwright locator matching two elements fails strict
+        mode outright — so the bulb's own spec would break on a control no officer can see.
+      -->
       <button class="icon-sidebar-btn att-icon-btn" [class.active]="showAttachmentsPanel()"
         [class.has-attachments]="attachments().length > 0"
         title="Attachments ({{ attachments().length }})"

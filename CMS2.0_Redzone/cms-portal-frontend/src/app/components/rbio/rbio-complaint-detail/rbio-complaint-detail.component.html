@@ -354,7 +354,7 @@
         re-diverge from this screen's behaviour. The rail's own DOM, width contract and overlay body all
         live in that component; this template supplies only the panel list and the bodies.
       -->
-      <aside app-context-rail [panels]="railPanels" [(open)]="railOpen" [body]="railBody"></aside>
+      <aside app-context-rail [panels]="railPanels()" [(open)]="railOpen" [body]="railBody"></aside>
 
       <ng-template #railBody let-open>
         @switch (open) {
@@ -375,6 +375,20 @@
           }
           @case ('email') {
             <app-rbio-email-communication [complaintNumber]="c.complaintNumber" />
+          }
+          @case ('assistance') {
+            <!--
+              `showClose` is off: the rail already renders its own collapse control in `.rail-header`,
+              and two chevrons in one header would be two different ways to shut the same panel.
+
+              The number comes from assistanceComplaintNumber(), which rejects this screen's
+              'Not Assigned' placeholder — asking the rail about that string returns an empty rail, which
+              is indistinguishable from a working feature with nothing to say.
+            -->
+            <app-assistance-rail
+              [open]="true"
+              [complaintNumber]="assistanceComplaintNumber()"
+              [showClose]="false" />
           }
         }
       </ng-template>

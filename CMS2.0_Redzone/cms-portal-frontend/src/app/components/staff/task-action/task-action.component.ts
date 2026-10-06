@@ -1,8 +1,10 @@
 import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { EMPTY, Subject, catchError, debounceTime, switchMap } from 'rxjs';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { TatService, TatResult } from '../../../services/tat.service';
 import { RbioWorkflowService, ReassignmentCandidate } from '../../../services/rbio-workflow.service';
@@ -22,6 +24,9 @@ import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-s
 import { WorkflowActionBarComponent } from '../../shared/workflow-action-bar/workflow-action-bar.component';
 import { WorkflowAction, WorkflowActionStyle } from '../../shared/workflow-action-bar/workflow-action-bar.types';
 import { SimilarCasesComponent } from '../../shared/similar-cases/similar-cases.component';
+import { AssistanceRailComponent } from '../../shared/assistance-rail/assistance-rail.component';
+import { AssistanceBulbComponent } from '../../shared/assistance-rail/assistance-bulb.component';
+import { AssistanceRailService } from '../../../services/assistance-rail.service';
 import { CommentTemplatePickerComponent } from '../../shared/comment-template-picker/comment-template-picker.component';
 import { CommentThreadComponent } from '../../shared/comment-thread/comment-thread.component';
 import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
@@ -30,7 +35,7 @@ import { highlightEmailText, escapeHtml } from '../../../utils/highlight-text.ut
 @Component({
   selector: 'app-task-action',
   standalone: true,
-  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent, SimilarCasesComponent, CommentTemplatePickerComponent, CommentThreadComponent],
+  imports: [CommonModule, FormsModule, RbioConciliationComponent, RbioAdjudicationComponent, RbioAdvisoryComponent, RbioSlaProgressComponent, RbioDeputyDecisionComponent, RbioAddEntityComponent, RbioLegalCaseComponent, RbioForwardRegulatoryComponent, RbioActionOverrideHistoryComponent, WorkflowTimelineComponent, ComplaintSummaryComponent, WorkflowActionBarComponent, SimilarCasesComponent, AssistanceRailComponent, AssistanceBulbComponent, CommentTemplatePickerComponent, CommentThreadComponent],
   templateUrl: './task-action.component.html',
   styleUrls: ['./task-action.component.scss']
 })
@@ -41,6 +46,7 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private tatService = inject(TatService);
   private rbioWorkflow = inject(RbioWorkflowService);
+  private assistanceRail = inject(AssistanceRailService);
 
   @ViewChild('actionSection') actionSectionEl!: ElementRef;
 
@@ -128,6 +134,97 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   // Sliding panels
   showSimilarPanel = signal(false);
   showHistoryPanel = signal(false);
+  showAssistancePanel = signal(false);
+
+  /**
+   * How long the officer must pause before the tier-0 write goes out.
+   *
+   * <p>Two seconds: long enough that typing a sentence is one write rather than forty, short enough
+   * that an officer who pauses to think and then navigates away has already been recorded. The
+   * navigate-away flush in ngOnDestroy covers the remainder.
+   */
+  private static readonly ASSISTANCE_WRITE_DEBOUNCE_MS = 2000;
+
+  /**
+   * The complaint NUMBER for the assistance rail, not the route's `:id`.
+   *
+   * Same reason the comment thread uses `complaintId || complaintNumber`: the route param is whatever
+   * the task grid linked with, whereas the loaded record echoes COMPLAINTS.complaint_number. The rail
+   * endpoint keys its memory rows on that number, so a numeric id would read an empty rail that looks
+   * like a working feature with nothing to say.
+   */
+  assistanceComplaintNumber = computed(() => {
+    const c = this.complaint();
+    return c?.complaintId || c?.complaintNumber || '';
+  });
+
+  /**
+   * Where on this screen the officer was, for the rail's `last-section` signal.
+   *
+   * <p>Built from the state this screen ALREADY keeps — `expandedPanel` and `selectedAction`, both
+   * signals — rather than from `sectionOpen`, which is a plain object a computed() cannot track and
+   * which starts with three of its six accordions open anyway, so it describes the screen's defaults
+   * more than the officer's position.
+   *
+   * <p>The label is PROSE, not a key: the server stores it verbatim and the rail prints it back as
+   * "You were last in {section}", so `actions` would reach an officer as that bare word. The pending
+   * action is the most specific thing this screen knows about where the officer is, which is why it
+   * outranks the expanded reading pane.
+   */
+  private assistanceSection = computed(() => {
+    const action = this.selectedAction();
+    if (action) return `Take Action — ${action}`;
+    const panel = this.expandedPanel();
+    if (panel === 'email') return 'Documents & Communication';
+    if (panel === 'complaint') return 'Complaint Details';
+    return 'Task Action';
+  });
+
+  /**
+   * Anything worth recording: a remarks keystroke, a move between panes, an action picked or cancelled,
+   * or the complaint finishing its load.
+   *
+   * <p>A Subject rather than an effect() over `assistanceSection`, because the triggers are not all the
+   * same kind of thing — `remarks` is a plain field bound through the action bar's model, with no signal
+   * to react to — and funnelling every trigger into ONE stream is what keeps a single debounce
+   * governing all of them. Several nudges in quick succession (pick an action, which also clears the
+   * box, then type) therefore cost one PUT.
+   */
+  private assistanceMemoryNudge = new Subject<void>();
+
+  /**
+   * The debounced tier-0 write (Brief 21). Fires only after the officer pauses.
+   *
+   * <p>Remarks are the officer's unsaved work, so the rail has to see them — but one PUT per keystroke
+   * would be dozens of writes per sentence to a row whose only meaningful state is its last value.
+   * Hence `debounceTime` plus `switchMap`, which abandons an in-flight write the moment a newer one is
+   * queued: last-write-wins is exactly the semantics of a single memory row, and it also stops a slow
+   * response from landing after a newer one.
+   *
+   * <p>Both values are read at EMISSION time, not at subscribe time, so the write carries whatever the
+   * officer had when they stopped typing. `remarks` is passed even when blank — the server overwrites
+   * with null deliberately, because "the box is now empty" is a fact the rail must record or it will
+   * go on offering to restore text the officer already submitted or cleared.
+   *
+   * <p>`catchError` → EMPTY keeps the pipeline alive after a transport failure and is SILENT. It sets
+   * no state at all: this is background continuity with nothing to announce, and the one thing it must
+   * never do is look like a confirmed save. The server's `success` is its own verdict and is neither
+   * consumed nor reinterpreted here — see the recorded defect where a `draftSaved(true)` inside an
+   * error handler confirmed a save that never happened.
+   *
+   * <p>`takeUntilDestroyed` is the cleanup: the stream dies with the component.
+   */
+  private assistanceMemoryWrite = this.assistanceMemoryNudge.pipe(
+    debounceTime(TaskActionComponent.ASSISTANCE_WRITE_DEBOUNCE_MS),
+    switchMap(() => {
+      const complaintNumber = this.assistanceComplaintNumber();
+      if (!complaintNumber) return EMPTY;
+      return this.assistanceRail
+        .rememberVisit(complaintNumber, this.assistanceSection(), this.remarks)
+        .pipe(catchError(() => EMPTY));
+    }),
+    takeUntilDestroyed()
+  ).subscribe();
 
   /**
    * What the shared similar-cases panel searches on.
@@ -237,6 +334,44 @@ export class TaskActionComponent implements OnInit, OnDestroy {
     if (this.autoSaveInterval) clearInterval(this.autoSaveInterval);
     if (this.presenceInterval) clearInterval(this.presenceInterval);
     this.releaseEditPresence();
+    this.rememberAssistanceVisit();
+  }
+
+  /**
+   * A remarks keystroke. Assigns the field exactly as `[(remarks)]` did, then nudges the rail.
+   *
+   * <p>The assignment is why this exists at all: the box is split into `[remarks]` +
+   * `(remarksChange)` so the keystroke can ALSO reach the debounced tier-0 write. The write itself
+   * waits for a pause — see {@link assistanceMemoryWrite}.
+   */
+  onRemarksChanged(value: string) {
+    this.remarks = value;
+    this.assistanceMemoryNudge.next();
+  }
+
+  /**
+   * The navigate-away FLUSH of the tier-0 write (Brief 21).
+   *
+   * <p>Needed ON TOP OF the debounce, not instead of it: `takeUntilDestroyed` tears the debounced
+   * pipeline down with the component, so an officer who types and leaves within the debounce window
+   * would otherwise have exactly those keystrokes dropped — the very text the `unsaved-draft` signal
+   * exists to offer back. Issued directly here because there is no pipeline left to push through.
+   *
+   * <p>`remarks` is sent even when blank and the server overwrites with null on purpose: "the remarks
+   * box is now empty" is a fact worth recording, otherwise the rail keeps offering to restore text the
+   * officer already submitted or deliberately cleared. No null-skipping here.
+   *
+   * <p>Fire-and-forget, silent either way. The component is being destroyed, so there is no screen left
+   * to report onto — and inventing a confirmation would repeat the recorded defect where a
+   * `draftSaved(true)` inside an error handler confirmed a save that never happened. `success` is the
+   * server's verdict; it is not consumed and not reinterpreted.
+   */
+  private rememberAssistanceVisit() {
+    const complaintNumber = this.assistanceComplaintNumber();
+    if (!complaintNumber) return;
+    this.assistanceRail
+      .rememberVisit(complaintNumber, this.assistanceSection(), this.remarks)
+      .subscribe({ next: () => {}, error: () => {} });
   }
 
   /** Reloads after a concurrent-edit conflict, so the retry carries the current version. */
@@ -263,6 +398,13 @@ export class TaskActionComponent implements OnInit, OnDestroy {
           this.resumeDraft(complaintNumber);
           this.startEditPresence(complaintNumber);
           if (!this.autoSaveInterval) this.startAutoSave();
+          // NO assistance-rail write here, deliberately. Opening a screen is not the officer leaving
+          // work behind, and a write on load would RACE resumeDraft() above: every upsert overwrites
+          // DRAFT_TEXT including with null, so if the restore's response lost the race the write
+          // would carry a still-empty `remarks` and delete the unsaved text from the previous session
+          // before the officer could ever be offered it back — erasing the one signal the feature
+          // exists for. LAST_VIEWED_AT is stamped by the flush in ngOnDestroy instead, which is both
+          // race-free and the moment the officer's position is actually final.
         },
         error: () => {
           this.complaint.set(null);
@@ -339,6 +481,26 @@ export class TaskActionComponent implements OnInit, OnDestroy {
 
   toggleHistoryPanel() {
     this.showHistoryPanel.set(!this.showHistoryPanel());
+  }
+
+  /**
+   * Closes the other two drawers when opening, which the existing pair do not do to each other.
+   *
+   * <p>Forced by the stylesheet, not chosen: all three drawers are the same `.history-panel`
+   * (`position: fixed; right: 0` at one `z-index`), so two open at once occupy the identical slot and
+   * the later one in the DOM covers the earlier. This block sits BETWEEN Similar and History, so a pure
+   * toggle would leave Assistance hidden under an open History while its sidebar button read active — a
+   * button that appears to do nothing. Similar and History keep their pre-existing behaviour.
+   *
+   * <p>The rail reads itself on first open and caches after that, so the host must not prefetch.
+   */
+  toggleAssistancePanel() {
+    const opening = !this.showAssistancePanel();
+    if (opening) {
+      this.showSimilarPanel.set(false);
+      this.showHistoryPanel.set(false);
+    }
+    this.showAssistancePanel.set(opening);
   }
 
   /**
@@ -521,6 +683,9 @@ export class TaskActionComponent implements OnInit, OnDestroy {
   cancelAction() {
     this.selectedAction.set('');
     this.remarks = '';
+    // Same reason as selectAction(): the officer has deliberately discarded what they typed, and the
+    // rail must record the clear or it will keep offering to restore text no longer on screen.
+    this.assistanceMemoryNudge.next();
   }
 
   submitAction() {

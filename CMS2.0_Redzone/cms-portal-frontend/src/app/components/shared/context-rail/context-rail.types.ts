@@ -30,4 +30,27 @@ export interface ContextRailPanel<K extends string = string> {
 
   /** A PrimeIcons class WITHOUT the `pi` base, e.g. 'pi-history'. The rail supplies `pi` itself. */
   icon: string;
+
+  /**
+   * Draws attention to this icon while the rail is COLLAPSED. Optional, and off unless a host says so.
+   *
+   * <p>Added for the assistance rail (Brief 21 §5.1), whose entire interaction is that an officer learns
+   * there is something worth opening WITHOUT opening it. Every other panel here holds inert material the
+   * officer goes looking for, which is why this is opt-in rather than a property of the rail: a strip
+   * where several icons compete for attention tells the officer nothing, and the brief names a
+   * permanently-lit affordance as the failure that makes a feature worse than absent.
+   *
+   * <p>The HOST owns the rule. The rail renders what it is told and never decides for itself whether a
+   * panel is interesting.
+   */
+  glow?: boolean;
+
+  /**
+   * A small number beside {@link glow} — the non-colour channel that keeps glow from being the only
+   * signal, since colour and animation alone fail WCAG and `prefers-reduced-motion`.
+   *
+   * <p>Rendered only when {@link glow} is true AND this is above zero: a badge reading "0" on a dark
+   * icon invites a click that finds nothing.
+   */
+  glowCount?: number;
 }

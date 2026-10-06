@@ -63,6 +63,18 @@ export class ContextRailComponent<K extends string = string> {
     return key === null ? null : this.panels().find(p => p.key === key) ?? null;
   });
 
+  /**
+   * The icon's accessible name, carrying the signal count when the panel is glowing.
+   *
+   * <p>The visible badge is `aria-hidden`, so without this a screen-reader user would hear "Assistance"
+   * and nothing about there being anything in it — the glow becoming the only signal, which is what the
+   * badge exists to prevent, reintroduced for the users who need the second channel most.
+   */
+  iconLabel(panel: ContextRailPanel<K>): string {
+    const count = panel.glow ? (panel.glowCount ?? 0) : 0;
+    return count > 0 ? `${panel.label} (${count})` : panel.label;
+  }
+
   /** Clicking the ACTIVE icon collapses the rail, so there is never an open rail with no way to shut it. */
   toggle(key: K): void {
     this.open.update(current => (current === key ? null : key));

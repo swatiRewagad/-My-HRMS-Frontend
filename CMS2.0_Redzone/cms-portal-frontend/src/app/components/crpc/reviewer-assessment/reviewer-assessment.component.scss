@@ -97,6 +97,23 @@
   }
 }
 
+// ═══ ASSISTANCE RAIL SLOT (Brief 21 §5.1) ═══
+//
+// Sits between the tab strip and the tab bodies, so the panel is reachable from either tab. `flex-shrink`
+// is pinned so it keeps its natural height instead of being squeezed by the scrolling tab body beside it,
+// and the margins match `.summary-content`'s padding so the card lines up with the section cards below.
+//
+// Carries `.section-card` too, which supplies the surface, border and radius. Nothing here sizes or
+// positions the rail itself: the shared panel is a block that fills its host, by its own design.
+.assistance-slot {
+  flex-shrink: 0;
+  margin: 20px 24px 0;
+  // The shared rail deliberately sets no padding of its own — "the panel is a BLOCK, not a fixed
+  // overlay. Offsets belong to a screen's own chrome", per its stylesheet — so the inset is supplied
+  // here. Without it the headings would sit flush against `.section-card`'s border.
+  padding: 16px 20px;
+}
+
 // ═══ CONTENT TABS ═══
 .content-tabs {
   display: flex; gap: 0; background: var(--surface-card); border-bottom: 1px solid var(--border-subtle);

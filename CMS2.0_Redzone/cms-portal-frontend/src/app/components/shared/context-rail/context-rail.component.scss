@@ -16,10 +16,56 @@
 }
 
 .rail-icon {
+  // `relative` so the glow badge can be positioned against the icon it belongs to.
+  position: relative;
   background: none; border: 1px solid transparent; border-radius: 6px; padding: 8px;
   cursor: pointer; color: var(--text-muted); font-size: 14px;
   &:hover { background: var(--surface-page); color: var(--brand-primary); }
   &.active { background: var(--brand-primary-bg); border-color: var(--brand-primary); color: var(--brand-primary); }
+}
+
+// ═══ GLOW (opt-in per panel; today only the assistance panel) ═══
+//
+// Colour PLUS pulse, because neither alone is enough: the pulse disappears under reduced-motion and
+// colour alone fails WCAG. The badge in the markup is the third channel.
+//
+// Placed AFTER `.active` so an open glowing panel reads as open rather than as still demanding attention
+// — once the officer is looking at it, the glow has done its job.
+.rail-icon--glow:not(.active) {
+  color: var(--state-warning-solid);
+  animation: rail-icon-glow-pulse 2.4s ease-in-out infinite;
+}
+
+// Opacity only — never scale or translate. These icons are 48px apart in a column the officer is
+// clicking, and a transform that changed the box would move the control under their cursor.
+@keyframes rail-icon-glow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+// styles.scss clamps every animation-duration globally under this query, which SHORTENS the pulse but
+// can leave the icon frozen at 0.45 opacity — a lit icon that reads as half-off. Removing the animation
+// outright and replacing it with a static ring keeps "lit" visible with nothing moving.
+@media (prefers-reduced-motion: reduce) {
+  .rail-icon--glow:not(.active) {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--state-warning-bg);
+  }
+}
+
+.rail-icon-badge {
+  position: absolute; top: 1px; right: 1px;
+  min-width: 14px; height: 14px; padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--state-warning-solid); color: var(--text-on-solid, #fff);
+  font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
+  pointer-events: none;
+}
+
+// High contrast discards the colour AND the box-shadow, so neither cue above survives; the border is
+// what keeps the badge — and therefore the lit state — legible there.
+@media (forced-colors: active) {
+  .rail-icon-badge { border: 1px solid CanvasText; }
 }
 
 // Anchored to the icon strip's right edge and pulled LEFTWARD over the panels, so opening it adds no

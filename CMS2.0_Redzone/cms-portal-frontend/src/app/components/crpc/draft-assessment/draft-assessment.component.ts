@@ -15,6 +15,9 @@ import { UploadLimitsService } from '../../../services/upload-limits.service';
 import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
 import { SimilarCasesComponent } from '../../shared/similar-cases/similar-cases.component';
+import { AssistanceRailComponent } from '../../shared/assistance-rail/assistance-rail.component';
+import { AssistanceBulbComponent } from '../../shared/assistance-rail/assistance-bulb.component';
+import { AssistanceRailService } from '../../../services/assistance-rail.service';
 
 interface EligibilityQuestion {
   id: string;
@@ -57,7 +60,7 @@ interface EmailCorrespondence {
 @Component({
   selector: 'app-draft-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent, ComplaintSummaryComponent, SimilarCasesComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, AutoClosureComponent, ComplaintSummaryComponent, SimilarCasesComponent, AssistanceRailComponent, AssistanceBulbComponent],
   templateUrl: './draft-assessment.component.html',
   styleUrl: './draft-assessment.component.scss'
 })
@@ -70,6 +73,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private sanitizer = inject(DomSanitizer);
   private uploadLimits = inject(UploadLimitsService);
+  private assistanceRail = inject(AssistanceRailService);
 
   // ─── View Mode ───
   editMode = signal(false);
@@ -118,6 +122,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   // ─── History Panel ───
   showHistoryPanel = signal(false);
   showSimilarPanel = signal(false);
+  showAssistancePanel = signal(false);
   historyEntries = signal<any[]>([]);
   loadingHistory = signal(false);
 
@@ -234,6 +239,15 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   draftId = '';
   draftStatus = 'DRAFT';
+
+  /**
+   * The real complaint NUMBER once this draft has been converted, else blank.
+   *
+   * Taken straight from the draft payload's `convertedComplaintId`, which the server sets from
+   * `Complaint.getComplaintNumber()`. Only the assistance rail reads it; nothing else on this screen
+   * needs it, and it is deliberately not merged into `cpgramsReference`, which is a different number.
+   */
+  convertedComplaintNumber = '';
 
   /**
    * The strip's facts, for the shared app-complaint-summary.
@@ -763,6 +777,57 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   /** Bumped whenever the assessed fields are replaced wholesale, so similarSearchText recomputes. */
   private draftRevision = signal(0);
 
+  /**
+   * What the assistance rail is asked about on this screen.
+   *
+   * <p>This screen holds a DRAFT, not yet necessarily a complaint, so there are two cases and they are
+   * kept distinct rather than merged:
+   * <ul>
+   *   <li>once the draft has been converted, `convertedComplaintId` is the real complaint NUMBER
+   *       (`CrpcWorkflowService` sets it from `Complaint.complaintNumber`) and the rail can answer with
+   *       both tiers;
+   *   <li>before conversion there is no complaint number in existence, so the key is `draftId`
+   *       (`DRF-000123`). Tier 1 joins on COMPLAINTS.complaint_number and will therefore find nothing,
+   *       but tier 0 is an upsert keyed on (owner, this string) and so still carries the officer's own
+   *       continuity across visits to the same draft — which is the half this screen can have.
+   * </ul>
+   *
+   * <p>NOT `complaintReferenceNumber`: that field is free text the officer may type, and neither
+   * `complaintReferenceNumber` nor `acknowledgementNumber` is emitted by
+   * `/api/v1/email-syndication/drafts/{id}`, so it is blank unless hand-entered. A rail keyed on it
+   * would silently change identity mid-session.
+   *
+   * <p>Read through `draftRevision()` for the same reason as `similarSearchText`: these are plain
+   * fields, and a computed over a non-signal registers no dependency.
+   */
+  assistanceComplaintNumber = computed(() => {
+    this.draftRevision();
+    return (this.convertedComplaintNumber || this.draftId || '').trim();
+  });
+
+  /**
+   * Where on this screen the DEO was, for the rail's `last-section` signal.
+   *
+   * <p>Derived from the three signals this screen ALREADY keeps — `editMode`, `activeStep` and
+   * `currentTab` — rather than from `sectionOpen`, which is a plain object a `computed()` cannot
+   * track and which describes its own defaults more than the officer's position. Those three ARE the
+   * navigation on this screen: the two page tabs in read mode, and the two-step
+   * creation/assignment stepper that replaces them in edit mode.
+   *
+   * <p>The label is PROSE, not a key: the server stores it verbatim and the rail prints it back as
+   * "You were last in {section}", so `assignment` would reach an officer as that bare word.
+   */
+  private assistanceSection = computed(() => {
+    if (this.editMode()) {
+      return this.activeStep() === 'assignment'
+        ? 'Draft assessment — Assignment'
+        : 'Draft assessment — Complaint creation';
+    }
+    return this.currentTab() === 'attachments'
+      ? 'Draft assessment — Email Communication'
+      : 'Draft assessment — Summary';
+  });
+
   // ─── Past Complaint Detail Modal ───
   showPastComplaintDetail = signal(false);
   pastComplaintDetail = signal<any>(null);
@@ -1054,6 +1119,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.showHistoryPanel.set(true);
       this.showSimilarPanel.set(false);
       this.showAttachmentsPanel.set(false);
+      this.showAssistancePanel.set(false);
       this.loadHistory();
     }
   }
@@ -1067,6 +1133,22 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
       this.showSimilarPanel.set(false);
     } else {
       this.showSimilarPanel.set(true);
+      this.showHistoryPanel.set(false);
+      this.showAttachmentsPanel.set(false);
+      this.showAssistancePanel.set(false);
+    }
+  }
+
+  /**
+   * Opens the assistance drawer. Mutually exclusive with the other three, which share the slot.
+   * No fetch here: the rail reads itself on first open and caches until the complaint changes.
+   */
+  toggleAssistancePanel() {
+    if (this.showAssistancePanel()) {
+      this.showAssistancePanel.set(false);
+    } else {
+      this.showAssistancePanel.set(true);
+      this.showSimilarPanel.set(false);
       this.showHistoryPanel.set(false);
       this.showAttachmentsPanel.set(false);
     }
@@ -1180,6 +1262,7 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
             this.cpgramsReference = draft.cpgramsNumber || '';
             this.isCpgram = !!this.cpgramsReference || this.modeOfReceipt === 'CPGRAMS';
             this.complaintReferenceNumber = draft.complaintReferenceNumber || draft.acknowledgementNumber || '';
+            this.convertedComplaintNumber = draft.convertedComplaintId || '';
             this.category = draft.category || '';
             this.entityName = draft.entityName || '';
             this.entitySearchText = this.entityName;
@@ -1347,6 +1430,70 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.blobUrlCache.forEach(url => URL.revokeObjectURL(url));
     this.blobUrlCache.clear();
+    if (this.assistanceWriteTimer) clearTimeout(this.assistanceWriteTimer);
+    this.rememberAssistanceVisit();
+  }
+
+  /**
+   * Pending debounce for the tier-0 write.
+   *
+   * <p>A plain timer rather than the rxjs `Subject` + `debounceTime` that staff/task-action uses: this
+   * component holds no other rxjs pipeline and is not built in an injection context that
+   * `takeUntilDestroyed()` could hook, so a timer cleared in `ngOnDestroy` is the smaller change. The
+   * debounce itself is the point either way — a PUT per keystroke on a textarea an officer types
+   * paragraphs into would be hundreds of writes for one visit, to a row whose only meaningful state is
+   * its last value.
+   */
+  private assistanceWriteTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * How long the officer must pause before the tier-0 write goes out. Long enough that a sentence is
+   * one write rather than forty; the navigate-away flush in `ngOnDestroy` covers the remainder.
+   */
+  private static readonly ASSISTANCE_WRITE_DEBOUNCE_MS = 2000;
+
+  /**
+   * Officer activity worth recording: a keystroke in the Comments box, or a move between the page
+   * tabs / stepper steps. Coalesces a burst into one write.
+   *
+   * <p>Deliberately does NOT skip an empty box: the rail records "the Comments box is now empty" as a
+   * fact, so clearing the text has to be written too, or the panel would go on offering to restore
+   * text the officer deleted.
+   */
+  onAssistanceActivity() {
+    if (this.assistanceWriteTimer) clearTimeout(this.assistanceWriteTimer);
+    this.assistanceWriteTimer = setTimeout(
+      () => this.rememberAssistanceVisit(),
+      DraftAssessmentComponent.ASSISTANCE_WRITE_DEBOUNCE_MS);
+  }
+
+  /**
+   * The assistance rail's tier-0 write (Brief 21).
+   *
+   * <p>Reached two ways, and both are needed. The debounce above covers an officer still on the screen;
+   * the `ngOnDestroy` call is the navigate-away FLUSH, because the timer is cleared with the component
+   * and an officer who types and leaves inside the debounce window would otherwise lose exactly those
+   * keystrokes — the text the `unsaved-draft` signal exists to offer back.
+   *
+   * <p>`section` comes from {@link assistanceSection}, which names where on the screen the officer
+   * actually is; the rail reads it back verbatim as "You were last in ...".
+   *
+   * <p>`deoRemarks` is the free-text box on this screen that is not persisted until the draft is saved
+   * or routed, so it is the text the officer can actually lose. It is sent even when blank — the server
+   * overwrites with null on purpose, because "the remarks box is now empty" is a fact, and treating
+   * blank as "leave the old value" would keep offering to restore text already submitted.
+   *
+   * <p>Fire-and-forget, with no confirmation UI in either branch. This is background continuity, not a
+   * save the officer asked for, so there is nothing to announce — and a confirmation invented here
+   * would repeat the recorded defect where an error handler called `draftSaved(true)` for a save that
+   * never happened. `success` is the server's verdict and this caller does not second-guess it.
+   */
+  private rememberAssistanceVisit() {
+    const complaintNumber = this.assistanceComplaintNumber();
+    if (!complaintNumber) return;
+    this.assistanceRail
+      .rememberVisit(complaintNumber, this.assistanceSection(), this.deoRemarks)
+      .subscribe({ next: () => {}, error: () => {} });
   }
 
   closeAttachmentTab(id: string, event: Event) {
@@ -1838,6 +1985,8 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
     this.editMode.set(true);
     this.activeStep.set('creation');
     this.sectionOpen.complaint = true;
+    // Edit mode swaps the tabs for the stepper, so assistanceSection() names something different now.
+    this.onAssistanceActivity();
   }
 
   onDeoDecisionChange(decision: string) {
@@ -1898,10 +2047,13 @@ export class DraftAssessmentComponent implements OnInit, OnDestroy {
 
   goToAssignment() {
     this.activeStep.set('assignment');
+    // Moving between stepper steps changes assistanceSection(); debounced like every other nudge.
+    this.onAssistanceActivity();
   }
 
   goToCreation() {
     this.activeStep.set('creation');
+    this.onAssistanceActivity();
   }
 
   goBack() {

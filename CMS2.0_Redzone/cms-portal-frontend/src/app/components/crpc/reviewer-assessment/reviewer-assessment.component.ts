@@ -9,6 +9,8 @@ import { environment } from '../../../../environments/environment';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { AssistanceRailComponent } from '../../shared/assistance-rail/assistance-rail.component';
+import { AssistanceBulbComponent } from '../../shared/assistance-rail/assistance-bulb.component';
 
 interface Attachment {
   id: string;
@@ -31,7 +33,7 @@ interface HistoryEntry {
 @Component({
   selector: 'app-reviewer-assessment',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, ComplaintSummaryComponent],
+  imports: [CommonModule, FormsModule, SpeechButtonComponent, ComplaintSummaryComponent, AssistanceRailComponent, AssistanceBulbComponent],
   templateUrl: './reviewer-assessment.component.html',
   styleUrl: './reviewer-assessment.component.scss'
 })
@@ -54,6 +56,64 @@ export class ReviewerAssessmentComponent implements OnInit {
   draftStatus = 'SENT_TO_REVIEWER';
 
   currentTab = signal<'summary' | 'email' | 'attachments' | 'history' | 'action'>('summary');
+
+  /*
+   * ═══ ASSISTANCE RAIL (Brief 21 §5.1) ══════════════════════════════════════════════════════════
+   *
+   * The bulb lives in this screen's existing `.right-sidebar` icon strip; the panel renders between the
+   * tab strip and the tab bodies. Nothing here calls `/assistance/rail`: `app-assistance-bulb` owns the
+   * probe, the §6.2 kill switch and the glow rule, so this host keeps only an open/closed boolean. A
+   * host that fetched for itself would be a second copy of the glow rule, and the copy that drifted
+   * would be the bulb — a bulb that is wrong looks exactly like a bulb that is right.
+   *
+   * ── NO TIER-0 MEMORY WRITE ON THIS SCREEN, DELIBERATELY ──
+   *
+   * `rememberVisit` records where the officer was and what long text they left behind. Neither half has
+   * a surface here worth recording:
+   *
+   *   • `reviewerRemarks` is the only remarks field, and it exists ONLY inside the confirmation dialog
+   *     (`showConfirmDialog()`), i.e. the reviewer types it and submits in the same breath. A draft
+   *     offered back from it would be text that has already been sent — the rail's `unsaved-draft`
+   *     signal would be offering to restore a decision the reviewer already made.
+   *
+   *   • `description` is editable, but only in `editMode()`, and it is the CITIZEN's complaint text
+   *     being corrected rather than the officer's own composition. `saveDraft()` already persists it
+   *     through the drafts endpoint, so a parallel tier-0 copy would be a second, staler record of the
+   *     same field with no rule about which wins.
+   *
+   * Writing a section without a draft would still be defensible, but §5.1 forbids inventing the surface:
+   * a `last-section` of "Summary" or "Email Communication" tells the reviewer nothing they cannot see in
+   * the tab strip. The screens that DO write — task-action and draft-assessment — each have a genuine
+   * long-text box on the page that the officer composes over multiple sittings.
+   */
+
+  showAssistancePanel = signal(false);
+
+  /**
+   * The key the rail is asked about — the real complaint NUMBER once the draft has been approved into
+   * one, otherwise the DRAFT ID, and never the route's `:id` by name.
+   *
+   * <p>On this screen those two happen to be the same string, because `draftId` IS the route param. That
+   * is fine and is not the trap the rule guards against: the trap is passing a NUMERIC primary key, and
+   * a draft id is the business key of the thing on screen. Before approval there is no complaint number
+   * to ask about — `summaryItems` prints the literal "Not Generated" — so the draft id is the only key
+   * that can carry the officer's tier-0 continuity across a reload.
+   *
+   * <p>A computed over `generatedComplaintNumber` (a signal) rather than a getter, because the bulb's
+   * `complaintNumber` input must re-read when approval lands; `draftId` is a plain property that is
+   * assigned once in ngOnInit and never changes, so it needs no reactivity of its own.
+   */
+  assistanceComplaintNumber = computed(() =>
+    (this.generatedComplaintNumber() || this.draftId || '').trim()
+  );
+
+  /**
+   * Opens the panel, closing nothing else — unlike the sibling CRPC screens, this one has no competing
+   * drawer: `history` and `email` are TABS in the centre region here.
+   */
+  toggleAssistancePanel() {
+    this.showAssistancePanel.set(!this.showAssistancePanel());
+  }
 
   /**
    * The strip's facts, for the shared app-complaint-summary.

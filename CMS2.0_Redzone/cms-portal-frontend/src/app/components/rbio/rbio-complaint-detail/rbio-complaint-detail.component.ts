@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -20,6 +21,8 @@ import { CommentThreadComponent } from '../../shared/comment-thread/comment-thre
 import { CommentAudienceOption } from '../../shared/comment-thread/comment-thread.types';
 import { ContextRailComponent } from '../../shared/context-rail/context-rail.component';
 import { ContextRailPanel } from '../../shared/context-rail/context-rail.types';
+import { AssistanceRailComponent } from '../../shared/assistance-rail/assistance-rail.component';
+import { AssistanceRailService } from '../../../services/assistance-rail.service';
 // <<< [S6] START >>>
 import { RbioEmailCommunicationComponent } from '../rbio-email-communication/rbio-email-communication.component';
 import { RbioAttachmentsComponent } from '../rbio-attachments/rbio-attachments.component';
@@ -36,7 +39,7 @@ interface OpenDoc {
   source: string;
 }
 
-type RailKey = 'history' | 'attachments' | 'email';
+type RailKey = 'history' | 'attachments' | 'email' | 'assistance';
 
 interface ComplaintDetail {
   /**
@@ -78,6 +81,7 @@ interface ComplaintDetail {
     // <<< [S6] START >>>
     RbioEmailCommunicationComponent, RbioAttachmentsComponent, RbioComplaintHistoryComponent,
     // <<< [S6] END >>>
+    AssistanceRailComponent,
   ],
   templateUrl: './rbio-complaint-detail.component.html',
   styleUrl: './rbio-complaint-detail.component.scss'
@@ -90,6 +94,7 @@ export class RbioComplaintDetailComponent implements OnInit {
   private auth = inject(KeycloakAuthService);
   private rbioWorkflow = inject(RbioWorkflowService);
   private sanitizer = inject(DomSanitizer);
+  private assistance = inject(AssistanceRailService);
 
   complaint = signal<ComplaintDetail | null>(null);
   loading = signal(true);
@@ -235,11 +240,58 @@ export class RbioComplaintDetailComponent implements OnInit {
 
   railOpen = signal<RailKey | null>(null);
 
-  readonly railPanels: readonly ContextRailPanel<RailKey>[] = [
-    { key: 'history', label: 'Complaint History', icon: 'pi-history' },
-    { key: 'attachments', label: 'Attachments', icon: 'pi-paperclip' },
-    { key: 'email', label: 'Email Communication', icon: 'pi-envelope' }
-  ];
+  /**
+   * A computed, not a constant, because the assistance panel's icon GLOWS and the glow is live state.
+   *
+   * <p>The assistance panel is last deliberately: the first three are material the officer goes looking
+   * for, and this one is the only entry that ever asks for attention. Putting a pulsing icon above the
+   * history they reach for every day would make the rail's ordering about the new feature.
+   *
+   * <p>`glow`/`glowCount` come from {@link AssistanceRailService.verdict} — the same function the bulb on
+   * the other screens uses, so an icon cannot glow by a different rule than they do. This screen cannot
+   * embed the bulb component itself: the icon strip belongs to `app-context-rail` and its DOM is
+   * encapsulated, so the glow has to arrive as data.
+   */
+  readonly railPanels = computed<readonly ContextRailPanel<RailKey>[]>(() => {
+    const panels: ContextRailPanel<RailKey>[] = [
+      { key: 'history', label: 'Complaint History', icon: 'pi-history' },
+      { key: 'attachments', label: 'Attachments', icon: 'pi-paperclip' },
+      { key: 'email', label: 'Email Communication', icon: 'pi-envelope' }
+    ];
+
+    // §6.2's kill switch, honoured as "hide the affordance": the icon is ABSENT when assistance is off,
+    // not present-but-empty. An officer who opens a panel that explains it has been disabled has been
+    // told the system is broken.
+    if (this.assistanceEnabled()) {
+      const complaint = this.assistanceComplaintNumber();
+      const verdict = this.assistance.verdict(complaint, this.assistance.probedRail(complaint));
+      panels.push({
+        key: 'assistance',
+        label: 'Assistance',
+        icon: 'pi-lightbulb',
+        glow: verdict.glow,
+        glowCount: verdict.count
+      });
+    }
+    return panels;
+  });
+
+  /** The §6.2 kill switch. False until the server says otherwise, so no icon flickers in and out. */
+  private readonly assistanceEnabled = signal(false);
+
+  /**
+   * The complaint NUMBER the assistance rail is asked about, or `''` for "do not ask".
+   *
+   * <p>`''` is a real outcome rather than defensive coding: this screen's loader falls back to the
+   * literal string `'Not Assigned'` when the payload carries no number, and asking the rail about
+   * "Not Assigned" would return an empty rail — indistinguishable on screen from a working feature with
+   * nothing to say. `dbId`, the numeric primary key, is the other trap and is equally not a number the
+   * rail understands.
+   */
+  readonly assistanceComplaintNumber = computed(() => {
+    const number = this.complaint()?.complaintNumber?.trim() ?? '';
+    return number && number !== 'Not Assigned' ? number : '';
+  });
 
   /** Opening the rail AT a panel, used by the tab strip's `+`, which means "show me the documents". */
   openRail(key: RailKey) {
@@ -262,6 +314,28 @@ export class RbioComplaintDetailComponent implements OnInit {
       previewable: RbioComplaintDetailComponent.PREVIEWABLE.includes(ext),
       source: row.source || 'UNKNOWN'
     };
+  }
+
+  constructor() {
+    // The §6.2 kill switch. Degrades to false on any failure, which hides the icon — the safe direction
+    // for an ambient feature.
+    this.assistance.available()
+      .pipe(takeUntilDestroyed())
+      .subscribe(on => this.assistanceEnabled.set(on));
+
+    /*
+     * Probes the rail so the icon can glow BEFORE the officer opens it, which is the entire interaction.
+     * Gated on the switch so a disabled feature costs no request, and on a real complaint NUMBER being
+     * loaded — this screen resolves its record asynchronously, so the first pass legitimately has none.
+     *
+     * `probeRail` is idempotent and swallows failures silently per §5.1, so an effect that re-runs for
+     * unrelated reasons issues no extra requests and a dead rail produces no message.
+     */
+    effect(() => {
+      if (!this.assistanceEnabled()) return;
+      const complaint = this.assistanceComplaintNumber();
+      if (complaint) this.assistance.probeRail(complaint);
+    });
   }
 
   ngOnInit() {

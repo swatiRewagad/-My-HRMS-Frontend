@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -13,6 +13,9 @@ import { OcrProvenance } from '../../../shared/ocr-provenance';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
 import { ComplaintSummaryComponent } from '../../shared/complaint-summary/complaint-summary.component';
 import { ComplaintSummaryItem } from '../../shared/complaint-summary/complaint-summary.types';
+import { AssistanceRailComponent } from '../../shared/assistance-rail/assistance-rail.component';
+import { AssistanceBulbComponent } from '../../shared/assistance-rail/assistance-bulb.component';
+
 interface Suggestion {
   id: string;
   field: string;
@@ -29,7 +32,7 @@ interface PastComplaint {
 @Component({
   selector: 'app-physical-letter',
   standalone: true,
-  imports: [CommonModule, FormsModule, ComplaintSummaryComponent],
+  imports: [CommonModule, FormsModule, ComplaintSummaryComponent, AssistanceRailComponent, AssistanceBulbComponent],
   templateUrl: './physical-letter.component.html',
   styleUrl: './physical-letter.component.scss'
 })
@@ -71,6 +74,47 @@ export class PhysicalLetterComponent implements OnInit {
         tone: 'owner'
       }
     ];
+  }
+
+  /*
+   * ═══ ASSISTANCE RAIL (Brief 21 §5.1) ══════════════════════════════════════════════════════════
+   *
+   * The bulb sits in this screen's existing "Suggestions" sidebar header — which carried a `pi-lightbulb`
+   * and a chevron that did nothing — and the panel opens in the body beneath it. Nothing here calls
+   * `/assistance/rail`: `app-assistance-bulb` owns the probe, the §6.2 kill switch and the glow rule, so
+   * this host keeps only an open/closed boolean.
+   *
+   * ⚠ THE RAIL IS WIRED BUT CANNOT YET LIGHT ON THIS SCREEN, and that is a property of the screen
+   * rather than of the wiring. The rail is keyed on a complaint NUMBER, and during a physical-letter
+   * capture there is no such key in existence:
+   *
+   *   • `complaintNumber` is declared on this class but is NEVER ASSIGNED — the summary strip prints it
+   *     as the literal "Not Assigned".
+   *   • `draftId` is set only in the success handlers of `submitDraft()` / `confirmAssignment()`, by
+   *     which point `submitted()` is true and the success overlay covers the form.
+   *   • The route is `crpc/physical-letter` with no `:id`, so the screen cannot be re-entered on an
+   *     existing draft.
+   *   • `saveDraft()` does come back with an `id`, but that is a NUMERIC primary key. Passing it would
+   *     return a correctly-empty rail that reads exactly like a working feature with nothing to say,
+   *     which is the one failure mode this whole feature cannot afford.
+   *
+   * So the affordance is GATED on there being a key (see the template) rather than rendered dark: a bulb
+   * that can only ever open an empty panel trains the operator to ignore the bulb everywhere else. The
+   * wiring is correct and starts working the moment this screen is given a draft key to resume from.
+   */
+
+  showAssistancePanel = signal(false);
+
+  /**
+   * The complaint NUMBER for the rail, or '' when there is none to ask about yet.
+   *
+   * <p>A computed, so it re-reads when `draftId` lands. Never the numeric `id` that `saveDraft()`
+   * returns — see the note above.
+   */
+  assistanceComplaintNumber = computed(() => (this.complaintNumber || this.draftId() || '').trim());
+
+  toggleAssistancePanel() {
+    this.showAssistancePanel.set(!this.showAssistancePanel());
   }
 
   // Left panel

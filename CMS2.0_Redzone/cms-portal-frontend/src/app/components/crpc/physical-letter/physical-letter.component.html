@@ -375,13 +375,62 @@
 
     <!-- ═══ RIGHT SIDEBAR ═══ -->
     <div class="col-right-sidebar">
-      <!-- Suggestions -->
-      <div class="sidebar-section">
-        <div class="sidebar-section-header">
-          <h4><i class="pi pi-lightbulb"></i> Suggestions</h4>
-          <button class="sidebar-expand-btn"><i class="pi pi-chevron-right"></i></button>
+      <!--
+        ═══ SUGGESTIONS / ASSISTANCE RAIL (Brief 21 §5.1) ═══
+        This section was a header and nothing else: a `pi-lightbulb`, the word "Suggestions", and a
+        chevron bound to no handler. It is now the assistance rail's home on this screen — the bulb in
+        the header opens the panel in the body below it, so the rail lands where an operator was already
+        being promised suggestions.
+
+        ⚠ GATED ON THERE BEING A COMPLAINT KEY AT ALL, which on this screen means the section is absent
+        for the whole of a normal capture. `complaintNumber` is never assigned here and `draftId` only
+        arrives after a successful submit, by which point the success overlay covers the form — so there
+        is nothing the rail could be asked about. See the note on `assistanceComplaintNumber` in the
+        component.
+
+        Rendering a dark bulb instead would be worse than showing none: a bulb that can only ever open an
+        empty panel teaches the operator that the bulb means nothing, on every other screen too. The
+        wiring below is complete and starts working the moment this screen can resume a draft.
+      -->
+      @if (assistanceComplaintNumber()) {
+        <div class="sidebar-section">
+          <div class="sidebar-section-header">
+            <h4><i class="pi pi-lightbulb"></i> Suggestions</h4>
+            <!--
+              The bulb PROBES the rail while the panel is closed — the whole §5.1 interaction, since an
+              icon that only reported content after the operator had opened it would signal nothing. It
+              renders nothing at all when the §6.2 kill switch is off, so hiding the affordance is the
+              component's own job and needs no `@if` here.
+
+              `hostClass` passes this sidebar's own button geometry; the component contributes only the
+              glow and the count badge.
+            -->
+            <app-assistance-bulb
+              hostClass="sidebar-expand-btn"
+              [complaintNumber]="assistanceComplaintNumber()"
+              [open]="showAssistancePanel()"
+              (togglePanel)="toggleAssistancePanel()" />
+          </div>
+          <!--
+            Destroyed when closed rather than hidden: the rail holds nothing the operator types into, so
+            there is no unsaved state to protect — unlike the capture form in the centre region.
+
+            `showClose` is off because the bulb in the header above is already this panel's toggle, and a
+            second chevron inside the body would be a second way to shut the same thing.
+
+            There is deliberately NO failure branch. The rail answers with an empty panel and says
+            nothing when it cannot compute, and §5.1 requires assistance to fail silently.
+          -->
+          @if (showAssistancePanel()) {
+            <div class="sidebar-section-body">
+              <app-assistance-rail
+                [open]="showAssistancePanel()"
+                [complaintNumber]="assistanceComplaintNumber()"
+                [showClose]="false" />
+            </div>
+          }
         </div>
-      </div>
+      }
 
       <!-- Past Complaints -->
       <div class="sidebar-section">

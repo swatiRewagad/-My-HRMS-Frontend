@@ -83,6 +83,33 @@
           <button class="tab" [class.active]="currentTab() === 'email'" (click)="currentTab.set('email')">Email Communication</button>
         </div>
 
+        <!--
+          ═══ ASSISTANCE RAIL PANEL (Brief 21 §5.1) ═══
+          Between the tab strip and the tab bodies, so it is reachable from EITHER tab. Inside
+          `summary-content` it would vanish when the reviewer switched to Email Communication, leaving
+          the bulb lit over a panel that could not be opened.
+
+          Not a right-hand drawer: this screen's consultation surfaces are centre-region tabs rather
+          than drawers, and a drawer would need fixed positioning that could overlap the
+          `.right-sidebar` strip holding the bulb that opens it. It borrows this screen's own
+          `.section-card` chrome so it reads as part of the page rather than as a bolted-on overlay.
+
+          Destroyed when closed rather than hidden, because the rail holds nothing the reviewer types
+          into — there is no unsaved state to protect, unlike this screen's edit-mode fields.
+
+          There is deliberately NO failure branch. The rail answers with an empty panel and says nothing
+          when it cannot compute, and §5.1 requires assistance to fail silently: a reviewer who did not
+          ask for a suggestion is not owed an error about one.
+        -->
+        @if (showAssistancePanel()) {
+          <div class="assistance-slot section-card">
+            <app-assistance-rail
+              [open]="showAssistancePanel()"
+              [complaintNumber]="assistanceComplaintNumber()"
+              (closePanel)="showAssistancePanel.set(false)" />
+          </div>
+        }
+
         <!-- Summary Tab -->
         @if (currentTab() === 'summary') {
           <div class="summary-content">
@@ -263,6 +290,20 @@
         <div class="right-sidebar">
           <button class="sidebar-icon" title="Settings"><i class="pi pi-cog"></i></button>
           <button class="sidebar-icon" title="Chat"><i class="pi pi-comments"></i></button>
+          <!--
+            The bulb PROBES the rail while the panel is closed — the whole §5.1 interaction, since an
+            icon that only reported content once the officer had opened it would signal nothing. It
+            renders nothing at all when the §6.2 kill switch is off, which is why there is no
+            `@if` here: hiding the affordance is the component's own responsibility.
+
+            `hostClass` passes this strip's geometry (`.sidebar-icon`); the component contributes only
+            the glow and the count badge.
+          -->
+          <app-assistance-bulb
+            hostClass="sidebar-icon"
+            [complaintNumber]="assistanceComplaintNumber()"
+            [open]="showAssistancePanel()"
+            (togglePanel)="toggleAssistancePanel()" />
           <button class="sidebar-icon" title="History" (click)="currentTab.set('history')"><i class="pi pi-clock"></i></button>
         </div>
       </div>
