@@ -484,7 +484,8 @@ Stated per deliverable so nothing here is read as more complete than it is.
 | 1. ELK replaces OpenSearch, language-aware | **Built** | 19 `MultilingualSearchIT` tests pass against a live 8.15.3 node; mappings/settings validated; §3 probes |
 | 2. Index the text that matters | **Partly built** | 29-field `dynamic: strict` mapping with per-language subfields and nested timeline. Uploaded-document text extraction is **not** built — see open ask 4, it needs a sizing and PII ruling first |
 | 3. One "find similar cases" path | **Built** | Provider on ES `more_like_this` with timeouts; wrong-index and enabled-by-default defects fixed; 5 denial tests. Shared Angular component + service landed in `262d8cd`, both phantom callers retired, `tsc --noEmit` and `ng build` clean, ESLint clean on all new files |
-| 4. Assistance rail (Tier 0 + Tier 1) | **Built** | `c81bc5b`, 12 files. 30 `AssistanceRailServiceTest` tests across 4 nested classes; the `/api/v1/assistance/**` guard is mutation-proven (§5b) |
+| 4. Assistance rail (Tier 0 + Tier 1) — backend | **Built** | `c81bc5b`, 12 files. 30 `AssistanceRailServiceTest` tests across 4 nested classes; the `/api/v1/assistance/**` guard is mutation-proven (§5b) |
+| 4a. Assistance rail — frontend, kill switch, 13 locales | **Built** | `bc7369b`…`e53e7cc`, 5 commits / 32 files (2026-10-06). 103 backend tests 0 fail; `tsc`/`ng build`/ESLint clean; 7 e2e tests enumerate. The two unwired screens and the un-executed e2e are stated in **§5d** |
 | §6.1 prerequisites | **Built** | §3a: two composite indexes chosen by the optimiser, five `findAll()` hydrates removed, 21 dashboard tests pass |
 | §5.3.6 template wiring | **Built** | `comment-template-picker` component + `SimilarCasesTranslationSeeder` (`@Order(69)`, 19 keys × 11 locales) in `262d8cd` |
 | Synthetic multilingual corpus seeder | **Built** | `fc28ab3`: 26 `CMS-MLCORPUS-*` rows, dev-local only; `CorpusReindexIT` carries them through the real `ReindexJob`. The measured tally is weaker than the brief implies — see §3.2a |
@@ -619,6 +620,144 @@ is worth knowing about before someone reports it as a bug in the rail. The test 
 shared dev database **remain corrupt** until that series is deleted and reseeded — which the new
 prefix-scoped guard now makes possible. I have not deleted them, because that database is shared with
 six other sessions and is not mine to truncate.
+
+---
+
+## 5d. The rail's frontend (2026-10-06) — and the correction that started it
+
+### The premise this session opened with was wrong
+
+The task was framed as "the frontend for the assistance rail is not built". It was. The components,
+the service and the host wiring existed from a prior session and were sitting **uncommitted** in the
+working tree. The work was therefore retargeted from *build it* to *finish and commit it*, which is a
+different and much smaller job.
+
+The belief had a traceable source: this repository's own notes asserted "the assistance rail has **no
+frontend consumer** — backend-only, test by HTTP, never by browser". That was true when written and is
+now false. The note has been marked superseded rather than deleted, because the sequence is the useful
+part: **an uncommitted feature is indistinguishable from an unbuilt one** to everyone except the
+session that wrote it. On a repository shared by several concurrent sessions that is not a filing
+inconvenience, it is a duplicate-work hazard.
+
+### What was actually missing
+
+| Gap | Resolved by |
+|---|---|
+| No kill-switch endpoint, so the client could not honour §6.2 | `GET /api/v1/assistance/status` → `{"available": <bool>}`; `/rail` and `/rail/memory` refuse when off |
+| `or` and `as` never seeded — 11 locales of 13 | `seedLocale("or", odia())` + `seedLocale("as", assamese())`, 19 keys each |
+| Signals carried server English only | `params` on the DTO; the component localises from `kind` + `params` and keeps `title` as the fallback of record |
+| Dismissal state held in the panel component | Moved into `AssistanceRailService` — see below, this was a real defect |
+| Zero e2e coverage | `e2e/staff/assistance-rail.spec.ts`, 7 tests |
+
+### The one real defect found, and why a screenshot would not have shown it
+
+Dismissals lived in a field on the panel component. Both hosts render the panel inside
+`@if (showAssistancePanel())`, so **closing the drawer destroys the component** and takes its
+dismissals with it. The bulb outlives the panel, so it would light again over exactly the rows the
+officer had just silenced — the brief's "never re-glow for the same payload" rule, broken.
+
+What makes it worth recording is the shape of the failure: the panel renders correctly before the
+dismissal and correctly after it. Only the *sequence* dismiss → close → look at the bulb reveals it,
+and that is not a state any screenshot or static review captures. It is also the single failure mode
+that makes the feature worthless rather than merely imperfect: a bulb that glows over nothing trains
+officers to ignore it.
+
+The fix puts the rule in one place, `AssistanceRailService.verdict()`, keyed by complaint number. The
+bulb and the panel are separate components *by necessity*, not by choice, and a glow rule written out
+in both would drift — with the bulb being the half that drifts, because a wrong bulb looks identical
+to a right one. The e2e spec asserts the sequence, not the states.
+
+Keeping the panel alive with `[hidden]` was the alternative and is wrong here: the rail holds nothing
+the officer can type into, so there is no unsaved state to protect (the opposite of the assessment
+fields, which is why *those* are hidden rather than destroyed), and the drawer slot is shared with the
+similar-cases panel.
+
+### Where the bulb is, and the two omissions that are deliberate
+
+Four screens carry it: `task-action`, `crpc/draft-assessment`, and `rbio-complaint-detail` — the last
+through the shared `app-context-rail`, passed the glow **as data** because that component's DOM is
+encapsulated and a second rail on a screen that already has one is what the brief rules out. The glow
+it receives is computed from the same `verdict()` the bulb uses.
+
+Not wired, on purpose:
+
+- **`physical-letter`** declares `complaintNumber` and **never assigns it** anywhere in the component
+  (`grep` for `this.complaintNumber =` exits 1). Only a `draftId` exists and the route has no `:id`.
+- **`reviewer-assessment`** has a `draftId` plus a post-approval `generatedComplaintNumber` that is
+  sometimes a **client-fabricated** `CMP-${date}-${rand}`.
+
+Either would glow over nothing, which is the failure above arrived at by a different route. The wiring
+is present in both and activates the moment the screen can name the complaint it is about. This is a
+**limitation of those screens**, not of the rail, and it should not be "fixed" by inventing an
+identifier on the client.
+
+Also deliberate: `draft-assessment`'s `.icon-sidebar` is `display:none` ("icons moved inline"), so the
+bulb there is the inline `iib-btn` — an extra bulb in the hidden strip would be a duplicate testid
+that fails Playwright strict mode on an invisible control.
+
+### The glow floor, answered
+
+§5.1 asks for a confidence floor. It exists but is **not uniform**, and that is defensible:
+`MIN_CLOSURE_SAMPLE = 5` is enforced at `AssistanceRailService.java:357` for `category-closure-time`
+because that signal reports a **median** — a statistical claim, which needs a sample. The other two
+Tier 1 kinds (`complainant-history`, `entity-clause-precedent`) gate only on `> 0` because they are
+**exact counts** of things that did happen, not inferences from them. A floor of 5 on an exact count
+would suppress true statements.
+
+### Translation failure modes are all silent, which is why there is a test for them
+
+A locale never seeded, a key normalised to an underscore, and a `{{placeholder}}` lost in translation
+all surface identically: a panel that merely looks "not translated yet". No error, no empty row,
+nothing in a log. That is exactly how `or` and `as` came to be missing while the seeder read as
+finished.
+
+`AssistanceRailTranslationCoverageTest` (10 tests) drives the real `run()` against mock repositories
+and asserts on what reached `translationRepo.save` — reflecting into the private maps would prove a map
+exists that no `seedLocale` call ever reads. It also asserts Assamese **is not** Bengali: the two share
+the Bengali-Assamese block, so `seedLocale("as", bengali())` would have satisfied every coverage count
+while shipping text that reads as foreign (Bengali `র` where Assamese writes `ৰ`).
+
+Two audit findings during verification were **false alarms**, recorded so nobody re-raises them: Latin
+characters flagged in the Odia/Assamese values were EM DASH (U+2014), a genuine Assamese apostrophe in
+`য'ত` (U+0027) and the hyphen in `{{section}}-ত`; and a "stray `name` placeholder" was `{{name}}`
+appearing inside explanatory javadoc prose, not in a seeded value.
+
+### Gate, stated for exactly what it covers
+
+| Check | Result |
+|---|---|
+| `npx tsc --noEmit -p tsconfig.json` | exit 0 |
+| `npx ng build` | "Application bundle generation complete" — 0 errors |
+| ESLint on `shared/assistance-rail/` + the service | clean, no output |
+| Backend `Assistance*` + `SecurityConfigEnforcementTest` | **103 tests, 0 failures, 0 errors** |
+| `npx playwright test --list` on the new spec | enumerates 7 tests |
+
+**What this gate does not cover.** The e2e spec has been enumerated, **not executed** — the shared dev
+servers on 4200/4202 serve the *main* checkout, not this worktree, and restarting them would disrupt
+other sessions. So the Playwright evidence is compile-and-enumerate only, and no part of this UI has
+been exercised in a browser from here. The portal app still has no unit-test infrastructure
+(`angular.json` has no `test` target).
+
+Two `NG8113` warnings appear on files these changes touched. They were proven **pre-existing** via
+`git diff` (`SpeechButtonComponent` and `AutoClosureComponent` were already in those `imports` arrays);
+the changes only appended the assistance components.
+
+### Still open after this session
+
+1. **`cms.assistance.enabled` ships `false`.** The same question ruled for similar-cases (open ask 1)
+   has not been ruled for the rail. Shipped off per the brief's restrictive instruction; `dev-local`
+   sets it true. A feature whose failure mode is silence arguably wants to be on where someone is
+   looking at it, but that is a product call.
+2. **`physical-letter` and `reviewer-assessment` cannot name their complaint.** Fixing it belongs to
+   those screens (a route parameter, or a draft read that returns the complaint number), not to the
+   rail.
+3. **`complainant-history`'s link is half-dead.** It points at `/search?complainantEmail=...`; the
+   route exists but `search.component.ts` reads no query parameters at all, so the filter is silently
+   dropped. The rail therefore does **not** render it as navigable. Fixing it belongs to the search
+   screen.
+4. **The `assistance.*` keys are seeded but were not yet present on `GET /api/v1/i18n/translations/en`
+   when last probed**, which is why `title` remains the fallback of record rather than a defensive
+   nicety — today that English is what actually renders.
 
 ---
 
