@@ -405,9 +405,16 @@ export class AssistanceRailComponent {
    * <p>Delegated to the service, which is what makes it outlive this component — the hosts destroy the
    * panel on close, and a dismissal that died with it would let the bulb re-glow. See
    * {@link dismissedKinds}.
+   *
+   * <p>Focus returns to the heading because dismissing DESTROYS the button that was clicked, which
+   * drops focus to `<body>`. The Escape handler sits on the region and only fires through bubbling,
+   * so without this, silencing a signal silently disables Escape and leaves a keyboard user unable to
+   * close the panel — verified in a browser, and invisible in a screenshot.
    */
   dismiss(kind: string): void {
     this.service.dismiss(this.complaintNumber(), kind);
+    const el = this.heading()?.nativeElement;
+    if (el) setTimeout(() => el.focus());
   }
 
   onKeydown(event: KeyboardEvent): void {

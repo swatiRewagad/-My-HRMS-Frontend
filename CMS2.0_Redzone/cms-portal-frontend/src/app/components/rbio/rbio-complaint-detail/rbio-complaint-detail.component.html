@@ -384,11 +384,16 @@
               The number comes from assistanceComplaintNumber(), which rejects this screen's
               'Not Assigned' placeholder — asking the rail about that string returns an empty rail, which
               is indistinguishable from a working feature with nothing to say.
+
+              `closePanel` MUST be bound even though `showClose` is off. The rail also emits it on
+              Escape, and with no listener the key does nothing on this screen while working on every
+              other host — a keyboard user cannot shut the panel. Verified in a browser.
             -->
             <app-assistance-rail
               [open]="true"
               [complaintNumber]="assistanceComplaintNumber()"
-              [showClose]="false" />
+              [showClose]="false"
+              (closePanel)="railOpen.set(null)" />
           }
         }
       </ng-template>

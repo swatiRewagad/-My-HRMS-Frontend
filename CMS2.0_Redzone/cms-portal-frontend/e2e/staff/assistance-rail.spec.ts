@@ -40,6 +40,13 @@ import { createRbioComplaint, cleanupRbioComplaint, identityHeadersFor } from '.
 const RAIL = '[data-testid="assistance-rail"]';
 const BULB = '[data-testid="assistance-bulb"]';
 
+/**
+ * API calls must be ABSOLUTE. `baseURL` is the UI origin, so a relative path sends the rail's own
+ * endpoints to the dev server, which answers 404 for anything under /api — a seeding failure that
+ * reads as "the endpoint does not exist". Same default as e2e/utils/test-data.ts.
+ */
+const API_BASE = process.env['API_BASE_URL'] || 'http://localhost:8082';
+
 /** Distinct per spec run: AntiAutomationFilter throttles at 100 req/60s per client IP. */
 const XFF = { 'X-Forwarded-For': `10.33.${Math.floor(Math.random() * 250) + 1}.${Math.floor(Math.random() * 250) + 1}` };
 
@@ -73,7 +80,7 @@ test.describe('Assistance rail — the bulb and its states', () => {
     section: string,
     draftText: string | null
   ) {
-    const res = await request.put('/api/v1/assistance/rail/memory', {
+    const res = await request.put(`${API_BASE}/api/v1/assistance/rail/memory`, {
       headers: {
         'Content-Type': 'application/json',
         ...identityHeadersFor(OFFICER, 'RBIO'),
@@ -87,7 +94,7 @@ test.describe('Assistance rail — the bulb and its states', () => {
   }
 
   test('the rail answers 200 and reports its own glow verdict', async ({ request }) => {
-    const res = await request.get('/api/v1/assistance/rail', {
+    const res = await request.get(`${API_BASE}/api/v1/assistance/rail`, {
       params: { complaintId: complaintNumber },
       headers: { ...identityHeadersFor(OFFICER, 'RBIO'), 'X-User-Id': OFFICER, ...XFF }
     });
@@ -107,7 +114,7 @@ test.describe('Assistance rail — the bulb and its states', () => {
   test('a tier-0 memory write is visible to its author and to nobody else', async ({ request }) => {
     await rememberVisit(request, 'Take Action — FORWARD_TO_RE', 'half-written remarks for the rail');
 
-    const mine = await request.get('/api/v1/assistance/rail', {
+    const mine = await request.get(`${API_BASE}/api/v1/assistance/rail`, {
       params: { complaintId: complaintNumber },
       headers: { ...identityHeadersFor(OFFICER, 'RBIO'), 'X-User-Id': OFFICER, ...XFF }
     });
@@ -122,7 +129,7 @@ test.describe('Assistance rail — the bulb and its states', () => {
     // A different officer must NOT see the first officer's unsaved draft. This is the negative half,
     // and it is the assertion that matters: the rail is a read-amplification surface over text an
     // officer has not saved, and a feature that leaked it would be a PII defect, not a UX bug.
-    const theirs = await request.get('/api/v1/assistance/rail', {
+    const theirs = await request.get(`${API_BASE}/api/v1/assistance/rail`, {
       params: { complaintId: complaintNumber },
       headers: {
         ...identityHeadersFor('rbio.supervisor', 'RBIO'),
@@ -267,5 +274,53 @@ test.describe('Assistance rail — the bulb and its states', () => {
     } finally {
       await cleanupRbioComplaint(request, fresh.complaintNumber).catch(() => {});
     }
+  });
+
+  /**
+   * The SECOND host, which reaches the rail by a different route and so can break on its own.
+   *
+   * `rbio-complaint-detail` has no bulb: its icon strip belongs to the shared `app-context-rail` and
+   * that DOM is encapsulated, so glow is passed IN as data and the affordance is a `.rail-icon`. Two
+   * bugs lived here precisely because every assertion above is about the bulb:
+   *
+   *  - the host bound no `(closePanel)`, so Escape — which the rail emits rather than handles — did
+   *    nothing on this screen while working on every other host;
+   *  - dismissal dropped focus to `<body>`, and the Escape handler only fires through bubbling.
+   *
+   * Both are keyboard-only and invisible in a screenshot, which is why this asserts the keyboard path
+   * and not merely that the panel renders.
+   */
+  test('the context-rail host glows, dismisses and closes on Escape', async ({ request, page }) => {
+    await rememberVisit(request, 'Facts', 'text left behind on the detail screen');
+
+    await loginAsRbioRole(page, 'RBIO_OFFICER', `/rbio/complaint/${complaintNumber}`);
+
+    // Glow arrives as data on the shared icon, carrying the same count the bulb would show.
+    const icon = page.locator('.rail-icon[title="Assistance"]');
+    await expect(icon).toBeVisible({ timeout: 20000 });
+    await expect(icon).toHaveClass(/rail-icon--glow/, { timeout: 20000 });
+    await expect(icon).toHaveAttribute('data-signal-count', /[1-9]/);
+
+    await icon.click();
+    await expect(page.locator(RAIL)).toBeVisible();
+
+    const dismissals = page.locator('[data-testid^="assistance-dismiss-"]');
+    await expect(dismissals.first()).toBeVisible();
+
+    // Count ONCE, then click the first remaining row that many times. A `while (count() > 0)` loop
+    // re-resolves between the count and the click, so it can latch a button the previous click's
+    // re-render is already detaching — "element was detached from the DOM, retrying" until timeout.
+    const total = await dismissals.count();
+    for (let i = 0; i < total; i++) {
+      await dismissals.first().click();
+    }
+
+    await expect(page.locator('[data-testid="assistance-dismissed"]')).toBeVisible();
+    // The shared icon must go dark too — it reads the same verdict() as the bulb.
+    await expect(icon).not.toHaveClass(/rail-icon--glow/);
+
+    // The keyboard path: Escape still closes after the clicked buttons have been destroyed.
+    await page.keyboard.press('Escape');
+    await expect(page.locator(RAIL)).toHaveCount(0);
   });
 });
