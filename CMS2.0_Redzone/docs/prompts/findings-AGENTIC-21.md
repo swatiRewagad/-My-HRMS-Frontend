@@ -484,8 +484,12 @@ Stated per deliverable so nothing here is read as more complete than it is.
 | 1. ELK replaces OpenSearch, language-aware | **Built** | 19 `MultilingualSearchIT` tests pass against a live 8.15.3 node; mappings/settings validated; §3 probes |
 | 2. Index the text that matters | **Partly built** | 29-field `dynamic: strict` mapping with per-language subfields and nested timeline. Uploaded-document text extraction is **not** built — see open ask 4, it needs a sizing and PII ruling first |
 | 3. One "find similar cases" path | **Built** | Provider on ES `more_like_this` with timeouts; wrong-index and enabled-by-default defects fixed; 5 denial tests. Shared Angular component + service landed in `262d8cd`, both phantom callers retired, `tsc --noEmit` and `ng build` clean, ESLint clean on all new files |
-| 4. Assistance rail (Tier 0 + Tier 1) — backend | **Built** | `c81bc5b`, 12 files. 30 `AssistanceRailServiceTest` tests across 4 nested classes; the `/api/v1/assistance/**` guard is mutation-proven (§5b) |
+| 4. Assistance rail (Tier 0 + Tier 1) — backend | **Built** | `c81bc5b`, 12 files. 30 `AssistanceRailServiceTest` tests across 4 nested classes; the `/api/v1/assistance/**` guard is mutation-proven (§5b). It shipped **three priors, but only one of the six §5.3 items** (§5.3.3); the other two are useful priors the brief did not ask for. The accounting is **§5e** |
 | 4a. Assistance rail — frontend, kill switch, 13 locales | **Built** | `bc7369b`…`e53e7cc`, 5 commits / 32 files (2026-10-06). 103 backend tests 0 fail; `tsc`/`ng build`/ESLint clean; 7 e2e tests enumerate. The two unwired screens and the un-executed e2e are stated in **§5d** |
+| 4b. §5.3.1 next-action prediction | **Built, not yet applied to any database** | 2026-10-06. Rollup table + lease lock, `V115` / `oracle/V113` **written and deliberately unapplied**; scheduled refresh under a DB-backed lease; one keyed read on the request path; the signal is inert and highlighted, never auto-selected; 13 locales; its own §6.2 rate-limit bucket. **109 tests, 0 failures** on the final tree — 101 `Assistance*` plus 8 `RateLimitFilterAssistanceBucketTest` (`mvn -o test -Dtest='Assistance*,RateLimitFilter*'`, 16:14). No officer has seen it render, and on current data it would be **silent on ~86% of complaints** — measured, and explained in **§5e** |
+| 4c. §5.3.2 closure-clause recommendation | **Not built** | A *ranked* reorder of the existing `<select>` by co-occurrence with (category, ground, entity type, resolution path), honouring `restricted_to_roles`. The shipped `entity-clause-precedent` prior is **not** this: it reports a count beside the complaint and reorders nothing. **§5e** |
+| 4d. §5.3.4 deadline triage | **Not built** | Skipped by agreement, not by oversight — it was the one item consciously dropped to fit §5.3.1. **§5e** |
+| 4e. §5.3.5 entity pattern alert | **Not built** | Deferred by agreement. Needs a second scheduled rollup; the §5.3.1 lease lock is now reusable for it. **§5e** |
 | §6.1 prerequisites | **Built** | §3a: two composite indexes chosen by the optimiser, five `findAll()` hydrates removed, 21 dashboard tests pass |
 | §5.3.6 template wiring | **Built** | `comment-template-picker` component + `SimilarCasesTranslationSeeder` (`@Order(69)`, 19 keys × 11 locales) in `262d8cd` |
 | Synthetic multilingual corpus seeder | **Built** | `fc28ab3`: 26 `CMS-MLCORPUS-*` rows, dev-local only; `CorpusReindexIT` carries them through the real `ReindexJob`. The measured tally is weaker than the brief implies — see §3.2a |
@@ -514,11 +518,17 @@ otherwise a deleted test fails your gate forever.
 **What is still genuinely not built**, and should not be read as oversight:
 
 - **Uploaded-document text extraction** (part of deliverable 2) — blocked on open ask 4.
+- **Tier 1 priors §5.3.4 (deadline triage) and §5.3.5 (entity pattern alert)** — skipped and deferred
+  respectively, by ruling. Neither has a stub or a TODO anywhere in the code, which is why they are
+  written up in **§5e** rather than discoverable by grep.
 - Everything in §5, which was out of scope by instruction.
 
 **Verified by unit test but not observed on real data:**
 
 - Oracle EXPLAIN plans for V109 are **reasoned, not measured** — no Oracle instance was reachable.
+- The **next-action rollup has never held a row.** V115 (MySQL) and Oracle V113 are written and
+  unapplied by instruction, so the refresh job has only ever been exercised against mocks and the
+  signal has only ever rendered in a test. §5e states this per-claim.
 
 The rail's `category-closure-time` prior was in this list too, and is **no longer** — see §5c. The
 figure I first reported for it ("79 of 2769 rows carry a `category_id`") was both stale on
@@ -758,6 +768,246 @@ the changes only appended the assistance components.
 4. **The `assistance.*` keys are seeded but were not yet present on `GET /api/v1/i18n/translations/en`
    when last probed**, which is why `title` remains the fallback of record rather than a defensive
    nicety — today that English is what actually renders.
+5. **V115 / Oracle V113 are written and NOT applied.** Deliberate — the user asked to run them
+   themselves. Until then the rollup table does not exist, the hourly job logs one WARN and does
+   nothing, and the next-action signal is absent. The feature is built but has never rendered.
+6. **§5.3.2, the closure-clause recommendation, has had no ruling.** The build/skip/defer decision
+   covered items #1, #4 and #5; #2 was not put to the user because the earlier audit did not separate
+   it from the `entity-clause-precedent` prior, which is a different signal. See **§5e**.
+
+---
+
+## 5e. Next-action prediction (§5.3.1), and the three Tier 1 priors that are NOT built
+
+The remaining §5.3 gap was audited and the user ruled: **build #1 (next-action prediction), skip #4
+(deadline triage), defer #5 (entity pattern alert).** This section records all outcomes, because most
+of them are absences and an absence left unwritten reads as delivered.
+
+**Committed as `3993451`** on `CMS_21092026` (28 files, +3196/−79), not pushed. Stated because §5d of
+this same document opens with the lesson that an uncommitted feature is indistinguishable from an
+unbuilt one — this one was wrongly concluded unbuilt in three consecutive sessions.
+
+**The §5.3 scorecard, all six items.** The earlier version of this document reported deliverable 4 as
+"Built" without this breakdown, which is how three missing items went a session unnoticed:
+
+| §5.3 item | State |
+|---|---|
+| 1. Next-action prediction | Built this session, migration unapplied — below |
+| 2. Closure-clause recommendation | **Not built**, and not covered by the ruling — below |
+| 3. Complainant history / repeat-contact | Built earlier (`c81bc5b`) |
+| 4. Deadline triage | Not built, skipped by ruling — below |
+| 5. Entity pattern alert | Not built, deferred by ruling — below |
+| 6. Template wiring | Built earlier (`262d8cd`) |
+
+### What was built — #1, next-action prediction
+
+`P(action | from_status, performed_by_role, category)` as a rollup table refreshed on a schedule, read
+by one keyed lookup, rendered as a highlighted-but-inert signal.
+
+| Piece | File |
+|---|---|
+| Rollup entity + `CATEGORY_AGNOSTIC` sentinel | `entity/AssistanceNextAction.java` |
+| Lease-lock row | `entity/AssistanceJobLock.java`, `repository/AssistanceJobLockRepository.java` |
+| Keyed read (one `IN` range) + stale sweep | `repository/AssistanceNextActionRepository.java` |
+| Refresh job | `service/AssistanceNextActionRefreshService.java` |
+| Hourly trigger | `config/AssistanceNextActionRefreshScheduler.java` |
+| The signal | `AssistanceRailService#nextAction` / `#toSignal` |
+| §6.2's separate rate-limit bucket | `config/RateLimitFilter.java` |
+| Migrations, **written and deliberately NOT applied** | `database/V115__…sql`, `database/oracle/V113__…sql` |
+
+**§6.2's "assistance gets its own, smaller bucket" is now real rather than nominal.**
+`RateLimitFilter` keys `/api/v1/assistance/**` as `"assist|" + clientIp` into the **same** map as core
+traffic — a second map would silently double the `MAX_BUCKETS` memory ceiling — and gives it
+`assistance-requests-per-minute` (60 in production, 600 under `dev-local`). One limit, not the core
+bucket's per-second/per-minute pair: 60 tokens cannot be a flood at any rate, whereas a per-second
+ceiling small enough to matter would reject the three-call burst (`/status`, `/rail`, `/rail/memory`)
+of a single legitimate screen load. **Exhausting it degrades to no bulb, never to no screen**, which is
+the §5.1 silent-failure contract already in force for a transport error — and is why a bucket this
+small is safe to impose on a staff screen. Note for the e2e harness: the `dev-local` value is raised
+for the same reason the other two limits are, since a rail rate-limited mid-suite looks exactly like
+the feature being broken.
+
+**That bucket invalidated a documented invariant, which was corrected rather than left standing.** Both
+rail endpoints were described throughout as "always HTTP 200" — true of the *controllers*, and the
+stated reason `assistance-rail.service.ts` carries no `catchError`. A 429 is returned by the **filter**,
+before the controller runs, so the component's `error:` branch now has two reachable causes instead of
+one. Verified safe rather than assumed: that branch already sets `glow=false`, `retry()` issues a real
+request (`shareReplay` defaults to `resetOnError: true`), and a 429 is **not** mapped to an empty list —
+that collapse is the precise defect which hid a non-existent similar-cases endpoint for months. The
+service javadoc now distinguishes controller from endpoint. Anyone adding a filter-level refusal to an
+assistance path must re-read it.
+
+**The bucket's test was mutation-checked, because filter tests pass too easily.** Forcing
+`boolean assistance = false` fails **5 of the 8** `RateLimitFilterAssistanceBucketTest` tests. It also
+pins that `/api/v1/complaints/assistance-requests` does *not* receive the small bucket, so the prefix
+match cannot be "simplified" into a substring match later.
+
+**The brief's prescribed key does not work on this data, and the fix is a sentinel rather than a
+compromise.** `(from_status, performed_by_role, category)` yields only **5** cohorts clearing a
+5-sample floor, because `category_id` reaches just **722 of 16,989** joinable timeline rows
+(re-measured 2026-10-06; this figure has not moved). A `CATEGORY_KEY = 0` sentinel row alongside each
+category-specific row covers **34 cohorts / 7,528 events** instead. The read asks for both keys in one
+query and `BEST_COHORT` prefers the specific row when it exists, so the signal sharpens on its own as
+categories get populated — no schema change, no code change, no migration. `0` rather than `NULL`
+because a NULL-bearing composite UNIQUE key prevents no duplicates on MySQL *or* Oracle.
+
+**The lock is a DB-backed lease, not Hazelcast and not a boolean.** Hazelcast clustering is off in this
+deployment, so there is no leader election to borrow. The acquire is a conditional
+`UPDATE … WHERE LOCKED_UNTIL <= :now` and the job proceeds only on 1 affected row. It is a *lease*
+(10 minutes) specifically so a pod killed mid-refresh cannot hold it forever; `releaseLease` is a
+courtesy that expires the row early, and its failure is logged and ignored because the lease expiry is
+the real guarantee.
+
+**`recompute` carries no `@Transactional`, on purpose.** It is reached through `this` from `refresh()`,
+and Spring's proxy does not intercept self-invocation — the annotation would be silently inert, which
+is worse than absent because it reads as a boundary that exists. Annotating `refresh()` instead is
+worse still: it catches its own exceptions, so a rollback would never be triggered. The transactional
+boundary lives on the repository (`deleteStale`), where the proxy *is* the bean.
+
+**Timeouts are on the request-path query and deliberately absent from the job's.** `findRailCandidates`
+carries the 5 s `jakarta.persistence.query.timeout` hint the rail's other queries use; `findCohort` does
+not, because a background refresh would rather wait than silently skip a cohort and publish a rollup
+that is quietly missing rows.
+
+**"Suggest, highlight, do not auto-select"** (§5.3.1) is enforced by the signal carrying **no link** and
+the component applying only a CSS class. `workflow-action-bar` commits real workflow transitions, so a
+route that arrived with a transition pre-selected is exactly the harm the rule names. The icon is
+`pi-chart-bar` and not an arrow for the same reason: an arrow reads as a control, and this signal
+reports what historically *followed*, which the workflow may now refuse.
+
+**One contract that will break quietly if touched.** `count` is the **numerator** in both
+`Signal.count` and `params`. The seeded string is `"{{action}} followed in {{count}} of {{total}}…"`,
+and the component only falls back to `Signal.count` for `params['count']` when params omits it — so
+putting the denominator in `count` would render "1200 of 1200" in all 13 locales while English, which
+reads `params`, stayed correct. A test pins `PARAM_COUNT = "1062"` against a 1200 cohort.
+
+**Gate.** `mvn test -Dtest='Assistance*Test'` → **101 tests, 0 failures, 0 errors, BUILD SUCCESS** —
+`AssistanceRailServiceTest` 48 (incl. `NextActionTests` 10 and `NextActionPreferenceTests` 8),
+`AssistanceNextActionRefreshServiceTest` 28, `AssistanceRailKillSwitchTest` 11,
+`AssistanceRailTranslationCoverageTest` 10, `AssistanceStatusAuthorizationTest` 4. Main and test
+sources compile clean; `npx tsc --noEmit` clean. The WARN lines during that run ("could not take the
+lease", "ASSISTANCE_NEXT_ACTION does not exist") are the degradation paths being exercised
+deliberately, not failures — V115 is not applied, and the feature is required to stay quiet when its
+table is absent.
+
+Run the gate **from `cms-backend/`, not from the repo root.** `cms-backend` is not a module of the root
+reactor, so `mvn test -Dtest='Assistance*Test'` at the root builds sixteen other modules, matches
+nothing, and fails in `cms-common` with "No tests matching pattern" — a reactor-layout artifact that
+looks exactly like a broken gate.
+
+Count the gate from an **isolated** `-Dsurefire.reportsDirectory`. Six other sessions share this
+`target/`, so `target/surefire-reports/` is not a trustworthy record of what *this* gate did.
+
+> **Correction to an earlier revision of this section.** A 12-error `AssistanceRollupQueryIT` in those
+> reports was recorded here as another session's stale artifact. It was not — it was **this** session's.
+> A `@DataJpaTest` slice was written to prove the four new JPQL statements actually parse and execute
+> (the one class of defect a fully-mocked suite cannot catch), and it failed at context load because
+> **H2 is not a cms-backend dependency at all**: `src/test/resources/application.yml` points the suite
+> at `jdbc:h2:mem:testdb`, but no `com.h2database` artifact is on the classpath in any scope, so
+> `@AutoConfigureTestDatabase` cannot replace the datasource. The file was deleted rather than left
+> failing, and adding a dependency to the shared `pom.xml` was not done unasked. **The JPQL is
+> therefore validated by BOOT instead** — see immediately below — and that gap is real: no test in this
+> repository executes these four statements against a database.
+>
+> **And the reports outlived the file.** Deleting the class did not delete
+> `target/surefire-reports/AssistanceRollupQueryIT*`, so a later gate that never executed it printed the
+> same 12 errors again and cost a full investigation. Nothing cleans this `target/`. Before believing a
+> failure here, check the report's mtime against your run and confirm the `.java` still exists — and note
+> that `ApplicationContext failure threshold (1) exceeded` is never a root cause, only the second and
+> later attempts; the real `Caused by` is further down the trace.
+
+**Boot verification, standing in for that integration test.** A constructor expression over an
+`ON`-joined *unrelated* entity (`LEFT JOIN Complaint c ON c.id = t.complaintId`) fails at Hibernate
+**bootstrap**, not at call time, so reaching "Started" is itself the assertion: had any of the four
+statements been malformed, the context could not have come up. Run it on a spare port with DDL off so
+nothing reaches the shared schema:
+
+```bash
+cd cms-backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev-local \
+  -Dspring-boot.run.jvmArguments="-Dserver.port=8096 -Dspring.jpa.hibernate.ddl-auto=none"
+```
+
+Observed: `Started CmsApplication in 16.383 seconds`, `Tomcat started on port 8096`, **zero** matches for
+`QuerySyntaxException|SemanticException|Could not interpret|validation failed`, and **exactly one**
+scheduler registration followed by **exactly one** refresh attempt — which is also the evidence that the
+duplicate scheduler is really gone and that two beans are not racing the same lease. Afterwards neither
+`ASSISTANCE_NEXT_ACTION` nor `ASSISTANCE_JOB_LOCK` existed in `cms_db`: the run left the schema
+untouched, as instructed.
+
+The same boot exercised the degradation path for real rather than through a mock:
+`Table 'cms_db.assistance_job_lock' doesn't exist` → `Assistance next-action refresh skipped: could not
+take the lease ... If V115 / oracle V113 has not been applied this is expected.` A missing rollup table
+makes the feature quiet, not broken.
+
+What boot does **not** prove, and an executed test would: that `findRailCandidates` keyset paging
+actually advances past the first page, that `deleteStale` deletes the rows intended and no others, and
+that the `0` sentinel on `CATEGORY_KEY` really does let the composite UNIQUE reject duplicates on both
+engines. Those remain reasoned, not run.
+
+**Honest limits, measured rather than assumed:**
+
+- **33 of 34 cohorts clear BOTH floors**, so `MIN_CONFIDENCE` (0.5) is effectively untested against a
+  realistic distribution. It is a guard that has not yet had to refuse anything.
+- `performed_by_role` is populated on **7,531 of 17,433** timeline rows (43%). Events without a role
+  cannot enter any cohort.
+- Only `assigned` and `in_progress` have cohorts for front-line roles, so **the signal is silent on most
+  of the register** — a data gap, not a logic one.
+- The timeline's `from_status` vocabulary and `COMPLAINTS.status` overlap but are not identical, so a
+  complaint sitting at a status the timeline never records a departure from gets no signal.
+- The rollup has **never been populated**, because V115 is unapplied by instruction. Everything above is
+  proven by unit test and by SQL measurement of the source data; no officer has seen this signal render
+  against a real rollup.
+
+### #2, closure-clause recommendation — NOT built, and NOT covered by the ruling
+
+This one is the honest gap in this session's accounting: the user's ruling named #1, #4 and #5, and
+#2 was never put to them because the earlier audit had not separated it out. It is recorded here as
+outstanding rather than quietly folded into "built".
+
+What §5.3.2 asks for is a **reordering of the closure-clause `<select>`** by how often each clause
+has co-occurred with the complaint's (category, ground, entity type, resolution path), while still
+honouring each clause's `restricted_to_roles`.
+
+The shipped `entity-clause-precedent` prior is **not** this, and the resemblance is the trap: it is a
+different signal that happens to mention clauses. It reports a *count beside the complaint* — "this
+clause has been cited N times for this entity" — and reorders nothing. The officer still scrolls the
+same alphabetical list. A reader comparing the two by name would conclude §5.3.2 shipped.
+
+Three things a builder should know before starting it:
+
+- It must reorder, not annotate, so unlike every other prior it **cannot live in the rail**. The rail
+  is an adjacent panel; this one has to reach into the closure form's own control.
+- The `restricted_to_roles` filter is already enforced when the `<select>` is populated. A reorder that
+  sorts a pre-filtered list inherits that; one that sorts a *rollup* and then renders it would have to
+  re-apply the filter, or it would advertise clauses the role may not cite.
+- §5.1's "suggest, highlight, do not auto-select" applies with more force here than anywhere else,
+  because reordering a `<select>` moves what is under the cursor. Putting a suggested clause into the
+  first position is a suggestion; putting it where the officer's muscle memory expects a different one
+  is closer to auto-selection. Highlight in place is the safer reading.
+
+### #4, deadline triage — NOT built, skipped by ruling
+
+"3 of your 14 cases breach within 48h." Not started, no scaffolding, no table, no key, no i18n. The
+brief is right that it is cheap (`re_response_deadline` / `re_response_overdue` are indexed by V86), so
+the reason it is absent is scope, not difficulty. Note it differs in kind from every other Tier 1
+prior: it is a statement about the officer's **whole queue**, not about the complaint on screen, so it
+does not fit the rail's existing per-complaint contract — `rail(complaintId, …)` has no queue-wide
+input and the panel has no place to put a signal that belongs to no complaint. Whoever builds it should
+expect to extend the contract, not just add a signal.
+
+### #5, entity pattern alert — NOT built, deferred by ruling
+
+"This entity has N open cases on this ground this quarter." Deferred, not skipped — the distinction is
+that this one has a known blocker. It is a **cross-complaint disclosure**: it tells an officer about
+other complainants' live cases against a named entity, which is the same question as open ask 3
+(cross-office precedent visibility) and wants the same owner. Building it before that ruling would
+settle a disclosure question by implementation. The scheduled-rollup machinery this session built
+(lease lock, keyset paging, stale sweep) is reusable for it; the policy is not.
+
+**None of #2, #4 or #5 has a stub, a flag or a TODO in the code.** That is deliberate per the brief's
+"do not leave scaffolding", and it is why they are written down here instead. #2 additionally needs a
+ruling it has never had.
 
 ---
 
