@@ -20,10 +20,15 @@ export interface AssistanceSignal {
   tier: number;
 
   /**
-   * STABLE MACHINE KEY, one of six: `unsaved-draft`, `last-section`, `last-viewed` (tier 0);
-   * `complainant-history`, `entity-clause-precedent`, `category-closure-time` (tier 1). Declared as
-   * constants in `AssistanceRailService` on the server for this reason. The client's icon AND its i18n
-   * lookup both hang off this value, so it is the only field a renderer may branch on.
+   * STABLE MACHINE KEY, one of seven: `unsaved-draft`, `last-section`, `last-viewed` (tier 0);
+   * `complainant-history`, `entity-clause-precedent`, `category-closure-time`, `next-action` (tier 1).
+   * Declared as constants in `AssistanceRailService` on the server for this reason. The client's icon
+   * AND its i18n lookup both hang off this value, so it is the only field a renderer may branch on.
+   *
+   * <p>`next-action` is the one kind whose rendering is CONSTRAINED rather than merely configured. It
+   * names the action that most often followed in comparable past cases — a historical frequency, not a
+   * check of what the workflow now permits — so it renders as read-only prose with no control and a
+   * `link` that is always null. See `AssistanceRailComponent.isHighlighted`.
    */
   kind: string;
 
@@ -143,15 +148,23 @@ export interface AssistanceMemoryResult {
  * caller could name would be no owner at all, and the repository deliberately has no finder that omits
  * it. A `userId` parameter added here would be an identity-spoofing surface, not a convenience.
  *
- * <h2>Both endpoints always answer HTTP 200, so this service still catches nothing</h2>
+ * <h2>Both CONTROLLERS always answer HTTP 200, so this service still catches nothing</h2>
  * Modelled on {@link import('./similar-cases.service').SimilarCasesService}: no `catchError`, so a
  * TRANSPORT failure stays an error the caller can show. That is not redundant with the server's own
  * guards. The server degrades a rail it cannot compute to `glow: false` with an empty list — because
  * `GlobalExceptionHandler` maps a bare `RuntimeException` to 400 and a leaked failure would present as
- * a client error on a valid request — which means an empty rail is a NORMAL state arriving as a 200,
- * and the only thing left that can reach this service's error branch is the request not completing at
- * all. Those two must not be collapsed: the sibling similar-cases panel exists because an error branch
- * that set an empty list made a non-existent endpoint read as "nothing found" for months.
+ * a client error on a valid request — which means an empty rail is a NORMAL state arriving as a 200.
+ * Those two must not be collapsed: the sibling similar-cases panel exists because an error branch that
+ * set an empty list made a non-existent endpoint read as "nothing found" for months.
+ *
+ * <p>"Always 200" is true of the controllers and NOT of the endpoints, which is a distinction worth
+ * keeping straight: `RateLimitFilter` gives `/api/v1/assistance/**` its own smaller bucket per Brief 21
+ * §6.2, and an exhausted bucket answers **429 before the controller is reached**. So the error branch
+ * now has two reachable causes — the request not completing, and the rail being throttled — and the
+ * component treats both the same way, which is correct. A 429 here means the officer is reloading far
+ * faster than a person works, the next read succeeds, and the component's `retry()` already re-requests
+ * rather than replaying the failure. It is deliberately NOT mapped to an empty list: that is the exact
+ * collapse named above.
  */
 @Injectable({ providedIn: 'root' })
 export class AssistanceRailService {

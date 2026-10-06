@@ -175,10 +175,22 @@
                     No `link` is rendered. The only kind that carries one is `complainant-history`, as
                     `/search?complainantEmail=...`; the `search` route exists but search.component.ts
                     reads no query parameters, so the link would be a filter that silently does nothing.
-                    Also no percentage or confidence figure: nothing here is scored, and the sibling
-                    panel's history shows an invented one gets believed.
+                    Also no percentage or confidence figure of the PANEL's own invention: nothing here is
+                    scored, and the sibling panel's history shows an invented one gets believed.
+                    (`next-action` does print a percentage, but it is the server's own count over its own
+                    denominator, both named in the sentence — a verifiable ratio, not a confidence.)
+
+                    ══ AND NO CONTROL, WHICH IS WHY `next-action` IS STILL JUST AN <li> ══
+
+                    `next-action` names the action that most often FOLLOWED in comparable past cases. The
+                    rollup is mined from what historically happened and NOT from what the workflow now
+                    permits, so it can name an action app-workflow-action-bar would refuse. Brief 21 is
+                    "suggest, highlight, do not auto-select": the highlight below is a CLASS, and this row
+                    gets no button, no (click), no link and no output — a host wiring one to the action bar
+                    would make a historical frequency commit real workflow state.
                   -->
                   <li class="assistance-signal assistance-signal--tier1"
+                      [class.assistance-signal--emphasis]="isHighlighted(s)"
                       [attr.data-testid]="'assistance-signal-' + s.kind">
                     <i class="pi {{ iconFor(s.kind) }} assistance-signal-icon" aria-hidden="true"></i>
                     <div class="assistance-signal-body">

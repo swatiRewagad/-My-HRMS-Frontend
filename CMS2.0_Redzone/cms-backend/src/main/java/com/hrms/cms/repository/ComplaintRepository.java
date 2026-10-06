@@ -418,14 +418,19 @@ public interface ComplaintRepository
     // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
     /**
-     * The five columns the rail needs about the complaint being viewed.
+     * The six columns the rail needs about the complaint being viewed.
      *
      * <p>Plan: {@code ref} on {@code idx_complaint_number} (unique), one row. This exists instead of
      * {@code findByComplaintNumber} because that hydrates all ~105 columns and six {@code TEXT} bodies
-     * to read five scalars, on every staff screen load.
+     * to read six scalars, on every staff screen load.
+     *
+     * <p>{@code status} is the next-action prior's key, and adding it costs nothing measurable: the row
+     * is already being fetched by its unique index, so this is one more scalar off a row the query
+     * reads anyway rather than a second lookup.
      */
     @Query("SELECT new com.hrms.cms.repository.projection.AssistanceRailProjections$RailContext("
-            + "c.complaintNumber, c.complainantEmail, c.entityCode, c.closureClause, c.categoryId) "
+            + "c.complaintNumber, c.complainantEmail, c.entityCode, c.closureClause, c.categoryId, "
+            + "c.status) "
             + "FROM Complaint c WHERE c.complaintNumber = :complaintNumber")
     @QueryHints(@QueryHint(name = QUERY_TIMEOUT_HINT, value = DASHBOARD_TIMEOUT_MS))
     Optional<AssistanceRailProjections.RailContext> findRailContext(

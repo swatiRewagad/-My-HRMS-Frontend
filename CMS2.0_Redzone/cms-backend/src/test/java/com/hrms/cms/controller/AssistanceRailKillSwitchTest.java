@@ -24,6 +24,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -138,7 +139,7 @@ class AssistanceRailKillSwitchTest {
         void doesNotComputeAnything() {
             controller(false).rail(COMPLAINT, request());
 
-            verify(railService, never()).rail(anyString(), anyString());
+            verify(railService, never()).rail(anyString(), anyString(), any());
             verifyNoInteractions(railService, identityResolver);
         }
 
@@ -223,7 +224,7 @@ class AssistanceRailKillSwitchTest {
                     .roles(Set.of("RBIO_OFFICER"))
                     .side("RBI")
                     .build());
-            when(railService.rail(COMPLAINT, "rbio.officer.001")).thenReturn(
+            when(railService.rail(eq(COMPLAINT), eq("rbio.officer.001"), any())).thenReturn(
                     AssistanceRailResponse.of(COMPLAINT, java.util.List.of(
                             AssistanceRailResponse.Signal.memory(
                                     AssistanceRailService.KIND_LAST_SECTION,
@@ -236,7 +237,10 @@ class AssistanceRailKillSwitchTest {
             assertThat(body).isNotNull();
             assertThat(body.glow()).isTrue();
             assertThat(body.signals()).hasSize(1);
-            verify(railService).rail(COMPLAINT, "rbio.officer.001");
+            // The ROLES are asserted, not just the user id. The next-action prior is keyed on them, and
+            // a controller that resolved the identity but dropped its roles would silence that one
+            // signal while leaving every other assertion here green.
+            verify(railService).rail(COMPLAINT, "rbio.officer.001", Set.of("RBIO_OFFICER"));
         }
 
         @Test

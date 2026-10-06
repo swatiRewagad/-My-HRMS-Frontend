@@ -91,6 +91,10 @@ cms:
   rate-limit:
     complaints-per-minute: 100
     api-requests-per-second: 1000
+    # Raised well above production's 60, matching what this profile already does to the other two
+    # limits. A seeding script or an e2e run reloads the same screen far faster than an officer, and a
+    # rail silently rate-limited mid-suite looks exactly like the feature being broken.
+    assistance-requests-per-minute: 600
   encryption:
     server-secret: dev-local-secret-key-do-not-use-in-prod
   anti-automation:

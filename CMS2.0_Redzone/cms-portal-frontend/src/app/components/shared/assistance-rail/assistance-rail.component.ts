@@ -43,7 +43,12 @@ const KIND_ICONS: Record<string, string> = {
   'last-viewed': 'pi-clock',
   'complainant-history': 'pi-user',
   'entity-clause-precedent': 'pi-book',
-  'category-closure-time': 'pi-hourglass'
+  'category-closure-time': 'pi-hourglass',
+  // A BAR CHART, not an arrow or a `pi-forward`. The glyph is the only thing on the row that could
+  // imply "do this": a forward/arrow icon reads as a control even with no handler behind it, and this
+  // signal reports what HISTORICALLY followed, which the workflow may now refuse. A chart says
+  // "frequency with a denominator", which is exactly what the sentence behind it says.
+  'next-action': 'pi-chart-bar'
 };
 
 /**
@@ -70,7 +75,8 @@ const KIND_LABEL_KEYS: Record<string, string> = {
   'last-viewed': 'assistance.signal.last-viewed',
   'complainant-history': 'assistance.signal.complainant-history',
   'entity-clause-precedent': 'assistance.signal.entity-clause-precedent',
-  'category-closure-time': 'assistance.signal.category-closure-time'
+  'category-closure-time': 'assistance.signal.category-closure-time',
+  'next-action': 'assistance.signal.next-action'
 };
 
 /** The one kind whose `detail` is the officer's own text rather than server prose. */
@@ -78,6 +84,19 @@ const DRAFT_KIND = 'unsaved-draft';
 
 /** The one kind whose `detail` is a machine-readable `LocalDateTime.toString()` rather than prose. */
 const LAST_VIEWED_KIND = 'last-viewed';
+
+/**
+ * The one kind the panel renders with extra visual weight — and the one it must render as PROSE AND
+ * NOTHING ELSE.
+ *
+ * <p>`next-action` reports the action that most often FOLLOWED in comparable past cases. That rollup is
+ * mined from what historically happened, not from what the workflow currently permits, so it can and
+ * will sometimes name an action `workflow-action-bar` would now refuse. Brief 21 is "suggest, highlight,
+ * do not auto-select": the highlight is {@link isHighlighted}, which reaches CSS only, and there is
+ * deliberately no control, no `link` and no output for it — a click that pre-selected a transition from
+ * a historical frequency would be the rail committing workflow state on an officer's behalf.
+ */
+const NEXT_ACTION_KIND = 'next-action';
 
 /**
  * English of record for the keys THIS COMPONENT introduced and which are not yet in the bundle.
@@ -530,6 +549,19 @@ export class AssistanceRailComponent {
     const at = s.detail?.trim();
     if (!at) return null;
     return Number.isNaN(new Date(at).getTime()) ? null : at;
+  }
+
+  /**
+   * Whether this row takes the emphasised treatment — a CLASS and nothing more.
+   *
+   * <p>True for `next-action` only. The brief permits highlighting and forbids auto-selecting, so the
+   * emphasis is the whole of what this kind gets: the row stays the same `<li>` of prose as every other
+   * tier-1 row, with no control, no `link` and no output a host could wire to a transition. See
+   * {@link NEXT_ACTION_KIND} for why that is a correctness requirement and not restraint — the
+   * frequency it reports is historical and the workflow may now refuse the action it names.
+   */
+  isHighlighted(s: AssistanceSignal): boolean {
+    return s.kind === NEXT_ACTION_KIND;
   }
 
   /**

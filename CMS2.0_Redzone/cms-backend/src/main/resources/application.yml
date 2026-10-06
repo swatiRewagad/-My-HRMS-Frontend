@@ -135,6 +135,11 @@ cms:
   rate-limit:
     complaints-per-minute: ${RATE_LIMIT_CPM:10}
     api-requests-per-second: ${RATE_LIMIT_RPS:100}
+    # The assistance rail's own, smaller bucket (Brief 21 §6.2), so an ambient feature cannot starve
+    # the core traffic an officer is waiting on. Per minute, not per second — the rail is event-driven
+    # (one /status, one /rail, one /rail/memory per screen), so a per-second ceiling small enough to
+    # matter would reject a legitimate screen load. Exhausting it hides the bulb, never the screen.
+    assistance-requests-per-minute: ${RATE_LIMIT_ASSISTANCE_RPM:60}
   encryption:
     server-secret: ${CMS_ENCRYPTION_SECRET:}
   anti-automation:
@@ -200,6 +205,20 @@ cms:
     #
     # Flipping it needs no deploy and no code change: set ASSISTANCE_ENABLED=true.
     enabled: ${ASSISTANCE_ENABLED:false}
+    next-action:
+      # The Tier 1 next-action rollup's refresh schedule (Brief 21 §5.3.1). Gated by the SAME
+      # `enabled` flag above — there is deliberately no separate switch for the job, because a
+      # rollup refreshing behind a disabled rail is work nobody can see, and a frozen rollup behind
+      # an enabled rail serves counts that silently stopped moving. Both failures are invisible.
+      #
+      # Hourly, because the rollup aggregates the whole register's history: a cohort with 7,528
+      # events does not move enough in an hour for a shorter interval to show an officer anything
+      # different, and every cycle scans the table each workflow transition writes to. A missed
+      # cycle leaves no backlog — the job recomputes from scratch, so there is nothing to catch up.
+      refresh-interval-ms: ${ASSISTANCE_NEXT_ACTION_INTERVAL_MS:3600000}
+      # Two minutes, so the first refresh does not contend with startup — which in this module
+      # includes several seeders writing to the same database.
+      initial-delay-ms: ${ASSISTANCE_NEXT_ACTION_INITIAL_DELAY_MS:120000}
   geo:
     enabled: ${GEO_ENABLED:false}
     maxmind-db-path: ${GEO_MAXMIND_DB:}

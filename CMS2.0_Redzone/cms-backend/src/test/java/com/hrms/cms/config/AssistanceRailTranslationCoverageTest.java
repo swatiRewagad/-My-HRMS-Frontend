@@ -226,12 +226,15 @@ class AssistanceRailTranslationCoverageTest {
          * {@code PARAM_*} constants declare.
          */
         @Test
-        @DisplayName("the English map really does carry the six documented placeholders")
+        @DisplayName("the English map really does carry the nine documented placeholders")
         void englishCarriesTheDocumentedPlaceholders() {
             Set<String> all = new LinkedHashSet<>();
             englishRows().values().forEach(v -> all.addAll(placeholdersIn(v)));
             assertThat(all).containsExactlyInAnyOrder(
-                    "section", "age", "count", "clause", "days", "sample");
+                    "section", "age", "count", "clause", "days", "sample",
+                    // next-action adds three: action (a machine key, never translated), and the
+                    // total/percent that make its count readable as a proportion.
+                    "action", "total", "percent");
         }
 
         /**
@@ -249,7 +252,8 @@ class AssistanceRailTranslationCoverageTest {
                             "assistance.signal.last-viewed",
                             "assistance.signal.complainant-history",
                             "assistance.signal.entity-clause-precedent",
-                            "assistance.signal.category-closure-time");
+                            "assistance.signal.category-closure-time",
+                            "assistance.signal.next-action");
 
             assertThat(seeded.values().stream()
                     .flatMap(rows -> rows.keySet().stream())

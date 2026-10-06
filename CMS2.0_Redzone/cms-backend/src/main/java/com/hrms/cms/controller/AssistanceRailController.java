@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The assistance rail (Brief 21): a read for what is worth saying, and a write for continuity state.
@@ -133,10 +134,19 @@ public class AssistanceRailController {
 
         try {
             // Null when the identity could not be established. Passed through as-is: the service
-            // returns no Tier 0 for an unresolved owner rather than guessing, and Tier 1 carries no
-            // per-user content, so an anonymous-but-authorized caller still gets the priors.
-            String userId = resolveUserIdOrNull(request);
-            return ResponseEntity.ok(railService.rail(complaintId, userId));
+            // returns no Tier 0 for an unresolved owner rather than guessing, and the three
+            // role-independent priors still render, so an anonymous-but-authorized caller is not
+            // served an empty rail.
+            RequestIdentity identity = identityResolver.resolve(request);
+            String userId = identity == null ? null : identity.getUserId();
+            // ALL the caller's roles, not getPrimaryRole(). That field is roles.iterator().next() over
+            // a HashSet, so for a multi-role officer it names an arbitrary one and can name a different
+            // one across JVMs — the rail would report a prior for a role the officer merely holds
+            // rather than the one they are working as, and would appear to change its mind for no
+            // reason. Handing over the whole set lets the service apply a rule it can state; see
+            // AssistanceRailService#nextAction.
+            Set<String> roles = identity == null ? null : identity.getRoles();
+            return ResponseEntity.ok(railService.rail(complaintId, userId, roles));
         } catch (Exception e) {
             // The service already guards each tier; this is the outer net that keeps the contract's
             // single success shape true even if resolution itself fails.
