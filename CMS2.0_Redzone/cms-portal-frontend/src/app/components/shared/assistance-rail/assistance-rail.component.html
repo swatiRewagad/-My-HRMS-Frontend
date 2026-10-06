@@ -1,0 +1,248 @@
+<!--
+  ══ WHY NO SERVER PROSE IS PRINTED HERE ══
+
+  The API resolves `title` and `detail` to English before sending them. This product ships 13 locales,
+  so every heading below is built from `kind` (a stable machine key) plus `count` through the translate
+  pipe. The one exception is marked `lang="en"` and routed through `serverTextFallback()` in the
+  component — that method's doc records which two cases reach it and what the real fix is.
+
+  ══ WHY `empty` IS NOT AN ERROR ══
+
+  Both rail endpoints always answer HTTP 200: the controller catches everything, because
+  GlobalExceptionHandler maps a bare RuntimeException to 400 and a leaked failure would look like a
+  client error on a valid request. So an empty rail is a NORMAL answer and gets role=status, while
+  `failed` — the request not completing at all — gets role=alert. The sibling similar-cases panel exists
+  because those two were once the same empty list, which hid a non-existent endpoint for months.
+
+  ══ WHY THE PANEL STILL ONLY RENDERS ON `open()` WHEN `probe()` ALSO FETCHES ══
+
+  `probe` exists so a host's bulb can glow before anything is opened — it triggers the READ, never the
+  DOM. The `@if (open())` below is what keeps that true: a probing host pays one request and not a line
+  of markup, and the panel appears only when the officer asks for it. Moving this guard to
+  `open() || probe()` would make every bulb open its own panel.
+
+  The panel is NOT rendered while closed, so a host that never opens it costs nothing.
+-->
+@if (open()) {
+  <!--
+    The Escape handler is on the `tabindex="-1"` region and not on a bare `<section>`: a keydown
+    listener on a non-focusable element only fires through bubbling, so it silently depends on
+    something inside being focused, and `@angular-eslint/template/interactive-supports-focus` flags
+    exactly that. `tabindex="-1"` plus `role="region"` makes the panel a real focus target, and the
+    component moves focus to the heading on open so Escape has somewhere to bubble from.
+  -->
+  <section class="assistance-rail" data-testid="assistance-rail"
+           role="region" tabindex="-1"
+           [attr.aria-label]="'assistance.panel_title' | translate"
+           [attr.aria-busy]="loading()"
+           (keydown)="onKeydown($event)">
+
+    <!--
+      ══ THE SECOND CHANNEL ══
+
+      Glow cannot be the only signal: colour and animation alone fail WCAG and fail the reduced-motion
+      preference this app already honours. The count pill below is the second channel for a sighted
+      user; this region is the second channel for everyone else.
+
+      `polite`, so it waits for the screen reader to finish rather than interrupting — the rail is
+      ambient and never steals focus. `aria-atomic` so the whole sentence is read, not the diff.
+
+      The content is a PLAIN SIGNAL written once per resolution, never a computed: a live region
+      announces every mutation, so a recomputed sentence would repeat itself on every change detection.
+      `announce()` in the component is the only writer, and it writes a tick after mount because a
+      region whose text was already present when it entered the DOM announces nothing at all.
+
+      Rendered unconditionally — a live region has to be IN the DOM before the text changes, so wrapping
+      it in @if on the text being non-empty would defeat it.
+    -->
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true"
+       data-testid="assistance-announcement">{{ announcement() }}</p>
+
+    <header class="assistance-header">
+      <!-- tabindex="-1" so the component can move focus here on open; it is not in the tab ring. -->
+      <h3 #heading class="assistance-title" tabindex="-1">
+        <!--
+          The bulb's own glow, driven by glow() — which is the SERVER's verdict ANDed with "something
+          survived dismissal", so it goes dark once the officer has silenced every row even though the
+          server still said there was something worth saying. A bulb glowing over an all-dismissed rail
+          is the exact "trains officers to ignore it" failure the brief names.
+
+          The animation is a progressive ENHANCEMENT of a state already carried by the count pill and the
+          live region, and the stylesheet switches it off under prefers-reduced-motion for a static ring.
+        -->
+        <i class="pi pi-lightbulb" [class.assistance-bulb--glow]="glow()" aria-hidden="true"></i>
+        {{ 'assistance.panel_title' | translate }}
+        @if (state() === 'signals') {
+          <!--
+            The SIGHTED user's second channel — the pill is what makes the glow not the only signal.
+            Still the server's own `count` from the contract and not a row tally, less whatever this
+            officer dismissed; see count() for why the subtraction rather than `railSignals().length`.
+          -->
+          <span class="assistance-count">{{ count() }}</span>
+        }
+      </h3>
+      @if (showClose()) {
+        <button type="button" class="assistance-close" data-testid="assistance-close"
+                [attr.aria-label]="'assistance.close' | translate"
+                (click)="closePanel.emit()">
+          <i class="pi pi-chevron-right" aria-hidden="true"></i>
+        </button>
+      }
+    </header>
+
+    @switch (state()) {
+
+      @case ('loading') {
+        <div class="assistance-loading" role="status" data-testid="assistance-loading">
+          <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+          <span>{{ 'assistance.panel_title' | translate }}</span>
+        </div>
+      }
+
+      @case ('signals') {
+        <div class="assistance-signals" data-testid="assistance-signals">
+
+          <!--
+            Grouped by tier because the two make different kinds of claim: tier 0 is what THIS officer
+            did here, tier 1 is an aggregate about other complaints. An officer who cannot tell them
+            apart cannot tell what the rail is asserting. Each group renders only when populated —
+            a heading over nothing reads as a signal that failed to load.
+          -->
+          @if (tier0().length > 0) {
+            <section class="assistance-group">
+              <h4 class="assistance-group-title">{{ 'assistance.tier0_group' | translate }}</h4>
+              <ul class="assistance-list">
+                @for (s of tier0(); track s.kind) {
+                  <li class="assistance-signal assistance-signal--tier0"
+                      [attr.data-testid]="'assistance-signal-' + s.kind">
+                    <i class="pi {{ iconFor(s.kind) }} assistance-signal-icon" aria-hidden="true"></i>
+                    <div class="assistance-signal-body">
+                      @if (usesServerText(s)) {
+                        <!-- The single unlocalised site; see serverTextFallback() for why and the fix. -->
+                        <span class="assistance-signal-label" lang="en">{{ serverTextFallback(s) }}</span>
+                      } @else {
+                        <span class="assistance-signal-label">
+                          {{ labelKeyFor(s.kind) | translate: labelParams(s) }}
+                        </span>
+                      }
+
+                      <!-- The officer's own unsaved text. Not server prose, so safe in any locale. -->
+                      @if (draftPreview(s)) {
+                        <span class="assistance-signal-draft">{{ draftPreview(s) }}</span>
+                      }
+
+                      <!-- Formatted from the server's ISO LocalDateTime, not from the English age in `title`. -->
+                      @if (lastViewedAt(s)) {
+                        <span class="assistance-signal-meta">
+                          {{ lastViewedAt(s) | date:'dd MMM yyyy, HH:mm' }}
+                        </span>
+                      }
+                    </div>
+
+                    <!--
+                      ══ DISMISSAL ══
+
+                      Per-KIND, not per-row: the brief dismisses a suggestion TYPE for the session, so an
+                      officer who does not want to be told about unsaved drafts is not asked again when
+                      the preview text changes. One click, no confirmation — a confirm dialog on an
+                      ambient panel would be more intrusive than the suggestion.
+
+                      A real <button>, so it is in the tab ring and answers Enter and Space natively;
+                      `interactive-supports-focus` fires for a (click) on anything that is not. The label
+                      is on aria-label because the control is an icon, and goes through uiText() rather
+                      than the pipe so an unseeded key degrades to English instead of printing
+                      `assistance.dismiss` into the accessible name.
+                    -->
+                    <button type="button" class="assistance-dismiss"
+                            [attr.data-testid]="'assistance-dismiss-' + s.kind"
+                            [attr.aria-label]="uiText('assistance.dismiss')"
+                            [attr.title]="uiText('assistance.dismiss')"
+                            (click)="dismiss(s.kind)">
+                      <i class="pi pi-times" aria-hidden="true"></i>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @if (tier1().length > 0) {
+            <section class="assistance-group">
+              <h4 class="assistance-group-title">{{ 'assistance.tier1_group' | translate }}</h4>
+              <ul class="assistance-list">
+                @for (s of tier1(); track s.kind) {
+                  <!--
+                    No `link` is rendered. The only kind that carries one is `complainant-history`, as
+                    `/search?complainantEmail=...`; the `search` route exists but search.component.ts
+                    reads no query parameters, so the link would be a filter that silently does nothing.
+                    Also no percentage or confidence figure: nothing here is scored, and the sibling
+                    panel's history shows an invented one gets believed.
+                  -->
+                  <li class="assistance-signal assistance-signal--tier1"
+                      [attr.data-testid]="'assistance-signal-' + s.kind">
+                    <i class="pi {{ iconFor(s.kind) }} assistance-signal-icon" aria-hidden="true"></i>
+                    <div class="assistance-signal-body">
+                      @if (usesServerText(s)) {
+                        <span class="assistance-signal-label" lang="en">{{ serverTextFallback(s) }}</span>
+                      } @else {
+                        <span class="assistance-signal-label">
+                          {{ labelKeyFor(s.kind) | translate: labelParams(s) }}
+                        </span>
+                      }
+                    </div>
+
+                    <!-- Same per-kind dismissal as tier 0; see that row for why it is a real button. -->
+                    <button type="button" class="assistance-dismiss"
+                            [attr.data-testid]="'assistance-dismiss-' + s.kind"
+                            [attr.aria-label]="uiText('assistance.dismiss')"
+                            [attr.title]="uiText('assistance.dismiss')"
+                            (click)="dismiss(s.kind)">
+                      <i class="pi pi-times" aria-hidden="true"></i>
+                    </button>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+        </div>
+      }
+
+      @case ('empty') {
+        <!-- role=status: the rail ran and has nothing to say, which the DTO calls a normal state. -->
+        <div class="assistance-state assistance-empty" role="status" data-testid="assistance-empty">
+          <i class="pi pi-check-circle" aria-hidden="true"></i>
+          <p>{{ 'assistance.nothing_to_report' | translate }}</p>
+        </div>
+      }
+
+      @case ('dismissed') {
+        <!--
+          NOT the same state as `empty`, for the same reason `empty` is not the same state as `failed`.
+          The server HAD something to say and the officer silenced it; telling them "nothing to flag"
+          would report their own action back to them as a result. role=status, because nothing went
+          wrong — and no retry button, because re-reading the rail would return exactly the same signals
+          the officer just dismissed and they would stay hidden, so the control would appear to do
+          nothing.
+        -->
+        <div class="assistance-state assistance-dismissed" role="status"
+             data-testid="assistance-dismissed">
+          <i class="pi pi-eye-slash" aria-hidden="true"></i>
+          <p>{{ uiText('assistance.all_dismissed') }}</p>
+          <p class="assistance-state-hint">{{ uiText('assistance.all_dismissed_hint') }}</p>
+        </div>
+      }
+
+      @case ('failed') {
+        <!-- role=alert: the request did not complete, so nothing is known about the rail at all. -->
+        <div class="assistance-state assistance-failed" role="alert" data-testid="assistance-error">
+          <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+          <p>{{ 'assistance.error_failed' | translate }}</p>
+          <p class="assistance-state-hint">{{ 'assistance.error_failed_hint' | translate }}</p>
+          <button type="button" class="assistance-retry" data-testid="assistance-retry" (click)="retry()">
+            <i class="pi pi-refresh" aria-hidden="true"></i> {{ 'assistance.retry' | translate }}
+          </button>
+        </div>
+      }
+    }
+  </section>
+}

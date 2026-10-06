@@ -1,0 +1,79 @@
+// ═══ THE BULB ═══
+//
+// Geometry is the HOST's. These five screens have three different icon strips (`icon-sidebar-btn`,
+// `iib-btn`, `rail-icon`), each with its own size, padding and hover treatment, and the host passes its
+// class in through `hostClass`. So this file deliberately sets no width, height, padding or background on
+// the button: doing so would leave one misaligned icon in each of the three strips.
+//
+// What is here is only what the bulb adds — lit-ness and the badge.
+
+:host {
+  display: contents; // The button takes the host's place in the strip's own flex/grid flow.
+}
+
+.assistance-bulb {
+  position: relative; // The badge is absolutely positioned against it.
+}
+
+// ═══ LIT ═══
+//
+// Duplicated from assistance-rail.component.scss rather than shared, and that is forced rather than
+// chosen: Angular's default emulated encapsulation scopes styles per component, so a class defined in the
+// panel's stylesheet cannot reach a button in this one. The alternative — hoisting it to global
+// styles.scss — would make a feature-specific animation globally live.
+//
+// The two must therefore be kept in step. They are a colour change PLUS a pulse, because the pulse alone
+// disappears under reduced-motion and colour alone fails WCAG.
+.assistance-bulb--glow {
+  color: var(--state-warning-solid);
+  animation: assistance-bulb-glow-pulse 2.4s ease-in-out infinite;
+}
+
+// Opacity only — never scale or translate. The bulb sits in an icon strip the officer is clicking, and a
+// transform that changed its box would move the control under their cursor on every cycle.
+@keyframes assistance-bulb-glow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+// ═══ REDUCED MOTION ═══
+// styles.scss clamps every animation-duration globally under this query, which SHORTENS the pulse but
+// leaves the bulb frozen at whatever opacity its one permitted iteration ended on — possibly 0.45, i.e.
+// a lit bulb that reads as half-off. `animation: none` removes it outright and the ring restores "lit" as
+// a permanent, motionless mark.
+@media (prefers-reduced-motion: reduce) {
+  .assistance-bulb--glow {
+    animation: none;
+    box-shadow: 0 0 0 3px var(--state-warning-bg);
+  }
+}
+
+// ═══ THE COUNT BADGE ═══
+// The sighted user's second channel, which is what keeps glow from being the only signal. Rendered only
+// when lit, so there is never a "0" badge inviting a click onto an empty rail.
+.assistance-bulb-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--state-warning-solid);
+  color: var(--text-on-solid, #fff);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+  // The strips are small and the badge overhangs the icon; without this it can sit under a sibling
+  // button's hover background.
+  pointer-events: none;
+}
+
+// Forced-colors (Windows high contrast) discards both the colour and the box-shadow, so neither channel
+// above survives there. The badge's border is what keeps the bulb legible as lit.
+@media (forced-colors: active) {
+  .assistance-bulb-badge {
+    border: 1px solid CanvasText;
+  }
+}
