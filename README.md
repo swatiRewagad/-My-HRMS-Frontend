@@ -91,3 +91,29 @@ For open source projects, say how it is licensed.
 
 ## Project status
 If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+
+
+ ## VS Code + Claude Code extension
+
+  1. Copy all four files to respective folder
+  2. In the project root you'll open in VS Code:
+     - Put SECURITY.md and CLAUDE.md directly in the project root.
+       - If a CLAUDE.md already exists there, don't overwrite it — just add the line @SECURITY.md into it instead.
+     - Create a .claude/ folder in the project root (if it doesn't exist) and put:
+       - security-hook.sh → .claude/hooks/security-hook.sh
+       - settings.json → .claude/settings.json (merge instead of overwrite if one already exists)
+  3. Make the hook executable:
+  chmod +x .claude/hooks/security-hook.sh
+  4. Make sure jq is installed on that machine (the hook uses it):
+  brew install jq
+  5. Open the project folder in VS Code with the Claude Code extension installed and start a session. It will:
+     - Auto-load CLAUDE.md → SECURITY.md rules into context every session (advisory).
+     - Block any Edit/Write/MultiEdit whose content matches a forbidden pattern, before it touches disk (enforced).
+
+  Notes
+
+  - $CLAUDE_PROJECT_DIR in settings.json is a Claude Code built-in env var pointing at the project root — no path editing needed as long as the hook lives at that
+    relative path.
+  - Want this global instead of per-project? Put CLAUDE.md/SECURITY.md in ~/.claude/ and settings.json/security-hook.sh under ~/.claude/ + ~/.claude/hooks/ on that
+    machine instead — same files, different destination.
+  - Run /security-review before committing as a second pass — the hook only catches the exact patterns listed; it's not a substitute for a real review.
