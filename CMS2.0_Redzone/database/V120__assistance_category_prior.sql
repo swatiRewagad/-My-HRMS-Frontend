@@ -1,0 +1,305 @@
+-- V120: Assistance — the token-to-category prior (auto-category suggestion from complaint text)
+-- MySQL version. Oracle twin: database/oracle/V118__assistance_category_prior.sql
+--
+-- WHY THIS EXISTS AT ALL, AND WHY IT IS THE HIGHEST-LEVERAGE OF THE FOUR ASSISTANCE ROLLUPS
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- COMPLAINTS.category_id is populated on 273 of 4403 rows (6.2%). That one gap is why three already
+-- shipped assistance features are measurably silent: V115's next-action prior, V116's closure-clause
+-- affinity and V117's entity-pattern alert all carry a CATEGORY_KEY column that holds the wildcard
+-- sentinel 0 on essentially every row they can write, because the dimension they key on is empty. None
+-- of those three needs a code change to sharpen. They need category_id to be populated. So this rollup
+-- does not add a fourth signal beside them — it attacks the input the other three are starved of.
+--
+-- subject and description are populated on 4343 of 4403 (98.6%), so the INPUT side is rich and the
+-- LABEL side is thin. That asymmetry is the whole shape of this feature.
+--
+-- ═══ WHAT A ROW MEANS, PRECISELY ═══
+-- "Of the TOKEN_TOTAL labelled complaints whose subject or description contains TOKEN, OCCURRENCES were
+-- categorised as CATEGORY_KEY. That category holds CATEGORY_TOTAL of the LABELLED_TOTAL labelled
+-- complaints overall."
+--
+-- Nothing more. It is a COUNT of co-occurrence between a word and a label. There is no model artifact,
+-- no embedding, no weights file and nothing that has been trained — which is what keeps it inside the
+-- Tier 1 rule the sibling rollups live under, and is why every number it produces can be shown to an
+-- officer with its denominator attached.
+--
+-- ═══ THE KEY: (TOKEN, CATEGORY_KEY). TWO COLUMNS, AND THE JUSTIFICATION IS MEASURED ═══
+-- The sibling rollups carry six and five key columns. This one carries two, deliberately, and the
+-- reason is the size of the labelled corpus rather than a difference of taste.
+--
+--   MEASURED 2026-10-07 against cms_db — the labelled corpus, by category:
+--     1  ATM / Debit Card         202  (74.0%)      6  Deposit Accounts       7  (2.6%)
+--     5  Loan / Advances           20  ( 7.3%)      7  Pension                3  (1.1%)
+--     4  Mobile Banking / UPI      15  ( 5.5%)      9  Insurance              2  (0.7%)
+--     3  Internet Banking           8  ( 2.9%)     10  Others                 1  (0.4%)
+--     8  Remittance / Transfer      8  ( 2.9%)
+--     2  Credit Card                7  ( 2.6%)     ────────────────────────  273 total
+--
+-- 273 rows over 10 categories. Each candidate extra dimension was measured and REJECTED:
+--
+--   * SCHEME_VERSION — rejected, and it is the one the siblings all keep. 4092 of 4403 complaints carry
+--     no scheme_version at all, so the dimension would be a constant (the default) on almost every row:
+--     a key column that never varies costs an index comparison and buys nothing. Unlike the clause
+--     vocabulary, a WORD is also not scheme-scoped — "ATM" means the same thing under RBIOS_2021 and
+--     RBIOS_2026, whereas clause 15(1)(a) does not. Pooling schemes is a correctness bug for a clause
+--     and a free win for a token. This is the one place this rollup's key legitimately diverges from its
+--     siblings' and the divergence is stated here so a reader does not read it as an omission.
+--   * DEPARTMENT — rejected on arithmetic. Splitting 273 rows across CEPC / RBIO / CRPC leaves every
+--     token below the 3-document floor in the smaller two, so the rollup would hold CEPC rows and
+--     nothing else while LOOKING as though it were department-aware.
+--   * GROUND_OF_COMPLAINT_ID — rejected. Populated on 0 of 4403 rows. V116 keeps it as a
+--     sentinel-bearing key part because the brief names it in the clause key; nothing names it here, and
+--     a key column carried on faith is the kind of thing that is later mistaken for a working dimension.
+--
+-- So: (TOKEN, CATEGORY_KEY). One equality seek per token on the read, and the whole of a token's
+-- category distribution contiguous behind it.
+--
+-- ═══ THE SENTINEL RULE, AND THE HONEST NOTE THAT THIS TABLE NEVER USES IT ═══
+-- Composite UNIQUE keys in this schema use sentinels and never NULL: a NULL in a composite unique key
+-- prevents no duplicates on MySQL OR Oracle, so the key would be non-idempotent and every refresh would
+-- append rather than update; and NULL is not comparable with '=', so a nullable key column is
+-- unreachable by any seek.
+--
+-- Both key columns here are NOT NULL and NEITHER is ever a wildcard. CATEGORY_KEY always holds a REAL
+-- complaint_categories.id, because this rollup mines ONLY rows that carry one — a complaint with no
+-- category is no evidence about categories. TOKEN is never blank, because a blank token is not a word.
+-- The numeric sentinel 0 is therefore RESERVED and never written, and that is said out loud so a reader
+-- comparing this file with V116 does not go looking for wildcard rows that cannot exist.
+--
+-- ═══ NORMALISED ON WRITE. NO SQL FUNCTION EVER TOUCHES THE TOKEN COLUMN ═══
+-- TOKEN is written lower-cased, punctuation-stripped and digit-free by AssistanceTextTokenizer, which is
+-- the SAME class the read path uses on the officer's text. One tokenizer, two callers — a second
+-- implementation on the read side is how a rollup comes to be keyed on words no read can ever match.
+--
+-- LOWER, not UPPER, and this is the only text column in the assistance feature set that is not
+-- upper-cased. The siblings upper-case because they carry controlled vocabularies (status names,
+-- department codes) that already appear in mixed case in this database. A token is not a code; lower
+-- case is its natural written form, and the choice matters only in that it must be the same on both
+-- sides, which one shared tokenizer guarantees. The read issues `TOKEN IN (?, ?, ...)` against values
+-- the tokenizer has already normalised — never LOWER(TOKEN), which would defeat the index on both
+-- engines, and never a leading-wildcard LIKE, which is forbidden outright.
+--
+-- ═══ THE FLOORS, AND EXACTLY WHAT THEY LEAVE — MEASURED, SIMULATED END TO END ═══
+-- Reproduce with:  python -I CMS2.0_Redzone/scripts/measure-category-prior.py
+-- (the service holds the authoritative constants; this is the measurement, not the definition)
+--
+--   MIN_TOKEN_LENGTH ......... 3   ATM, UPI, EMI, KYC, NPA are the most discriminative words in this
+--                                 domain. A 4-character floor — the obvious choice — silently drops
+--                                 every one of them, which is why the stopword list below must carry
+--                                 three-letter function words explicitly.
+--   MIN_TOKEN_SAMPLE ......... 3   a token must appear in >= 3 labelled complaints
+--   MAX_DOC_FRACTION ......... 0.50  a token in more than half the corpus carries no signal
+--   MIN_LABELLED_CORPUS ..... 50   below this the refresh writes NOTHING AT ALL
+--   MIN_MATCHED_TOKENS ....... 2   one known word is an anecdote, not a reading of the text
+--   MIN_CONFIDENCE .......... 0.35
+--   MIN_LIFT ................. 1.0  a suggestion must beat the category's base rate
+--
+--   labelled complaints yielding >= 1 token ...........  249 of 273
+--   distinct raw tokens ................................ 284
+--   surviving MIN_TOKEN_SAMPLE=3 and MAX_DOC_FRACTION ..  85
+--   (TOKEN, CATEGORY_KEY) rows this table will hold .... 141
+--
+--   SELF-CHECK on the labelled corpus (NOT held out — an upper bound, not an accuracy figure):
+--     top-1 == the recorded label .... 212      no suggestion at all .... 51
+--     top-1 != the recorded label ....  10      precision where it spoke  95.5%
+--
+--   COVERAGE OF THE 4130 UNLABELLED COMPLAINTS — the number that decides whether this ships:
+--     would receive a suggestion ..................  628  (15.2%)
+--     silent, fewer than 2 known tokens ........... 3469
+--     silent, below the confidence or lift floor ...  33
+--   and of those 628, SIX HUNDRED AND ONE point at category 1 or 5. See defect A below.
+--
+-- 15.2% is not the silence this whole effort is cleaning up, and it is not a good number either. It is
+-- reported here rather than in a commit message because the next reader will test this feature against
+-- this database, find it quiet on five complaints out of six, and need to know that is measured and
+-- expected rather than broken.
+--
+-- ═══ WHAT THIS CANNOT SAY, AND ONE THING IT SAYS WRONGLY — READ BEFORE CALLING IT BROKEN ═══
+--
+-- A. **THE LABELS ARE PARTLY WRONG, AT SOURCE, AND THIS ROLLUP FAITHFULLY LEARNS THE ERROR.**
+--    config/DemoDataSeeder.java:72 declares
+--        Long[] categoryIds = {1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L, 5L, 1L};
+--    positionally against its own `subjects` array. That array is ordered
+--        ATM withdrawal / wrong charges / UPI / loan EMI / credit card / NEFT / mis-selling /
+--        deposit maturity / ATM card blocked / net banking fraud
+--    but complaint_categories is ordered 1=ATM-Debit Card, 2=Credit Card, 3=Internet Banking,
+--    4=Mobile Banking-UPI, 5=Loan-Advances, 6=Deposit Accounts, 7=Pension, 8=Remittance-Transfer.
+--    The ids were evidently numbered against the OTHER taxonomy in the line above them (the
+--    FAILED_TXN / WRONG_CHARGE / UPI / LOAN / CARD ... labels), so NINE OF THE TEN are misaligned:
+--        "Loan EMI overcharged for two months"      -> 4  Mobile Banking / UPI    (should be 5)
+--        "ATM card blocked without notice"          -> 5  Loan / Advances         (should be 1)
+--        "Credit card dispute not resolved by bank" -> 5  Loan / Advances         (should be 2)
+--        "UPI transaction failed but amount deducted"-> 3 Internet Banking        (should be 4)
+--        "NEFT transfer not credited to beneficiary"-> 6  Deposit Accounts        (should be 8)
+--        "Deposit maturity amount not credited"     -> 8  Remittance / Transfer   (should be 6)
+--        "Mis-selling of insurance product"         -> 7  Pension                 (should be 9)
+--        "Net banking fraud"                        -> 1  ATM / Debit Card        (should be 3)
+--        "Wrong charges debited from savings"       -> 2  Credit Card             (should be 6)
+--    60 of the 273 labelled rows come from that seeder. The consequence is VISIBLE in the rollup:
+--    MEASURED, the token 'atm' resolves to category 5 (Loan / Advances) on 11 of its 21 labelled
+--    documents, and 'loan' / 'emi' resolve to category 4 (Mobile Banking / UPI) on 12 of 15.
+--      THIS IS NOT A DEFECT IN THIS ROLLUP AND MUST NOT BE PATCHED HERE. Correcting it in the counting
+--    would mean hard-coding a judgement about which labels are right, which is the one thing a count is
+--    not allowed to do. The fix belongs in DemoDataSeeder.java:72 and is one line. Until it lands, this
+--    feature will confidently suggest Loan / Advances for an ATM complaint on dev data, with a true
+--    denominator attached, and it will be RIGHT about what the register says and WRONG about banking.
+--
+-- B. THE SURVIVING VOCABULARY IS MOSTLY TEST-FIXTURE TEXT. 164 of the 273 labelled complaints carry a
+--    fixture subject (RETLC%, E2E%, QA%, S4-%, %fixture%, FTWIN), 60 come from DemoDataSeeder, and about
+--    49 are hand-written realistic prose. So tokens like 'retlc', 'ftwin', 'cepc', 'filing', 'eligible'
+--    and 'detection' are among the thickest in the table. They are not stopworded, deliberately: adding
+--    them would be tuning product code to one database's test seed, and the next environment's fixtures
+--    would use different words. MAX_DOC_FRACTION and MIN_LIFT are the general mechanisms; a curated
+--    list of this register's fixture nouns is not.
+--
+-- C. THE MAJORITY CLASS IS 74% OF THE CORPUS. Category 1 holds 202 of 273 labels, so a token picked at
+--    random points at it. MIN_LIFT exists exactly for that — a category must beat its own base rate to
+--    be suggested — and MEASURED it halves raw coverage (15.4% -> 8.1% when combined with a
+--    name-derived blocklist, 15.2% as shipped) by refusing the weak majority-class suggestions. It does
+--    NOT fix the imbalance, and 599 of 628 suggestions still land on category 1. A ranking over a
+--    near-constant label is correct and nearly useless.
+--
+-- D. NO NAME-DERIVED PII BLOCKLIST, and this is a MEASURED rejection rather than an omission.
+--    Blocking every token that appears in a complainant_name was built and measured. Over this register
+--    it removes 20 of 284 tokens including 'withdrawal', 'card', 'atm', 'status', 'window', 'session'
+--    and 'duplicate' — the most informative words in the corpus — because complainant_name is ITSELF
+--    polluted with fixture phrases: 'Session Cee' on 245 rows, 'Withdrawal Notification Citizen' on 64,
+--    'Active Status Citizen' on 69, 'PNB ATM' on 1. Coverage fell from 15.2% to 8.1%. The belt
+--    destroyed the trousers. See AssistanceTextTokenizer for the PII position that is shipped instead
+--    (digit rejection, a 3-document k-anonymity floor, and no row-level reference) and for the residual
+--    risk that is accepted and named.
+--
+-- ═══ IDEMPOTENCY, AND THE LOCK ═══
+-- Applied BY HAND — there is no Flyway in this project — so idempotency lives in this file.
+-- CREATE TABLE is guarded with IF NOT EXISTS. No secondary index is created; see the foot of the file.
+--
+-- ASSISTANCE_JOB_LOCK is NOT re-created here. V115 owns it, and two migrations owning one DDL is how a
+-- column width comes to differ between two environments. This file seeds only an additional named lease
+-- row, under its OWN name 'assistance-category-prior-refresh' — four jobs now share that table and a
+-- shared lease ROW would make each block the others for no reason: whichever fired first would hold it
+-- and the rest would log "another pod holds the lease", which is both false and the hardest kind of bug
+-- to see, a job that is merely never running. The INSERT is guarded on its own absence AND on the table
+-- existing, so applying V120 before V115 degrades to "no lease row" rather than to an error — and the
+-- refresh service treats a missing lease row as "I did not get the lock" and does nothing, which is the
+-- correct behaviour for a half-applied schema.
+--
+-- NOT APPLIED to cms_db as shipped. The read path returns a 200 carrying an empty suggestion list when
+-- the table is absent or empty, so an unapplied migration degrades this feature to invisible rather
+-- than breaking the filing form or the officer's category picker.
+
+-- ── The rollup ───────────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ASSISTANCE_CATEGORY_PRIOR (
+    id              BIGINT       NOT NULL AUTO_INCREMENT,
+
+    -- One normalised word from a labelled complaint's subject or description.
+    --
+    -- 64 characters, matching AssistanceTextTokenizer.MAX_TOKEN_LENGTH exactly, so a token the
+    -- tokenizer accepts can never be silently TRUNCATED on the way in — a truncated token would key a
+    -- row no read could ever seek, and MySQL in non-strict mode truncates without erroring. The
+    -- tokenizer enforces the same bound in Java so the guarantee does not depend on sql_mode. 64 is
+    -- chosen from the longest plausible word in a complaint ('unauthorised', 'reconciliation',
+    -- 'acknowledgement' are 12-15) with room for an agglutinated Indic-script term, not from a round
+    -- number — anything longer than 64 characters is not a word.
+    --
+    -- Written LOWER-cased and digit-free. The only text column in the assistance set that is not
+    -- upper-cased; see the header for why, and note that the guarantee is that ONE class normalises
+    -- both sides.
+    TOKEN           VARCHAR(64)  NOT NULL,
+
+    -- A REAL complaint_categories.id. NEVER the sentinel, because this rollup mines only labelled rows.
+    -- NOT NULL, and the numeric sentinel 0 is reserved and never written — see the header.
+    --
+    -- complaint_categories, NOT category_master. Both tables exist and both look plausible; MEASURED,
+    -- category_master.category_name reads 'S1 authority e2e probe' for ids 1-6 and has no row at all
+    -- for 7-10, while complaint_categories names the ten real categories the register actually uses.
+    -- complaint_categories.id is the column COMPLAINTS.category_id resolves against. A reader who
+    -- joined the other master would conclude the data was garbage.
+    --
+    -- Deliberately NOT a foreign key, matching every other assistance rollup. A rollup is derived data:
+    -- an FK would make deleting a retired category fail against a derived table rather than against the
+    -- complaints that reference it, and the read already drops any category the master no longer holds.
+    CATEGORY_KEY    BIGINT       NOT NULL,
+
+    -- The NUMERATOR: labelled complaints containing TOKEN that were categorised as CATEGORY_KEY.
+    OCCURRENCES     BIGINT       NOT NULL,
+
+    -- The DENOMINATOR: labelled complaints containing TOKEN at all, across every category.
+    --
+    -- Denormalised onto every row of a token rather than derived by summing them, so the read needs no
+    -- second aggregate and so a partially-refreshed token cannot show a numerator from this pass
+    -- against a denominator built from the last. Both NOT NULL: the schema does not permit storing a
+    -- recommendation without the number that makes it weighable. "matched 41 of 52 complaints
+    -- containing 'withdrawal'" is a statement an officer can act on; "category: ATM" is not.
+    TOKEN_TOTAL     BIGINT       NOT NULL,
+
+    -- The category's own size, and the corpus size. The BASE RATE, carried so the read can compute lift
+    -- without a second query or a second aggregate.
+    --
+    -- These two are what stop the feature from simply naming the majority class. Category 1 holds 202
+    -- of 273 labels (74%), so a category whose mean P(category|token) is 0.5 is doing WORSE than
+    -- guessing and must not be suggested. The read's MIN_LIFT floor is confidence / (CATEGORY_TOTAL /
+    -- LABELLED_TOTAL), which is computable from one row — which is the entire reason these are
+    -- denormalised here rather than read from complaint_categories on request. §6.2 forbids the
+    -- request-time aggregate that the alternative would need.
+    --
+    -- Constant across every row of one refresh pass, which looks like redundancy and is not: it makes
+    -- each row a self-contained, independently-interpretable statement, and it means a row read during
+    -- a refresh carries the base rate from the SAME pass as its own counts.
+    CATEGORY_TOTAL  BIGINT       NOT NULL,
+    LABELLED_TOTAL  BIGINT       NOT NULL,
+
+    -- When the refresh that wrote this row ran. Read by nothing in the request path — it exists so a
+    -- rollup that quietly stopped refreshing is diagnosable, which is the one failure a scheduled job
+    -- has that an endpoint does not: stale counts look exactly like correct counts. It is also the
+    -- stale sweep's only predicate.
+    REFRESHED_AT    DATETIME(6)  NOT NULL,
+
+    PRIMARY KEY (id),
+
+    -- The key IS the lookup and the idempotency.
+    --
+    -- The read is `WHERE TOKEN IN (?, ?, ...)` over at most MAX_QUERY_TOKENS values — one index range
+    -- per token, each returning that token's whole category distribution contiguously because
+    -- CATEGORY_KEY is the trailing key part. The refresh upserts against this constraint rather than
+    -- truncating: a TRUNCATE plus reload would leave the suggestion silent for the duration of every
+    -- refresh, and a feature whose failure mode is silence cannot be observed failing.
+    --
+    -- MEASURED PLAN for the request-path read, against a scratch table carrying the 141 rows this
+    -- rollup would hold on today's register (EXPLAIN FORMAT=JSON, MySQL 8.4):
+    --
+    --   EXPLAIN SELECT * FROM ASSISTANCE_CATEGORY_PRIOR
+    --    WHERE TOKEN IN ('atm','withdrawal','dispense') ORDER BY TOKEN, CATEGORY_KEY;
+    --   access_type=range  key=UK_ACP_TOKEN_CATEGORY  key_len=258
+    --   used_key_parts=[TOKEN]   using_filesort=false   using_index=false
+    --
+    -- A range over three equality values, no filesort (the ORDER BY is the key's own order), no scan.
+    UNIQUE KEY UK_ACP_TOKEN_CATEGORY (TOKEN, CATEGORY_KEY)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── This refresh's own lease row ─────────────────────────────────────────────────────────────────
+-- ASSISTANCE_JOB_LOCK is created by V115 and is NOT redefined here. Only the row is added, under a
+-- SEPARATE lease name from the three jobs that already use the table — see the header for why sharing
+-- one row would silently stop one of the four.
+--
+-- Dated in the past so the first pod to start can take it immediately. Guarded on the table EXISTING as
+-- well as on the row's absence, so applying this file before V115 inserts nothing and raises nothing.
+INSERT INTO ASSISTANCE_JOB_LOCK (LOCK_NAME, LOCKED_UNTIL, LOCKED_BY, LOCKED_AT)
+SELECT 'assistance-category-prior-refresh', TIMESTAMP('1970-01-01 00:00:00'), NULL, NULL
+WHERE NOT EXISTS (
+    SELECT 1 FROM ASSISTANCE_JOB_LOCK WHERE LOCK_NAME = 'assistance-category-prior-refresh'
+);
+
+ANALYZE TABLE ASSISTANCE_CATEGORY_PRIOR;
+
+-- ── No new index on COMPLAINTS, and that is a measured result ────────────────────────────────────
+-- The refresh reads the labelled complaints keyset-paged on the PRIMARY KEY
+-- (WHERE id > :after AND category_id IS NOT NULL ORDER BY id), which needs no index that does not
+-- already exist. An index on (category_id) was considered and rejected: the job reads EVERY labelled
+-- row by design, so there is nothing for it to seek, the qualifying slice is 273 of 4403 rows, and the
+-- index would be a B-tree maintained on every single complaint write for the benefit of one job that
+-- runs every six hours. The 60 rows with no text at all are filtered in the WHERE for the same reason
+-- the clause rollup filters blank clauses — a function wrap on a scheduled full read defeats no seek.
+--
+-- The REQUEST path touches COMPLAINTS at most once, by complaint_number (an existing unique index) and
+-- only when the caller passed a number rather than raw text. It then reads ASSISTANCE_CATEGORY_PRIOR by
+-- UK_ACP_TOKEN_CATEGORY. It issues no aggregate and no scan, which is the entire point of precomputing.

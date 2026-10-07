@@ -10,6 +10,7 @@ import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.projection.AssistanceRailProjections;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,15 @@ public class AssistanceRailService {
     public static final String KIND_CATEGORY_CLOSURE_TIME = "category-closure-time";
     public static final String KIND_NEXT_ACTION = "next-action";
 
+    /**
+     * The one kind that is NOT about the complaint on screen (§5.3.4).
+     *
+     * <p>"3 of your 14 cases breach within 48h" is a statement about the officer's QUEUE. It is carried
+     * on the per-complaint rail response because the bulb lives on complaint-detail screens and there is
+     * nowhere else to put it — see {@link #deadlineTriage} for the contract decision and its cost.
+     */
+    public static final String KIND_DEADLINE_TRIAGE = "deadline-triage";
+
     // ─── Keys inside Signal.params. Also a wire contract: the client looks up
     // ─── 'assistance.signal.<kind>' with the kind VERBATIM, hyphens and all
     // ─── (assistance.signal.last-section, NOT ...last_section) and substitutes {{name}} placeholders
@@ -99,6 +109,24 @@ public class AssistanceRailService {
     public static final String PARAM_TOTAL = "total";
 
     /**
+     * The deadline-triage prior's params, beside the {@link #PARAM_COUNT} and {@link #PARAM_TOTAL} it
+     * shares with the others.
+     *
+     * <p>{@code hours} is the HORIZON in hours ({@code 48}), not a time remaining. It is interpolated
+     * rather than written into each of the thirteen sentences because {@link #DEADLINE_HORIZON} is
+     * configurable: a hardcoded "48" in the Tamil string would go on saying 48 after an operator set the
+     * window to 24, and the officer reading it has no way to tell.
+     *
+     * <p>{@code overdue} is a SUBSET of {@code count}, never a second bucket. It reaches the sentence as
+     * its own placeholder so a locale can phrase "3 of your 14 cases breach within 48h, 2 of them
+     * already past the deadline" naturally; a client that ADDED {@code count} and {@code overdue} would
+     * double-count every overdue case. The English sentence and all twelve translations are phrased so
+     * the subset relationship is explicit.
+     */
+    public static final String PARAM_HOURS = "hours";
+    public static final String PARAM_OVERDUE = "overdue";
+
+    /**
      * Rows the median-duration prior will look at, at most.
      *
      * <p>The query is a covering index range, so this bounds heap rather than IO. The largest category
@@ -126,9 +154,56 @@ public class AssistanceRailService {
     /** Suppresses the "last viewed" signal when the officer was here moments ago. */
     static final Duration LAST_VIEWED_SUPPRESS_WINDOW = Duration.ofMinutes(5);
 
+    /**
+     * The deadline-triage window. 48 hours, the figure Brief 21 §5.3.4 names.
+     *
+     * <p>Configurable because the right window is an operational judgement this code cannot make: a
+     * CEPC dealing official working a 30-day SLA and an Ombudsman on a statutory clock want different
+     * horizons, and "48h" in the brief is an illustration rather than a ruling. The value is
+     * interpolated into the sentence via {@link #PARAM_HOURS} so changing it cannot leave thirteen
+     * locales asserting a window that is no longer in force.
+     *
+     * <p>Clamped at read time: see {@link #horizonHours()}. A zero or negative window would make the
+     * signal report only the already-overdue while still SAYING "within N hours", and a window of
+     * years would make it report the whole queue as at risk — both are sentences that are false rather
+     * than merely unhelpful.
+     */
+    static final long DEFAULT_HORIZON_HOURS = 48L;
+
+    /** Narrowest and widest windows {@link #horizonHours()} will honour. */
+    static final long MIN_HORIZON_HOURS = 1L;
+    static final long MAX_HORIZON_HOURS = 24L * 30L;
+
+    /**
+     * Below this many open cases the triage signal is NOT reported.
+     *
+     * <p>§5.1's confidence floor applied to a count rather than to a probability. "1 of 1 of your cases
+     * breaches within 48h" is a sentence about the complaint the officer is already looking at, dressed
+     * up as a queue statistic — it tells them nothing the screen does not, and the rail's one fatal
+     * failure mode is glowing for something not worth reading. Three is the smallest queue for which
+     * "N of M" is a triage instruction rather than a restatement.
+     */
+    static final long MIN_QUEUE_FOR_TRIAGE = 3L;
+
     private final AssistanceRailMemoryRepository memoryRepository;
     private final ComplaintRepository complaintRepository;
     private final AssistanceNextActionRepository nextActionRepository;
+
+    /**
+     * The closed-status vocabulary, read from {@code RBIO_STATUS_MASTER} rather than held as a literal.
+     *
+     * <p>Not a convenience: two hardcoded copies of this list had already drifted apart in this
+     * codebase — {@code WorkflowController} held six values and {@code NotificationScheduledTasks} four,
+     * omitting {@code adjudicated} and {@code conciliated}, so a complaint closed by an award counted as
+     * OPEN to the scheduler. A third copy here would put closed complaints into officers' at-risk
+     * counts, which is the same bug pointed at the rail. The live table answers eight values where the
+     * legacy fallback answers six (measured: 1186 open complaints against 1200).
+     */
+    private final RbioStatusVocabulary statusVocabulary;
+
+    /** See {@link #DEFAULT_HORIZON_HOURS}. Field-injected per the {@code @RequiredArgsConstructor} trap. */
+    @Value("${cms.assistance.deadline-triage.horizon-hours:48}")
+    private long configuredHorizonHours = DEFAULT_HORIZON_HOURS;
 
     /**
      * Everything worth saying about one complaint to one officer.
@@ -136,8 +211,18 @@ public class AssistanceRailService {
      * <p>Read-only and non-transactional by intent: a rail read must not be able to hold a write lock
      * or enlist in anything the officer's real work depends on.
      *
+     * <h3>ONE signal here is about the officer's QUEUE and not about this complaint</h3>
+     * {@link #KIND_DEADLINE_TRIAGE} (§5.3.4) answers "3 of your 14 cases breach within 48h". That is a
+     * statement about {@code ownerUserId}'s whole workload, and the complaint on screen contributes
+     * nothing to it beyond being the reason the rail was asked at all. It is carried on this
+     * per-complaint response anyway, and {@link #deadlineTriage} records why — in short, the signature
+     * ALREADY resolves the officer for Tier 0, so no new endpoint and no new input was needed.
+     *
      * @param complaintNumber the complaint being viewed
-     * @param ownerUserId     the RESOLVED caller; Tier 0 is scoped to this and nothing else
+     * @param ownerUserId     the RESOLVED caller. Tier 0 is scoped to this and nothing else — and since
+     *                        §5.3.4 the queue-wide deadline prior is too, which is why Tier 1 now
+     *                        receives it. A rail asked about a complaint by an officer it cannot name
+     *                        reports neither.
      * @param callerRoles     the caller's RESOLVED roles, used only to key the next-action prior. May
      *                        be null or empty, in which case that one signal is omitted — see
      *                        {@link #nextAction}. Never used as an authorization decision: this method
@@ -167,7 +252,7 @@ public class AssistanceRailService {
         }
 
         try {
-            signals.addAll(computeTier1(complaint, callerRoles));
+            signals.addAll(computeTier1(complaint, ownerUserId, callerRoles));
         } catch (Exception e) {
             log.warn("Assistance rail tier 1 failed for {}: {}", complaint, e.toString());
         }
@@ -259,6 +344,10 @@ public class AssistanceRailService {
      *       denominator. A unique-key seek on the {@code ASSISTANCE_NEXT_ACTION} rollup added by V115 /
      *       oracle V113, which {@code AssistanceNextActionRefreshService} computes on a schedule
      *       because §6.2 forbids aggregating on request.
+     *   <li>{@code deadline-triage} — how many of the OFFICER'S OWN open cases are near a deadline.
+     *       Covering range on {@code idx_complaints_officer_status_deadline} added by V117 / oracle
+     *       V115. The only prior keyed on the caller rather than on the complaint; see
+     *       {@link #deadlineTriage}.
      * </ul>
      *
      * <h3>DROPPED, and why</h3>
@@ -282,9 +371,21 @@ public class AssistanceRailService {
      *   <li><b>Reopen history as its own signal.</b> Only 40 rows have {@code reopen_count > 0}, and
      *       it is already on the complaint record the officer is looking at. The rail would be
      *       repeating the screen.
+     *   <li><b>Deadline triage over a ROLE QUEUE as well as an officer queue.</b> "Your team has 9
+     *       breaching" is arguably the more actionable sentence for a supervisor. Dropped for a
+     *       disclosure reason, not a performance one: {@code assigned_role} is indexed and the query
+     *       would be the same shape, but a role queue is other officers' workload and the rail has no
+     *       standing to decide which roles may see whose. Recorded as an open ask.
      * </ul>
+     *
+     * <h3>The officer id reaches Tier 1 since §5.3.4, and nothing else uses it</h3>
+     * {@code ownerUserId} is passed through to {@link #deadlineTriage} alone. The other four priors are
+     * deliberately NOT given it: they are facts about the register that do not change with who is
+     * asking, and handing them an identity would invite one of them to start filtering by it, which is
+     * the shape an authorisation decision takes when it is made in the wrong layer.
      */
-    private List<Signal> computeTier1(String complaintNumber, Collection<String> callerRoles) {
+    private List<Signal> computeTier1(String complaintNumber, String ownerUserId,
+                                      Collection<String> callerRoles) {
         Optional<AssistanceRailProjections.RailContext> context =
                 complaintRepository.findRailContext(complaintNumber);
         if (context.isEmpty()) {
@@ -294,12 +395,16 @@ public class AssistanceRailService {
             return List.of();
         }
         AssistanceRailProjections.RailContext ctx = context.get();
-        List<Signal> signals = new ArrayList<>(4);
+        List<Signal> signals = new ArrayList<>(5);
 
         addSignal(signals, KIND_COMPLAINANT_HISTORY, () -> complainantHistory(ctx));
         addSignal(signals, KIND_ENTITY_CLAUSE_PRECEDENT, () -> entityClausePrecedent(ctx));
         addSignal(signals, KIND_CATEGORY_CLOSURE_TIME, () -> categoryClosureTime(ctx));
         addSignal(signals, KIND_NEXT_ACTION, () -> nextAction(ctx, callerRoles));
+        // LAST, and the order is the point: this one is about the officer's queue rather than the
+        // complaint, so it reads as a footnote to the four priors above rather than as a fact about the
+        // case on screen. The frontend renders tier 1 in the order the server sends.
+        addSignal(signals, KIND_DEADLINE_TRIAGE, () -> deadlineTriage(ownerUserId));
 
         return signals;
     }
@@ -541,6 +646,195 @@ public class AssistanceRailService {
                         PARAM_COUNT, Long.toString(occurrences),
                         PARAM_TOTAL, Long.toString(total),
                         PARAM_PERCENT, Long.toString(percent)));
+    }
+
+    /**
+     * How many of THIS OFFICER'S open cases are close to a deadline (§5.3.4).
+     *
+     * <h2>═══ THE CONTRACT DECISION, AND WHY IT IS THE SMALLER CHANGE ═══</h2>
+     * Every other prior describes the complaint on screen. This one describes the officer's WHOLE
+     * QUEUE, so the brief's own analysis (findings §5e) predicted the problem: <i>"it is a statement
+     * about the officer's whole queue, not about the complaint on screen, so it does not fit the rail's
+     * existing per-complaint contract — {@code rail(complaintId, …)} has no queue-wide input and the
+     * panel has no place to put a signal that belongs to no complaint. Whoever builds it should expect
+     * to extend the contract, not just add a signal."</i>
+     *
+     * <p>The two options were a queue-wide signal on the EXISTING {@code /rail} endpoint, or a new
+     * sibling under {@code /api/v1/assistance/}. This is the former, and the deciding fact is that
+     * {@code rail(complaintNumber, ownerUserId, callerRoles)} ALREADY TAKES THE RESOLVED OFFICER — it
+     * has to, because Tier 0 is per-user. So "no queue-wide input" turned out to be wrong about the
+     * signature: the input was already there and only Tier 1 was not being given it. The extension is
+     * one extra parameter on a private method, one more {@code kind}, and nothing new on the wire
+     * beyond an additional element in a list the client already iterates.
+     *
+     * <p>A second endpoint would have cost: a second controller method with its own always-200 refusal
+     * story, a second frontend service call and a second failure mode on four screens, a second entry
+     * in the {@code RateLimitFilter} assistance bucket's accounting, and a new place for the
+     * officer-resolution rule to be got wrong. It would have bought ONE thing — the ability to ask for
+     * the queue signal without naming a complaint — and nothing wants that today, because the bulb
+     * lives only on complaint-detail screens, which always have a complaint. If a queue DASHBOARD ever
+     * wants this count, that is the moment to add the sibling endpoint, and this method is the body it
+     * would call.
+     *
+     * <p><b>THE TRADE-OFF, STATED:</b> the signal is unreachable without a complaint number, and it
+     * costs a query on every complaint-detail load even though its answer is identical across all of
+     * them for a given officer. That is a real inefficiency — N screen loads issue N identical counts —
+     * and it is accepted because the count is a single covering index seek measured at sub-millisecond
+     * to 4.6ms, and because the alternative (caching per officer) would make a stale "0 of 14" outlive
+     * an officer clearing their queue, which is worse than the query.
+     *
+     * <h2>═══ AGGREGATED AT REQUEST TIME, AGAINST §5.3's GOVERNING PRINCIPLE ═══</h2>
+     * §5.3 says "precompute, never aggregate at request time", and this method aggregates at request
+     * time. That is a deliberate, argued exception and not an oversight:
+     * <ul>
+     *   <li><b>The brief contradicts itself here</b>, and says so in the same sentence: §5.3.4 calls
+     *       this "a count over an existing index". A count over an index IS a request-time aggregate.
+     *   <li><b>A rollup cannot be keyed per complaint.</b> Every other Tier 1 prior is keyed on
+     *       something the complaint carries, so a rollup row exists per key. This one is keyed on the
+     *       OFFICER, and its answer changes the moment any one of their cases is reassigned, closed, or
+     *       crosses its deadline — which happens continuously. A scheduled rollup would be a table of
+     *       45 rows (the measured distinct-officer count) rewritten every few minutes to serve a
+     *       query that takes 0.6ms, and between refreshes it would report a queue the officer has
+     *       already worked. "3 of your 14 breach within 48h" that is an hour stale is not a cheaper
+     *       version of the signal; it is a different and false one.
+     *   <li><b>The constraint is satisfied by the thing the principle exists to protect.</b> §5.3's
+     *       rule is a means to "answerable in the few milliseconds a screen load can spare". MEASURED:
+     *       {@code type=range} on {@code idx_complaints_officer_status_deadline}, {@code rows=131},
+     *       {@code filtered=100.00}, {@code Using index} — covering, so the 105-column row is never
+     *       read — at 0.57ms (warm) to 4.6ms (cold) across the three largest real queues. §9 says the
+     *       constraint wins over the requirement; here the constraint is MET and it is the mechanism
+     *       that is being substituted, with the measurement as the justification.
+     * </ul>
+     *
+     * <h2>═══ THE BRIEF'S PRESCRIBED FIELD IS EMPTY, WHICH IS THE MOST IMPORTANT FINDING ═══</h2>
+     * §5.3.4 names {@code re_response_deadline} and {@code re_response_overdue}. MEASURED against
+     * {@code cms_db}: {@code re_response_deadline} is populated on <b>13 of 4403 rows</b>, exactly ONE
+     * of which is open, and {@code re_response_overdue} is {@code true} on <b>zero</b>. A faithful
+     * implementation of the brief would have shipped a signal that is silent on 99.97% of the register
+     * and looks broken. {@code sla_deadline} is the field with data: 3870 of 4403 rows, 811 of 1186
+     * open. So the count is over {@code sla_deadline} OR {@code re_response_deadline}, with the brief's
+     * field kept in the predicate (and in the index) so the signal sharpens by itself when the
+     * entity-response path starts writing it — the same self-improving shape as the next-action
+     * sentinel. {@code current_stage_deadline} was measured and REJECTED: it equals
+     * {@code sla_deadline} on 173 of its 174 open rows and is earlier on none, so it would widen the
+     * index to change no answer.
+     *
+     * <h2>═══ THE FLOOR, AND WHY IT IS ON THE DENOMINATOR AND THE NUMERATOR BOTH ═══</h2>
+     * §5.1: do not glow for nothing. TWO gates, because they catch different worthless sentences:
+     * <ul>
+     *   <li>{@code atRisk == 0} — "0 of your 14 cases breach" is the brief's own example of a bulb
+     *       nobody looks at. The rail says nothing rather than reassuring an officer who did not ask.
+     *   <li>{@code queueSize < }{@link #MIN_QUEUE_FOR_TRIAGE} — "1 of 1 of your cases breaches" is a
+     *       fact about the complaint on screen wearing a queue statistic's clothes. On the live
+     *       register this gate is not theoretical: 20 of the 45 officers with an assignment hold fewer
+     *       than three open cases.
+     * </ul>
+     * On today's data the whole signal fires for THREE officers ({@code cepc_do1} 10 of 126,
+     * {@code rbio.officer} 4 of 26, {@code rbio_officer_001} 1 of 142) and every one of those at-risk
+     * cases is already overdue, because the seeded SLA deadlines cluster 30+ days out. Said plainly
+     * because a reader testing this will otherwise think it does not work.
+     *
+     * <h2>═══ NO LINK, AND THAT IS A MEASURED REFUSAL NOT AN OMISSION ═══</h2>
+     * "3 of your 14 breach" wants to be clickable, and §5.3.4's value would roughly double if it were.
+     * It is {@code null} because there is NO ROUTE to link to: {@code app.routes.ts} declares
+     * {@code staff/rbio-tasks} and {@code cepc/dashboard}, but neither reads a deadline filter from the
+     * query string, and {@code /search} reads no query parameters at all (recorded in the rail
+     * template's own comment). A {@code link} to a route that silently ignores its filter would send an
+     * officer to their unfiltered queue and leave them to find the three cases themselves — worse than
+     * no link, because it looks like the rail did something. Per the DTO, an absolute URL is also not an
+     * option: it would be an open-redirect surface.
+     *
+     * @param ownerUserId the RESOLVED caller, from {@code RequestIdentityResolver} at the controller.
+     *                    A blank owner yields NO SIGNAL — never a count over everybody. That refusal is
+     *                    the whole authorisation story for this prior and it is tested as a negative:
+     *                    the repository finder has no all-officers mode, mirroring the recorded
+     *                    {@code EmailSyndicationApiController:451} defect where a client-supplied owner,
+     *                    when omitted, returned every row in the system.
+     */
+    private Optional<Signal> deadlineTriage(String ownerUserId) {
+        // normaliseOwner trims and nulls a blank, the same helper Tier 0 keys on, so "no owner" means
+        // exactly one thing across both tiers.
+        String owner = AssistanceRailMemory.normaliseOwner(ownerUserId);
+        if (owner == null) {
+            // No identity, no queue. NOT a fallback to an unscoped count: an officer the server cannot
+            // name has no cases, and reporting the register's total would be a cross-officer disclosure
+            // dressed as a convenience.
+            return Optional.empty();
+        }
+
+        long hours = horizonHours();
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime horizon = now.plusHours(hours);
+
+        AssistanceRailProjections.DeadlineTriage triage =
+                complaintRepository.countDeadlineTriageForOfficer(
+                        owner,
+                        // From the status master, not a literal. See the field javadoc on
+                        // statusVocabulary for the drift this avoids.
+                        statusVocabulary.closedStatuses(),
+                        now,
+                        // The DATE horizons are derived here and passed in, so the JPQL compares
+                        // re_response_deadline (a `date` column) against a date without wrapping the
+                        // column in a cast — which would defeat the index.
+                        now.toLocalDate(),
+                        horizon,
+                        horizon.toLocalDate());
+
+        if (triage == null) {
+            return Optional.empty();
+        }
+
+        long queueSize = triage.queueSize();
+        long atRisk = triage.atRisk();
+        if (atRisk <= 0 || queueSize < MIN_QUEUE_FOR_TRIAGE) {
+            return Optional.empty();
+        }
+
+        long overdue = Math.min(triage.overdue(), atRisk);
+
+        // The English title is the brief's own sentence. A REPORT of a count, with its denominator, and
+        // no instruction: the officer decides what to do about it, and the rail has no idea which of
+        // the three is most urgent.
+        String title = atRisk + " of your " + queueSize + " open cases "
+                + (atRisk == 1 ? "breaches" : "breach") + " within " + hours + "h";
+
+        return Optional.of(Signal.prior(KIND_DEADLINE_TRIAGE,
+                title,
+                // The overdue qualifier goes in `detail` AND in params, because the component has no
+                // detail-key map: the localised heading has to carry it or non-English officers never
+                // see it. Phrased as "of them" so the subset relationship survives translation.
+                overdue > 0
+                        ? overdue + " of them " + (overdue == 1 ? "is" : "are")
+                                + " already past the deadline."
+                        : null,
+                // count = atRisk, the NUMERATOR, matching every other prior and matching the
+                // {{count}} placeholder in all thirteen seeded sentences. The trap the next-action
+                // prior documents applies here too: the component folds Signal.count into
+                // params['count'] only when params lacks it, so a count field holding the DENOMINATOR
+                // would render "14 of 14" in twelve locales while the English title stayed correct.
+                atRisk,
+                // No link. See the javadoc above — there is no route that would honour the filter.
+                null,
+                Map.of(PARAM_COUNT, Long.toString(atRisk),
+                        PARAM_TOTAL, Long.toString(queueSize),
+                        PARAM_HOURS, Long.toString(hours),
+                        PARAM_OVERDUE, Long.toString(overdue))));
+    }
+
+    /**
+     * The configured horizon, clamped into a range in which the sentence can be true.
+     *
+     * <p>Clamped rather than validated-and-rejected because this runs inside the rail, whose contract is
+     * to degrade rather than to fail: a typo'd ConfigMap value must cost a sensible window, not the
+     * signal. {@code 0} or negative would report only the already-overdue while the sentence still said
+     * "within 0h"; a window of years would report the officer's whole queue as at risk and the bulb
+     * would glow permanently, which §5.1 names as the one failure that makes the feature worthless.
+     */
+    private long horizonHours() {
+        if (configuredHorizonHours < MIN_HORIZON_HOURS) {
+            return MIN_HORIZON_HOURS;
+        }
+        return Math.min(configuredHorizonHours, MAX_HORIZON_HOURS);
     }
 
     // ═══════════════════════════════════════════════════════════════════════════════════════════════

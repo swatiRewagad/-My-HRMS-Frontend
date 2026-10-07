@@ -1,0 +1,398 @@
+-- V121: Assistance — the complainant filing-history projection
+-- MySQL version. Oracle twin: database/oracle/V119__assistance_complainant_history.sql
+--
+-- Serves TWO faces of ONE feature, because both are the same keyed lookup over a complainant's own
+-- filing history:
+--   1. DUPLICATE / REPEAT-FILING DETECTION — "3 earlier complaints by this complainant against
+--      HDFC Bank in the last 30 days", for the officer at intake or on the complaint screen.
+--   2. THE REPEAT-COMPLAINANT ("vexatious") SIGNAL — the complainant's lifetime filing count and how
+--      many of those were closed as non-maintainable. This is the evidence an officer currently
+--      assembles BY HAND to support a statutory 16(2)(b) "frivolous or vexatious" determination.
+--
+-- Tier 1, like V115/V116/V117. COUNTS with their denominators attached. No inference over case text,
+-- no model artifact, no verdict — the officer decides 16(2)(b), this reports what the register holds.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- WHY THIS IS A PROJECTION (ONE ROW PER COMPLAINT) AND NOT AN AGGREGATE ROLLUP
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- V115/V116/V117 each store a GROUP BY's output: one row per cohort. This one cannot, and the reason is
+-- the deliverable rather than a preference. The duplicate signal must name the earlier complaints —
+-- "3 earlier complaints" is not actionable unless the officer can open them — so the read's output is a
+-- LIST OF COMPLAINT NUMBERS, not a count. A cohort row cannot hold a list, and a rollup keyed on
+-- (complainant, entity, window) would need one row per possible as-of date, which is every date.
+--
+-- So this table holds one NORMALISED row per complaint and the read is TWO INDEX SEEKS:
+--     WHERE EMAIL_KEY = ? ORDER BY FILED_AT DESC   (capped)
+--     WHERE PHONE_KEY = ? ORDER BY FILED_AT DESC   (capped)
+-- and the service unions them, filters by scope, and counts in Java over at most MAX_HISTORY_ROWS rows.
+--
+-- THAT IS NOT A REQUEST-PATH AGGREGATE, and the distinction is exact: there is no GROUP BY, no COUNT(*),
+-- no window function and no scan. It is the same shape V116's read already has — that one seeks a cohort
+-- and sums/sorts at most 64 rows in Java — except keyed on a complainant instead of a cohort. The
+-- measured bound is tight: the maximum complaints held by any one email in this register is 10, and the
+-- maximum by any one phone that survives the fan-out guard below is 19.
+--
+-- The one genuine AGGREGATE this feature needs — the contact fan-out guard, a
+-- COUNT(DISTINCT) over the whole register — is computed in the SCHEDULED JOB and never on request. That
+-- is where §6.2's rule bites and that is where it is honoured.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- RE-MEASURED AT THE END OF THE SESSION — READ THIS BEFORE TRUSTING THE FIGURES BELOW
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- The figures in the next section were taken against a 4403-complaint register. DURING this work the
+-- register grew to 6598 complaints — other sessions and the QA harness write to cms_db concurrently —
+-- so every absolute number below is a snapshot and not a constant. The numbers were re-taken at the end
+-- against 6598 rows, using SQL that mirrors the shipped normalisation (10-digit phone tail, lower-cased
+-- email, the alias table's 11 mapped codes, the fan-out guard at 3, same-entity, same-department,
+-- sentinels refused):
+--
+--   register ...................................................... 6598 complaints
+--   rows this projection would store (>=1 usable contact) ......... 6566   (32 dropped: no contact)
+--   complaints receiving a duplicate signal
+--     email only .................................................  280   ( 4.2%)
+--     email OR phone, UNGUARDED .................................. 3897   (59.1%)  <- destroyed
+--     email OR phone, fan-out guard applied ......................  312   ( 4.7%)  <- ships
+--   repeat-complainant distribution by identity key
+--     1 filing .. 6057      2 .. 132      3-4 .. 13      5-9 .. 19      10+ .. 2
+--     so 34 complainants exceed a threshold of 3 filings, and 21 exceed 5
+--   non-maintainable rows in the register .......................... 665
+--     of which belong to a complainant with MORE THAN ONE filing ...   6
+--
+-- THE CONCLUSIONS ARE UNCHANGED and in two places strengthened: the fan-out guard still collapses the
+-- false-positive rate by a factor of 12.5 (3897 -> 312), phone matching still adds real recall over
+-- email alone (+32 complaints), and the non-maintainable half of the signal is still ~zero for repeat
+-- complainants (6 of the ~490 filings they account for) even though the register-wide count grew from 47
+-- to 665. The one figure that moved materially is the UNGUARDED rate, 87% -> 59%, because the new rows
+-- dilute the placeholder phone's share — it is still a banner rather than a signal.
+--
+-- Also re-measured and worth recording: making the "earlier than" test STRICT (< rather than <=) changes
+-- the duplicate count by ZERO (312 either way), even though 2220 rows share their filing instant with
+-- another row and the largest same-instant group is 19. So the implemented <= — which lets two
+-- genuinely simultaneous filings see each other, the real double-submit case — costs nothing in
+-- precision on this data.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- THE MEASUREMENT THAT DECIDED THE DESIGN. Measured 2026-10-07 against cms_db, 4403 complaints.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- Unlike most of the assistance candidates, this feature keys on columns that are actually POPULATED:
+--   complainant_email .. 4352 of 4403 (98.8%)      entity_code ... 4113 of 4403 (93.4%)
+--   complainant_phone .. 4354 of 4403 (98.9%)      created_at .... 4403 of 4403 (complete)
+-- and 153 distinct emails hold more than one complaint, the largest holding 10.
+--
+-- ─── THE TRAP: "MATCH ON EMAIL OR PHONE" IS CATASTROPHIC ON THIS DATA UNLESS GUARDED ───
+-- Matching on email OR phone is the right rule — a repeat complainant who filed once by phone and once
+-- by email is one person, and these two columns DISAGREE about identity here: 16 phones carry more than
+-- one email and 1 email carries more than one phone. But applied naively it destroys the feature:
+--
+--   distinct emails ....... 4081 over 4352 rows   (mean 1.07 complaints per email)
+--   distinct phones ......... 468 over 4354 rows   (mean 9.30 complaints per phone)
+--
+-- The phone column is poisoned by PLACEHOLDERS. Four values account for 3699 of 4354 rows:
+--     9876543210 .. 3527 complaints across 3427 DISTINCT EMAILS
+--     9876500033 ..   86 complaints across   85 distinct emails
+--     9876500011 ..   76 complaints across   76 distinct emails
+--     9876500091 ..   10 complaints across   10 distinct emails
+-- A value shared by 3427 different people is not an identity, it is a default that a seeder typed.
+--
+-- MEASURED CONSEQUENCE, and this is the whole argument for the guard:
+--     complaints receiving a duplicate signal (same entity, 30 days)
+--       email only ..................................  227  (5.2%)
+--       email OR phone, UNGUARDED ................... 3849  (87.4%)   ← the feature is destroyed
+--       email OR phone, fan-out guard applied .......  259  (5.9%)   ← ships
+-- 87% of the register flagged as duplicate filings is not a signal, it is a banner. An officer would
+-- learn to ignore it within a day, and the 16(2)(b) count it feeds would be evidence of nothing.
+--
+-- So PHONE_KEY carries the '*' sentinel — "this complaint contributes no phone identity" — whenever the
+-- job measures the phone as shared by more than MAX_CONTACT_FANOUT (3) distinct emails. The same rule is
+-- applied symmetrically to EMAIL_KEY against distinct phones, because a shared address like a branch
+-- mailbox is the same failure wearing the other hat (measured: the maximum distinct phones behind one
+-- email is 4, and exactly 1 email trips the guard today).
+--
+-- The guard is a CARDINALITY test and NOT a blocklist of known-bad numbers. A hardcoded '9876543210'
+-- would be correct today and silently wrong the first time a different placeholder was seeded, and that
+-- failure is invisible — the feature would simply start flagging everything again.
+--
+-- The surviving cost, stated: a phone legitimately shared by a large family or by a village common
+-- service point is suppressed, and those complainants are matched on email alone. That is the correct
+-- trade — a missed duplicate costs an officer a convenience, a false one costs a citizen a
+-- "vexatious" determination — but it is a cost and the guard is configurable in the service.
+--
+-- ─── WHAT THE FEATURE SAYS ON TODAY'S REGISTER ───
+--   complaints with >=1 earlier same-entity complaint within 30 days ....... 259  (5.9%)
+--     distribution of how many earlier complaints each one names:
+--       1 earlier .. 131      2 .. 25      3 .. 19      4 .. 19      5 .. 19
+--       6 .......... 18       7 .. 17      8-18 .. one complaint each
+--   complaints with >=1 earlier complaint against ANY entity within 30 days  306
+--   complaints with >=1 earlier complaint lifetime, any entity .............. 308
+--
+--   repeat-complainant distribution, by identity key, after the fan-out guard:
+--       1 filing ...... 3928 complainants      3-4 filings ..  1 complainant
+--       2 filings ...... 132 complainants      5-9 filings .. 19 complainants
+--                                             10+ filings ...  1 complainant
+--   So 21 complainants exceed a plausible vexatious threshold of 3, and 20 exceed 5.
+--
+-- ─── THE HONEST WEAKNESS: THE NON-MAINTAINABLE HALF IS NEARLY SILENT ───
+-- NON_MAINTAINABLE exists to carry the 16(2)(b) evidence and it will be 'N' on almost every row. The
+-- whole register holds 47 rows that are non-maintainable by any of the three available markers
+-- (maintainability_determination, closure_cause, or a closure_clause under 16(2)), and only 6 of those
+-- belong to a complainant with more than one filing. So on today's data the signal reports a lifetime
+-- FILING count that is real and a non-maintainable count that is almost always ZERO.
+--   That is reported rather than hidden, and the column is carried anyway, for the V116 reason: it costs
+-- nothing until the determination starts being recorded, at which point the signal sharpens with no
+-- migration. But nobody should read "0 of 8 closed as non-maintainable" as evidence AGAINST a 16(2)(b)
+-- determination on this register — it is evidence that the determination is not being recorded.
+--
+-- ─── THE QA FIXTURE IS WEAKER THAN IT LOOKS ───
+-- 193 complaints carry the subject 'QA pass-4 session C duplicate detection seed'. They are NOT
+-- duplicate pairs: all 193 hold a DISTINCT email and a DISTINCT phone, and only 18 of the 193 carry an
+-- entity_code at all. 30 of their contacts do recur on non-seed complaints, so the fixture is not inert,
+-- but a reader expecting a ready-made duplicate cluster from the subject line will not find one. The
+-- unit tests therefore build their own fixtures rather than depending on this seed.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- PRIVACY IS THE HARD CONSTRAINT, AND IT IS ENFORCED BY THIS SCHEMA
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- This feature surfaces one person's OTHER complaints, which is the most PII-sensitive read in the
+-- assistance set. Two PII leaks have already had to be fixed in this repo (the legacy /api/complaints
+-- and the public /recent). The rule applied here is structural rather than procedural:
+--
+--   * There is NO column for a complainant NAME, ADDRESS, ACCOUNT NUMBER or CARD NUMBER. Not masked —
+--     ABSENT. The table physically cannot leak what it does not hold.
+--   * There is NO column for the complaint SUBJECT or DESCRIPTION. The brief permits a snippet and this
+--     feature declines even that: a narrative snippet from someone's OTHER complaint is the single most
+--     identifying thing on the screen, and the duplicate signal does not need it to be useful — a
+--     complaint number, a date and an entity already let the officer open the case properly.
+--   * EMAIL_KEY and PHONE_KEY DO hold contact data, and they are the join keys so they cannot be
+--     dropped. They are therefore NEVER SERIALISED: DuplicateFilingResponse has no field for either,
+--     and the read seeks BY them rather than returning them. The email the officer sees is the one
+--     already on the complaint in front of them, which this feature did not give them.
+--   * PHONE_KEY is a 10-digit TAIL and not the number as filed. Enough to match, and it deliberately
+--     drops any country code or separator the complainant typed.
+--
+-- The wire response carries COMPLAINT_NUMBER, FILED_AT, ENTITY_KEY, STATUS and DEPARTMENT, and nothing
+-- else. Every one of those five is information the officer either already has on screen for the
+-- complaint being worked, or needs in order to open a case they are entitled to open.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- SCOPE: AN OFFICER MUST NOT LEARN OF COMPLAINTS OUTSIDE THEIR OWN DEPARTMENT THROUGH THIS
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- DEPARTMENT is a key column for exactly this reason. The read filters every candidate row against the
+-- departments the CALLER's resolved roles are responsible for, using the same role-prefix map
+-- AssistanceQueueService measured and already ships (CEPC/CEPD -> CEPC, RBIO/ORBIO -> RBIO,
+-- CRPC -> CRPC, plus the measured DEO -> CRPC and DO -> CEPC overrides). It FAILS CLOSED: a caller whose
+-- roles map to no department receives an empty signal, never an unscoped one.
+--
+-- MEASURED, and it changes how this must be tested: ZERO complainant emails in this register span more
+-- than one department. So the scope filter removes NOTHING on today's data and a test that merely
+-- asserted "results appear" would pass identically with the filter deleted. The negative tests
+-- therefore construct cross-department fixtures explicitly and assert the out-of-scope complaint is
+-- ABSENT, per role.
+--
+-- NOT SCOPED BY OFFICE, and this is a gap rather than a decision: RequestIdentity carries userId,
+-- displayName, roles, side and entityCode — there is no office code on it, so an RBIO office boundary
+-- cannot be enforced from the token. COMPLAINTS.rbio_office_code exists and the column could be carried
+-- here, but a filter keyed on an office the server cannot derive from the caller's identity would have
+-- to take it from the request, which is the EmailSyndicationApiController defect. Department is the
+-- finest boundary the resolved identity actually supports. Reported, not papered over.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- SENTINELS, NOT NULLS
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- '*' everywhere a key column has no value, for the reason V115/V116 record: NULL is not comparable with
+-- '=', so a nullable key column makes its rows unreachable by any seek — and a complaint with no email
+-- would be invisible to a PHONE_KEY read that should have found it. '*' rather than '' additionally
+-- because on ORACLE an empty string IS NULL, and because '' is what the dirty source columns already use
+-- for "absent" on 21 rows: reusing it would group every one of those complainants together as one
+-- person, which is the precise defect ComplaintRepository.countOtherComplaintsByComplainantEmail
+-- documents its own blank guard against.
+--
+-- The '*' sentinel can never collide with real data: it is not a valid email local part, not a digit,
+-- and AssistanceEntityAliasNormaliser returns null (not '*') for a blank entity_code.
+--
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- IDEMPOTENCY, AND THE LOCK
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════════
+-- Applied BY HAND — there is no Flyway in this project — so idempotency lives in this file. CREATE TABLE
+-- is guarded with IF NOT EXISTS, and all three indexes are declared INSIDE the CREATE, so the MySQL
+-- errno-1061 "duplicate key name" problem that a separate CREATE INDEX would raise on re-application
+-- cannot arise.
+--
+-- ASSISTANCE_JOB_LOCK is NOT re-created here — V115 owns it, and two migrations owning one DDL is how a
+-- column width comes to differ between two environments. This file seeds only an additional lease row
+-- under its OWN name, 'assistance-complainant-history-refresh'. A FOURTH row, not a share of an existing
+-- one: two jobs on one lease row means whichever fires first holds it and the other logs "another pod
+-- holds the lease" and skips its cycle — which is both false and the hardest kind of bug to see, a job
+-- that is merely never running. The INSERT is guarded on its own absence and on the table existing, so
+-- applying this file before V115 inserts nothing and raises nothing, and the refresh service treats a
+-- missing lease row as "I did not get the lock" and does nothing.
+--
+-- NOT APPLIED to cms_db as shipped, and the kill switch
+-- cms.assistance.duplicate-detection.enabled defaults to FALSE in code. With the table absent every
+-- read throws, the service logs at WARN and returns the empty-signal shape at HTTP 200, so an unapplied
+-- migration degrades this feature to invisible rather than breaking a complaint screen.
+
+-- ── The projection ───────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ASSISTANCE_COMPLAINANT_HISTORY (
+    ID               BIGINT       NOT NULL AUTO_INCREMENT,
+
+    -- The complaint this row projects, and the IDEMPOTENCY key. One row per complaint, so the refresh
+    -- finds and overwrites rather than accumulating. VARCHAR(50) matches COMPLAINTS.complaint_number
+    -- exactly so a value cannot be truncated on the way in.
+    --
+    -- The complaint NUMBER and not its id, because the number is what the read returns to the officer
+    -- and what every other assistance endpoint keys on. Carrying the id as well would be a second
+    -- identifier for one row with no reader.
+    COMPLAINT_NUMBER VARCHAR(50)  NOT NULL,
+
+    -- The complainant's email, LOWERCASED AND TRIMMED ON WRITE, or '*' when absent or suppressed by the
+    -- fan-out guard. VARCHAR(200) matches COMPLAINTS.complainant_email.
+    --
+    -- NORMALISED ON WRITE, never folded on read, per §6.2 — and the cross-engine reason is specific:
+    -- MySQL's utf8mb4_unicode_ci collation folds case for free while Oracle's default collation does
+    -- not, so an address stored verbatim and compared verbatim would match in dev and MISS in
+    -- production. Normalising on write also means the read never needs LOWER(column), which would
+    -- defeat IDX_ACH_EMAIL on both engines.
+    --
+    -- THIS COLUMN IS A JOIN KEY AND IS NEVER SERIALISED. The read seeks BY it; DuplicateFilingResponse
+    -- has no field that could carry it. See the privacy section in the header.
+    EMAIL_KEY        VARCHAR(200) NOT NULL DEFAULT '*',
+
+    -- The LAST 10 DIGITS of the complainant's phone with every non-digit stripped, or '*' when absent
+    -- or suppressed by the fan-out guard. VARCHAR(20) matches COMPLAINTS.complainant_phone, which is
+    -- wider than the 10 digits ever stored here — deliberately, so the column can never be the reason a
+    -- future normalisation has to migrate.
+    --
+    -- The TAIL rather than the number as filed, so '+91 98765-43210', '09876543210' and '9876543210'
+    -- are one identity. Measured: 0 of 4354 non-blank phones hold fewer than 10 digits, so the tail is
+    -- never a partial number padded against a different person's. Also a privacy property — any country
+    -- code or separator the complainant typed is dropped and not stored.
+    --
+    -- THE FAN-OUT GUARD WRITES THE SENTINEL HERE. A phone measured as shared by more than
+    -- MAX_CONTACT_FANOUT distinct emails is a placeholder, not an identity, and contributes no match.
+    -- See the header for the 87%-to-5.9% measurement that makes this load-bearing rather than tidy.
+    --
+    -- A JOIN KEY AND NEVER SERIALISED, like EMAIL_KEY.
+    PHONE_KEY        VARCHAR(20)  NOT NULL DEFAULT '*',
+
+    -- The regulated entity complained against, canonicalised, or '*' when the complaint names none.
+    -- VARCHAR(50) matches COMPLAINTS.entity_code and AssistanceEntityAliasNormaliser.MAX_LENGTH.
+    --
+    -- Resolved through AssistanceEntityAliasNormaliser, which ALREADY EXISTS and is REUSED rather than
+    -- reimplemented — it is the same normaliser AssistanceEntityPatternRefreshService and
+    -- AssistanceRailService put on both sides of the entity-pattern rollup. entity_code is documented
+    -- dirty: the register spells one bank 'PNB' and 'Punjab National Bank', and UPPER() merges neither
+    -- with the other because they share no character position. The normaliser is an explicit ALIAS
+    -- TABLE (33 distinct spellings down to 24) and is deliberately NOT fuzzy: an edit-distance match on
+    -- a bank name merges two different banks on a bad day, and "you have already complained about this
+    -- entity" said of the wrong entity is worse than silence.
+    --   Measured relevance here: the duplicate-bearing complaints name 'ICICI', 'INDIAN', 'UNION',
+    -- 'KOTAK' and 'BOB' as raw codes alongside 'HDFC BANK' and 'STATE BANK OF INDIA' in full, so the
+    -- alias table is doing real work on exactly this read.
+    --
+    -- Both sides go through the normaliser — written here, and applied to the subject complaint's own
+    -- entity_code on the read before seeking. If only one side did, the table would hold PNB's history
+    -- under one key and be asked for it under another, which is a WRONG count rather than a missing one.
+    ENTITY_KEY       VARCHAR(50)  NOT NULL DEFAULT '*',
+
+    -- The SCOPE column. CEPC / RBIO / CRPC, upper-cased, or '*' when the complaint carries none
+    -- (measured: 23 of 4403). VARCHAR(20) matches COMPLAINTS.department.
+    --
+    -- This is the tenancy boundary, not decoration. The read filters every candidate against the
+    -- departments the caller's resolved ROLES are responsible for and fails closed when they map to
+    -- none. A '*' row is out of scope for EVERY caller — a complaint with no department cannot be
+    -- proven to be in anyone's, and the safe reading of an unprovable scope on a PII-bearing read is
+    -- exclusion.
+    DEPARTMENT       VARCHAR(20)  NOT NULL DEFAULT '*',
+
+    -- When the complaint was filed. COALESCE(filed_at, created_at) — both are datetime(6) and
+    -- created_at is complete on all 4403 rows while filed_at is not, so the coalesce is what makes the
+    -- window reliable. @PrePersist sets both, so they agree on everything written since.
+    --
+    -- NOT NULL and the ordering/range column of both indexes: the duplicate window is a range predicate
+    -- on it, and a NULL would make a complaint invisible to the window while still counting toward the
+    -- lifetime total — a numerator and denominator that disagree, which is the one thing §5.1 says an
+    -- officer must be able to trust.
+    FILED_AT         DATETIME(6)  NOT NULL,
+
+    -- The complaint's status, verbatim from COMPLAINTS.status, or '*'. VARCHAR(30) matches the source.
+    --
+    -- NOT case-folded, unlike EMAIL_KEY and DEPARTMENT, because it is DISPLAYED rather than compared:
+    -- this feature never seeks on it. The register genuinely mixes cases ('pending' beside
+    -- 'NOT_OPENED') and folding it would show an officer a status spelled differently from the one on
+    -- the complaint grid beside it.
+    STATUS           VARCHAR(30)  NOT NULL DEFAULT '*',
+
+    -- 'Y' / 'N'. Whether this complaint was closed as NON-MAINTAINABLE — the 16(2)(b) evidence.
+    --
+    -- A VARCHAR(1) rather than a boolean type, deliberately. dev runs ddl-auto: update and prod runs
+    -- ddl-auto: validate, so a type the two engines' dialects infer differently is exactly the shape of
+    -- defect that works in dev and fails production boot. A String field against VARCHAR(1) / VARCHAR2(1)
+    -- has one unambiguous mapping on both engines and needs no dialect to agree about TINYINT vs
+    -- NUMBER(1) vs BIT.
+    --
+    -- Set from THREE markers OR'd together, because no single column answers it:
+    -- maintainability_determination = 'NON_MAINTAINABLE', closure_cause = 'NON_MAINTAINABLE', or a
+    -- closure_clause under 16(2). Measured: 47 rows in the whole register, of which 6 belong to a repeat
+    -- complainant. See the header — this half of the signal is nearly silent today and that is a
+    -- property of the data, not of this column.
+    NON_MAINTAINABLE VARCHAR(1)   NOT NULL DEFAULT 'N',
+
+    -- When the refresh that wrote this row ran. Read by nothing in the request path. It exists so a
+    -- projection that quietly stopped refreshing is diagnosable, which is the one failure a scheduled
+    -- job has that an endpoint does not: stale rows look exactly like correct rows. It is also the stale
+    -- sweep's only predicate — the job stamps every row it writes with ONE timestamp taken at the start
+    -- of the pass, so "older than this run" is exactly "not rewritten by this run".
+    REFRESHED_AT     DATETIME(6)  NOT NULL,
+
+    PRIMARY KEY (ID),
+
+    -- One row per complaint. The refresh's insert-or-update decision seeks this, so a re-run overwrites
+    -- rather than appending, and a complaint whose email or entity was corrected is re-keyed in place.
+    UNIQUE KEY UK_ACH_COMPLAINT (COMPLAINT_NUMBER),
+
+    -- THE TWO READ INDEXES. One seek each, leading equality on the key and FILED_AT as the range and
+    -- sort column, so the duplicate window is served by the index and the DESC ordering needs no
+    -- filesort. Two separate indexes and NOT one composite on (EMAIL_KEY, PHONE_KEY, ...): the read is
+    -- "email OR phone", and an OR across two columns cannot be index-sought as one predicate on either
+    -- engine — which is precisely the measured reason
+    -- ComplaintRepository.countOtherComplaintsByComplainantEmail declined to match phone at all
+    -- (1 row examined with email alone against 2509 with the OR). Two seeks and a union in Java is how
+    -- that recall is recovered without the scan.
+    --
+    -- ENTITY_KEY is deliberately NOT in either index. The duplicate predicate does include it, but a
+    -- complainant's whole history is at most 19 rows after the fan-out guard, so the entity filter runs
+    -- in Java over rows the seek already returned. Putting it in the index would add a third B-tree
+    -- maintained on every refresh to avoid filtering a handful of rows, and it would sit between the key
+    -- and FILED_AT, breaking the range scan that serves the window.
+    KEY IDX_ACH_EMAIL (EMAIL_KEY, FILED_AT),
+    KEY IDX_ACH_PHONE (PHONE_KEY, FILED_AT)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── This refresh's own lease row ─────────────────────────────────────────────────────────────────
+-- ASSISTANCE_JOB_LOCK is created by V115 and is NOT redefined here. Only the row is added, under a
+-- SEPARATE lease name from the three that already exist — see the header for why sharing one row would
+-- silently stop one of the jobs.
+--
+-- Dated in the past so the first pod to start can take it immediately. Guarded on the table EXISTING as
+-- well as on the row's absence, so applying this file before V115 inserts nothing and raises nothing.
+INSERT INTO ASSISTANCE_JOB_LOCK (LOCK_NAME, LOCKED_UNTIL, LOCKED_BY, LOCKED_AT)
+SELECT 'assistance-complainant-history-refresh', TIMESTAMP('1970-01-01 00:00:00'), NULL, NULL
+WHERE NOT EXISTS (
+    SELECT 1 FROM ASSISTANCE_JOB_LOCK
+    WHERE LOCK_NAME = 'assistance-complainant-history-refresh'
+);
+
+ANALYZE TABLE ASSISTANCE_COMPLAINANT_HISTORY;
+
+-- ── No new index on COMPLAINTS, and that is a measured result ────────────────────────────────────
+-- The refresh reads complaints keyset-paged on the PRIMARY KEY (WHERE id > :after ORDER BY id), which
+-- needs no index that does not already exist. It reads EVERY row by design — unlike the clause rollup it
+-- cannot filter, because a complainant's FIRST complaint is as much a part of their filing history as
+-- their tenth — so there is nothing for an index to seek.
+--
+-- A covering index on (complainant_email, complainant_phone, entity_code, created_at) was considered and
+-- rejected: another B-tree maintained on every single complaint write, for the benefit of one job that
+-- runs every six hours over a table it scans in full anyway.
+--
+-- The REQUEST path touches COMPLAINTS exactly once, for the complaint the officer already has open, and
+-- then reads ASSISTANCE_COMPLAINANT_HISTORY by IDX_ACH_EMAIL and IDX_ACH_PHONE. It issues no aggregate.

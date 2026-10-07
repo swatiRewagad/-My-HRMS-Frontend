@@ -4,6 +4,7 @@ import com.hrms.cms.entity.Translation;
 import com.hrms.cms.entity.TranslationKey;
 import com.hrms.cms.repository.TranslationKeyRepository;
 import com.hrms.cms.repository.TranslationRepository;
+import com.hrms.cms.service.AssistanceQueueService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,30 +33,26 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link AssistanceRailTranslationSeeder} serves all THIRTEEN locales, with placeholders intact.
+ * {@link AssistanceQueueTranslationSeeder} serves all THIRTEEN locales, with placeholders intact.
  *
  * <h2>Why this test is worth its weight</h2>
- * Every failure mode in this seeder is SILENT. The rail component treats a key echoed back unresolved
- * as "localisation did not happen" and prints the server's English, and discards any resolved string
- * still carrying a {@code {{...}}} in favour of the same English. So a locale never seeded, a key
- * misspelled with an underscore, and a {@code {{placeholder}}} lost in translation all look identical
- * from the outside: a panel that is merely "not translated yet". No error, no empty row, nothing in a
- * log. That is exactly how {@code or} and {@code as} came to be missing while the seeder looked
- * finished, and how a previous session came to believe a locale was served when it was not.
+ * Every failure mode in that seeder is SILENT, exactly as in the rail's. The client treats a key echoed
+ * back unresolved as "localisation did not happen" and prints the server's English, and discards any
+ * resolved string still carrying a {@code {{...}}} in favour of the same English. So a locale never
+ * seeded, a key misspelled with an underscore, and a placeholder lost in translation all look identical
+ * from outside: a panel that is merely "not translated yet". No error, no empty row, nothing in a log.
+ * The compiler cannot help either, because no Java code reads these strings.
  *
  * <h2>It drives {@code run()}, not the private maps</h2>
  * Reflecting into {@code odia()} would prove the map exists while a missing
- * {@code seedLocale("or", odia())} line shipped anyway — which is a map nobody ever reads. So the test
- * runs the real {@code run()} against mock repositories and asserts on what was actually handed to
- * {@code translationRepo.save}. The locale list is taken from {@code LanguageTranslationService}'s
- * {@code LANGUAGE_NAMES}, restated here because that field is private; a fourteenth product locale
- * therefore needs this list updated, which is the point — the alternative is a hardcoded count of 13
- * that stays green while a new locale goes unserved.
+ * {@code seedLocale("or", odia())} line shipped anyway — a map nobody reads. So this runs the real
+ * {@code run()} against mock repositories and asserts on what was handed to
+ * {@code translationRepo.save}, which is the only evidence a locale was actually served.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-@DisplayName("AssistanceRailTranslationSeeder: 13-locale coverage")
-class AssistanceRailTranslationCoverageTest {
+@DisplayName("AssistanceQueueTranslationSeeder: 13-locale coverage")
+class AssistanceQueueTranslationCoverageTest {
 
     /**
      * The locales this product serves, per {@code LanguageTranslationService.LANGUAGE_NAMES}.
@@ -65,13 +62,15 @@ class AssistanceRailTranslationCoverageTest {
     private static final List<String> PRODUCT_LOCALES =
             List.of("en", "hi", "mr", "bn", "ur", "te", "ta", "ml", "kn", "gu", "pa", "or", "as");
 
-    /** Matches the interpolation slots the rail's i18n values carry, e.g. {@code {{section}}}. */
     private static final Pattern PLACEHOLDER = Pattern.compile("\\{\\{([a-zA-Z]+)}}");
+
+    /** The signal key the client looks up, built from the service's own kind constant. */
+    private static final String SIGNAL_KEY =
+            "assistance.queue.signal." + AssistanceQueueService.KIND_DEADLINE_TRIAGE;
 
     @Mock private TranslationKeyRepository keyRepo;
     @Mock private TranslationRepository translationRepo;
 
-    /** Every row the seeder wrote, as locale -> (key code -> value). */
     private final Map<String, Map<String, String>> seeded = new LinkedHashMap<>();
 
     @BeforeEach
@@ -89,7 +88,6 @@ class AssistanceRailTranslationCoverageTest {
         });
         when(keyRepo.findByCode(anyString()))
                 .thenAnswer(inv -> Optional.ofNullable(keysByCode.get(inv.getArgument(0, String.class))));
-        // Insert-if-absent: nothing is present, so every putTranslation writes.
         when(translationRepo.findByKeyIdAndLocale(anyLong(), anyString())).thenReturn(List.of());
         when(translationRepo.save(any(Translation.class))).thenAnswer(inv -> {
             Translation t = inv.getArgument(0);
@@ -98,10 +96,9 @@ class AssistanceRailTranslationCoverageTest {
             return t;
         });
 
-        new AssistanceRailTranslationSeeder(keyRepo, translationRepo).run();
+        new AssistanceQueueTranslationSeeder(keyRepo, translationRepo).run();
     }
 
-    /** The {@code en} rows, which are the contract every other locale is measured against. */
     private Map<String, String> englishRows() {
         return seeded.getOrDefault("en", Map.of());
     }
@@ -114,16 +111,6 @@ class AssistanceRailTranslationCoverageTest {
         @DisplayName("every product locale is seeded — not eleven of thirteen")
         void everyProductLocaleIsSeeded() {
             assertThat(seeded.keySet()).containsAll(PRODUCT_LOCALES);
-        }
-
-        /**
-         * The specific regression. {@code or} and {@code as} were absent while the seeder read as
-         * complete, so officers in those locales were served English with no indication of it.
-         */
-        @Test
-        @DisplayName("Odia and Assamese are present — the two that were missing")
-        void odiaAndAssameseArePresent() {
-            assertThat(seeded).containsKeys("or", "as");
         }
 
         @Test
@@ -155,9 +142,9 @@ class AssistanceRailTranslationCoverageTest {
          * A locale cannot be served by copying its neighbour's script.
          *
          * <p>Assamese and Bengali share the Bengali-Assamese block, so {@code seedLocale("as",
-         * bengali())} would have satisfied every assertion above while shipping text that reads as
-         * foreign to an Assamese officer — Bengali {@code র} where Assamese writes {@code ৰ}, the
-         * {@code -উন} imperative where Assamese takes {@code -ক}. Only an inequality test catches it.
+         * bengali())} would satisfy every assertion above while shipping text that reads as foreign to
+         * an Assamese officer — Bengali {@code র} where Assamese writes {@code ৰ}. Only an inequality
+         * test catches it.
          */
         @Test
         @DisplayName("Assamese is not a copy of Bengali")
@@ -167,16 +154,26 @@ class AssistanceRailTranslationCoverageTest {
                     .isNotEqualTo(seeded.get("bn"));
         }
 
-        /** Odia has its own block (U+0B00–U+0B7F), so a wrong script here is a visible mistake. */
         @Test
-        @DisplayName("Odia is written in Oriya script and Assamese in Bengali-Assamese script")
-        void theNewLocalesUseTheirOwnScripts() {
-            assertThat(seeded.get("or").get("assistance.panel_title"))
-                    .as("Odia panel title must be Oriya script, U+0B00-U+0B7F")
-                    .matches(".*[\\u0B00-\\u0B7F].*");
-            assertThat(seeded.get("as").get("assistance.panel_title"))
-                    .as("Assamese panel title must be Bengali-Assamese script, U+0980-U+09FF")
-                    .matches(".*[\\u0980-\\u09FF].*");
+        @DisplayName("each locale is written in its own script")
+        void localesUseTheirOwnScripts() {
+            assertScript("hi", "\\u0900-\\u097F");   // Devanagari
+            assertScript("bn", "\\u0980-\\u09FF");   // Bengali-Assamese
+            assertScript("as", "\\u0980-\\u09FF");
+            assertScript("te", "\\u0C00-\\u0C7F");   // Telugu
+            assertScript("ta", "\\u0B80-\\u0BFF");   // Tamil
+            assertScript("gu", "\\u0A80-\\u0AFF");   // Gujarati
+            assertScript("ur", "\\u0600-\\u06FF");   // Arabic (Urdu)
+            assertScript("kn", "\\u0C80-\\u0CFF");   // Kannada
+            assertScript("ml", "\\u0D00-\\u0D7F");   // Malayalam
+            assertScript("pa", "\\u0A00-\\u0A7F");   // Gurmukhi
+            assertScript("or", "\\u0B00-\\u0B7F");   // Oriya
+        }
+
+        private void assertScript(String locale, String range) {
+            assertThat(seeded.get(locale).get("assistance.queue.group"))
+                    .as("%s must be written in its own script (%s)", locale, range)
+                    .matches(".*[" + range + "].*");
         }
     }
 
@@ -187,11 +184,10 @@ class AssistanceRailTranslationCoverageTest {
         /**
          * The strictest assertion in the file, and the cheapest insurance.
          *
-         * <p>{@code translate} substitutes only the {@code {{name}}} slots it is handed and leaves the
-         * rest standing, and the component then throws away any string still holding one. So a
-         * {@code {{sample}}} translated to {@code {{नमूना}}}, or a brace lost to a copy-paste, reverts
-         * that one locale to English and looks like a locale nobody got round to. Compared per key
-         * against the English set, so adding a key with a new placeholder extends the check for free.
+         * <p>{@code translate} substitutes only the slots it is handed and leaves the rest standing,
+         * and the client then throws away any string still holding one. So a {@code {{total}}}
+         * translated to {@code {{कुल}}}, or a brace lost to a copy-paste, reverts that one locale to
+         * English and looks like a locale nobody got round to.
          */
         @Test
         @DisplayName("each key's placeholder set is byte-identical to English in every locale")
@@ -218,51 +214,55 @@ class AssistanceRailTranslationCoverageTest {
         }
 
         /**
-         * Guards the placeholder check itself against being vacuously true.
-         *
-         * <p>If the English map ever stopped carrying {@code {{...}}} slots — a refactor to resolved
-         * server prose, say — the test above would compare empty sets to empty sets and pass while
-         * proving nothing. These are the names the DTO and {@code AssistanceRailService}'s
-         * {@code PARAM_*} constants declare.
+         * Guards the check above against being vacuously true. If the English map ever stopped
+         * carrying {@code {{...}}} slots, that test would compare empty sets and pass while proving
+         * nothing. These four are the {@code PARAM_*} constants on {@code AssistanceQueueService}.
          */
         @Test
-        @DisplayName("the English map really does carry the nine documented placeholders")
+        @DisplayName("the English map really does carry the four documented placeholders")
         void englishCarriesTheDocumentedPlaceholders() {
             Set<String> all = new LinkedHashSet<>();
             englishRows().values().forEach(v -> all.addAll(placeholdersIn(v)));
-            assertThat(all).containsExactlyInAnyOrder(
-                    "section", "age", "count", "clause", "days", "sample",
-                    // next-action adds three: action (a machine key, never translated), and the
-                    // total/percent that make its count readable as a proportion.
-                    "action", "total", "percent",
-                    // deadline triage adds two: the {{hours}} horizon the breach is measured against,
-                    // and {{overdue}}, which is a SUBSET of {{count}} and not an addend — every locale
-                    // phrases it "of those, {{overdue}}" precisely so an officer cannot sum the two and
-                    // double-count the already-breached cases.
-                    "hours", "overdue");
+            assertThat(all).containsExactlyInAnyOrder("count", "total", "hours", "overdue");
         }
 
         /**
-         * The hyphens are load-bearing: the component's hardcoded {@code KIND_LABEL_KEYS} asks for
-         * {@code assistance.signal.last-section}, so an underscored key here misses every lookup and
-         * the whole panel reverts to English while looking untranslated. Asserted on the keys the
-         * seeder actually wrote, because that is where a normalising edit would land.
+         * BOTH numbers in every locale. Brief 21's position is that a bare figure with no denominator
+         * will be distrusted, correctly — "3 cases breach" invites "out of how many?", and an officer
+         * who cannot answer it cannot triage. A locale carrying only {@code count} would read as a
+         * complete sentence while withholding the thing that makes it actionable.
          */
         @Test
-        @DisplayName("signal keys keep the hyphenated kind, never an underscored one")
-        void signalKeysStayHyphenated() {
-            assertThat(englishRows().keySet())
-                    .contains("assistance.signal.unsaved-draft",
-                            "assistance.signal.last-section",
-                            "assistance.signal.last-viewed",
-                            "assistance.signal.complainant-history",
-                            "assistance.signal.entity-clause-precedent",
-                            "assistance.signal.category-closure-time",
-                            "assistance.signal.next-action");
+        @DisplayName("the signal sentence carries numerator AND denominator in all 13 locales")
+        void everyLocaleCarriesBothNumbers() {
+            List<String> deficient = new ArrayList<>();
+            for (String locale : PRODUCT_LOCALES) {
+                Set<String> slots = placeholdersIn(
+                        seeded.getOrDefault(locale, Map.of()).getOrDefault(SIGNAL_KEY, ""));
+                if (!slots.containsAll(Set.of("count", "total", "hours"))) {
+                    deficient.add(locale + " had " + slots);
+                }
+            }
+            assertThat(deficient)
+                    .as("a locale missing total reports a figure nobody can act on")
+                    .isEmpty();
+        }
+
+        /**
+         * The hyphens are load-bearing. The client asks for
+         * {@code assistance.queue.signal.queue-deadline-triage}, so an underscored key here misses the
+         * lookup and the sentence reverts to English while looking untranslated. Built from the service
+         * constant so renaming the kind without renaming the key fails here rather than in production.
+         */
+        @Test
+        @DisplayName("the signal key keeps the hyphenated kind, never an underscored one")
+        void signalKeyStaysHyphenated() {
+            assertThat(englishRows().keySet()).contains(SIGNAL_KEY);
+            assertThat(SIGNAL_KEY).isEqualTo("assistance.queue.signal.queue-deadline-triage");
 
             assertThat(seeded.values().stream()
                     .flatMap(rows -> rows.keySet().stream())
-                    .filter(code -> code.startsWith("assistance.signal.") && code.contains("_"))
+                    .filter(code -> code.startsWith("assistance.queue.signal.") && code.contains("_"))
                     .toList())
                     .as("an underscored signal key misses the client's lookup silently")
                     .isEmpty();
@@ -270,24 +270,19 @@ class AssistanceRailTranslationCoverageTest {
     }
 
     /**
-     * The two states that must never read alike, per the seeder's own header: "nothing to report" is
-     * the rail having run and found nothing, and "failed" is the request not completing, so nothing is
-     * known either way. Wording them identically in a locale reintroduces the defect the panel exists
-     * to remove, for the officers who read that locale — including the two locales added here.
+     * The queue namespace must not collide with the rail's.
+     *
+     * <p>Both seeders are insert-if-absent on the key CODE and both declare module {@code assistance},
+     * so a key seeded by both would be written by whichever ran first and the second seeder's value
+     * would be silently discarded — a translation that exists in the source and not in the database.
+     * Asserted by prefix rather than by comparing the two seeders, so it holds as either grows.
      */
     @Test
-    @DisplayName("'nothing to report' and 'failed' are distinct in every locale")
-    void theTwoQuietStatesNeverReadAlike() {
-        List<String> collisions = new ArrayList<>();
-        for (String locale : PRODUCT_LOCALES) {
-            Map<String, String> rows = seeded.getOrDefault(locale, Map.of());
-            String nothing = rows.get("assistance.nothing_to_report");
-            String failed = rows.get("assistance.error_failed");
-            if (nothing != null && nothing.equals(failed)) {
-                collisions.add(locale);
-            }
-        }
-        assertThat(collisions).isEmpty();
+    @DisplayName("every key lives under assistance.queue., clear of the rail's assistance.signal.")
+    void theNamespaceIsDisjointFromTheRails() {
+        assertThat(englishRows().keySet()).isNotEmpty();
+        assertThat(englishRows().keySet()).allSatisfy(code ->
+                assertThat(code).startsWith("assistance.queue."));
     }
 
     private static Set<String> placeholdersIn(String value) {

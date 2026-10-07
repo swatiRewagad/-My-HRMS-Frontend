@@ -1,9 +1,13 @@
 package com.hrms.cms.controller;
 
 import com.hrms.cms.dto.ClauseRecommendationResponse;
+import com.hrms.cms.dto.ClosureClauseRecommendationResponse.ClauseRecommendation;
+import com.hrms.cms.dto.ClosureClauseRecommendationResponse.ClauseRecommendations;
+import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.security.RequestIdentityResolver;
-import com.hrms.cms.service.ClauseRecommendationService;
+import com.hrms.cms.service.ClosureClauseRecommendationService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +18,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,7 +54,14 @@ import java.util.Set;
  * is {@code roles.iterator().next()} over a {@code HashSet}, so for a multi-role officer it names an
  * arbitrary role and can name a DIFFERENT one on another pod — the same officer would be offered two
  * different clause sets depending on which instance answered. The service states the rule it applies to
- * the set; see {@code ClauseRecommendationService#permittedClauses}.
+ * the set; see {@code ClosureClauseRecommendationService#permittedClauses}.
+ *
+ * <h2>The complaint is resolved HERE, and the service is given the entity</h2>
+ * {@link ClosureClauseRecommendationService} takes a {@link Complaint}, not a number, because the
+ * clause set depends on the complaint's own scheme version and date bounds and because the cohort key is
+ * six of its columns. Resolving it in the controller keeps the service free of a repository lookup it
+ * would have to fail silently, and an unknown number degrades to the no-complaint case — the configured
+ * scheme's clause set, unranked — rather than to a 404 beside a working picker.
  *
  * <h2>Always 200, and the one thing that is not degradation</h2>
  * An unknown complaint, an unresolvable identity, an absent rollup table and an internal failure all
@@ -67,7 +80,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ClauseRecommendationController {
 
-    private final ClauseRecommendationService recommendationService;
+    private final ClosureClauseRecommendationService recommendationService;
+    private final ComplaintRepository complaintRepository;
     private final RequestIdentityResolver identityResolver;
 
     /**
@@ -99,10 +113,17 @@ public class ClauseRecommendationController {
      * hide the wrong thing.
      *
      * <p>Reports the SWITCH and nothing else — no probe, no repository touch, no "does
-     * ASSISTANCE_CLAUSE_PRIOR exist". A status endpoint that tested liveness would be a second failure
-     * path in front of a feature whose entire contract is to fail quietly, and it would report
+     * ASSISTANCE_CLAUSE_AFFINITY exist". A status endpoint that tested liveness would be a second
+     * failure path in front of a feature whose entire contract is to fail quietly, and it would report
      * {@code false} for the live shipped state (migration unapplied) even though the correct behaviour
      * there is a working, unranked picker.
+     *
+     * <p>It reports THIS feature's key only, not its conjunction with {@code cms.assistance.enabled}
+     * that the service enforces. Stated rather than hidden: with the global switch off and this one on,
+     * {@code /status} says {@code true} and the recommendation is nonetheless unranked. The frontend
+     * then shows an affordance that reports no history — the SAME thing it shows for an empty rollup, so
+     * not a broken state — and the alternative, duplicating the conjunction here, would be a second copy
+     * of an activation rule and the one most likely to drift.
      */
     @GetMapping("/clause-recommendation/status")
     public ResponseEntity<Map<String, Object>> status() {
@@ -133,14 +154,23 @@ public class ClauseRecommendationController {
             HttpServletRequest request) {
 
         try {
-            // Null when the identity could not be established. Passed through as-is: the service
-            // returns an EMPTY clause list for an unresolved caller rather than guessing, which is the
-            // fail-closed direction for a role-filtered entitlement. Note the contrast with
-            // AssistanceRailController, which passes a null role on and still renders its
+            // Null when the identity could not be established. Passed through as-is: the service asks
+            // the access service with a BLANK role, which refuses every restricted clause, so an
+            // unresolved caller receives the unrestricted subset and never a restricted one. Note the
+            // contrast with AssistanceRailController, which passes a null role on and still renders its
             // role-independent priors — there is no role-independent half of this feature.
             RequestIdentity identity = identityResolver.resolve(request);
             Set<String> roles = identity == null ? null : identity.getRoles();
-            return ResponseEntity.ok(recommendationService.recommend(complaintNumber, roles));
+
+            // Resolved here, not in the service. An unknown or absent number yields null, which the
+            // service treats as "no complaint in scope": the configured scheme's clause set, unranked.
+            // A 404 would be wrong — the picker works, and the officer has lost only an ordering.
+            Complaint complaint = complaintNumber == null || complaintNumber.isBlank()
+                    ? null
+                    : complaintRepository.findByComplaintNumber(complaintNumber).orElse(null);
+
+            return ResponseEntity.ok(toWire(complaintNumber,
+                    recommendationService.recommend(complaint, roles)));
         } catch (Exception e) {
             // The service already absorbs its own failures; this is the outer net that keeps the
             // contract's single success shape true even if identity resolution itself throws. Returns
@@ -149,5 +179,51 @@ public class ClauseRecommendationController {
             log.warn("Clause recommendation read failed for {}: {}", complaintNumber, e.toString());
             return ResponseEntity.ok(ClauseRecommendationResponse.empty(complaintNumber));
         }
+    }
+
+    /**
+     * Maps the service's answer onto the wire contract.
+     *
+     * <h3>Why the two shapes are not one shape</h3>
+     * The service's {@link ClauseRecommendations} uses primitive {@code long} counts with 0 meaning
+     * "no history", because inside the service every clause has a count and 0 is a true count. The WIRE
+     * contract uses boxed {@code Long} with {@code null} meaning "unranked", because absent and zero are
+     * different claims to a client: "cited 0 times in 815 comparable closures" is a statement, and
+     * "there is no comparable cohort" is not. Collapsing them would make an unranked picker
+     * indistinguishable from a cohort in which a clause was never cited.
+     *
+     * <h3>{@code specificity} is deliberately NOT carried to the wire</h3>
+     * The service computes it and this mapping drops it. It is diagnostics — how many of the five
+     * optional dimensions were specific rather than wildcarded — and on the measured data it is 0 on
+     * every row that can exist today, because ground is 0%-populated, category 7% and entity type
+     * resolves on 1 of 877. Shipping a field that is always 0 invites a client to render it, and a
+     * number an officer cannot act on does not belong beside a statutory clause. Recorded here rather
+     * than removed from the service, because the moment those columns populate it becomes the honest
+     * answer to "why this order" and the service should not have to grow it back.
+     */
+    private ClauseRecommendationResponse toWire(String complaintNumber, ClauseRecommendations result) {
+        List<ClauseRecommendationResponse.Recommendation> clauses =
+                new ArrayList<>(result.clauses().size());
+
+        for (ClauseRecommendation clause : result.clauses()) {
+            // A clause is RANKED iff the cohort held a row for it, which the service signals with a
+            // non-zero denominator — cohortTotal is 0 exactly on the entries it built as unranked. Not
+            // keyed on occurrences, which is legitimately 0 for a permitted clause inside a real cohort.
+            if (clause.cohortTotal() == 0L) {
+                clauses.add(ClauseRecommendationResponse.Recommendation.unranked(
+                        clause.clauseCode(), clause.label(), clause.labelKey()));
+                continue;
+            }
+            clauses.add(new ClauseRecommendationResponse.Recommendation(
+                    clause.clauseCode(), clause.label(), clause.labelKey(),
+                    clause.occurrences(), clause.cohortTotal(), clause.recommended()));
+        }
+
+        if (!result.ranked()) {
+            // Collapses the five degraded states into the one documented shape. See the DTO.
+            return ClauseRecommendationResponse.unranked(complaintNumber, clauses);
+        }
+        return new ClauseRecommendationResponse(
+                complaintNumber, true, result.cohortTotal(), List.copyOf(clauses));
     }
 }

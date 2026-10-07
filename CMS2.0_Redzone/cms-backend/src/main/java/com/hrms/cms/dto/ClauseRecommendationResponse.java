@@ -20,7 +20,7 @@ import java.util.List;
  * contract can make. There is no shape here that says "15(1)(a) recommended" with nothing behind it.
  *
  * <h2>The ranking is a PERMUTATION of what the role may cite, never an addition to it</h2>
- * {@code ClauseRecommendationService} builds this by walking the permitted clause list — the one
+ * {@code ClosureClauseRecommendationService} builds this by walking the permitted clause list — the one
  * {@code ClosureClauseAccessService} already approved for this role, scheme version and date — and
  * consulting the rollup. A clause present in the rollup but not in that list is unreachable from here.
  * That is how {@code restricted_to_roles} is honoured (§5.3.2, §4) despite the rollup itself being

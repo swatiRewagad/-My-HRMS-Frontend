@@ -48,7 +48,13 @@ const KIND_ICONS: Record<string, string> = {
   // imply "do this": a forward/arrow icon reads as a control even with no handler behind it, and this
   // signal reports what HISTORICALLY followed, which the workflow may now refuse. A chart says
   // "frequency with a denominator", which is exactly what the sentence behind it says.
-  'next-action': 'pi-chart-bar'
+  'next-action': 'pi-chart-bar',
+  // An HOURGLASS-END, not `pi-exclamation-triangle`. On today's data every case this signal reports is
+  // already past its deadline (measured: the strictly-inside-48h band is empty), so a warning triangle
+  // would be defensible — but a triangle is this estate's glyph for "something is wrong with this
+  // record", and nothing is wrong with a case that is merely due. A clock-family glyph also keeps it in
+  // the same visual vocabulary as `last-viewed` and `category-closure-time`, which are also about time.
+  'deadline-triage': 'pi-hourglass-end'
 };
 
 /**
@@ -76,7 +82,12 @@ const KIND_LABEL_KEYS: Record<string, string> = {
   'complainant-history': 'assistance.signal.complainant-history',
   'entity-clause-precedent': 'assistance.signal.entity-clause-precedent',
   'category-closure-time': 'assistance.signal.category-closure-time',
-  'next-action': 'assistance.signal.next-action'
+  'next-action': 'assistance.signal.next-action',
+  // The ONE kind here that is NOT about the complaint on screen: it reports the caller's whole open
+  // queue ("3 of your 14 open cases breach within 48h"). Its localised value therefore interpolates
+  // {{count}}, {{total}}, {{hours}} and {{overdue}} — and {{overdue}} is a SUBSET of {{count}}, never a
+  // second bucket, so a translator must not write a sentence that adds the two.
+  'deadline-triage': 'assistance.signal.deadline-triage'
 };
 
 /** The one kind whose `detail` is the officer's own text rather than server prose. */
