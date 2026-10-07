@@ -486,7 +486,7 @@ Stated per deliverable so nothing here is read as more complete than it is.
 | 3. One "find similar cases" path | **Built** | Provider on ES `more_like_this` with timeouts; wrong-index and enabled-by-default defects fixed; 5 denial tests. Shared Angular component + service landed in `262d8cd`, both phantom callers retired, `tsc --noEmit` and `ng build` clean, ESLint clean on all new files |
 | 4. Assistance rail (Tier 0 + Tier 1) — backend | **Built** | `c81bc5b`, 12 files. 30 `AssistanceRailServiceTest` tests across 4 nested classes; the `/api/v1/assistance/**` guard is mutation-proven (§5b). It shipped **three priors, but only one of the six §5.3 items** (§5.3.3); the other two are useful priors the brief did not ask for. The accounting is **§5e** |
 | 4a. Assistance rail — frontend, kill switch, 13 locales | **Built** | `bc7369b`…`e53e7cc`, 5 commits / 32 files (2026-10-06). 103 backend tests 0 fail; `tsc`/`ng build`/ESLint clean; 7 e2e tests enumerate. The two unwired screens and the un-executed e2e are stated in **§5d** |
-| 4b. §5.3.1 next-action prediction | **Built, not yet applied to any database** | 2026-10-06. Rollup table + lease lock, `V115` / `oracle/V113` **written and deliberately unapplied**; scheduled refresh under a DB-backed lease; one keyed read on the request path; the signal is inert and highlighted, never auto-selected; 13 locales; its own §6.2 rate-limit bucket. **109 tests, 0 failures** on the final tree — 101 `Assistance*` plus 8 `RateLimitFilterAssistanceBucketTest` (`mvn -o test -Dtest='Assistance*,RateLimitFilter*'`, 16:14). No officer has seen it render, and on current data it would be **silent on ~86% of complaints** — measured, and explained in **§5e** |
+| 4b. §5.3.1 next-action prediction | **Built, applied and observed on real data** | 2026-10-06 built; `V115` **applied to `cms_db` 2026-10-07** and the refresh job run for real — 38 cohorts, rail returns a signal in 6ms p50 over HTTP. Rollup table + lease lock; scheduled refresh under a DB-backed lease; one keyed read on the request path; the signal is inert and highlighted, never auto-selected; 13 locales; its own §6.2 rate-limit bucket. **109 tests, 0 failures** — 101 `Assistance*` plus 8 `RateLimitFilterAssistanceBucketTest`. Live measurements in **§5f**; the ~86% silence figure is **confirmed** against the populated table |
 | 4c. §5.3.2 closure-clause recommendation | **Not built** | A *ranked* reorder of the existing `<select>` by co-occurrence with (category, ground, entity type, resolution path), honouring `restricted_to_roles`. The shipped `entity-clause-precedent` prior is **not** this: it reports a count beside the complaint and reorders nothing. **§5e** |
 | 4d. §5.3.4 deadline triage | **Not built** | Skipped by agreement, not by oversight — it was the one item consciously dropped to fit §5.3.1. **§5e** |
 | 4e. §5.3.5 entity pattern alert | **Not built** | Deferred by agreement. Needs a second scheduled rollup; the §5.3.1 lease lock is now reusable for it. **§5e** |
@@ -526,9 +526,10 @@ otherwise a deleted test fails your gate forever.
 **Verified by unit test but not observed on real data:**
 
 - Oracle EXPLAIN plans for V109 are **reasoned, not measured** — no Oracle instance was reachable.
-- The **next-action rollup has never held a row.** V115 (MySQL) and Oracle V113 are written and
-  unapplied by instruction, so the refresh job has only ever been exercised against mocks and the
-  signal has only ever rendered in a test. §5e states this per-claim.
+- ~~The **next-action rollup has never held a row.**~~ **SUPERSEDED 2026-10-07:** V115 is applied to
+  `cms_db`, the refresh job has run for real under its lease, and the rail returns a next-action signal
+  over HTTP. See **§5f**. Oracle `V113` remains unapplied — no Oracle instance is reachable, so the
+  Oracle half of the pair is still unproven.
 
 The rail's `category-closure-time` prior was in this list too, and is **no longer** — see §5c. The
 figure I first reported for it ("79 of 2769 rows carry a `category_id`") was both stale on
@@ -1008,6 +1009,81 @@ settle a disclosure question by implementation. The scheduled-rollup machinery t
 **None of #2, #4 or #5 has a stub, a flag or a TODO in the code.** That is deliberate per the brief's
 "do not leave scaffolding", and it is why they are written down here instead. #2 additionally needs a
 ruling it has never had.
+
+---
+
+## 5f. V115 applied, and the rail observed on real data (2026-10-07)
+
+Everything in §5e about §5.3.1 was proven by unit test only, because the migration was deliberately
+unapplied. On the user's instruction (*"please run the migration"*) it has now been applied to the
+shared `cms_db` and the feature exercised for real. This section is the measurement; it supersedes
+every "has never held a row" statement elsewhere in this document.
+
+**The migration applied, and is re-runnable.** `database/V115__assistance_next_action_rollup.sql`
+against `cms_db` → both tables created, `UK_ANA_COHORT (FROM_STATUS, PERFORMED_BY_ROLE, CATEGORY_KEY)`
+present with `non_unique=0`, and the lease row seeded at the `1970-01-01` sentinel. The whole file was
+then **re-run** to prove the hand-application story: exit 0, still exactly one lease row, no duplicate.
+That matters because there is no Flyway here — idempotency has to live inside the `.sql`, and MySQL has
+no `CREATE INDEX IF NOT EXISTS`. **Oracle `V113` is still unapplied**: no Oracle instance is reachable
+from this environment, so the Oracle half of the pair remains unproven.
+
+**The refresh job ran for real, under its lease.** Backend on an isolated port 8096 (`dev-local`,
+`ddl-auto=none`, own Hazelcast cluster-name, `initial-delay-ms=5000`). Afterwards:
+
+```
+cohorts  last_refresh                   LOCKED_UNTIL                   LOCKED_BY
+38       2026-10-07 03:37:51.775482     2026-10-07 03:37:53.263516     unknown-host
+```
+
+`LOCKED_BY` moving off `NULL` is the evidence the lease was genuinely taken and the job was not a
+no-op. `unknown-host` is the documented `${HOSTNAME:unknown-host}` fallback, not a defect. The whole
+recompute over ~17k timeline rows took **~1.5s** (lease acquired 03:37:51.775, released 03:37:53.263).
+
+**38 cohorts, not the 34 predicted.** §5e's figure came from SQL run directly against the timeline;
+the job's own grouping finds 38. **33 sentinel rows** (`CATEGORY_KEY = 0`) plus **5 category-specific
+rows** (`CATEGORY_KEY = 1`). The 5 specific rows are the proof that the sentinel design works as
+intended: the same five cohorts exist at both keys, so as `category_id` populates the prior sharpens by
+itself with no schema or code change. Largest cohorts:
+
+| from_status | role | cat | action | n / total | conf |
+|---|---|---|---|---|---|
+| `assigned` | `CEPC_DO` | 0 | `ACCEPT` | 1748/1748 | 1.00 |
+| `in_progress` | `CEPC_DO` | 0 | `SUBMIT_FOR_REVIEW` | 1062/1200 | 0.89 |
+| `reviewer_review` | `CEPC_REVIEWER` | 0 | `APPROVE_REVIEW` | 999/999 | 1.00 |
+| `incharge_review` | `CEPC_INCHARGE` | 0 | `APPROVE_CLOSURE` | 967/991 | 0.98 |
+| `awaiting_closure` | `CEPC_CLOSING_AUTHORITY` | 0 | `CLOSE_COMPLAINT` | 812/826 | 0.98 |
+
+**The signal renders.** `GET /api/v1/assistance/rail?complaintId=…` with staff identity headers:
+
+- `assigned` complaint as `CEPC_DO` → `glow: true`, one `next-action` signal,
+  `"ACCEPT followed in 1748 of 1748 comparable cases (100%)"`, `link: null`,
+  `params = {count: "1748", action: "ACCEPT", percent: "100", total: "1748"}`.
+- `in_progress` complaint as `CEPC_DO` → `"SUBMIT_FOR_REVIEW followed in 1062 of 1200 … (89%)"`.
+- `closed` complaint as `CEPC_DO` → `glow: false`, **no signals**. This is the ~86%-silence figure
+  observed rather than calculated: there is no `closed`/`CEPC_DO` cohort, and the rail says nothing
+  rather than reaching for a weaker one.
+- `link: null` is the enforcement of "suggest, highlight, do not auto-select" — there is nothing for
+  the officer to click, so the rail cannot commit a workflow transition.
+- `params['count']` is the **numerator** (1748, 1062), confirming on live data the trap §5e records:
+  a denominator there would render "1200 of 1200" in all 13 locales while English stayed correct.
+
+**§6.3 obligations, now dischargeable for this endpoint.** `EXPLAIN` on both new reads:
+
+| query | type | key | rows | extra |
+|---|---|---|---|---|
+| single cohort (`=` on all three) | `const` | `UK_ANA_COHORT` | 1 | — |
+| rail candidates (`IN` on role + category) | `range` | `UK_ANA_COHORT` | 4 | `Using index condition` |
+
+No full scan on either, and `rows` is 1 and 4 — so the request-path read is a keyed lookup, as §5.3's
+"answerable by a single keyed lookup" requires. Latency over HTTP, 20 runs after 3 warmups:
+**p50 6ms, p95 7ms, max 12ms**. That is the whole endpoint including identity resolution, not just the
+query.
+
+**What this still does not prove.** The rail was exercised with `X-User-*` dev-identity headers under
+`dev-local`, so this is not an authorisation measurement — §5b remains the authority there. Keyset
+paging past page 1 is still unexercised (the timeline fits in fewer pages than it takes to advance
+twice meaningfully), `deleteStale` has not been observed deleting anything (nothing is stale yet), and
+no officer has seen the bulb in a browser.
 
 ---
 
