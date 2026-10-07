@@ -61,6 +61,34 @@ import java.util.Map;
  *       it is, the very distinction {@code MIN_CLOSURE_SAMPLE} exists to protect. Safe to combine
  *       because the service emits both names in a single {@code Map.of}: there is no call path that
  *       supplies one without the other, so neither can be left unsubstituted.</li>
+ *   <li>{@code assistance.signal.next-action} — {@code action}, {@code count}, {@code total} and
+ *       {@code percent}, all four in one sentence. {@code action} is a MACHINE key
+ *       ({@code ACCEPT}, {@code SUBMIT_FOR_REVIEW}) and is interpolated verbatim in every locale,
+ *       never translated: it is the string the officer matches against the action-bar buttons, so a
+ *       localised verb here would name a button that does not exist. The denominator is not
+ *       decoration — Brief 21's position is that "a bare recommendation with no denominator will be
+ *       distrusted, correctly", so {@code count} AND {@code total} appear in all thirteen locales and
+ *       {@code percent} alone is never sufficient. Every locale is phrased as a REPORT of what the
+ *       register already did, not as an instruction: the rail suggests and highlights, it does not
+ *       auto-select, and a sentence that reads as "do this" in one locale quietly converts advice
+ *       into a directive for the officers who read it.</li>
+ *   <li>{@code assistance.signal.deadline-triage} — {@code count}, {@code total}, {@code hours} and
+ *       {@code overdue}, all four in one sentence. The ONLY key here whose sentence is not about the
+ *       complaint on screen: it reports the reading officer's WHOLE OPEN QUEUE ("3 of your 14 open
+ *       cases breach within 48h"). Two things a translator must not do with it.
+ *       <p>First, {@code overdue} is a SUBSET of {@code count} and never a second bucket — the service
+ *       computes {@code atRisk} to INCLUDE the already-breached, because a case three days past its
+ *       deadline must not vanish from a signal that a case due tomorrow appears in. A locale phrased as
+ *       "{{count}} breach and {{overdue}} are overdue" invites the officer to add them and double-count
+ *       every overdue case, so every locale below is phrased "of those, {{overdue}}".
+ *       <p>Second, {@code hours} is interpolated rather than written as a literal 48 in thirteen
+ *       sentences: the horizon is {@code cms.assistance.deadline-triage.horizon-hours} and an operator
+ *       who widens it to 72 would otherwise leave thirteen locales stating a window the count was never
+ *       computed over — correct arithmetic under a false caption, which no test would catch because
+ *       both halves are individually right. The service clamps the value to 1..720 before it is
+ *       interpolated, so the number in the sentence is always the number the query used.
+ *       <p>{{count}} IS the numerator here and matches the {@code Signal.count} field, which is what
+ *       lets the component's {@code labelParams()} fold-in remain harmless for this kind.</li>
  *   <li>{@code assistance.signal.category-closure-detail} — {@code sample}. Seeded, but NOT looked up
  *       by anything today: the component has no detail-key map, which is exactly why the sample size
  *       is also folded into the heading above. Kept so that wiring a detail line later is a template
@@ -170,6 +198,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "{{count}} earlier complaints against this entity cited {{clause}}");
         m.put("assistance.signal.category-closure-time",
             "This category closes in {{days}} days typically — median of {{sample}} closed complaints in this category");
+        m.put("assistance.signal.next-action",
+            "{{action}} followed in {{count}} of {{total}} comparable cases ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "{{count}} of your {{total}} open cases breach within {{hours}}h — of those, {{overdue}} are already past the deadline");
         m.put("assistance.signal.category-closure-detail",
             "Median of {{sample}} closed complaints in this category");
         return m;
@@ -200,6 +232,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "इस संस्था के विरुद्ध {{count}} पहले की शिकायतों में {{clause}} का हवाला दिया गया");
         m.put("assistance.signal.category-closure-time",
             "इस श्रेणी में सामान्यतः {{days}} दिनों में निपटान होता है — इस श्रेणी की {{sample}} बंद शिकायतों की माध्यिका");
+        m.put("assistance.signal.next-action",
+            "{{total}} समान मामलों में से {{count}} में इसके बाद {{action}} किया गया ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "आपके {{total}} खुले मामलों में से {{count}} {{hours}} घंटे के भीतर समयसीमा पार करेंगे — इनमें से {{overdue}} पहले ही समयसीमा पार कर चुके हैं");
         m.put("assistance.signal.category-closure-detail",
             "इस श्रेणी की {{sample}} बंद शिकायतों की माध्यिका");
         return m;
@@ -230,6 +266,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "या संस्थेविरुद्धच्या {{count}} पूर्वीच्या तक्रारींमध्ये {{clause}} नमूद केले होते");
         m.put("assistance.signal.category-closure-time",
             "या प्रवर्गात सामान्यतः {{days}} दिवसांत निपटारा होतो — या प्रवर्गातील {{sample}} बंद तक्रारींची मध्यिका");
+        m.put("assistance.signal.next-action",
+            "{{total}} तुलनात्मक प्रकरणांपैकी {{count}} मध्ये यानंतर {{action}} केले गेले ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "तुमच्या {{total}} उघड्या प्रकरणांपैकी {{count}} प्रकरणे {{hours}} तासांत मुदत ओलांडतील — यांपैकी {{overdue}} प्रकरणांनी मुदत आधीच ओलांडली आहे");
         m.put("assistance.signal.category-closure-detail",
             "या प्रवर्गातील {{sample}} बंद तक्रारींची मध्यिका");
         return m;
@@ -260,6 +300,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "এই সংস্থার বিরুদ্ধে {{count}}টি আগের অভিযোগে {{clause}} উল্লেখ করা হয়েছে");
         m.put("assistance.signal.category-closure-time",
             "এই শ্রেণিতে সাধারণত {{days}} দিনে নিষ্পত্তি হয় — এই শ্রেণির {{sample}}টি বন্ধ অভিযোগের মধ্যমা");
+        m.put("assistance.signal.next-action",
+            "{{total}}টি তুলনীয় ক্ষেত্রের মধ্যে {{count}}টিতে এরপর {{action}} করা হয়েছিল ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "আপনার {{total}}টি খোলা মামলার মধ্যে {{count}}টি {{hours}} ঘণ্টার মধ্যে সময়সীমা ছাড়াবে — এর মধ্যে {{overdue}}টি ইতিমধ্যেই সময়সীমা পার করেছে");
         m.put("assistance.signal.category-closure-detail",
             "এই শ্রেণির {{sample}}টি বন্ধ অভিযোগের মধ্যমা");
         return m;
@@ -290,6 +334,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "ఈ సంస్థపై ఉన్న {{count}} మునుపటి ఫిర్యాదులలో {{clause}} ఉదహరించబడింది");
         m.put("assistance.signal.category-closure-time",
             "ఈ విభాగంలో సాధారణంగా {{days}} రోజులలో ముగుస్తుంది — ఈ విభాగంలో ముగించిన {{sample}} ఫిర్యాదుల మధ్యగతం");
+        m.put("assistance.signal.next-action",
+            "{{total}} పోల్చదగిన కేసులలో {{count}}లో ఆ తర్వాత {{action}} జరిగింది ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "మీ {{total}} తెరిచిన కేసులలో {{count}} కేసులు {{hours}} గంటలలో గడువును దాటుతాయి — వాటిలో {{overdue}} ఇప్పటికే గడువు దాటాయి");
         m.put("assistance.signal.category-closure-detail",
             "ఈ విభాగంలో ముగించిన {{sample}} ఫిర్యాదుల మధ్యగతం");
         return m;
@@ -320,6 +368,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "இந்த நிறுவனத்திற்கு எதிரான {{count}} முந்தைய புகார்களில் {{clause}} குறிப்பிடப்பட்டது");
         m.put("assistance.signal.category-closure-time",
             "இந்த வகையில் பொதுவாக {{days}} நாட்களில் முடிக்கப்படுகிறது — இந்த வகையில் முடிக்கப்பட்ட {{sample}} புகார்களின் இடைநிலை");
+        m.put("assistance.signal.next-action",
+            "ஒப்பிடத்தக்க {{total}} வழக்குகளில் {{count}} வழக்குகளில் அடுத்து {{action}} நிகழ்ந்தது ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "உங்கள் {{total}} திறந்த வழக்குகளில் {{count}} வழக்குகள் {{hours}} மணி நேரத்தில் காலக்கெடுவை மீறும் — அவற்றில் {{overdue}} ஏற்கெனவே காலக்கெடுவைக் கடந்துவிட்டன");
         m.put("assistance.signal.category-closure-detail",
             "இந்த வகையில் முடிக்கப்பட்ட {{sample}} புகார்களின் இடைநிலை");
         return m;
@@ -350,6 +402,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "આ સંસ્થા વિરુદ્ધની {{count}} અગાઉની ફરિયાદોમાં {{clause}} ટાંકવામાં આવ્યું હતું");
         m.put("assistance.signal.category-closure-time",
             "આ શ્રેણીમાં સામાન્ય રીતે {{days}} દિવસમાં નિકાલ થાય છે — આ શ્રેણીની {{sample}} બંધ ફરિયાદોનો મધ્યક");
+        m.put("assistance.signal.next-action",
+            "{{total}} તુલનાપાત્ર કેસોમાંથી {{count}} માં પછી {{action}} કરવામાં આવ્યું હતું ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "તમારા {{total}} ખુલ્લા કેસોમાંથી {{count}} કેસ {{hours}} કલાકમાં સમયમર્યાદા વટાવશે — તેમાંથી {{overdue}} કેસ પહેલેથી જ સમયમર્યાદા વટાવી ચૂક્યા છે");
         m.put("assistance.signal.category-closure-detail",
             "આ શ્રેણીની {{sample}} બંધ ફરિયાદોનો મધ્યક");
         return m;
@@ -380,6 +436,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "اس ادارے کے خلاف {{count}} پہلی شکایات میں {{clause}} کا حوالہ دیا گیا");
         m.put("assistance.signal.category-closure-time",
             "اس زمرے میں عموماً {{days}} دنوں میں نمٹایا جاتا ہے — اس زمرے کی {{sample}} بند شکایات کا وسطانیہ");
+        m.put("assistance.signal.next-action",
+            "{{total}} مماثل مقدمات میں سے {{count}} میں اس کے بعد {{action}} کیا گیا ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "آپ کے {{total}} کھلے مقدمات میں سے {{count}} مقدمات {{hours}} گھنٹوں میں آخری تاریخ سے تجاوز کریں گے — ان میں سے {{overdue}} پہلے ہی آخری تاریخ گزار چکے ہیں");
         m.put("assistance.signal.category-closure-detail",
             "اس زمرے کی {{sample}} بند شکایات کا وسطانیہ");
         return m;
@@ -410,6 +470,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "ಈ ಸಂಸ್ಥೆಯ ವಿರುದ್ಧದ {{count}} ಹಿಂದಿನ ದೂರುಗಳಲ್ಲಿ {{clause}} ಉಲ್ಲೇಖಿಸಲಾಗಿದೆ");
         m.put("assistance.signal.category-closure-time",
             "ಈ ವರ್ಗದಲ್ಲಿ ಸಾಮಾನ್ಯವಾಗಿ {{days}} ದಿನಗಳಲ್ಲಿ ಮುಕ್ತಾಯವಾಗುತ್ತದೆ — ಈ ವರ್ಗದಲ್ಲಿ ಮುಚ್ಚಿದ {{sample}} ದೂರುಗಳ ಮಧ್ಯವರ್ತಿ ಮೌಲ್ಯ");
+        m.put("assistance.signal.next-action",
+            "ಹೋಲಿಸಬಹುದಾದ {{total}} ಪ್ರಕರಣಗಳಲ್ಲಿ {{count}} ಪ್ರಕರಣಗಳಲ್ಲಿ ನಂತರ {{action}} ನಡೆದಿದೆ ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "ನಿಮ್ಮ {{total}} ತೆರೆದ ಪ್ರಕರಣಗಳಲ್ಲಿ {{count}} ಪ್ರಕರಣಗಳು {{hours}} ಗಂಟೆಗಳಲ್ಲಿ ಗಡುವನ್ನು ಮೀರುತ್ತವೆ — ಅವುಗಳಲ್ಲಿ {{overdue}} ಈಗಾಗಲೇ ಗಡುವನ್ನು ಮೀರಿವೆ");
         m.put("assistance.signal.category-closure-detail",
             "ಈ ವರ್ಗದಲ್ಲಿ ಮುಚ್ಚಿದ {{sample}} ದೂರುಗಳ ಮಧ್ಯವರ್ತಿ ಮೌಲ್ಯ");
         return m;
@@ -440,6 +504,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "ഈ സ്ഥാപനത്തിനെതിരായ {{count}} മുൻ പരാതികളിൽ {{clause}} ഉദ്ധരിച്ചിട്ടുണ്ട്");
         m.put("assistance.signal.category-closure-time",
             "ഈ വിഭാഗത്തിൽ സാധാരണയായി {{days}} ദിവസത്തിനുള്ളിൽ തീർപ്പാകുന്നു — ഈ വിഭാഗത്തിൽ തീർപ്പാക്കിയ {{sample}} പരാതികളുടെ മധ്യമം");
+        m.put("assistance.signal.next-action",
+            "താരതമ്യപ്പെടുത്താവുന്ന {{total}} കേസുകളിൽ {{count}} എണ്ണത്തിൽ തുടർന്ന് {{action}} നടന്നു ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "നിങ്ങളുടെ {{total}} തുറന്ന കേസുകളിൽ {{count}} എണ്ണം {{hours}} മണിക്കൂറിനുള്ളിൽ സമയപരിധി ലംഘിക്കും — അവയിൽ {{overdue}} എണ്ണം ഇതിനകം സമയപരിധി കഴിഞ്ഞു");
         m.put("assistance.signal.category-closure-detail",
             "ഈ വിഭാഗത്തിൽ തീർപ്പാക്കിയ {{sample}} പരാതികളുടെ മധ്യമം");
         return m;
@@ -470,6 +538,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "ਇਸ ਸੰਸਥਾ ਵਿਰੁੱਧ {{count}} ਪਹਿਲੀਆਂ ਸ਼ਿਕਾਇਤਾਂ ਵਿੱਚ {{clause}} ਦਾ ਹਵਾਲਾ ਦਿੱਤਾ ਗਿਆ");
         m.put("assistance.signal.category-closure-time",
             "ਇਸ ਸ਼੍ਰੇਣੀ ਵਿੱਚ ਆਮ ਤੌਰ 'ਤੇ {{days}} ਦਿਨਾਂ ਵਿੱਚ ਨਿਪਟਾਰਾ ਹੁੰਦਾ ਹੈ — ਇਸ ਸ਼੍ਰੇਣੀ ਦੀਆਂ {{sample}} ਬੰਦ ਸ਼ਿਕਾਇਤਾਂ ਦਾ ਮੱਧਮਾਨ");
+        m.put("assistance.signal.next-action",
+            "{{total}} ਤੁਲਨਾਯੋਗ ਮਾਮਲਿਆਂ ਵਿੱਚੋਂ {{count}} ਵਿੱਚ ਇਸ ਤੋਂ ਬਾਅਦ {{action}} ਕੀਤਾ ਗਿਆ ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "ਤੁਹਾਡੇ {{total}} ਖੁੱਲ੍ਹੇ ਮਾਮਲਿਆਂ ਵਿੱਚੋਂ {{count}} ਮਾਮਲੇ {{hours}} ਘੰਟਿਆਂ ਵਿੱਚ ਸਮਾਂ-ਸੀਮਾ ਪਾਰ ਕਰ ਜਾਣਗੇ — ਇਨ੍ਹਾਂ ਵਿੱਚੋਂ {{overdue}} ਪਹਿਲਾਂ ਹੀ ਸਮਾਂ-ਸੀਮਾ ਪਾਰ ਕਰ ਚੁੱਕੇ ਹਨ");
         m.put("assistance.signal.category-closure-detail",
             "ਇਸ ਸ਼੍ਰੇਣੀ ਦੀਆਂ {{sample}} ਬੰਦ ਸ਼ਿਕਾਇਤਾਂ ਦਾ ਮੱਧਮਾਨ");
         return m;
@@ -511,6 +583,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "ଏହି ସଂସ୍ଥା ବିରୁଦ୍ଧରେ {{count}}ଟି ପୂର୍ବ ଅଭିଯୋଗରେ {{clause}} ଉଲ୍ଲେଖ କରାଯାଇଥିଲା");
         m.put("assistance.signal.category-closure-time",
             "ଏହି ଶ୍ରେଣୀରେ ସାଧାରଣତଃ {{days}} ଦିନରେ ନିଷ୍ପତ୍ତି ହୁଏ — ଏହି ଶ୍ରେଣୀର {{sample}}ଟି ବନ୍ଦ ଅଭିଯୋଗର ମଧ୍ୟମା");
+        m.put("assistance.signal.next-action",
+            "{{total}}ଟି ତୁଳନୀୟ ମାମଲା ମଧ୍ୟରୁ {{count}}ଟିରେ ଏହା ପରେ {{action}} କରାଯାଇଥିଲା ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "ଆପଣଙ୍କ {{total}}ଟି ଖୋଲା ମାମଲା ମଧ୍ୟରୁ {{count}}ଟି {{hours}} ଘଣ୍ଟା ଭିତରେ ସମୟସୀମା ଅତିକ୍ରମ କରିବ — ସେଥିମଧ୍ୟରୁ {{overdue}}ଟି ପୂର୍ବରୁ ହିଁ ସମୟସୀମା ଅତିକ୍ରମ କରିଛି");
         m.put("assistance.signal.category-closure-detail",
             "ଏହି ଶ୍ରେଣୀର {{sample}}ଟି ବନ୍ଦ ଅଭିଯୋଗର ମଧ୍ୟମା");
         return m;
@@ -558,6 +634,10 @@ public class AssistanceRailTranslationSeeder implements CommandLineRunner {
             "এই প্ৰতিষ্ঠানৰ বিৰুদ্ধে {{count}}টা পূৰ্বৰ অভিযোগত {{clause}} উল্লেখ কৰা হৈছিল");
         m.put("assistance.signal.category-closure-time",
             "এই শ্ৰেণীত সাধাৰণতে {{days}} দিনত নিষ্পত্তি হয় — এই শ্ৰেণীৰ {{sample}}টা বন্ধ অভিযোগৰ মধ্যমা");
+        m.put("assistance.signal.next-action",
+            "{{total}}টা তুলনীয় গোচৰৰ ভিতৰত {{count}}টাত ইয়াৰ পিছত {{action}} কৰা হৈছিল ({{percent}}%)");
+        m.put("assistance.signal.deadline-triage",
+            "আপোনাৰ {{total}}টা খোলা গোচৰৰ ভিতৰত {{count}}টা {{hours}} ঘণ্টাৰ ভিতৰত সময়সীমা অতিক্ৰম কৰিব — সেইবোৰৰ ভিতৰত {{overdue}}টা ইতিমধ্যে সময়সীমা পাৰ কৰিছে");
         m.put("assistance.signal.category-closure-detail",
             "এই শ্ৰেণীৰ {{sample}}টা বন্ধ অভিযোগৰ মধ্যমা");
         return m;

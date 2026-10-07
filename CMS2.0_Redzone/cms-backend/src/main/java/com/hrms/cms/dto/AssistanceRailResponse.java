@@ -71,6 +71,13 @@ public record AssistanceRailResponse(
      *   <li>{@code complainant-history} — {@code count}</li>
      *   <li>{@code entity-clause-precedent} — {@code count}, {@code clause}</li>
      *   <li>{@code category-closure-time} — {@code days}, {@code sample}</li>
+     *   <li>{@code next-action} — {@code action}, {@code count}, {@code total}, {@code percent}. The
+     *       only kind that sends {@code count} EXPLICITLY rather than letting the client fold it in
+     *       from the {@code count} field, and the reason is a trap worth naming: the client supplies
+     *       {@code params['count']} from {@code count} only when params lacks it, so a kind whose
+     *       {@code count} field meant something different from its {@code {{count}}} placeholder would
+     *       render a false sentence in all 13 locales while the English {@code title} stayed correct.
+     *       Here both are the numerator. {@code action} is a MACHINE key and is never translated.</li>
      * </ul>
      *
      * <p>PURELY ADDITIVE. {@code title} and {@code detail} keep their English values: the field is a

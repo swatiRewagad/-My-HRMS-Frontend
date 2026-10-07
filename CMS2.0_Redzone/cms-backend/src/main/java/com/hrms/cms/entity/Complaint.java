@@ -237,6 +237,28 @@ public class Complaint {
     @Column(name = "sla_priority", length = 10)
     private String slaPriority;
 
+    /**
+     * When the SLA-breach sweep raised an escalation for this complaint, and the sweep's once-only
+     * marker (see {@link com.hrms.cms.service.SlaBreachEscalationService}).
+     *
+     * <p><b>Deliberately NOT {@link #escalatedAt}.</b> That column is the MANUAL/workflow escalation
+     * stamp, written by four existing callers — {@code WorkflowController:824},
+     * {@code CepcWorkflowService:449}, {@code ComplaintService:306} and
+     * {@code RbioWorkflowService:979}. Reusing it would break both directions: a complaint an officer
+     * had already escalated by hand would be permanently invisible to the breach sweep even when it
+     * later blew its deadline, and the sweep's own writes would be indistinguishable from an
+     * officer's action everywhere {@code escalatedAt} is surfaced (e.g.
+     * {@code PastComplaintService:248}). The two facts are different facts, so they get different
+     * columns.
+     *
+     * <p>Column name must match {@code database/V122__sla_breach_escalation_marker.sql} and its
+     * Oracle twin {@code database/oracle/V120__...} EXACTLY: dev runs {@code ddl-auto: update} and
+     * would silently add whatever this says, but prod runs {@code validate} and refuses to boot on a
+     * mismatch.
+     */
+    @Column(name = "sla_breach_escalated_at")
+    private LocalDateTime slaBreachEscalatedAt;
+
     // ═══ Conciliation/Adjudication fields (CEPC) ═══
     @Column(name = "conciliation_date")
     private LocalDateTime conciliationDate;

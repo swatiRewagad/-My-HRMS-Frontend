@@ -188,6 +188,25 @@
   background: var(--surface-card);
 }
 
+// ═══ THE HIGHLIGHT, AND THE LINE IT MAY NOT CROSS ═══
+// Brief 21 is "suggest, highlight, do not auto-select". This is the whole of the highlight: a weight
+// change on a row that remains prose. `next-action` reports what HISTORICALLY followed, which the
+// workflow may now refuse, so nothing here may read as a control — no cursor: pointer, no hover state,
+// no button-like fill. An officer who tried to click it and found it inert would be correct about what
+// it is; one who found it acted would have had a transition chosen for them by a frequency.
+//
+// Informational surface, not a state colour: `--state-info-*` and NOT warning or success, because the
+// row asserts a measurement and makes no claim that the action is right. Layered after the tier
+// modifier so it overrides that background by order, matching how the tier rules themselves work.
+.assistance-signal--emphasis {
+  border-left-color: var(--state-info-fg);
+  background: var(--state-info-bg);
+
+  // The glyph only. The label keeps its weight so the emphasis does not turn a sentence about other
+  // complaints into the loudest thing in the panel — tier 0 is still the half the officer could lose.
+  .assistance-signal-icon { color: var(--state-info-fg); }
+}
+
 // `flex-shrink: 0` is load-bearing: a long unwrapped label would otherwise squeeze the glyph to nothing
 // and the row would lose the only mark of what kind of signal it is.
 .assistance-signal-icon {

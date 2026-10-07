@@ -224,6 +224,63 @@ test.describe('Assistance rail — the bulb and its states', () => {
     });
 
     /**
+     * ── `next-action` IS INFORMATION, NOT AN AFFORDANCE ──
+     *
+     * Brief 21 is "suggest, highlight, do not auto-select", and this is the one signal where that is a
+     * CORRECTNESS requirement rather than a styling preference: its rollup is mined from what
+     * HISTORICALLY followed, not from what the workflow currently permits, so it can name an action
+     * `workflow-action-bar` would refuse. A row that offered a click would therefore let a frequency
+     * commit real workflow state.
+     *
+     * The payload is STUBBED because the signal needs a corpus of comparable closed cases the harness DB
+     * cannot be relied on to have — and the assertion here is about the rendering contract, not about
+     * whether the rollup fired. Asserted as the ABSENCE of every interactive shape inside the row (the
+     * dismiss button excepted, which every kind has and which changes no workflow state), because that
+     * absence is exactly what no screenshot can show.
+     */
+    test('the next-action signal renders as prose with nothing to click', async ({ page, context }) => {
+      await context.route('**/api/v1/assistance/rail?*', route => route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          complaintNumber,
+          glow: true,
+          count: 1,
+          signals: [{
+            tier: 1,
+            kind: 'next-action',
+            title: 'ACCEPT followed in 183 of 217 comparable cases (84%)',
+            detail: 'Based on 217 comparable past cases. Advisory only.',
+            count: 183,
+            link: null,
+            params: { action: 'ACCEPT', count: '183', total: '217', percent: '84' }
+          }]
+        })
+      }));
+
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.locator(BULB).click();
+
+      const row = page.locator('[data-testid="assistance-signal-next-action"]');
+      await expect(row).toBeVisible();
+
+      // Registered in the component's two kind maps — an unmapped kind falls back to the server's
+      // English title, which looks identical, so the ICON is what proves registration happened.
+      await expect(row.locator('.assistance-signal-icon')).toHaveClass(/pi-chart-bar/);
+
+      // THE ASSERTION THAT MATTERS: nothing in the row can cause a transition. No button or link other
+      // than the per-kind dismissal, which only hides the suggestion.
+      const clickable = row.locator('a, button, [role="button"], [role="link"], input, select');
+      await expect(clickable).toHaveCount(1);
+      await expect(clickable.first()).toHaveAttribute('data-testid', 'assistance-dismiss-next-action');
+      await expect(row.locator('a')).toHaveCount(0);
+
+      // And the action bar is untouched — no pre-selection, no pre-fill from the suggestion.
+      await expect(page.locator('[aria-pressed="true"], .p-button.p-highlight, select option[selected]'))
+        .toHaveCount(0);
+    });
+
+    /**
      * §5.1: assistance failing must be SILENT and must leave the screen fully usable. The route abort
      * is the only honest way to produce this, since the endpoints always answer 200 by design.
      */

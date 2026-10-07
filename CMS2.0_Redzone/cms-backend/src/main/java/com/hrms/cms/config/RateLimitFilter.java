@@ -32,6 +32,20 @@ public class RateLimitFilter implements Filter {
     @Value("${cms.rate-limit.api-requests-per-second:100}")
     private int requestsPerSecond;
 
+    /**
+     * The assistance rail's own allowance, per Brief 21 §6.2 ("Assistance gets its own, smaller
+     * bucket"), so an ambient feature polling in the background can never starve the core traffic an
+     * officer is waiting on.
+     *
+     * <p>Per MINUTE rather than per second, because the rail is event-driven, not sustained: a screen
+     * open costs a {@code /status}, a {@code /rail} and later one {@code /rail/memory}, so a per-second
+     * ceiling would have to be a fraction and would reject a legitimate screen load. Sixty is roughly
+     * twenty screens a minute — well past human pace — while remaining 1/50th of the core
+     * allowance's 3,000, which is the ratio that makes the separation mean something.
+     */
+    @Value("${cms.rate-limit.assistance-requests-per-minute:60}")
+    private int assistanceRequestsPerMinute;
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -44,7 +58,12 @@ public class RateLimitFilter implements Filter {
         }
 
         String clientIp = getClientIp(httpRequest);
-        Bucket bucket = buckets.computeIfAbsent(clientIp, k -> createBucket());
+        boolean assistance = path.startsWith("/api/v1/assistance/");
+        // Prefixed into the SAME map so the MAX_BUCKETS eviction keeps bounding total memory. A second
+        // map would double the ceiling silently.
+        String key = assistance ? "assist|" + clientIp : clientIp;
+        Bucket bucket = buckets.computeIfAbsent(key,
+                k -> assistance ? createAssistanceBucket() : createBucket());
 
         if (bucket.tryConsume(1)) {
             chain.doFilter(request, response);
@@ -60,6 +79,24 @@ public class RateLimitFilter implements Filter {
         return Bucket.builder()
                 .addLimit(Bandwidth.simple(requestsPerSecond, Duration.ofSeconds(1)))
                 .addLimit(Bandwidth.simple(requestsPerSecond * 30L, Duration.ofMinutes(1)))
+                .build();
+    }
+
+    /**
+     * The assistance bucket: one limit, not two.
+     *
+     * <p>The core bucket pairs a per-second ceiling with a per-minute one to catch both a burst and a
+     * sustained flood. Here the per-minute limit alone does both jobs — 60 tokens cannot be a flood at
+     * any rate — and a second per-second limit would only reject the three-call burst of a single
+     * screen load, which is exactly the traffic this feature is supposed to serve.
+     *
+     * <p>Exhausting it degrades the rail to no bulb, which is the §5.1 silent-failure contract already
+     * in force for a transport error. That is the reason a bucket this small is safe to impose on a
+     * staff screen: the officer loses an ambient hint, never the screen.
+     */
+    private Bucket createAssistanceBucket() {
+        return Bucket.builder()
+                .addLimit(Bandwidth.simple(assistanceRequestsPerMinute, Duration.ofMinutes(1)))
                 .build();
     }
 
