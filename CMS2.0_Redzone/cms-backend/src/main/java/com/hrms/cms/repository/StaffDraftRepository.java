@@ -2,6 +2,8 @@ package com.hrms.cms.repository;
 
 import com.hrms.cms.entity.StaffDraft;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,4 +32,15 @@ public interface StaffDraftRepository extends JpaRepository<StaffDraft, Long> {
     Optional<StaffDraft> findByIdAndOwnerUserId(Long id, String ownerUserId);
 
     List<StaffDraft> findByOwnerUserIdAndComplaintNumber(String ownerUserId, String complaintNumber);
+
+    /**
+     * The CEPC dashboard's Draft badge.
+     *
+     * <p>A null draft status counts as still open, matching the row filter in
+     * {@code CepcComplaintSearchService.draftPage} — the badge and the list it labels have to agree, and a
+     * derived {@code ...DraftStatusNot} finder would silently drop the null rows.
+     */
+    @Query("SELECT COUNT(d) FROM StaffDraft d WHERE d.ownerUserId = :ownerUserId "
+         + "AND (d.draftStatus IS NULL OR UPPER(d.draftStatus) <> 'SUBMITTED')")
+    long countOpenDraftsForOwner(@Param("ownerUserId") String ownerUserId);
 }

@@ -54,6 +54,14 @@ kogito:
 
 # CMS Workflow Configuration
 cms:
+  cors:
+    # Comma-separated, or a YAML list. Wildcards allowed, e.g. https://*.rebit.org.in
+    allowed-origins: ${CMS_CORS_ORIGINS:http://localhost:4200,http://localhost:4201,http://localhost:4202,http://localhost:4300}
+    allowed-methods: ${CMS_CORS_METHODS:GET,POST,PUT,PATCH,DELETE,OPTIONS}
+    allowed-headers: ${CMS_CORS_HEADERS:*}
+    allow-credentials: ${CMS_CORS_ALLOW_CREDENTIALS:true}
+    max-age: ${CMS_CORS_MAX_AGE:3600}
+
   kafka:
     retry:
       max-attempts: ${CMS_KAFKA_MAX_RETRIES:3}

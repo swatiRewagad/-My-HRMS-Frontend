@@ -1,0 +1,80 @@
+<div class="history-slide-panel">
+  <div class="history-panel-header">
+    <h3><i class="pi pi-history"></i> {{ 'ui.cepc.dv.tab.history' | translateOr: 'History' }}</h3>
+    <div class="history-panel-actions">
+      <button class="hide-comments-toggle" (click)="hideCommentsChange.emit(!hideComments)" [class.active]="hideComments">
+        <i class="pi" [class.pi-eye-slash]="hideComments" [class.pi-eye]="!hideComments"></i>
+        {{ hideComments ? 'Show Comments' : 'Hide Comments' }}
+      </button>
+      <button class="sidebar-expand-btn" (click)="close.emit()" [title]="'ui.cepc.dv.action.close' | translateOr: 'Close'">
+        <i class="pi pi-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+
+  @if (loadingHistory) {
+    <div class="history-loading">
+      <i class="pi pi-spin pi-spinner"></i> {{ 'ui.cepc.panel.loading_history' | translateOr: 'Loading history...' }}
+    </div>
+  } @else if (historyEntries.length === 0) {
+    <div class="history-empty">
+      <i class="pi pi-info-circle"></i>
+      <p>{{ 'ui.cepc.panel.no_history_for_complaint' | translateOr: 'No history available for this complaint.' }}</p>
+    </div>
+  } @else {
+    <div class="history-entries">
+
+      @for (entry of historyEntries; track entry.id; let isFirst = $first; let isLast = $last) {
+        <div class="history-entry-row" [class.is-latest]="isFirst">
+          <div class="timeline-track">
+            <span class="entry-status-dot">
+              <i class="pi" [class.pi-ellipsis-h]="isFirst" [class.pi-check]="!isFirst"></i>
+            </span>
+            <hr class="timeline-connector bottom" />
+          </div>
+
+          <div class="history-entry-card">
+            <span class="entry-status-badge"
+                  [style.background]="isFirst ? null : entry.statusColor + '1a'"
+                  [style.color]="isFirst ? null : entry.statusColor">
+              {{ entry.statusLabel }}
+            </span>
+
+            <div class="entry-detail-row">
+              <div class="entry-detail-item">
+                <span class="entry-detail-label">{{ 'ui.cepc.panel.modified_on' | translateOr: 'Modified On' }}</span>
+                <span class="entry-detail-value">{{ entry.modifiedOn }}</span>
+              </div>
+              <div class="entry-detail-item">
+                <span class="entry-detail-label">{{ 'ui.cepc.panel.modified_by' | translateOr: 'Modified By' }}</span>
+                <span class="entry-detail-value">{{ entry.modifiedBy }}</span>
+              </div>
+            </div>
+
+            <div class="entry-officer-row">
+              <span class="officer-avatar" [style.background]="isFirst ? null : (entry.officerAvatarColor || '#8b5cf6')">
+                {{ entry.assignedOfficer.substring(0, 2) }}
+              </span>
+              <div class="officer-info">
+                <span class="entry-detail-label">{{ 'ui.cepc.dv.field.assigned_to' | translateOr: 'Assigned To' }}</span>
+                <span class="officer-name">{{ entry.assignedOfficer }}</span>
+              </div>
+            </div>
+
+            @if (!hideComments && entry.description) {
+              <div class="entry-comments">
+                <p>
+                  {{ entry.description.length > 150 ? entry.description.substring(0, 150) : entry.description }}
+                  @if (entry.description.length > 150) {
+                    <a class="read-more">{{ 'ui.cepc.dv.action.read_more' | translateOr: '...read more' }}</a>
+                  }
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+    </div>
+  }
+</div>

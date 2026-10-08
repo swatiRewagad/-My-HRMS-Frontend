@@ -54,13 +54,18 @@ class DemoDataSeederClosureCohortTest {
     private DemoDataSeeder seeder;
 
     /**
-     * Runs the seeder and returns what it would have written.
+     * Runs the seeder and returns what it would have written to the report-builder batch.
      *
-     * <p>{@code atLeastOnce} and the LAST captured batch, not {@code verify(...)} and the only one:
+     * <p>{@code atLeastOnce} and the FIRST captured batch, not {@code verify(...)} and the only one:
      * {@link Invariants#medianIsStableAcrossRuns} seeds twice on purpose, and a strict single-invocation
-     * verify would fail there for a reason that has nothing to do with the fixture.
+     * verify would fail there for a reason that has nothing to do with the fixture. The first invocation,
+     * not the last, because {@code seedInternal} also calls {@code seedCepcDoComplaints} afterwards —
+     * a separate fixture under its own guard and numbering scheme (CMP-* against a department/role
+     * query, not CMS-DEMO-* against this seeder's own count) that this cohort's assertions are not about.
+     * Invocations are cleared before each run so a second run's first batch is not the first run's.
      */
     private List<Complaint> seed() {
+        org.mockito.Mockito.clearInvocations(complaintRepo);
         when(complaintRepo.countByComplaintNumberStartingWith(anyString())).thenReturn(0L);
 
         seeder.run();
@@ -68,7 +73,7 @@ class DemoDataSeederClosureCohortTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Complaint>> captor = ArgumentCaptor.forClass(List.class);
         verify(complaintRepo, atLeastOnce()).saveAll(captor.capture());
-        return captor.getValue();
+        return captor.getAllValues().get(0);
     }
 
     /**
@@ -253,7 +258,7 @@ class DemoDataSeederClosureCohortTest {
 
             seeder.run();
 
-            verify(complaintRepo).saveAll(org.mockito.ArgumentMatchers.anyList());
+            verify(complaintRepo, atLeastOnce()).saveAll(org.mockito.ArgumentMatchers.anyList());
         }
     }
 }

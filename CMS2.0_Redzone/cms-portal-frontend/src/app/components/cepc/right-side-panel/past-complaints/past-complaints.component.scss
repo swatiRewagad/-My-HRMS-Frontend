@@ -1,0 +1,173 @@
+@use '../_shared' as *;
+
+.col-right-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--p-content-background, #fff);
+  border-left: 1px solid var(--p-content-border-color, #e2e8f0);
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .sidebar-section {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--p-content-border-color, #f1f5f9);
+    flex: 0 0 auto;
+  }
+
+  /* Past Complaints grows/shrinks to fill the space between the fixed
+     Reference header and the pinned Documents section below it; its own
+     card list (.pc-list-scroll) is what actually scrolls. */
+  .pc-section {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+
+    .sidebar-section-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  /* Documents always keeps its natural size and stays visible — it never
+     shrinks to make room, so it can't get pushed out of view. */
+  .documents-section {
+    flex: 0 0 auto;
+  }
+
+  .sidebar-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--p-text-muted-color, #334155);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+
+      i { font-size: 14px; color: var(--p-text-muted-color, #64748b); }
+      .sidebar-count-badge {
+        background: var(--p-content-border-color, #e2e8f0);
+        color: var(--p-text-muted-color, #475569);
+        padding: 1px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .sidebar-section-body {
+    margin-top: 8px;
+  }
+
+  .sidebar-search {
+    position: relative;
+    margin-bottom: 10px;
+
+    i {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--p-text-muted-color, #94a3b8);
+      font-size: 13px;
+    }
+
+    input {
+      width: 100%;
+      padding: 7px 10px 7px 32px;
+      border: 1px solid var(--p-content-border-color, #e2e8f0);
+      border-radius: 6px;
+      font-size: 12px;
+      &:focus { outline: none; border-color: #6366f1; }
+    }
+  }
+}
+
+.pc-list-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--p-content-border-color, #cbd5e1); border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--p-text-muted-color, #94a3b8); }
+}
+
+.doc-list-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--p-content-border-color, #cbd5e1); border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--p-text-muted-color, #94a3b8); }
+}
+
+/* // ═══ SIDEBAR: PAST COMPLAINT CARDS ═══ */
+.past-complaint-card {
+  padding: 14px;
+  border: 1px solid var(--p-content-border-color, #e8ecf0);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  background: var(--p-content-background, #fff);
+  &:hover { border-color: #93c5fd; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+
+  &.pc-active-card {
+    background: #ecfdf5; border-color: #a7f3d0;
+    &:hover { background: #d1fae5; }
+  }
+  &.pc-completed-card {
+    background: #f0f0f8; border-color: #d4d4e8;
+    &:hover { background: #e8e8f4; }
+  }
+
+  .pc-status-row {
+    display: flex; align-items: center; gap: 8px;
+    position: absolute; top: 12px; right: 12px;
+  }
+  .pc-status {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 14px;
+    i { font-size: 12px; }
+    &.active { background: #d1fae5; color: #065f46; i { color: #16a34a; font-size: 14px; } }
+    &.completed { background: #e8e8f0; color: #475569; border: 1px solid #d4d4e8; i { color: #64748b; } }
+  }
+  .pc-clock-icon {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #e8e8f0; border: 1px solid #d4d4e8;
+    display: flex; align-items: center; justify-content: center;
+    i { font-size: 14px; color: #475569; }
+  }
+  .pc-details {
+    display: flex; flex-direction: column; gap: 2px; margin-top: 2px; padding-right: 80px;
+    .pc-field {
+      font-size: 12px; color: var(--p-text-muted-color, #475569); line-height: 1.6;
+      strong { color: var(--p-text-color, #1e293b); font-weight: 600; }
+    }
+  }
+  .pc-entity {
+    font-size: 13px; color: var(--p-text-muted-color, #475569); margin: 10px 0 0; line-height: 1.4;
+    strong { color: var(--p-text-color, #1e293b); font-weight: 700; }
+  }
+  .pc-subject {
+    font-size: 12px; color: var(--p-text-muted-color, #64748b); margin: 8px 0 0; line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+}

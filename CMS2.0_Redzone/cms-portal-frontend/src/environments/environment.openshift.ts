@@ -5,6 +5,8 @@ export const environment = {
   workflowBaseUrl: '',
   keycloakUrl: '/auth',
   realm: 'cms',
+  // Relative, matching the empty apiBaseUrl: the ingress serves the API on the same origin.
+  storageBaseUrl: '/api/v1/storage',
 
   sessionTimeoutMinutes: 15,
   // The SIZE and COUNT limits deliberately do not live here. They are configuration, read from

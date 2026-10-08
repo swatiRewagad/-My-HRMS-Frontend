@@ -1,0 +1,220 @@
+:host {
+  display: block;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.cms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1.5rem;
+  background-color: var(--p-content-background);
+  border-bottom: 1px solid var(--p-content-border-color);
+  width: 100%;
+  height: 3.5rem;
+  box-sizing: border-box;
+}
+
+.control-divider-v {
+  width: 1px;
+  height: 1.5rem;
+  background-color: var(--p-content-border-color);
+  margin: 0 0.5rem;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+
+  .rbi-logo {
+    height: 2.25rem;
+    object-fit: contain;
+  }
+}
+
+.rbi-text {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cms-titles {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.cms-title-hindi {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--p-text-color);
+  line-height: 1.2;
+}
+
+.cms-subtitle-english {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+  line-height: 1.2;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  .header-icons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.profile-menu-container {
+  position: relative;
+
+  .profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    height: 2.5rem;
+    border-radius: var(--p-content-border-radius);
+    color: var(--p-text-color);
+
+    &:hover {
+      background: var(--p-content-hover-background);
+    }
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    line-height: 1.2;
+
+    .user-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .user-role {
+      font-size: 0.6875rem;
+      color: var(--p-text-muted-color);
+    }
+  }
+
+  .profile-chevron {
+    font-size: 0.625rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: var(--p-content-hover-background);
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+
+.meta-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+  line-height: 1.25;
+
+  .full-name {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--p-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .official-id {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+    margin-top: 0.125rem;
+  }
+
+  .email-address {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+.menu-body-actions {
+  padding: 0.375rem;
+
+  .logout-action-btn {
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--p-content-border-radius);
+  }
+}
+
+// Utility classes — !important is intentional to override any context styles
+@media (max-width: 1024px) {
+  .hide-on-tablet {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .cms-header {
+    height: auto;
+    min-height: 3.5rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .cms-title-hindi {
+    font-size: 0.8125rem;
+  }
+
+  .header-right {
+    gap: 0.5rem;
+  }
+}
+
+// app-language-select is a shared component that never anticipated `.cepc-dark`, so its
+// trigger/overlay stayed white under dark mode. Scoped here (not in the shared component)
+// so other portals reusing app-language-select are unaffected.
+:host ::ng-deep .lang-dropdown {
+  background-color: var(--p-content-background, #fff) !important;
+
+  .p-select-dropdown {
+    color: var(--p-text-color, #334155) !important;
+  }
+}
+
+:host ::ng-deep .lang-dropdown .p-select-overlay {
+  background-color: var(--p-content-background, #fff) !important;
+  border-color: var(--p-content-border-color, #cbd5e1) !important;
+  color: var(--p-text-color, #334155) !important;
+}
+
+:host ::ng-deep .lang-dropdown .p-select-option {
+  color: var(--p-text-color, #334155) !important;
+}
+
+:host ::ng-deep .lang-dropdown .p-select-option:not(.p-select-option-selected):hover,
+:host ::ng-deep .lang-dropdown .p-select-option.p-select-option-selected {
+  background-color: var(--p-content-hover-background, #f1f5f9) !important;
+}

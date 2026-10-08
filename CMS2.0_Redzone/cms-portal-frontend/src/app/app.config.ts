@@ -1,7 +1,22 @@
 import { ApplicationConfig, provideZoneChangeDetection, APP_INITIALIZER, inject } from '@angular/core';
-import { provideRouter, withViewTransitions, withRouterConfig } from '@angular/router';
+import { provideRouter, withViewTransitions, withRouterConfig, withInMemoryScrolling } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { providePrimeNG } from 'primeng/config';
+import Aura from '@primeng/themes/aura';
+import { definePreset } from '@primeng/themes';
 import { routes } from './app.routes';
+import { NavigationService } from './services/navigation.service';
+
+const BluePreset = definePreset(Aura, {
+  semantic: {
+    primary: {
+      50: '{blue.50}', 100: '{blue.100}', 200: '{blue.200}', 300: '{blue.300}',
+      400: '{blue.400}', 500: '{blue.500}', 600: '{blue.600}', 700: '{blue.700}',
+      800: '{blue.800}', 900: '{blue.900}', 950: '{blue.950}'
+    }
+  }
+});
 import { sessionTimeoutInterceptor } from './interceptors/session-timeout.interceptor';
 import { errorHandlerInterceptor } from './interceptors/error-handler.interceptor';
 import { securityHeadersInterceptor } from './interceptors/security-headers.interceptor';
@@ -9,23 +24,61 @@ import { keycloakTokenInterceptor } from './interceptors/keycloak-token.intercep
 import { antiAutomationInterceptor } from './interceptors/anti-automation.interceptor';
 import { citizenTokenInterceptor } from './interceptors/citizen-token.interceptor';
 import { RuntimeConfigService } from './services/runtime-config.service';
+import { TranslationService } from './services/translation.service';
 
-function initializeApp(configService: RuntimeConfigService) {
-  return () => configService.load();
+function initializeApp(configService: RuntimeConfigService, translationService: TranslationService) {
+  return async () => {
+    await configService.load();
+    await translationService.setLocale(translationService.currentLocale());
+  };
 }
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
+    provideAnimationsAsync(),
+    // cssLayer is what keeps this safe: layered CSS loses to unlayered CSS regardless of
+    // specificity, and styles.scss/_primitives.scss are unlayered, so the portal's own design
+    // system keeps winning while PrimeNG components inside CEPC still get themed.
+    providePrimeNG({
+      theme: {
+        preset: BluePreset,
+        options: {
+          cssLayer: { name: 'primeng', order: 'primeng' },
+          darkModeSelector: '.cepc-dark'
+        }
+      }
+    }),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeApp,
-      deps: [RuntimeConfigService],
+      deps: [RuntimeConfigService, TranslationService],
+      multi: true
+    },
+    // NavigationService must exist before the first navigation; it subscribes to router events to
+    // track unsaved-changes state, and a lazy injection would miss the initial route.
+    {
+      provide: APP_INITIALIZER,
+      useFactory: () => {
+        inject(NavigationService);
+        return () => {};
+      },
+      multi: true
+    },
+    // NavigationService must exist before the first navigation; it subscribes to router events to
+    // track unsaved-changes state, and a lazy injection would miss the initial route.
+    {
+      provide: APP_INITIALIZER,
+      useFactory: () => {
+        inject(NavigationService);
+        return () => {};
+      },
       multi: true
     },
     provideRouter(
       routes,
       withViewTransitions(),
+      withInMemoryScrolling({ scrollPositionRestoration: 'top', anchorScrolling: 'enabled' }),
       withRouterConfig({ onSameUrlNavigation: 'reload' })
     ),
     provideHttpClient(

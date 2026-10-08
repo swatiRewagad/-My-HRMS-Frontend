@@ -1,18 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { FeedbackService, FeedbackPayload } from '../../../services/feedback.service';
-import { HttpErrorResponse } from '@angular/common/http';
-
-/** Reject strings containing HTML tags or script content. */
-function containsUnsafeContent(text: string): boolean {
-  if (!text) return false;
-  const pattern = /<\s*\/?\s*(script|iframe|object|embed|form|link|style|img|svg|on\w+)\b[^>]*>|<[^>]+>/i;
-  return pattern.test(text);
-}
+import { FeedbackService } from '../../../services/feedback.service';
+import { scrollToTop } from '../../../utils/accessibility';
 
 /**
  * UST109 scenarios 4 and 5 (FR-G-038, Document/CMS_Portal_UTS.txt) refuse free text that "exceeds
@@ -42,7 +35,7 @@ function containsSpecialCharacters(text: string): boolean {
   templateUrl: './submit-feedback.component.html',
   styleUrl: './submit-feedback.component.scss'
 })
-export class SubmitFeedbackComponent {
+export class SubmitFeedbackComponent implements OnInit {
 
   /** UST109 scenario 4 — verbatim. Covers over-length AND special characters in one message. */
   static readonly FEEDBACK_LIMIT_MESSAGE =
@@ -53,47 +46,86 @@ export class SubmitFeedbackComponent {
     'Input must be within 500 characters and cannot contain special characters.';
 
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private feedbackService = inject(FeedbackService);
 
   phase = signal<'form' | 'success'>('form');
   submitting = signal(false);
 
-  // FR-G-030: Feedback form
   complaintId = '';
-  overallRating = 0;
-  timelinessRating = 0;
-  communicationRating = 0;
-  satisfactionRating = 0;
-  feedbackText = '';
-  suggestions = '';
-  error = '';
-
-  // FR-G-038: Full questionnaire (UST109)
   easeOfFiling = 0;
   grievanceRedressTime = 0;
+  overallRating = 0;
+  feedbackText = '';
+  feedbackTextError = '';
+  error = '';
+
+  ngOnInit(): void {
+    const idFromRoute = this.route.snapshot.paramMap.get('id');
+    if (idFromRoute) {
+      this.complaintId = idFromRoute;
+    }
+  }
+
   sourceOfInformation = '';
   sourceOtherText = '';
-  cmsPortalAwareness = '';
+  sourceOtherTextError = '';
+  awarenessHelped = '';
+  // UST109 Q5's list. RBI and the Regulated Entity were missing while "Print Media" and "Town Halls"
+  // were extra — so the two sources RBI most needs to measure (its own channels and the REs') could not
+  // be reported at all, and the aggregate was unusable for the awareness analysis the question exists for.
   sourceOptions = [
-    'RBI Website',
-    'Bank/NBFC Branch',
-    'News/Media',
-    'Social Media',
+    'RBI',
+    'Regulated Entity (RE)',
+    'Electronic Media/Internet',
+    'Bank',
     'Word of Mouth',
-    'Government Portal',
     'Others',
   ];
-  awarenessOptions = [
-    'Very Aware',
-    'Somewhat Aware',
-    'Not Aware (first time user)',
-  ];
 
-  // FR-G-031: Rating labels
   ratingLabels = ['', 'Very Poor', 'Poor', 'Average', 'Good', 'Excellent'];
 
-  setRating(field: 'overallRating' | 'timelinessRating' | 'communicationRating' | 'satisfactionRating', value: number) {
+  private readonly SPECIAL_CHAR_REGEX = /[^a-zA-Z0-9\s.,;:!?'"\-()\/]/;
+
+  setRating(field: 'easeOfFiling' | 'grievanceRedressTime' | 'overallRating', value: number) {
     this[field] = value;
+    this.clearErrorIfValid();
+  }
+
+  // The offending characters are reported, NOT silently stripped. Stripping edited the citizen's own
+  // words as they typed — the text they submitted was not the text they wrote — and UST109 asks for the
+  // input to be rejected with an explanation, not quietly rewritten.
+  onSourceOtherTextChange() {
+    this.sourceOtherTextError = this.validateFreeText(this.sourceOtherText, SubmitFeedbackComponent.OTHERS_LIMIT_MESSAGE);
+    this.clearErrorIfValid();
+  }
+
+  onFeedbackTextChange() {
+    this.feedbackTextError = this.validateFreeText(this.feedbackText, SubmitFeedbackComponent.FEEDBACK_LIMIT_MESSAGE);
+    this.clearErrorIfValid();
+  }
+
+  /**
+   * UST109's rule for the two free-text answers: within 500 characters, no special characters.
+   * Runs both allow-list regexes (ours' SPECIAL_CHAR_REGEX and the SPECIAL_CHARACTERS one lifted from
+   * cms_master's UST109 fix) so neither side's set of permitted punctuation is lost.
+   */
+  private validateFreeText(value: string, message: string): string {
+    if (value.length > 500 || this.SPECIAL_CHAR_REGEX.test(value) || containsSpecialCharacters(value)) {
+      return message;
+    }
+    return '';
+  }
+
+  clearErrorIfValid() {
+    if (!this.error) return;
+    if (!this.complaintId.trim()) return;
+    if (this.easeOfFiling === 0) return;
+    if (this.grievanceRedressTime === 0) return;
+    if (this.overallRating === 0) return;
+    if (!this.sourceOfInformation) return;
+    if (this.sourceOfInformation === 'Others' && !this.sourceOtherText.trim()) return;
+    this.error = '';
   }
 
   submit() {
@@ -102,16 +134,16 @@ export class SubmitFeedbackComponent {
       this.error = 'Complaint reference number is required.';
       return;
     }
-    if (this.overallRating === 0) {
-      this.error = 'Please provide an overall rating.';
-      return;
-    }
     if (this.easeOfFiling === 0) {
-      this.error = 'Please rate the ease of filing.';
+      this.error = 'Please rate the ease of filing and tracking.';
       return;
     }
     if (this.grievanceRedressTime === 0) {
-      this.error = 'Please rate the grievance redress time.';
+      this.error = 'Please rate grievance redressed within a reasonable time.';
+      return;
+    }
+    if (this.overallRating === 0) {
+      this.error = 'Please rate the overall experience with the resolution provided.';
       return;
     }
     if (!this.sourceOfInformation) {
@@ -122,72 +154,44 @@ export class SubmitFeedbackComponent {
       this.error = 'Please specify the source.';
       return;
     }
-    if (!this.cmsPortalAwareness) {
-      this.error = 'Please select CMS Portal awareness level.';
-      return;
-    }
-    // UST109 scenario 5: the "Others" free text carries its own wording ("Input …"), checked before
-    // the feedback fields so the message names the box the citizen actually typed in.
-    if (this.sourceOtherText.length > 500 || containsSpecialCharacters(this.sourceOtherText)) {
+    if (this.sourceOfInformation === 'Others'
+        && (this.sourceOtherText.length > 500
+            || this.SPECIAL_CHAR_REGEX.test(this.sourceOtherText)
+            || containsSpecialCharacters(this.sourceOtherText))) {
       this.error = SubmitFeedbackComponent.OTHERS_LIMIT_MESSAGE;
       return;
     }
-    // UST109 scenario 4: one message for BOTH the length and the special-character rule.
-    if (this.feedbackText.length > 500 || containsSpecialCharacters(this.feedbackText)) {
+    // Q6 (awareness) is OPTIONAL per UST109. It was enforced as mandatory, which blocked submission of
+    // an otherwise complete form over a question the citizen is entitled to skip.
+    // UST109 scenario 4: one message for BOTH the length and the special-character rule. Checks both
+    // ours' allow-list (SPECIAL_CHAR_REGEX) and cms_master's allow-list (containsSpecialCharacters) so
+    // neither side's set of permitted punctuation is weakened by the merge.
+    if (this.feedbackText.length > 500
+        || this.SPECIAL_CHAR_REGEX.test(this.feedbackText)
+        || containsSpecialCharacters(this.feedbackText)) {
       this.error = SubmitFeedbackComponent.FEEDBACK_LIMIT_MESSAGE;
       return;
     }
-    if (this.suggestions.length > 500 || containsSpecialCharacters(this.suggestions)) {
-      this.error = SubmitFeedbackComponent.FEEDBACK_LIMIT_MESSAGE;
-      return;
-    }
-
-    // Validate for HTML/script injection
-    if (containsUnsafeContent(this.feedbackText)) {
-      this.error = 'Feedback text contains disallowed content. Please remove any HTML tags.';
-      return;
-    }
-    if (containsUnsafeContent(this.sourceOtherText)) {
-      this.error = 'Source text contains disallowed content. Please remove any HTML tags.';
-      return;
-    }
-    if (containsUnsafeContent(this.suggestions)) {
-      this.error = 'Suggestions contain disallowed content. Please remove any HTML tags.';
-      return;
-    }
-
-    const payload: FeedbackPayload = {
-      complaintNumber: this.complaintId.trim(),
-      overallRating: this.overallRating,
-      easeOfFiling: this.easeOfFiling,
-      grievanceRedressTime: this.grievanceRedressTime,
-      sourceOfInformation: this.sourceOfInformation,
-      cmsPortalAwareness: this.cmsPortalAwareness,
-      feedbackText: this.feedbackText || undefined,
-      suggestions: this.suggestions || undefined,
-      sourceOtherText: this.sourceOtherText || undefined,
-      timelinessRating: this.timelinessRating || undefined,
-      communicationRating: this.communicationRating || undefined,
-      satisfactionRating: this.satisfactionRating || undefined,
-    };
 
     this.submitting.set(true);
-    this.feedbackService.submitFeedback(payload).subscribe({
+    this.feedbackService.submitFeedback({
+      complaintNumber: this.complaintId.trim(),
+      easeOfFiling: this.easeOfFiling,
+      grievanceRedressTime: this.grievanceRedressTime,
+      overallRating: this.overallRating,
+      feedbackText: this.feedbackText,
+      sourceOfInformation: this.sourceOfInformation,
+      sourceOtherText: this.sourceOtherText,
+      cmsPortalAwareness: this.awarenessHelped,
+    }).subscribe({
       next: () => {
         this.submitting.set(false);
         this.phase.set('success');
+        scrollToTop();
       },
-      error: (err: HttpErrorResponse) => {
+      error: (err) => {
         this.submitting.set(false);
-        if (err.status === 409) {
-          this.error = 'Feedback already submitted for this complaint.';
-        } else if (err.status === 400) {
-          this.error = err.error?.message || 'Validation error. Please check your input.';
-        } else if (err.status === 404) {
-          this.error = err.error?.message || 'Complaint not found.';
-        } else {
-          this.error = 'An unexpected error occurred. Please try again later.';
-        }
+        this.error = err.error?.message || 'Failed to submit feedback. Please try again.';
       },
     });
   }

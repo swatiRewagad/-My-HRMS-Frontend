@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "COMPLAINTS", indexes = {
     @Index(name = "idx_complaint_number", columnList = "complaintNumber", unique = true),
+    @Index(name = "idx_complaint_case_id", columnList = "caseId"),
     @Index(name = "idx_complaint_status", columnList = "status"),
     @Index(name = "idx_complaint_priority", columnList = "priority"),
     @Index(name = "idx_complaint_email", columnList = "complainantEmail"),
@@ -28,8 +29,30 @@ public class Complaint {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    // Nullable: a complaint closed as Non-Maintainable at eligibility screening gets a caseId
+    // instead (FR-G-013), never a complaintNumber.
+    @Column(unique = true, length = 50)
     private String complaintNumber;
+
+    // Set only for Non-Maintainable complaints; the citizen-facing identifier in place of a
+    // complaintNumber (FR-G-013).
+    @Column(name = "case_id", length = 50)
+    private String caseId;
+
+    // The screening-question clause code (e.g. "10(1)(j)") that made this complaint Non-Maintainable.
+    @Column(name = "non_maintainable_clause_code", length = 100)
+    private String nonMaintainableClauseCode;
+
+    // The complaint this one duplicates, recorded when the citizen was shown the duplicate warning and
+    // chose to file anyway (UST87 AC5). Null for every complaint that raised no duplicate match.
+    @Column(name = "duplicate_of_complaint_number", length = 50)
+    private String duplicateOfComplaintNumber;
+
+    // The 6-digit "Complaint Id" the CRPC draft had before it was approved and converted into
+    // this Complaint record - kept so the same identifier stays visible to RBIO/CEPC officers
+    // instead of them seeing this row's own unrelated internal id.
+    @Column(length = 100)
+    private String originDraftId;
 
     @Column(nullable = false, length = 200)
     private String complainantName;
@@ -49,8 +72,53 @@ public class Complaint {
     @Column(length = 100)
     private String complainantDistrict;
 
+    @Column(length = 20)
+    private String complainantPincode;
+
     @Column(name = "BANK_ID")
     private Long bankId;
+
+    @Column(length = 300)
+    private String entityName;
+
+    @Column(length = 100)
+    private String entityType;
+
+    @Column(precision = 15, scale = 2)
+    private BigDecimal amountInvolved;
+
+    // Entity/branch detail fields carried over from the CRPC draft (email_drafts has the full
+    // set; Complaint previously only tracked entityName/entityCode/bankBranch, so this data was
+    // silently dropped on approval and RBIO officers never saw it).
+    @Column(length = 100)
+    private String entityCategory;
+
+    @Column(length = 50)
+    private String entityBsrCode;
+
+    @Column(length = 20)
+    private String entityPincode;
+
+    @Column(length = 100)
+    private String entityState;
+
+    @Column(length = 100)
+    private String entityDistrict;
+
+    @Column(length = 100)
+    private String entityCity;
+
+    @Column(length = 300)
+    private String entityBranchName;
+
+    @Column(length = 100)
+    private String entityBranchCategory;
+
+    @Column(length = 500)
+    private String entityAddress;
+
+    @Column(length = 50)
+    private String cosmosCode;
 
     @Column(length = 300)
     private String bankBranch;
@@ -60,6 +128,9 @@ public class Complaint {
 
     @Column(name = "CATEGORY_ID")
     private Long categoryId;
+
+    @Column(length = 200)
+    private String categoryName;
 
     @Column(nullable = false, length = 500)
     private String subject;
@@ -148,6 +219,43 @@ public class Complaint {
     @Column(name = "rbio_office_code", length = 10)
     private String rbioOfficeCode;
 
+    /**
+     * Display copy of the value otherwise reachable only through {@code assignedOfficer}. Held on the row
+     * because the dashboard grid sorts and column-filters on the name the officer reads, which a join to
+     * the master cannot do without making every listing query fan out. {@code entityName} and
+     * {@code categoryName} above are the same pattern.
+     */
+    @Column(name = "assigned_officer_name", length = 250)
+    private String assignedOfficerName;
+
+    /**
+     * The office whose jurisdiction the complaint sits in, and the mandatory scope on every CEPC listing
+     * request alongside {@code department}.
+     *
+     * <p>Distinct from {@link #rbioOfficeCode}, which is the RBIO intake office resolved from the complaint
+     * number: that is NULL on every CEPC complaint, so it cannot carry CEPC scoping.
+     */
+    @Column(name = "regional_office", length = 100)
+    private String regionalOffice;
+
+    /**
+     * Whether the complaint has been opened at all.
+     *
+     * <p>Not the dashboard's "unread" filter, which is deliberately per user and answered by
+     * {@code COMPLAINT_READ_STATE} — the same grid shows a different unread count to each officer, and one
+     * boolean on the shared row cannot express that.
+     */
+    @Column(name = "is_read", nullable = false)
+    @Builder.Default
+    private Boolean isRead = false;
+
+    @Column(name = "has_attachment", nullable = false)
+    @Builder.Default
+    private Boolean hasAttachment = false;
+
+    @Column(name = "created_by", length = 200)
+    private String createdBy;
+
     /** FK to GROUND_OF_COMPLAINT_MASTER (V36/V34). Held as an id, matching categoryId/bankId here. */
     @Column(name = "ground_of_complaint_id")
     private Long groundOfComplaintId;
@@ -195,37 +303,6 @@ public class Complaint {
     private String maintainabilityDeterminedBy;
 
     private LocalDateTime maintainabilityDeterminedAt;
-
-    /**
-     * The Deputy Ombudsman's decision on a complaint within delegated authority — FACILITATION or
-     * REJECTION (UST483-484).
-     *
-     * <p>Distinct from {@code maintainabilityDetermination}: a complaint can be maintainable AND rejected
-     * on its merits, so collapsing the two would make those two outcomes indistinguishable.
-     *
-     * <p>Nullable, like every column added on this shared database: ddl-auto never drops a column, so a
-     * NOT NULL here would be permanent for all sessions and would break their inserts.
-     */
-    @Column(name = "deputy_decision", length = 30)
-    private String deputyDecision;
-
-    /** The regulatory body a complaint outside RBI's remit was forwarded to (UST FORWARD_TO_REGULATORY_BODY). */
-    @Column(name = "regulatory_body_name", length = 200)
-    private String regulatoryBodyName;
-
-    /**
-     * The RBI department a complaint was forwarded to (UST761, 534, 527-528).
-     *
-     * <p>Its own column rather than {@code assignedOfficer}, which is what the CEPC forward arms use — that
-     * leaves a department NAME in a user column, so the complaint appears to be owned by a department and
-     * "who is working on this" has no answer. Nullable, like every column added on this shared database.
-     */
-    @Column(name = "forwarded_to_department", length = 100)
-    private String forwardedToDepartment;
-
-    /** When the advisory issued under this complaint was confirmed complied with (UST535-538). */
-    @Column(name = "advisory_complied_at")
-    private LocalDateTime advisoryCompliedAt;
 
     @Column(precision = 15, scale = 2)
     private BigDecimal awardAmount;
@@ -282,61 +359,44 @@ public class Complaint {
     @Column(name = "closure_letter_sent_at")
     private LocalDateTime closureLetterSentAt;
 
-    /**
-     * Date of Sending of the closure letter (UST507-509, 757, 763).
-     *
-     * <p>The closure screen collected and POSTed this from the outset, but the server never read it —
-     * {@code dateOfSending} appeared nowhere in cms-backend — so it was silently dropped on every closure.
-     * This is the date that evidences when the complainant was informed, so it has to be durable.
-     *
-     * <p>Nullable because this runs on a shared database under {@code ddl-auto: update} where closed
-     * complaints already exist, and because the requirement is armed by configuration rather than applied
-     * retroactively. UST757/763 require it to be non-editable once recorded, so
-     * {@code RbioWorkflowService} writes it only when it is currently null.
-     */
-    @Column(name = "date_of_sending")
-    private java.time.LocalDate dateOfSending;
-
-    /**
-     * When the Award Passed status was recorded (UST543).
-     *
-     * <p>Distinct from {@link #adjudicationDate}, which is shared with award REJECTION and so cannot answer
-     * "when was an award passed" without also matching rejections. The implemented/not-implemented/lapse
-     * dates below hang off this one for reporting.
-     */
-    @Column(name = "award_passed_date")
-    private java.time.LocalDate awardPassedDate;
-
-    /** When the entity confirmed it had implemented the award (UST543). */
-    @Column(name = "award_implemented_date")
-    private java.time.LocalDate awardImplementedDate;
-
-    /** When the award was recorded as not implemented (UST543). */
-    @Column(name = "award_not_implemented_date")
-    private java.time.LocalDate awardNotImplementedDate;
-
-    /** When the award lapsed (UST543). */
-    @Column(name = "award_lapse_date")
-    private java.time.LocalDate awardLapseDate;
-
     @Column(name = "closure_clause", length = 100)
     private String closureClause;
+
+    @Column(name = "proposed_action", length = 100)
+    private String proposedAction;
+
+    @Column(name = "proposed_clause", length = 100)
+    private String proposedClause;
+
+    @Column(name = "forwarded_office_code", length = 10)
+    private String forwardedOfficeCode;
+
+    @Column(name = "pre_forward_officer", length = 200)
+    private String preForwardOfficer;
+
+    @Column(name = "pre_forward_role", length = 50)
+    private String preForwardRole;
+
+    @Column(name = "closure_clause_description", columnDefinition = "TEXT")
+    private String closureClauseDescription;
+
+    @Column(name = "complaint_status_on_portal", length = 100)
+    private String complaintStatusOnPortal;
+
+    @Column(name = "speaking_order_generated", length = 10)
+    private String speakingOrderGenerated;
+
+    @Column(name = "gist_of_case", columnDefinition = "TEXT")
+    private String gistOfCase;
+
+    @Column(name = "gist_of_case_regional", columnDefinition = "TEXT")
+    private String gistOfCaseRegional;
 
     @Column(name = "closure_authority_name", length = 200)
     private String closureAuthorityName;
 
     @Column(name = "closure_authority_designation", length = 200)
     private String closureAuthorityDesignation;
-
-    // ═══ Withdrawal fields ═══
-    @Column(name = "withdrawal_reason", length = 500)
-    private String withdrawalReason;
-
-    @Column(name = "withdrawal_date")
-    private LocalDateTime withdrawalDate;
-
-    @Column(name = "withdrawn_by", length = 200)
-    private String withdrawnBy;
 
     // ═══ Reopen tracking ═══
     @Column(name = "reopen_count")
@@ -345,32 +405,6 @@ public class Complaint {
 
     @Column(name = "last_reopened_at")
     private LocalDateTime lastReopenedAt;
-
-    /**
-     * Explicit reopen timestamp (V31/V29). Distinct from lastReopenedAt, which only the CEPC/RBIO
-     * reopen paths maintain; this column exists so the AA parent search can order and filter on
-     * reopening without depending on which module performed it.
-     */
-    @Column(name = "reopened_at")
-    private LocalDateTime reopenedAt;
-
-    /**
-     * Why the complaint was reopened — one of the configured reasons (UST551).
-     *
-     * <p>The permitted vocabulary lives in SYSTEM_CONFIG under {@code cms.rbio.reopen.reasons}, not in an
-     * enum here, so adding a reason is configuration rather than a release.
-     */
-    @Column(name = "reopen_reason", length = 50)
-    private String reopenReason;
-
-    /**
-     * The free-text justification accompanying the reason (UST551).
-     *
-     * <p>Mandatory in addition to the reason: "Court Order" alone does not say which order or why it
-     * requires reopening, and a reopen reverses a concluded statutory proceeding.
-     */
-    @Column(name = "reopen_justification", columnDefinition = "TEXT")
-    private String reopenJustification;
 
     // ═══ RBIO-specific fields ═══
     @Column(name = "advisory_text", columnDefinition = "TEXT")
@@ -382,16 +416,6 @@ public class Complaint {
     @Column(name = "notice_13_1_issued_at")
     private LocalDateTime notice131IssuedAt;
 
-    /**
-     * Who the 13(1) notice was addressed to.
-     *
-     * <p>The impleading screen has always sent {@code targetParty} and the side effect never read it, so the
-     * addressee of a statutory communication was discarded while the request answered 200. A notice whose
-     * recipient is unrecorded cannot be evidenced later.
-     */
-    @Column(name = "notice_13_1_target_party", length = 250)
-    private String notice131TargetParty;
-
     @Column(name = "impleaded_parties", length = 1000)
     private String impleadedParties;
 
@@ -400,30 +424,6 @@ public class Complaint {
 
     @Column(name = "scheme_version", length = 20)
     private String schemeVersion;
-
-    /**
-     * UST473: the Scheme-coverage determination that decided this complaint's department.
-     *
-     * <p>COVERED, NOT_COVERED, AMBIGUOUS or UNKNOWN — see {@code MreEntityCoverageService.CoverageStatus}.
-     * Recorded because the story requires the CHECK RESULT on the complaint, not merely implied by the
-     * department: RBIO and CEPC are also reachable by manual transfer, so the department alone cannot tell
-     * a reviewer whether a machine determined coverage or a human moved the file.
-     *
-     * <p>Deliberately NOT folded into {@code maintainabilityDetermination}. That column is a two-value
-     * human decision (MAINTAINABLE / NON_MAINTAINABLE) read by Drools compensation-cap rules, so a third
-     * value would silently fall out of every {@code == "MAINTAINABLE"} guard. It also carries a
-     * {@code determinedBy} naming a person, whereas this is a server determination made before any officer
-     * sees the file.
-     *
-     * <p>Nullable: the shared dev database runs ddl-auto=update, where NOT NULL would be permanent for
-     * every other session and would break their inserts. NULL means the complaint predates this check.
-     */
-    @Column(name = "scheme_coverage_status", length = 20)
-    private String schemeCoverageStatus;
-
-    /** Why coverage resolved as it did — which entity matched, or why no single entity could be. */
-    @Column(name = "scheme_coverage_reason", length = 500)
-    private String schemeCoverageReason;
 
     @Column(name = "current_stage_deadline")
     private LocalDateTime currentStageDeadline;
@@ -435,52 +435,55 @@ public class Complaint {
     @Column(name = "re_response_deadline")
     private LocalDate reResponseDeadline;
 
-    /**
-     * UST637: whether the entity has missed its response deadline, decided on the SERVER.
-     *
-     * <p>Persisted rather than computed per request for two reasons. The complaint grid whitelists sortable
-     * columns, so an overdue value derived in Java after the page is fetched could not be ordered by the
-     * database — "show the overdue ones first" would silently not work. And a browser comparing two dates
-     * can be wrong about the timezone or working from a stale page, which is not a basis for a statutory
-     * window.
-     *
-     * <p>Maintained by the sweep, which CLEARS it as well as setting it, so the highlight disappears by
-     * itself once the entity responds rather than needing a separate step somebody could forget.
-     *
-     * <p>{@code Boolean} rather than {@code boolean}: the column is nullable on a shared ddl-auto database,
-     * and NULL legitimately means "never evaluated" on a complaint with no deadline.
-     */
-    @Column(name = "re_response_overdue")
-    private Boolean reResponseOverdue;
-
     @Column(name = "last_status_change_date")
     private LocalDateTime lastStatusChangeDate;
 
-    // ═══ RE Activity Status ladder (UST846, UST850) ═══
-    // Distinct from `status` above: this is the entity's progress signal, not the regulatory state.
-    // Written only through ReActivityStatusService so the forward-only rule and the paired timeline
-    // entry cannot be bypassed by a stray setter call.
-    @Enumerated(EnumType.STRING)
-    @Column(name = "re_activity_status", length = 30)
-    private ReActivityStatus reActivityStatus;
+    // ═══ RBIO office routing ═══
+    @Column(name = "date_of_sending")
+    private LocalDate dateOfSending;
 
-    @Column(name = "re_activity_changed_at")
-    private LocalDateTime reActivityChangedAt;
+    @Column(name = "award_passed_date")
+    private LocalDate awardPassedDate;
 
-    // The nudge threshold in force when the record ENTERED its current activity status, snapshotted
-    // so that later editing of the SYSTEM_CONFIG default cannot retroactively make historical
-    // records nudge-due, nor silently forgive ones already past due.
-    @Column(name = "re_activity_nudge_days")
-    private Integer reActivityNudgeDays;
+    @Column(name = "award_implemented_date")
+    private LocalDate awardImplementedDate;
 
-    // Set when a nudge has been sent for the CURRENT status, cleared on every transition, so a
-    // record that legitimately advances becomes nudgeable again at the next level.
-    @Column(name = "re_activity_nudged_at")
-    private LocalDateTime reActivityNudgedAt;
+    @Column(name = "notice_13_1_target_party", length = 200)
+    private String notice131TargetParty;
 
-    // ═══ Authorised Representative (D7) ═══
-    // The filing wizard validates nine representative fields as mandatory once the citizen answers
-    // "yes" to hasAuthRep, so they must be persisted — an officer cannot correspond with, or verify
+    @Column(name = "reopen_reason", length = 500)
+    private String reopenReason;
+
+    // ═══ Withdrawal tracking (V8) ═══
+    @Column(name = "withdrawal_date")
+    private LocalDateTime withdrawalDate;
+
+    @Column(name = "withdrawn_by", length = 200)
+    private String withdrawnBy;
+
+    @Column(name = "withdrawal_reason", length = 500)
+    private String withdrawalReason;
+
+    @Column(name = "reopen_justification", columnDefinition = "TEXT")
+    private String reopenJustification;
+
+    @Column(name = "reopened_at")
+    private LocalDateTime reopenedAt;
+
+    @Column(name = "deputy_decision", length = 50)
+    private String deputyDecision;
+
+    @Column(name = "advisory_complied_at")
+    private LocalDateTime advisoryCompliedAt;
+
+    @Column(name = "regulatory_body_name", length = 200)
+    private String regulatoryBodyName;
+
+    @Column(name = "forwarded_to_department", length = 50)
+    private String forwardedToDepartment;
+
+    // ═══ Authorised representative ═══
+    // Held as columns rather than discarded at registration: a complaint can be filed through, and
     // the authority of, a representative whose details were discarded at registration.
     @Column(name = "has_auth_rep")
     private Boolean hasAuthRep;
@@ -488,29 +491,65 @@ public class Complaint {
     @Column(name = "through_advocate")
     private Boolean throughAdvocate;
 
-    @Column(name = "rep_name", length = 200)
-    private String repName;
-
-    @Column(name = "rep_phone", length = 20)
-    private String repPhone;
-
-    @Column(name = "rep_email", length = 254)
-    private String repEmail;
-
     @Column(name = "rep_address", length = 500)
     private String repAddress;
-
-    @Column(name = "rep_state", length = 100)
-    private String repState;
-
-    @Column(name = "rep_district", length = 100)
-    private String repDistrict;
 
     @Column(name = "rep_city", length = 100)
     private String repCity;
 
+    @Column(name = "rep_district", length = 100)
+    private String repDistrict;
+
+    @Column(name = "rep_state", length = 100)
+    private String repState;
+
     @Column(name = "rep_pincode", length = 10)
     private String repPincode;
+
+    // Snapshot of the wizard answers as submitted. The normalised columns above only cover the
+    // subset the workflow reads; the review screen has to show every question the citizen actually
+    // answered, and those (eligibility Q&A, per-question sub-answers, the amount breakdown) have no
+    // column of their own. Kept as JSON for the same reason COMPLAINT_DRAFTS does.
+    @Column(columnDefinition = "TEXT")
+    private String eligibilityAnswersJson;
+
+    @Column(columnDefinition = "TEXT")
+    private String wizardFormDataJson;
+
+    // ═══ Authorized Representative ═══
+    @Column(name = "rep_name", length = 200)
+    private String repName;
+
+    @Column(name = "rep_email", length = 200)
+    private String repEmail;
+
+    @Column(name = "rep_phone", length = 20)
+    private String repPhone;
+
+    // ═══ RE Activity Tracking ═══
+    @Enumerated(EnumType.STRING)
+    @Column(name = "re_activity_status", length = 40)
+    private ReActivityStatus reActivityStatus;
+
+    @Column(name = "re_activity_changed_at")
+    private LocalDateTime reActivityChangedAt;
+
+    @Column(name = "scheme_coverage_status", length = 30)
+    private String schemeCoverageStatus;
+
+    @Column(name = "scheme_coverage_reason", length = 500)
+    private String schemeCoverageReason;
+
+    @Column(name = "re_activity_nudge_days")
+    @Builder.Default
+    private Integer reActivityNudgeDays = 0;
+
+    @Column(name = "re_activity_nudged_at")
+    private LocalDateTime reActivityNudgedAt;
+
+    @Column(name = "re_response_overdue")
+    @Builder.Default
+    private Boolean reResponseOverdue = false;
 
     // ═══ Timestamps ═══
     private LocalDateTime filedAt;

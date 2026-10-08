@@ -1,68 +1,109 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { FaqService, Faq } from '../../../services/faq.service';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { TranslationService } from '../../../services/translation.service';
 import { SeoService } from '../../../services/seo.service';
 import { faqPage } from '../../../seo/structured-data';
+
+interface FaqItem {
+  question: string;
+  answer: string;
+  category: string;
+  open: boolean;
+}
 
 @Component({
   selector: 'app-faq',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, TranslatePipe],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './faq.component.html',
-  styleUrl: './faq.component.scss'
+  styleUrl: './faq.component.scss',
 })
 export class FaqComponent implements OnInit, OnDestroy {
 
-  private faqService = inject(FaqService);
-  private translationService = inject(TranslationService);
   private seo = inject(SeoService);
 
-  faqs = signal<Faq[]>([]);
-  loading = signal(true);
-  error = signal('');
-  searchTerm = signal('');
-  selectedCategory = signal<string>('');
-  expandedIds = signal<Set<number>>(new Set());
+  searchQuery = '';
+  selectedCategory = 'ALL';
 
-  categories = computed(() => {
-    const cats = new Set<string>();
-    this.faqs().forEach(f => {
-      if (f.category) cats.add(f.category);
-    });
-    return Array.from(cats).sort();
-  });
+  categories = [
+    'ALL',
+    'Scheme Overview & Structure',
+    'Institutions & Access Points',
+    'Complaint Grounds & Eligibility',
+    'Complaint Handling & Resolution',
+    'Appeals & Further Recourse',
+    'Miscellaneous',
+  ];
 
-  filteredFaqs = computed(() => {
-    let result = this.faqs();
-    const cat = this.selectedCategory();
-    if (cat) {
-      result = result.filter(f => f.category === cat);
-    }
-    const term = this.searchTerm().toLowerCase().trim();
-    if (term) {
-      // Matching the translated text, not the key: a citizen searching in Hindi would otherwise
-      // only ever match the English key fragments and see an empty result.
-      result = result.filter(f =>
-        this.translationService.translate(f.questionKey).toLowerCase().includes(term) ||
-        this.translationService.translate(f.answerKey).toLowerCase().includes(term)
-      );
-    }
-    return result;
-  });
+  faqs: FaqItem[] = [
+    {
+      question: 'What is RB-IOS, 2026?',
+      answer: 'The Reserve Bank – Integrated Ombudsman Scheme, 2026 (RB-IOS, 2026 / the Scheme) is a cost-free, expeditious and non-adversarial alternate grievance redress mechanism for customer complaints involving deficiency in service by Regulated Entities covered under the Scheme. It comes into force with effect from July 1, 2026. RB-IOS, 2026 replaces the Reserve Bank - Integrated Ombudsman Scheme, 2021. Complaints received before July 1, 2026; appeals arising from decisions under RB-IOS, 2021; and execution of awards issued thereunder will continue to be governed by RB-IOS, 2021 and related RBI instructions.',
+      category: 'Scheme Overview & Structure',
+      open: true,
+    },
+    {
+      question: 'What is the RBI Alternate Grievance Redress (AGR) Framework?',
+      answer: 'The AGR Framework of the Reserve Bank comprises the Offices of RBI Ombudsman, the Centralised Receipt and Processing Centre (CRPC), Consumer Education and Protection Cells (CEPCs), and the Consumer Education and Protection Department (CEPD). CEPD provides assistance to the Appellate Authority (AA) and processes the appeal cases.',
+      category: 'Scheme Overview & Structure',
+      open: true,
+    },
+    {
+      question: 'Are all Regulated Entities covered under RB-IOS, 2026?',
+      answer: 'No. RB-IOS, 2026 applies only to the categories of Regulated Entities specifically covered under the Scheme. The major categories covered are banks, certain NBFCs, non-bank Prepaid Payment Instrument issuers, and Credit Information Companies. The detailed coverage is given in Question 13.',
+      category: 'Institutions & Access Points',
+      open: true,
+    },
+    {
+      question: 'Who is an RBI Ombudsman?',
+      answer: 'The RBI Ombudsman is a senior official appointed by the Reserve Bank of India to redress customer complaints against deficiency in certain banking and financial services covered under the grounds of complaint specified in the Scheme.',
+      category: 'Scheme Overview & Structure',
+      open: false,
+    },
+    {
+      question: 'What is "deficiency in service"?',
+      answer: 'Deficiency in service means a shortcoming or an inadequacy in any financial service which a Regulated Entity is required to provide under any law, or under the directions or instructions or guidelines issued by the Reserve Bank or any other regulatory body, or as per the commitment made by the RE to the customer.',
+      category: 'Complaint Grounds & Eligibility',
+      open: false,
+    },
+    {
+      question: 'Who is an RBI Deputy Ombudsman?',
+      answer: 'The RBI Deputy Ombudsman is an officer appointed by the Reserve Bank to assist the Ombudsman in handling complaints and related matters under the Scheme. The Deputy Ombudsman exercises powers delegated by the Ombudsman.',
+      category: 'Scheme Overview & Structure',
+      open: false,
+    },
+    {
+      question: 'How can I file a complaint under RB-IOS, 2026?',
+      answer: 'You can file a complaint online through the CMS portal, by sending a physical letter to CRPC, or by calling the helpline number 14448. The online mode is recommended for faster processing.',
+      category: 'Complaint Handling & Resolution',
+      open: false,
+    },
+    {
+      question: 'What is the time limit for filing a complaint?',
+      answer: 'A complaint can be filed under the Scheme if the complainant has first approached the Regulated Entity and the RE has rejected the complaint or has not resolved it within 30 days of receipt. The complaint to the Ombudsman should be filed within one year from the date of the RE\'s reply or within one year and 30 days from the date of complaint to the RE if no reply is received.',
+      category: 'Complaint Grounds & Eligibility',
+      open: false,
+    },
+    {
+      question: 'Can I appeal against the decision of the Ombudsman?',
+      answer: 'Yes. If you are not satisfied with the decision of the Ombudsman, you can file an appeal before the Appellate Authority within 30 days from the date of receipt of the decision. The Appellate Authority is the Executive Director in charge of the Consumer Education and Protection Department of the Reserve Bank.',
+      category: 'Appeals & Further Recourse',
+      open: false,
+    },
+    {
+      question: 'Is there any fee for filing a complaint?',
+      answer: 'No. Filing a complaint under the Reserve Bank – Integrated Ombudsman Scheme is completely free of charge. There is no fee at any stage of the complaint resolution process.',
+      category: 'Miscellaneous',
+      open: false,
+    },
+  ];
 
-  categoryLabel(category: string): string {
-    return this.translationService.translate(`faq.cat_${category}`);
+  ngOnInit(): void {
+    this.publishFaqStructuredData();
   }
 
-  ngOnInit() {
-    this.loadFaqs();
-  }
-
-  ngOnDestroy() {
+  ngOnDestroy(): void {
     // The block lives in <head>, so leaving it behind would describe FAQ content on whatever page the
     // user navigates to next.
     this.seo.clearJsonLd('faq');
@@ -71,21 +112,12 @@ export class FaqComponent implements OnInit, OnDestroy {
   /**
    * FAQPage structured data, which is what can surface expandable answers directly in search results.
    *
-   * <p>Built from the RESOLVED text the component renders, in the active locale, because Google requires
-   * the marked-up answer to be visible on the page. Emitting the raw translation keys, or prose the user
-   * cannot see, is a structured-data violation rather than a shortcut.
+   * <p>Built directly from the literal question/answer text this component renders — unlike the
+   * translation-key-driven version this replaced, this content is hardcoded English prose, so there is
+   * no key-resolution step: the text handed to the markup is exactly the text on the page.
    */
   private publishFaqStructuredData(): void {
-    const entries = this.faqs()
-      .map(f => ({
-        question: this.translationService.translate(f.questionKey),
-        answer: this.translationService.translate(f.answerKey),
-      }))
-      // A key that resolves to itself means the bundle lacks it; marking that up would publish
-      // "faq.q_how_long" to a search engine as though it were a question.
-      .filter(e => e.question && e.answer
-        && !e.question.startsWith('faq.') && !e.answer.startsWith('faq.'));
-
+    const entries = this.faqs.map(f => ({ question: f.question, answer: f.answer }));
     if (entries.length === 0) {
       this.seo.clearJsonLd('faq');
       return;
@@ -93,42 +125,32 @@ export class FaqComponent implements OnInit, OnDestroy {
     this.seo.setJsonLd('faq', faqPage(entries));
   }
 
-  private loadFaqs() {
-    this.loading.set(true);
-    this.faqService.getAll().subscribe({
-      next: (data) => {
-        this.faqs.set(data);
-        this.loading.set(false);
-        this.publishFaqStructuredData();
-      },
-      error: () => {
-        this.error.set('faq.load_error');
-        this.loading.set(false);
-      }
-    });
+  get filteredFaqs(): FaqItem[] {
+    let filtered = this.faqs;
+
+    if (this.selectedCategory !== 'ALL') {
+      filtered = filtered.filter(f => f.category === this.selectedCategory);
+    }
+
+    if (this.searchQuery.trim()) {
+      const query = this.searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        f => f.question.toLowerCase().includes(query) || f.answer.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered;
   }
 
-  toggleFaq(id: number) {
-    this.expandedIds.update(set => {
-      const next = new Set(set);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  selectCategory(category: string) {
+    this.selectedCategory = category;
   }
 
-  isExpanded(id: number): boolean {
-    return this.expandedIds().has(id);
-  }
-
-  filterByCategory(category: string) {
-    this.selectedCategory.set(category);
-  }
-
-  onSearchInput(value: string) {
-    this.searchTerm.set(value);
+  toggleFaq(index: number) {
+    const faq = this.filteredFaqs[index];
+    const originalIndex = this.faqs.indexOf(faq);
+    if (originalIndex > -1) {
+      this.faqs[originalIndex].open = !this.faqs[originalIndex].open;
+    }
   }
 }

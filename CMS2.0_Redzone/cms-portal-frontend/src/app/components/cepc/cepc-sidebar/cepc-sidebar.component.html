@@ -1,0 +1,28 @@
+<aside class="sb" [@sidebarWidth]="isCollapsed() ? 'collapsed' : 'expanded'">
+
+  <nav class="sb-nav">
+    @for (item of navItems(); track item.labelKey) {
+      <a class="sb-item" [routerLink]="item.routerLink" [queryParams]="item.queryParams || null"
+        routerLinkActive="sb-item--active" [routerLinkActiveOptions]="{ exact: false }"
+        [pTooltip]="isCollapsed() ? (item.labelKey | translateOr: item.label) : ''" tooltipPosition="right">
+
+        <i [class]="item.icon" class="sb-item__icon"></i>
+
+        <span class="sb-item__label" [@fadeText]="isCollapsed() ? 'hidden' : 'visible'">
+          {{ item.labelKey | translateOr: item.label }}
+        </span>
+      </a>
+    }
+  </nav>
+
+  <button type="button" class="sb-toggle" (click)="toggleSidebar()"
+    [pTooltip]="isCollapsed() ? ('ui.cepc.nav.expand' | translateOr: 'Expand') : ''" tooltipPosition="right">
+
+    <i class="pi" [ngClass]="isCollapsed() ? 'pi-chevron-right' : 'pi-chevron-left'"></i>
+
+    <span class="sb-toggle__label" [@fadeText]="isCollapsed() ? 'hidden' : 'visible'">
+      {{ 'ui.cepc.nav.collapse' | translateOr: 'Collapse' }}
+    </span>
+  </button>
+
+</aside>

@@ -1,0 +1,317 @@
+// ════════════════════════════════════════════════════════════════
+//  Column Picker — PrimeNG 21 Dialog
+// ════════════════════════════════════════════════════════════════
+
+:host ::ng-deep .cp-dialog {
+  width: 460px !important;
+  max-width: 92vw;
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 24px 48px -12px rgba(0, 0, 0, 0.16) !important;
+
+  .p-dialog-header {
+    padding: 0.625rem 0.875rem 0 !important;
+    border: none !important;
+    background: var(--p-content-background) !important;
+    justify-content: flex-end !important;
+    min-height: unset !important;
+  }
+
+  .p-dialog-content {
+    padding: 0 !important;
+    background: var(--p-content-background) !important;
+  }
+}
+
+.cp {
+  display: flex;
+  flex-direction: column;
+  padding: 0 1.5rem 1.25rem;
+}
+
+// ── Header ──────────────────────────────────────────────────────
+
+.cp-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.125rem;
+}
+
+.cp-header__badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  i {
+    font-size: 1.05rem;
+    color: var(--p-primary-color);
+  }
+}
+
+.cp-header__text {
+  h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--p-text-color);
+    line-height: 1.3;
+  }
+
+  p {
+    margin: 0.125rem 0 0;
+    font-size: 0.775rem;
+    color: var(--p-text-muted-color);
+    line-height: 1.35;
+  }
+}
+
+// ── Search (PrimeNG IconField) ──────────────────────────────────
+
+.cp-search-wrap {
+  position: relative;
+  margin-bottom: 0.625rem;
+}
+
+.cp-search {
+  width: 100%;
+
+  .cp-search__input {
+    width: 100% !important;
+    font-size: 0.8rem !important;
+    border-radius: 8px;
+  }
+}
+
+.cp-search-wrap__clear {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--p-text-muted-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transition: background 0.12s, color 0.12s;
+
+  i { font-size: 0.6rem; }
+
+  &:hover {
+    background: var(--p-content-hover-background);
+    color: var(--p-text-color);
+  }
+}
+
+// ── Toolbar ─────────────────────────────────────────────────────
+
+.cp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.cp-toolbar__stat {
+  font-size: 0.725rem;
+  color: var(--p-text-muted-color);
+  font-weight: 500;
+
+  strong {
+    font-weight: 700;
+    color: var(--p-primary-color);
+  }
+}
+
+.cp-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+:host ::ng-deep .cp-toolbar__btn {
+  font-size: 0.7rem !important;
+  padding: 0.2rem 0.5rem !important;
+  gap: 0.25rem !important;
+
+  .p-button-icon {
+    font-size: 0.65rem !important;
+  }
+}
+
+// ── Column list ─────────────────────────────────────────────────
+
+.cp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 310px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--p-content-hover-background);
+  border: 1px solid var(--p-content-border-color);
+
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--p-text-muted-color) 22%, transparent) transparent;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--p-text-muted-color) 22%, transparent);
+    border-radius: 10px;
+
+    &:hover {
+      background: color-mix(in srgb, var(--p-text-muted-color) 36%, transparent);
+    }
+  }
+}
+
+// ── Row ─────────────────────────────────────────────────────────
+
+.cp-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.5rem;
+  border-radius: 7px;
+  border: 1.5px solid transparent;
+  cursor: grab;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover {
+    .cp-row__grip { opacity: 0.7; }
+  }
+
+  &--active {
+    background: var(--p-content-background);
+
+    &:hover {
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+  }
+
+  &--inactive {
+    background: transparent;
+
+    .cp-row__name {
+      color: var(--p-text-muted-color);
+      font-weight: 400;
+    }
+
+    &:hover {
+      background: color-mix(in srgb, var(--p-content-background) 60%, transparent);
+    }
+  }
+
+  &--drop-target {
+    border-color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 4%, var(--p-content-background));
+  }
+}
+
+.cp-list--locked .cp-row {
+  cursor: default;
+  &:active { cursor: default; }
+}
+
+.cp-row__grip {
+  display: flex;
+  gap: 1px;
+  opacity: 0.25;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+  width: 10px;
+  justify-content: center;
+
+  i {
+    font-size: 0.55rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.cp-row__name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--p-text-color);
+  cursor: pointer;
+  user-select: none;
+  flex: 1;
+  line-height: 1.35;
+}
+
+:host ::ng-deep .cp-row__tag {
+  font-size: 0.55rem !important;
+  padding: 0.1rem 0.4rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em;
+}
+
+// ── Empty state ─────────────────────────────────────────────────
+
+.cp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--p-text-muted-color);
+
+  i {
+    font-size: 1.25rem;
+    opacity: 0.35;
+  }
+
+  span {
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+}
+
+// ── Footer ──────────────────────────────────────────────────────
+
+.cp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cp-footer__end {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+:host ::ng-deep .cp-footer__reset {
+  font-size: 0.75rem !important;
+  gap: 0.3rem !important;
+}
+
+:host ::ng-deep .cp-footer__cancel {
+  font-size: 0.8rem !important;
+}
+
+:host ::ng-deep .cp-footer__apply {
+  font-size: 0.8rem !important;
+  gap: 0.3rem !important;
+}

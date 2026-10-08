@@ -1,0 +1,72 @@
+@mixin custom-scrollbar($thumb-color: var(--p-content-border-color, #cbd5e1),
+  $hover-color: var(--p-primary-color, #3b82f6),
+  $track-color: transparent,
+  $width: 6px,
+  $radius: 10px) {
+  // ✨ Modern Standard W3C Specification Implementation (Firefox / Modern Webkit)
+  scrollbar-width: thin;
+  scrollbar-color: #{$thumb-color} #{$track-color};
+
+  // ⚙️ Webkit Engine Implementation (Chrome, Safari, Edge, Opera)
+  &::-webkit-scrollbar {
+    width: $width; // Vertical tracks structural footprint thickness
+    height: $width; // Horizontal tracks structural footprint thickness
+    display: block;
+  }
+
+  // 🖼️ Scrollbar Track Slot Surface Styling rules
+  &::-webkit-scrollbar-track {
+    background: $track-color;
+    border-radius: $radius;
+  }
+
+  // 🖱️ Scrollbar Interactive Thumb Element Polish
+  &::-webkit-scrollbar-thumb {
+    background: $thumb-color;
+    border-radius: $radius;
+    border: 1px solid transparent; // Generates structural micro breathing margins padding
+    background-clip: padding-box; // Isolates smooth borders composition layout
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:hover {
+      background: $hover-color;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+    }
+
+    &:active {
+      background: var(--p-primary-active-color, darken(#3b82f6, 10%)); // Gives rich mechanical press feedback state
+    }
+  }
+}
+
+// 🌐 GLOBAL DECLARATION APPLICATION PASS
+// Automatically maps this elegant theme pattern to every scrollable box node across the app window scope
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--p-content-border-color, #cbd5e1);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+
+  &:hover {
+    background: var(--p-primary-color, #3b82f6);
+  }
+}
+
+// Modern global fallback pairing rule for Mozilla engines
+html,
+body,
+div,
+scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--p-content-border-color, #cbd5e1) transparent;
+}

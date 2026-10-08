@@ -40,10 +40,26 @@ public class StorageController {
     public ResponseEntity<Resource> download(@RequestParam String path) throws IOException {
         byte[] content = storageService.retrieve(path);
         ByteArrayResource resource = new ByteArrayResource(content);
+        String filename = extractFilename(path);
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"file\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(content.length)
+                .body(resource);
+    }
+
+    @GetMapping("/view")
+    @Operation(summary = "View file inline", description = "Retrieve a file for inline display in the browser")
+    public ResponseEntity<Resource> view(@RequestParam String path) throws IOException {
+        byte[] content = storageService.retrieve(path);
+        ByteArrayResource resource = new ByteArrayResource(content);
+        String filename = extractFilename(path);
+        MediaType mediaType = detectMediaType(filename);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + filename + "\"")
+                .contentType(mediaType)
                 .contentLength(content.length)
                 .body(resource);
     }
@@ -53,5 +69,26 @@ public class StorageController {
     public ResponseEntity<ApiResponse<Void>> delete(@RequestParam String path) throws IOException {
         storageService.delete(path);
         return ResponseEntity.ok(ApiResponse.success(null, "File deleted"));
+    }
+
+    private String extractFilename(String path) {
+        if (path == null || path.isEmpty()) return "file";
+        String name = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+        name = name.contains("\\") ? name.substring(name.lastIndexOf('\\') + 1) : name;
+        int underscoreIdx = name.indexOf('_');
+        if (underscoreIdx > 0 && underscoreIdx < 40) {
+            name = name.substring(underscoreIdx + 1);
+        }
+        return name;
+    }
+
+    private MediaType detectMediaType(String filename) {
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".pdf")) return MediaType.APPLICATION_PDF;
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return MediaType.IMAGE_JPEG;
+        if (lower.endsWith(".png")) return MediaType.IMAGE_PNG;
+        if (lower.endsWith(".doc") || lower.endsWith(".docx"))
+            return MediaType.parseMediaType("application/msword");
+        return MediaType.APPLICATION_OCTET_STREAM;
     }
 }

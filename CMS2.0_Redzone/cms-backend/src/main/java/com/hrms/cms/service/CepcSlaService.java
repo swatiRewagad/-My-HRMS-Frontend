@@ -88,6 +88,24 @@ public class CepcSlaService {
     }
 
     /**
+     * The statuses that take a complaint out of the SLA population.
+     *
+     * <p>Carries both the canonical names and {@link CepcStatus}'s lowercase spellings, rather than relying
+     * on the server's case-insensitive collation to reconcile them. The bare literals {@code closed} and
+     * {@code withdrawn} that used to be listed here stopped matching once the workflow began writing
+     * {@code COMPLAINT_CLOSED} and {@code COMPLAINT_WITHDRAWN}, which counted concluded complaints as active
+     * and understated compliance.
+     */
+    private static final List<String> INACTIVE_STATUSES = java.util.stream.Stream.concat(
+                    CepcStatus.terminalSpellings().stream(),
+                    java.util.stream.Stream.of(
+                            CepcStatus.COMPLAINT_CLOSED, CepcStatus.COMPLAINT_WITHDRAWN,
+                            CepcStatus.COMPLAINT_REJECTED,
+                            "resolved", "adjudicated", "conciliated"))
+            .distinct()
+            .toList();
+
+    /**
      * Get compliance statistics for a department.
      *
      * @param department the department code (e.g., "CEPC")
@@ -95,10 +113,7 @@ public class CepcSlaService {
      */
     public Map<String, Long> getComplianceStats(String department) {
         List<Complaint> activeComplaints = complaintRepository
-                .findByDepartmentAndStatusNotInOrderByCreatedAtDesc(
-                        department,
-                        List.of("resolved", "closed", "rejected", "withdrawn", "adjudicated", "conciliated")
-                );
+                .findByDepartmentAndStatusNotInOrderByCreatedAtDesc(department, INACTIVE_STATUSES);
 
         long total = activeComplaints.size();
         long breached = 0;

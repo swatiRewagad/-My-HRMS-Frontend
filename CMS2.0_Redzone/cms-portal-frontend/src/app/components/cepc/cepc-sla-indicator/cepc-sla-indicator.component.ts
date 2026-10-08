@@ -1,10 +1,11 @@
 import { Component, Input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateOrPipe } from '../../../pipes/translate-or.pipe';
 
 @Component({
   selector: 'app-cepc-sla-indicator',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateOrPipe],
   templateUrl: './cepc-sla-indicator.component.html',
   styleUrl: './cepc-sla-indicator.component.scss'
 })

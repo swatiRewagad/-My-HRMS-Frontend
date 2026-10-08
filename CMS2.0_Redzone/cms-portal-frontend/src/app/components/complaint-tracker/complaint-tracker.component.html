@@ -50,34 +50,7 @@
           <div class="search-box">
             <input type="tel" [(ngModel)]="mobileNumber" maxlength="10"
                    placeholder="Enter 10-digit mobile number"
-                   aria-label="Mobile number">
-          </div>
-
-          <div class="captcha-section">
-            @if (captchaLoading()) {
-              <span class="captcha-loading"><i class="pi pi-spin pi-spinner"></i> Loading CAPTCHA...</span>
-            } @else if (captchaData(); as captcha) {
-              @if (captcha.type === 'VISUAL') {
-                <img [src]="captcha.imageData" alt="CAPTCHA image" class="captcha-image">
-              } @else {
-                <span class="captcha-math">{{ captcha.audioQuestion }}</span>
-              }
-              <button type="button" class="captcha-icon-btn" (click)="loadCaptcha()" title="Refresh CAPTCHA" aria-label="Refresh CAPTCHA">
-                <i class="pi pi-refresh"></i>
-              </button>
-              <button type="button" class="captcha-icon-btn" (click)="playCaptchaAudio()" title="Play CAPTCHA audio" aria-label="Play CAPTCHA audio">
-                <i class="pi pi-volume-up"></i>
-              </button>
-              <button type="button" class="captcha-icon-btn" (click)="switchCaptchaType()" title="Switch CAPTCHA type" aria-label="Switch CAPTCHA type">
-                <i class="pi pi-sync"></i>
-              </button>
-            }
-            <input type="text" [(ngModel)]="captchaInput" maxlength="10"
-                   placeholder="Enter CAPTCHA" aria-label="CAPTCHA answer"
                    (keydown.enter)="sendTrackingOtp()">
-          </div>
-
-          <div class="search-box">
             <button (click)="sendTrackingOtp()" [disabled]="loading()">
               @if (loading()) {
                 <i class="pi pi-spin pi-spinner"></i>
@@ -218,43 +191,18 @@
     </div>
   }
 
-  <!-- Status change notification toast -->
-  @if (statusChangeNotice()) {
-    <div class="status-change-toast">
-      <i class="pi pi-info-circle"></i> {{ statusChangeNotice() }}
-    </div>
-  }
-
   @if (status(); as s) {
     <div class="status-card">
       <div class="status-header">
         <h3>{{ s.complaintId }}</h3>
-        <div class="status-header-actions">
-          <button class="btn-refresh" (click)="refreshStatus()" [disabled]="loading()" title="Refresh status">
-            <i class="pi pi-refresh" [class.pi-spin]="loading()"></i>
-          </button>
-          <app-status-badge [status]="s.status" />
-        </div>
+        <span class="status-badge" [attr.data-status]="s.status">{{ s.status }}</span>
       </div>
-
-      <!-- 4-Stage Progress Timeline -->
-      @if (s.stages && s.stages.length > 0) {
-        <div class="stage-timeline-section">
-          <app-complaint-timeline [stages]="s.stages" [currentStage]="s.currentStage || 1"></app-complaint-timeline>
-        </div>
-      }
 
       <div class="status-details">
         <div class="detail-row">
           <span class="label">Category:</span>
           <span>{{ s.category }}</span>
         </div>
-        @if (s.entityName) {
-          <div class="detail-row">
-            <span class="label">Regulated Entity:</span>
-            <span>{{ s.entityName }}</span>
-          </div>
-        }
         <div class="detail-row">
           <span class="label">Registered:</span>
           <span>{{ s.registeredAt | date:'dd MMM yyyy, hh:mm a' }}</span>
@@ -269,18 +217,6 @@
             <span>{{ s.assignedTeam }}</span>
           </div>
         }
-        @if (s.closureClause) {
-          <div class="detail-row">
-            <span class="label">Closure Clause:</span>
-            <span>{{ s.closureClause }}</span>
-          </div>
-        }
-        @if (s.closedAt) {
-          <div class="detail-row">
-            <span class="label">Closure Date:</span>
-            <span>{{ s.closedAt | date:'dd MMM yyyy' }}</span>
-          </div>
-        }
         @if (s.resolutionSummary) {
           <div class="detail-row resolution">
             <span class="label">Resolution:</span>
@@ -289,10 +225,9 @@
         }
       </div>
 
-      <!-- Detailed Timeline History -->
       @if (s.timeline && s.timeline.length > 0) {
         <div class="timeline-section">
-          <h4>Detailed Timeline</h4>
+          <h4>Complaint Timeline</h4>
           <div class="timeline">
             @for (entry of s.timeline; track entry.timestamp) {
               <div class="timeline-entry">
@@ -353,27 +288,23 @@
 
       <!-- FR-G-034: Download PDF -->
       <div class="download-section">
-        <button class="btn-download-pdf" (click)="downloadPdf()" [disabled]="pdfLoading()">
-          @if (pdfLoading()) {
-            <i class="pi pi-spin pi-spinner"></i> Generating PDF...
-          } @else {
-            <i class="pi pi-download"></i> Download Complaint Details (PDF)
-          }
+        <button class="btn-download-pdf" (click)="downloadPdf()">
+          <i class="pi pi-download"></i> Download Complaint Details (PDF)
         </button>
       </div>
 
       <!--
-        UST111: File Appeal — offered for closed/resolved/rejected complaints that have NOT already
-        been appealed. The `!s.appealFiled` half is new: filing an appeal leaves the complaint's
-        status `closed` on purpose, so the status test alone kept offering the button forever and the
+        UST106/UST111: File Appeal — offered only for closures under an appealable clause (the
+        backend-authoritative `appealable` flag) that have NOT already been appealed. The
+        `!s.appealFiled` half matters because filing an appeal leaves the complaint's status
+        `closed` on purpose, so the appealable test alone kept offering the button forever and the
         citizen was walked to /public/appeal only to be refused there. Once an appeal exists the
         offer is replaced by a statement of the appeal that exists.
       -->
       @if (canFileAppeal(s)) {
         <div class="appeal-section">
-          <button class="btn-secondary" (click)="fileAppeal()">
-            <i class="pi pi-replay"></i> File Appeal / Representation
-          </button>
+          <p>Dissatisfied with this decision?</p>
+          <button class="btn-appeal" (click)="fileAppeal()"><i class="pi pi-file-edit"></i> File an Appeal</button>
         </div>
       } @else if (s.appealFiled) {
         <div class="appeal-filed-section">
@@ -392,21 +323,13 @@
         </div>
       }
 
-      <!-- UST105: Withdraw Complaint -->
-      @if (canWithdraw(s.status)) {
-        <div class="withdraw-section">
-          <p>If you wish to withdraw this complaint, you can do so below.</p>
-          <a [routerLink]="'/public/withdraw/' + s.complaintId" class="btn-withdraw">
-            <i class="pi pi-times-circle"></i> Withdraw Complaint
-          </a>
+      <!-- FR-G-026: Feedback link (only for closed complaints) -->
+      @if (s.status === 'CLOSED' || s.status === 'NON_MAINTAINABLE') {
+        <div class="feedback-section">
+          <p>Was your complaint resolved satisfactorily?</p>
+          <a routerLink="/public/feedback" [queryParams]="{complaintId: s.complaintId}" class="feedback-link"><i class="pi pi-star"></i> Share Your Feedback</a>
         </div>
       }
-
-      <!-- FR-G-026: Feedback link -->
-      <div class="feedback-section">
-        <p>Was your complaint resolved satisfactorily?</p>
-        <a routerLink="/public/feedback" class="feedback-link"><i class="pi pi-star"></i> Share Your Feedback</a>
-      </div>
     </div>
   }
 </div>

@@ -86,12 +86,9 @@ spring:
             predicates:
               - Path=/api/v1/i18n/**
 
-          - id: search-service
-            uri: http://${SEARCH_HOST:localhost}:8091
-            predicates:
-              - Path=/api/v1/search/**
-            filters:
-              - PrefixPath=/cms-search
+          # No search-service route: /api/v1/search/** is served by cms-backend, which queries the
+          # complaint tables directly. A route here would shadow cms-backend-catchall and send every
+          # search to port 8091, where the endpoint no longer exists.
 
           - id: storage-service
             uri: http://${STORAGE_HOST:localhost}:8090

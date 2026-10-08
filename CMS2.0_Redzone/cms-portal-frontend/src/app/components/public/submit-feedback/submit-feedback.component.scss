@@ -62,6 +62,25 @@
   &:hover { background: var(--citizen-surface-tint); }
 }
 
+.optional { font-weight: 400; color: #888; font-size: 12px; }
+.field-error { color: #d32f2f; font-size: 12px; display: block; margin-top: 4px; }
+.char-count { font-size: 12px; color: #999; display: block; text-align: right; margin-top: 2px; }
+
+.form-select {
+  width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px;
+  font-size: 14px; font-family: inherit; background: #fff;
+  &:focus { outline: none; border-color: #2460b9; box-shadow: 0 0 0 3px rgba(36,96,185,0.1); }
+}
+
+.radio-group {
+  display: flex; gap: 24px; margin-top: 6px;
+}
+.radio-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 14px; color: #333; cursor: pointer;
+  input[type="radio"] { accent-color: #472293; cursor: pointer; }
+}
+
 .success-card { text-align: center; }
 .success-icon { margin-bottom: 16px; i { font-size: 56px; color: #4caf50; } }
 .success-card p { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }

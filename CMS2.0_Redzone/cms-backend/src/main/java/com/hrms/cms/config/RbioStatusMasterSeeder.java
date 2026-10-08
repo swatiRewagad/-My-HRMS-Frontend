@@ -106,6 +106,11 @@ public class RbioStatusMasterSeeder implements CommandLineRunner {
         rows.add(closed("CLOSED",            "closed",      "Complaint Closed",     "FINAL_DECISION", ++order, true,  false));
         rows.add(closed("APPEAL_CLOSED",     null,          "Appeal Closed",        "FINAL_DECISION", ++order, true,  true));
 
+        // FR-G-013: eligibility-screening outcome, not a decision made after assessment — the
+        // complaint never leaves REGISTER. Terminal and citizen-visible: this is where the citizen's
+        // closure-letter download for a Non-Maintainable complaint comes from.
+        rows.add(closed("PORTAL_REJECTION",  "portal_rejection", "Portal Rejection", "REGISTER", ++order, true, true));
+
         // Reopen is an OPEN state despite naming a closed one — a reopened complaint is live work.
         rows.add(status("REOPENED", null, "Complaint Re-Open", "ASSESSMENT", ++order, true));
 
@@ -144,13 +149,13 @@ public class RbioStatusMasterSeeder implements CommandLineRunner {
         grant(RbioRoles.DEALING_OFFICIAL, concat(common, List.of(
                 "SENT_TO_DO", "SENT_BACK_DO", "SENT_TO_REVIEWER",
                 "SENT_TO_OTHER_OFFICE", "SENT_TO_OTHER_DEPT", "SENT_TO_OTHER_RE",
-                "NOT_A_COMPLAINT", "CLOSED")), "ASSIGNED_TO_ME");
+                "NOT_A_COMPLAINT", "CLOSED", "PORTAL_REJECTION")), "ASSIGNED_TO_ME");
 
         // Reviewer: the DO's queue plus its own, and upward routing.
         grant(RbioRoles.REVIEWER, concat(common, List.of(
                 "SENT_TO_REVIEWER", "SENT_BACK_REVIEWER", "SENT_BACK_DO",
                 "SENT_TO_DY_OMB", "ESCALATED", "FACILITATION", "NOT_A_COMPLAINT",
-                "ADVISORY_COMPLIED", "CLOSED")), "SENT_TO_REVIEWER");
+                "ADVISORY_COMPLIED", "CLOSED", "PORTAL_REJECTION")), "SENT_TO_REVIEWER");
 
         // Deputy Ombudsman: decides within delegated authority, so sees decision states but not the
         // Ombudsman's own appealable-order states.

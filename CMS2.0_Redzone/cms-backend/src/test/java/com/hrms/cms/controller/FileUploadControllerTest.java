@@ -6,7 +6,6 @@ import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.service.FileStorageService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import com.hrms.cms.support.ControllerSliceTest;
@@ -14,9 +13,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -33,9 +31,6 @@ class FileUploadControllerTest {
     @Autowired private MockMvc mockMvc;
     @MockBean private FileStorageService fileStorageService;
     @MockBean private EmailDraftAttachmentRepository draftAttachmentRepository;
-
-    @TempDir
-    Path tempDir;
 
     @Nested
     class UploadChunk {
@@ -151,10 +146,8 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturnFileResource() throws Exception {
-            Path file = tempDir.resolve("test.pdf");
-            Files.writeString(file, "PDF Content");
-
-            when(fileStorageService.getFilePath(1L)).thenReturn(file);
+            when(fileStorageService.readContent(1L)).thenReturn(Optional.of(
+                    new FileStorageService.AttachmentContent("test.pdf", "application/pdf", "PDF Content".getBytes())));
 
             mockMvc.perform(get("/api/files/download/1"))
                     .andExpect(status().isOk())
@@ -163,8 +156,7 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturn404WhenFileNotExists() throws Exception {
-            Path nonExistent = tempDir.resolve("missing.pdf");
-            when(fileStorageService.getFilePath(99L)).thenReturn(nonExistent);
+            when(fileStorageService.readContent(99L)).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/api/files/download/99"))
                     .andExpect(status().isNotFound());
@@ -176,10 +168,8 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturn206ForRangeRequest() throws Exception {
-            Path file = tempDir.resolve("video.mp4");
-            Files.write(file, new byte[10240]);
-
-            when(fileStorageService.getFilePath(1L)).thenReturn(file);
+            when(fileStorageService.readContent(1L)).thenReturn(Optional.of(
+                    new FileStorageService.AttachmentContent("video.mp4", "video/mp4", new byte[10240])));
 
             mockMvc.perform(get("/api/files/stream/1")
                             .header("Range", "bytes=0-1023"))
@@ -189,10 +179,8 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturn206WithoutRangeHeader() throws Exception {
-            Path file = tempDir.resolve("audio.mp3");
-            Files.write(file, new byte[5000]);
-
-            when(fileStorageService.getFilePath(2L)).thenReturn(file);
+            when(fileStorageService.readContent(2L)).thenReturn(Optional.of(
+                    new FileStorageService.AttachmentContent("audio.mp3", "audio/mpeg", new byte[5000])));
 
             mockMvc.perform(get("/api/files/stream/2"))
                     .andExpect(status().isPartialContent());
@@ -200,8 +188,7 @@ class FileUploadControllerTest {
 
         @Test
         void shouldReturn404WhenStreamFileNotExists() throws Exception {
-            Path missing = tempDir.resolve("ghost.mp4");
-            when(fileStorageService.getFilePath(99L)).thenReturn(missing);
+            when(fileStorageService.readContent(99L)).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/api/files/stream/99"))
                     .andExpect(status().isNotFound());

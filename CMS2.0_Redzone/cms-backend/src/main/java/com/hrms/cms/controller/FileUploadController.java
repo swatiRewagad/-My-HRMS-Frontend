@@ -7,6 +7,7 @@ import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.service.FileStorageService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -111,24 +113,20 @@ public class FileUploadController {
 
     /**
      * Download an attachment by ID — supports forced download.
+     *
+     * <p>The filename offered is the one the user uploaded. It used to be the storage name, which carried
+     * a UUID prefix to keep files from colliding on disk — so every download arrived as
+     * "3f2a…_statement.pdf" and a saved document could not be matched back to the one in the list.
      */
     @GetMapping("/download/{attachmentId}")
-    public ResponseEntity<Resource> download(@PathVariable Long attachmentId) throws IOException {
-        Path filePath = fileStorageService.getFilePath(attachmentId);
-
-        if (!Files.exists(filePath)) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Resource resource = new FileSystemResource(filePath);
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) contentType = "application/octet-stream";
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + filePath.getFileName().toString() + "\"")
-                .body(resource);
+    public ResponseEntity<Resource> download(@PathVariable Long attachmentId) {
+        return fileStorageService.readContent(attachmentId)
+                .map(content -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(content.contentType()))
+                        .header(HttpHeaders.CONTENT_DISPOSITION,
+                                disposition(ContentDisposition.attachment(), content.fileName()))
+                        .body((Resource) new ByteArrayResource(content.bytes())))
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /**
@@ -138,17 +136,15 @@ public class FileUploadController {
     public ResponseEntity<ResourceRegion> stream(
             @PathVariable Long attachmentId,
             @RequestHeader HttpHeaders headers
-    ) throws IOException {
-        Path filePath = fileStorageService.getFilePath(attachmentId);
-
-        if (!Files.exists(filePath)) {
+    ) {
+        FileStorageService.AttachmentContent content = fileStorageService.readContent(attachmentId)
+                .orElse(null);
+        if (content == null) {
             return ResponseEntity.notFound().build();
         }
 
-        Resource resource = new FileSystemResource(filePath);
-        long fileLength = resource.contentLength();
-        String contentType = Files.probeContentType(filePath);
-        if (contentType == null) contentType = "application/octet-stream";
+        Resource resource = new ByteArrayResource(content.bytes());
+        long fileLength = content.bytes().length;
 
         ResourceRegion region;
         List<HttpRange> ranges = headers.getRange();
@@ -166,9 +162,31 @@ public class FileUploadController {
         }
 
         return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                .contentType(MediaType.parseMediaType(contentType))
+                .contentType(MediaType.parseMediaType(content.contentType()))
                 .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                // A preview opens in a tab, so the name only matters if the user saves it from there —
+                // and then it must still be their own filename, not a storage name.
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        disposition(ContentDisposition.inline(), content.fileName()))
                 .body(region);
+    }
+
+    /**
+     * A Content-Disposition header carrying a user-supplied filename.
+     *
+     * <p>Built rather than concatenated, so a quote in the name is escaped instead of closing the value.
+     *
+     * <p>The charset is supplied only for names that need it. Spring adds the RFC 5987 {@code filename*}
+     * form when given one — which every current browser prefers — but it then writes the plain
+     * {@code filename} as an RFC 2047 encoded word, and a client that reads only the plain form would save
+     * the document as "=?UTF-8?Q?…?=". Plain ASCII names, which is nearly all of them, are sent as-is.
+     */
+    private static String disposition(ContentDisposition.Builder builder, String fileName) {
+        boolean ascii = fileName.chars().allMatch(c -> c >= 0x20 && c < 0x7F);
+        return (ascii
+                ? builder.filename(fileName).build()
+                : builder.filename(fileName, StandardCharsets.UTF_8).build())
+                .toString();
     }
 
     /**
@@ -214,7 +232,7 @@ public class FileUploadController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "inline; filename=\"" + safeFileName + "\"")
+                        disposition(ContentDisposition.inline(), safeFileName))
                 .body(resource);
     }
 

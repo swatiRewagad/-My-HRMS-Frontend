@@ -1,0 +1,92 @@
+<p-drawer [(visible)]="visible" position="right" styleClass="cepc-filter-drawer" [modal]="true">
+
+  <ng-template pTemplate="header">
+    <div class="drawer-header-title">
+      <i class="pi pi-filter"></i>
+      <span>{{ 'ui.cepc.filter.title' | translateOr: 'Dashboard Filters' }}</span>
+      @if (totalSelectedCount() > 0) {
+        <span class="total-selected-badge">{{ totalSelectedCount() }}</span>
+      }
+    </div>
+  </ng-template>
+
+  <div class="filter-split-container">
+    <div class="filter-left-menu">
+      <p-listbox [options]="filterCategories()" [(ngModel)]="selectedCategoryId" optionValue="id"
+          [metaKeySelection]="false" styleClass="category-listbox"
+          [dt]="{
+            border: { color: 'transparent' },
+            background: 'transparent',
+            option: { borderRadius: '0' }
+          }">
+        <ng-template pTemplate="item" let-category>
+          <div class="category-item-row">
+            <span class="category-label-text">{{ category.labelKey | translateOr: category.label }}</span>
+            @if (getSelectedCount(category.id) > 0) {
+              <span class="category-count-badge">{{ getSelectedCount(category.id) }}</span>
+            }
+          </div>
+        </ng-template>
+      </p-listbox>
+    </div>
+
+    <div class="filter-right-options">
+      @if (selectedCategoryId() === 'districts' && loadingDistricts()) {
+        <div class="empty-options-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <p>{{ 'ui.cepc.filter.loading_districts' | translateOr: 'Loading districts...' }}</p>
+        </div>
+      } @else if (selectedCategoryId() === 'districts' && selectedValues().states.length === 0) {
+        <div class="empty-options-state">
+          <i class="pi pi-map-marker"></i>
+          <p>{{ 'ui.cepc.filter.select_state_first'
+            | translateOr: 'Please select a State first to view districts.' }}</p>
+        </div>
+      } @else if (activeCategoryOptions().length === 0) {
+        <div class="empty-options-state">
+          <i class="pi pi-info-circle"></i>
+          <p>{{ 'ui.cepc.filter.no_options' | translateOr: 'No options available' }}</p>
+        </div>
+      } @else {
+        <div class="select-all-row">
+          <p-checkbox [binary]="true" [ngModel]="isAllActiveCategorySelected()"
+              (ngModelChange)="toggleAllActiveCategory()" inputId="select-all" />
+          <label for="select-all" class="checkbox-label select-all-label">
+            @if (isAllActiveCategorySelected()) {
+              {{ 'ui.cepc.filter.deselect_all' | translateOr: 'Deselect All' }}
+            } @else {
+              {{ 'ui.cepc.filter.select_all' | translateOr: 'Select All' }}
+            }
+          </label>
+          <span class="active-count-text">
+            {{ getSelectedCount(selectedCategoryId()) }} / {{ activeCategoryOptions().length }}
+          </span>
+        </div>
+
+        <div class="options-scroll-viewport">
+          @for (opt of activeCategoryOptions(); track opt.value) {
+            <div class="checkbox-row-item" [class.row-selected]="isOptionChecked(opt.value)">
+              <p-checkbox [binary]="true" [ngModel]="isOptionChecked(opt.value)"
+                  (ngModelChange)="onCheckboxChange(opt.value, $event)" [inputId]="opt.value" />
+              <label [for]="opt.value" class="checkbox-label">
+                {{ opt.labelKey ? (opt.labelKey | translateOr: opt.label) : opt.label }}
+              </label>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <div class="drawer-footer-actions">
+      <p-button [label]="'ui.cepc.filter.clear_all' | translateOr: 'Clear All'" icon="pi pi-times"
+          severity="secondary" variant="outlined"
+          [disabled]="totalSelectedCount() === 0"
+          (onClick)="clearAll()" styleClass="footer-btn" />
+      <p-button [label]="'ui.cepc.filter.apply' | translateOr: 'Apply Filters'" icon="pi pi-check"
+          [disabled]="totalSelectedCount() === 0"
+          (onClick)="applyFilters()" styleClass="footer-btn" />
+    </div>
+  </ng-template>
+</p-drawer>

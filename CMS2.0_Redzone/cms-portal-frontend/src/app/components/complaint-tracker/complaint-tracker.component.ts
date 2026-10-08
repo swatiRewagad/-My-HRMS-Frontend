@@ -365,38 +365,32 @@ export class ComplaintTrackerComponent implements OnInit {
     this.track();
   }
 
-  /** UST111: Check if complaint status allows filing an appeal (case-insensitive). */
-  isAppealEligibleStatus(status: string): boolean {
-    const appealStatuses = ['CLOSED', 'RESOLVED', 'REJECTED'];
-    return appealStatuses.includes((status || '').toUpperCase());
-  }
-
   /**
    * Whether the "File Appeal" offer should be made at all.
    *
-   * The status check alone is not sufficient. Filing an appeal does NOT change the complaint's
-   * status — it stays `closed`, deliberately, so that closure filters, SLA queries and the
-   * server's own terminal-status check keep working — which meant a terminal status remained
-   * terminal forever and the button was offered forever. A citizen who had already appealed was
-   * still invited to appeal, walked to /public/appeal, and only there told "An active appeal
-   * already exists for this complaint." The server would always refuse the second filing, so
-   * nothing was ever duplicated, but the offer was a dead end.
+   * The backend-authoritative `appealable` flag (UST106/UST111) says whether this closure's
+   * clause is one the complainant may appeal (15(1)(a)/(b)) — that alone is not sufficient,
+   * though. Filing an appeal does NOT change the complaint's status — it stays `closed`,
+   * deliberately, so that closure filters, SLA queries and the server's own terminal-status
+   * check keep working — which meant a terminal status remained terminal forever and the button
+   * was offered forever. A citizen who had already appealed was still invited to appeal, walked
+   * to /public/appeal, and only there told "An active appeal already exists for this complaint."
+   * The server would always refuse the second filing, so nothing was ever duplicated, but the
+   * offer was a dead end.
    *
    * `appealFiled` comes from the complaint's APPEAL_FILED timeline event, so the offer is
    * withdrawn as soon as the appeal exists rather than after the citizen has walked into the
    * refusal.
    */
   canFileAppeal(s: ComplaintStatus): boolean {
-    return this.isAppealEligibleStatus(s.status) && !s.appealFiled;
+    return s.appealable === true && !s.appealFiled;
   }
 
-  /** UST111: Navigate to file-appeal page with the complaint number pre-filled. */
+  /** UST106/UST111: Navigate to file-appeal page with the complaint number pre-filled. */
   fileAppeal() {
     const s = this.status();
     if (!s) return;
-    this.router.navigate(['/public/appeal'], {
-      queryParams: { complaint: s.complaintId }
-    });
+    this.router.navigate(['/public/appeal', s.complaintId]);
   }
 
   /**

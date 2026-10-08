@@ -21,6 +21,18 @@ const RBIO_ROLES = [
   'RBIO_ADMIN', 'ADMIN'
 ];
 
+/**
+ * Roles admitted to the CEPC module: the four workflow rungs, CEPC_ADMIN, and ADMIN as the
+ * cross-module superuser already accepted by every other staff route here.
+ *
+ * CEPC_CONTACT_PERSON is deliberately absent. It is a regulated-entity-facing role with its own
+ * task queue under /staff/cepc/**, and the screens below assume a case-holding officer.
+ */
+const CEPC_ROLES = [
+  'CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY',
+  'CEPC_ADMIN', 'ADMIN'
+];
+
 export const routes: Routes = [
   {
     path: '',
@@ -226,18 +238,36 @@ export const routes: Routes = [
   },
   // ── CEPC Module ──
   {
+    path: 'cepc',
+    // Full match: this route has no children, so the default 'prefix' lets it partially consume
+    // deeper URLs like /cepc/complaint/42 and leaves matching those to router backtracking.
+    pathMatch: 'full',
+    canActivate: [staffRoleGuard(CEPC_ROLES)],
+    loadComponent: () => import('./components/cepc/cepc-home/cepc-home.component').then(m => m.CepcHomeComponent)
+  },
+  {
     path: 'cepc/dashboard',
-    canActivate: [staffAuthGuard],
-    loadComponent: () => import('./components/cepc/cepc-dashboard/cepc-dashboard.component').then(m => m.CepcDashboardComponent)
+    redirectTo: 'cepc',
+    pathMatch: 'full'
+  },
+  {
+    path: 'cepc/create-complaint',
+    canActivate: [staffRoleGuard(CEPC_ROLES)],
+    loadComponent: () => import('./components/cepc/cepc-create-complaint/cepc-create-complaint.component').then(m => m.CepcCreateComplaintComponent)
   },
   {
     path: 'cepc/complaint/:id',
-    canActivate: [staffAuthGuard],
-    loadComponent: () => import('./components/cepc/cepc-complaint-detail/cepc-complaint-detail.component').then(m => m.CepcComplaintDetailComponent)
+    canActivate: [staffRoleGuard(CEPC_ROLES)],
+    loadComponent: () => import('./components/cepc/cepc-complaint-details-view/cepc-complaint-details-view.component').then(m => m.CepcComplaintDetailsView)
+  },
+  {
+    path: 'cepc/draft-complaint/:id',
+    canActivate: [staffRoleGuard(CEPC_ROLES)],
+    loadComponent: () => import('./components/cepc/cepc-draft-complaint/cepc-draft-complaint.component').then(m => m.CepcDraftComplaintComponent)
   },
   {
     path: 'cepc/sla-dashboard',
-    canActivate: [staffAuthGuard],
+    canActivate: [staffRoleGuard(CEPC_ROLES)],
     loadComponent: () => import('./components/cepc/cepc-sla-dashboard/cepc-sla-dashboard.component').then(m => m.CepcSlaDashboardComponent)
   },
   // ── Report Builder & Senior Dashboard ──
@@ -422,9 +452,11 @@ export const routes: Routes = [
       // Protected routes — require active session (NFR-005: 15-minute session)
       { path: 'file-complaint', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-complaint/file-complaint.component').then(m => m.PublicFileComplaintComponent) },
       { path: 'withdraw', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
-      { path: 'withdraw/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/withdraw-complaint/withdraw-complaint.component').then(m => m.WithdrawComplaintComponent) },
+      { path: 'withdraw/:id', canActivate: [publicAuthGuard], data: { mode: 'withdraw' }, loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },
       { path: 'feedback', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
+      { path: 'feedback/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/submit-feedback/submit-feedback.component').then(m => m.SubmitFeedbackComponent) },
       { path: 'appeal', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
+      { path: 'appeal/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/file-appeal/file-appeal.component').then(m => m.FileAppealComponent) },
       { path: 'faq', loadComponent: () => import('./components/public/faq/faq.component').then(m => m.FaqComponent) },
       { path: 'history', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-history/complaint-history.component').then(m => m.ComplaintHistoryComponent) },
       { path: 'complaint/:id', canActivate: [publicAuthGuard], loadComponent: () => import('./components/public/complaint-detail/complaint-detail.component').then(m => m.ComplaintDetailComponent) },

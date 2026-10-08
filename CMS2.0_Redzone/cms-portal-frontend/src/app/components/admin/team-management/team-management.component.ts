@@ -59,8 +59,10 @@ export class TeamManagementComponent implements OnInit {
     { value: 'RBIO_SUPERVISOR', label: 'RBIO - Supervisor', keycloakRole: 'RBIO_SUPERVISOR' },
     { value: 'RBIO_CONCILIATOR', label: 'RBIO - Conciliator', keycloakRole: 'RBIO_CONCILIATOR' },
     { value: 'RBIO_ADJUDICATOR', label: 'RBIO - Adjudicator', keycloakRole: 'RBIO_ADJUDICATOR' },
-    { value: 'CEPC_OFFICER', label: 'CEPC - Officer', keycloakRole: 'CEPC_OFFICER' },
-    { value: 'CEPC_SUPERVISOR', label: 'CEPC - Supervisor', keycloakRole: 'CEPC_SUPERVISOR' },
+    { value: 'CEPC_DO', label: 'CEPC - Do', keycloakRole: 'CEPC_DO' },
+     { value: 'CEPC_REVIEWER', label: 'CEPC - Reviewer', keycloakRole: 'CEPC_REVIEWER' },
+      { value: 'CEPC_INCHARGE', label: 'CEPC - Incharge', keycloakRole: 'CEPC_INCHARGE' },
+       { value: 'CEPC_CLOSING_AUTHORITY', label: 'CEPC - Closing - Authority', keycloakRole: 'CEPC_CLOSING_AUTHORITY' }                                                                                                                         
   ];
 
   newOfficer: Partial<Officer> = {

@@ -5,6 +5,9 @@ export const environment = {
   workflowBaseUrl: 'https://cms.rbi.org.in',
   keycloakUrl: 'https://auth.rbi.org.in',
   realm: 'cms',
+  // Points at the same host as apiBaseUrl, so storage follows the rest of the API rather than the
+  // origin serving the bundle. Absent here entirely until now, which failed the production build.
+  storageBaseUrl: 'https://cms.rbi.org.in/api/v1/storage',
 
   // Dev mode: never auto-populate OTP in production
   devAutoPopulateOtp: false,

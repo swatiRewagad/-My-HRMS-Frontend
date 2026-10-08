@@ -1,0 +1,235 @@
+<div class="panel-header">
+  <h3><i class="pi pi-arrow-up-right"></i> {{ 'ui.cepc.dv.action.forward' | translateOr: 'Forward' }}</h3>
+  <button class="expand-btn"><i class="pi pi-window-maximize"></i></button>
+</div>
+<div class="form-scroll assessment-scroll forward-panel">
+  <label class="forward-to-label">{{ 'ui.cepc.fw.forward_to' | translateOr: 'Forward To' }}</label>
+  <div class="forward-target-cards">
+    @if (canForwardTo().REGULATORY_BODIES) {
+      <div class="forward-target-card" [class.selected]="forwardTarget() === 'REGULATORY_BODIES'" (click)="selectForwardTarget('REGULATORY_BODIES')">
+        <span class="radio-dot" [class.checked]="forwardTarget() === 'REGULATORY_BODIES'"></span>
+        {{ 'ui.cepc.fw.other_regulatory_bodies' | translateOr: 'Other Regulatory Bodies' }}
+      </div>
+    }
+    <div class="forward-target-card" [class.selected]="forwardTarget() === 'RBI_DEPARTMENT'" (click)="selectForwardTarget('RBI_DEPARTMENT')">
+      <span class="radio-dot" [class.checked]="forwardTarget() === 'RBI_DEPARTMENT'"></span>
+      {{ 'ui.cepc.fw.other_rbi_department' | translateOr: 'Other RBI Department' }}
+    </div>
+    @if (canForwardTo().OFFICE) {
+      <div class="forward-target-card" [class.selected]="forwardTarget() === 'OFFICE'" (click)="selectForwardTarget('OFFICE')">
+        <span class="radio-dot" [class.checked]="forwardTarget() === 'OFFICE'"></span>
+        {{ 'ui.cepc.fw.other_office' | translateOr: 'Other Office' }}
+      </div>
+    }
+  </div>
+
+  @if (forwardFieldErrors()['target']) {
+    <span class="field-error">{{ forwardFieldErrors()['target'] }}</span>
+  }
+
+  @if (forwardTarget() === 'REGULATORY_BODIES') {
+    <div class="form-row-2col">
+      <div class="form-group entity-search-group">
+        <label>{{ 'ui.cepc.fw.name_of_regulator' | translateOr: 'Name of Regulator' }} <span class="required">*</span></label>
+        <div class="entity-search-wrapper">
+          <input type="text"
+                 [ngModel]="forwardRegulatorName"
+                 (ngModelChange)="onRegulatorSearchInput($event)"
+                 (focus)="openRegulatorDropdown()"
+                 (blur)="onRegulatorBlur()"
+                 [placeholder]="'ui.cepc.dv.action.search' | translateOr: 'Search'"
+                 autocomplete="off" />
+          <i class="pi entity-search-icon"
+             [class.pi-search]="!regulatorSearchLoading()"
+             [class.pi-spinner]="regulatorSearchLoading()"
+             [class.pi-spin]="regulatorSearchLoading()"></i>
+        </div>
+        @if (showRegulatorDropdown() && !regulatorSearchLoading() && regulatorResults().length === 0) {
+          <ul class="entity-dropdown">
+            <li class="entity-dropdown-empty">{{ 'ui.cepc.fw.no_regulator_match' | translateOr: 'No regulator matches that name' }}</li>
+          </ul>
+        }
+        @if (showRegulatorDropdown() && regulatorResults().length > 0) {
+          <ul class="entity-dropdown">
+            @for (regulator of regulatorResults(); track regulator.id) {
+              <li (mousedown)="selectRegulator(regulator)">
+                <span class="entity-name">{{ regulator.name }}</span>
+                <span class="entity-dept">{{ regulator.code }}</span>
+              </li>
+            }
+          </ul>
+        }
+        @if (forwardFieldErrors()['regulator']) {
+          <span class="field-error">{{ forwardFieldErrors()['regulator'] }}</span>
+        }
+      </div>
+      <div class="form-group">
+        <label>{{ 'ui.cepc.fw.email_of_regulator' | translateOr: 'Email id of the Regulator' }} <span class="required">*</span></label>
+        <input type="email" [(ngModel)]="forwardRegulatorEmail" [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        @if (forwardFieldErrors()['regulatorEmail']) {
+          <span class="field-error">{{ forwardFieldErrors()['regulatorEmail'] }}</span>
+        }
+      </div>
+    </div>
+    <div class="form-group">
+      <label>{{ 'ui.cepc.dv.field.complaint_status_on_portal' | translateOr: 'Complaint Status on Portal' }} <span class="required">*</span></label>
+      <select [ngModel]="complaintStatusOnPortal" (ngModelChange)="setComplaintStatusOnPortal($event)">
+        <option value="">{{ 'ui.cepc.dv.action.select_a_value' | translateOr: 'Select a Value' }}</option>
+        @for (option of complaintStatusOnPortalOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+      @if (forwardFieldErrors()['complaintStatusOnPortal']) {
+        <span class="field-error">{{ forwardFieldErrors()['complaintStatusOnPortal'] }}</span>
+      }
+    </div>
+  } @else if (forwardTarget() === 'RBI_DEPARTMENT') {
+    <div class="form-row-2col">
+      <div class="form-group entity-search-group">
+        <label>{{ 'ui.cepc.fw.name_of_department' | translateOr: 'Name of Department' }} <span class="required">*</span></label>
+        <div class="entity-search-wrapper">
+          <input type="text"
+                 [ngModel]="forwardDepartmentName"
+                 (ngModelChange)="onDepartmentSearchInput($event)"
+                 (focus)="openDepartmentDropdown()"
+                 (blur)="onDepartmentBlur()"
+                 [placeholder]="'ui.cepc.dv.action.search' | translateOr: 'Search'"
+                 autocomplete="off" />
+          <i class="pi entity-search-icon"
+             [class.pi-search]="!departmentSearchLoading()"
+             [class.pi-spinner]="departmentSearchLoading()"
+             [class.pi-spin]="departmentSearchLoading()"></i>
+        </div>
+        @if (showDepartmentDropdown() && !departmentSearchLoading() && departmentResults().length === 0) {
+          <ul class="entity-dropdown">
+            <li class="entity-dropdown-empty">{{ 'ui.cepc.fw.no_department_match' | translateOr: 'No department matches that name' }}</li>
+          </ul>
+        }
+        @if (showDepartmentDropdown() && departmentResults().length > 0) {
+          <ul class="entity-dropdown">
+            @for (department of departmentResults(); track department.id) {
+              <li (mousedown)="selectDepartment(department)">
+                <span class="entity-name">{{ department.name }}</span>
+                <span class="entity-dept">{{ department.code }}</span>
+              </li>
+            }
+          </ul>
+        }
+        @if (forwardFieldErrors()['department']) {
+          <span class="field-error">{{ forwardFieldErrors()['department'] }}</span>
+        }
+      </div>
+      <div class="form-group">
+        <label>{{ 'ui.cepc.fw.email_of_department' | translateOr: 'Email id of the Department' }} <span class="required">*</span></label>
+        <input type="email" [(ngModel)]="forwardDepartmentEmail" [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        @if (forwardFieldErrors()['departmentEmail']) {
+          <span class="field-error">{{ forwardFieldErrors()['departmentEmail'] }}</span>
+        }
+      </div>
+    </div>
+    <div class="form-group">
+      <label>{{ 'ui.cepc.dv.field.complaint_status_on_portal' | translateOr: 'Complaint Status on Portal' }} <span class="required">*</span></label>
+      <select [ngModel]="complaintStatusOnPortal" (ngModelChange)="setComplaintStatusOnPortal($event)">
+        <option value="">{{ 'ui.cepc.dv.action.select_a_value' | translateOr: 'Select a Value' }}</option>
+        @for (option of complaintStatusOnPortalOptions; track option) {
+          <option [value]="option">{{ option }}</option>
+        }
+      </select>
+      @if (forwardFieldErrors()['complaintStatusOnPortal']) {
+        <span class="field-error">{{ forwardFieldErrors()['complaintStatusOnPortal'] }}</span>
+      }
+    </div>
+  } @else if (forwardTarget() === 'OFFICE') {
+    <!-- Transfer of Complaints: Reason for Transfer, Transfer Office (layout) and the -->
+    <!-- matching destination office, all mandatory before Save and Proceed (UST559/556/563). -->
+    <div class="form-group">
+      <label>{{ 'ui.cepc.fw.reason_for_transfer' | translateOr: 'Reason for Transfer' }} <span class="required">*</span></label>
+      <div class="textarea-with-speech">
+        <textarea [(ngModel)]="forwardTransferReason" rows="3" maxlength="2000"
+                  [placeholder]="'ui.cepc.fw.ph.enter_transfer_reason' | translateOr: 'Enter the reason for this transfer'"></textarea>
+        <app-speech-button (transcription)="forwardTransferReason = forwardTransferReason + ' ' + $event"></app-speech-button>
+      </div>
+      @if (forwardFieldErrors()['transferReason']) {
+        <span class="field-error">{{ forwardFieldErrors()['transferReason'] }}</span>
+      }
+    </div>
+
+    <div class="form-row-2col">
+      <div class="form-group">
+        <label>{{ 'ui.cepc.fw.transfer_office' | translateOr: 'Transfer Office' }} <span class="required">*</span></label>
+        <select [ngModel]="forwardOfficeLayout()" (ngModelChange)="onForwardOfficeLayoutChange($event)">
+          <option value="RBIO">RBIO</option>
+          <option value="CEPC">CEPC</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>{{ forwardOfficeLayout() === 'CEPC' ? 'CEPC Offices' : 'RBIO Offices' }} <span class="required">*</span></label>
+        <select [ngModel]="forwardOfficeCode" (ngModelChange)="onForwardOfficeSelected($event)">
+          <option value="" disabled selected>{{ 'ui.cepc.dv.ph.select_an_office' | translateOr: 'Select an office' }}</option>
+          @for (office of officeList(); track office.officeCode) {
+            <option [value]="office.officeCode">{{ office.officeName }} ({{ office.officeType }})</option>
+          }
+        </select>
+        @if (officeList().length === 0) {
+          <span class="field-hint">{{ 'ui.cepc.cc.ph.loading_offices' | translateOr: 'Loading offices…' }}</span>
+        }
+        @if (forwardFieldErrors()['office']) {
+          <span class="field-error">{{ forwardFieldErrors()['office'] }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{ 'ui.cepc.fw.sent_from_office_comments' | translateOr: 'Sent from Office Comments' }} <span class="required">*</span></label>
+      <div class="textarea-with-speech">
+        <textarea [(ngModel)]="forwardOfficeComments" rows="3" maxlength="2000"
+                  [placeholder]="'ui.cepc.fw.ph.enter_sending_office_comments' | translateOr: 'Enter comments from the sending office'"></textarea>
+        <app-speech-button (transcription)="forwardOfficeComments = forwardOfficeComments + ' ' + $event"></app-speech-button>
+      </div>
+      @if (forwardFieldErrors()['officeComments']) {
+        <span class="field-error">{{ forwardFieldErrors()['officeComments'] }}</span>
+      }
+    </div>
+  }
+
+  <app-cepc-complaint-comments
+    [comments]="assessmentComments"
+    [commentText]="assessmentComment"
+    (commentTextChange)="setAssessmentComment($event)"
+    [showAddComment]="forwardTarget() !== 'OFFICE'"
+    [showBookmarkButton]="true"
+    [showEmptyState]="true">
+  </app-cepc-complaint-comments>
+</div>
+
+@if (showForwardConfirm()) {
+  <div class="modal-overlay" (click)="cancelForwardConfirm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>{{ 'ui.cepc.dv.section.confirmation' | translateOr: 'Confirmation' }}</strong>
+            <p>Are you sure you want to <strong>forward the complaint</strong> ?</p>
+          </div>
+          <button class="modal-close" (click)="cancelForwardConfirm()">&times;</button>
+        </div>
+
+        <div class="status-change">
+          <span class="status-label">{{ 'ui.cepc.dv.field.expected_status_change' | translateOr: 'Expected Status Change' }} <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ (complaintStatusNavLabel || formatStatusLabel(complaintStatusNav)) || formatStatusLabel(complaintStatus) }}</span>
+            <i class="pi pi-arrow-right flow-arrow"></i>
+            <span class="status-badge sent-back"><i class="pi pi-arrow-up-right"></i> Sent to {{ forwardTargetLabel }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelForwardConfirm()">{{ 'ui.cepc.dv.action.cancel' | translateOr: 'Cancel' }}</button>
+        <button class="btn btn-primary" (click)="confirmForward()" [disabled]="forwardSubmitting()">
+          @if (forwardSubmitting()) { <span class="spinner-sm"></span> Sending... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}

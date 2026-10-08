@@ -1,0 +1,107 @@
+:host {
+  display: block;
+}
+
+.dh {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: flex-start;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
+.dh-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--p-text-color);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.dh-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+    gap: 0.5rem;
+  }
+}
+
+.dh-filter-group {
+  display: contents;
+}
+
+.dh-select {
+  width: 100%;
+
+  @media (min-width: 768px) {
+    width: 11.5rem;
+  }
+
+  @media (min-width: 1400px) {
+    width: 13rem;
+  }
+}
+
+// PrimeNG flips this overlay above the trigger once the panel is tall (relativePosition in
+// @primeuix/utils) and applies the offsets inline, so !important is needed to pin it below.
+:host ::ng-deep .dh-select .p-overlay {
+  top: 100% !important;
+  margin-top: var(--p-anchor-gutter, 2px) !important;
+  transform-origin: top !important;
+}
+
+// The status p-select ships its own light-only Aura tokens, so it stays white when `.cepc-dark`
+// is toggled on an ancestor (see cepc-header.component.ts toggleDarkMode). Pin it to the same
+// content tokens the rest of the dashboard already repaints with instead of trusting PrimeNG's
+// per-component dark variables.
+:host ::ng-deep .dh-select {
+  background-color: var(--p-content-background, #fff) !important;
+  border-color: var(--p-content-border-color, #cbd5e1) !important;
+
+  .p-select-label {
+    color: var(--p-text-color, #334155) !important;
+  }
+
+  .p-select-label.p-placeholder {
+    color: var(--p-text-muted-color, #64748b) !important;
+  }
+
+  .p-select-dropdown {
+    color: var(--p-text-color, #334155) !important;
+  }
+}
+
+:host ::ng-deep .dh-select .p-select-overlay {
+  background-color: var(--p-content-background, #fff) !important;
+  border-color: var(--p-content-border-color, #cbd5e1) !important;
+  color: var(--p-text-color, #334155) !important;
+}
+
+:host ::ng-deep .dh-select .p-select-option {
+  color: var(--p-text-color, #334155) !important;
+}
+
+:host ::ng-deep .dh-select .p-select-option:not(.p-select-option-selected):hover,
+:host ::ng-deep .dh-select .p-select-option.p-select-option-selected {
+  background-color: var(--p-content-hover-background, #f1f5f9) !important;
+}
+
+.dh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding-top: 0.5rem;
+}

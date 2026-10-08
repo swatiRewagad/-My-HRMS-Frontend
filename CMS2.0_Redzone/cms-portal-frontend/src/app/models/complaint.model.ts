@@ -23,6 +23,22 @@ export interface ComplaintRegistrationRequest {
   declarationAccepted?: boolean;
 }
 
+export interface NonMaintainableRegistrationRequest {
+  clauseCode: string;
+  statusCode: 'PORTAL_REJECTION';
+  complainantName?: string;
+  complainantEmail?: string;
+  complainantPhone?: string;
+  complainantState?: string;
+  complainantDistrict?: string;
+  entityName?: string;
+}
+
+export interface NonMaintainableRegistrationResponse {
+  caseId: string;
+  status: string;
+}
+
 export interface ComplaintAcknowledgement {
   complaintId: string;
   status: string;
@@ -55,6 +71,8 @@ export interface ComplaintStatus {
   currentStage?: number;
   stages?: StageInfo[];
   priority?: string;
+  /** UST111: true only when this closure's clause is appealable by the complainant (15(1)(a)/(b)). */
+  appealable?: boolean;
   /**
    * Whether an appeal has already been filed against this complaint.
    *

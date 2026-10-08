@@ -1,6 +1,6 @@
 <div class="sla-indicator" [class]="colorClass()">
   @if (isOverdue()) {
-    <span class="breached-badge">BREACHED</span>
+    <span class="breached-badge">{{ 'ui.cepc.sla.breached_caps' | translateOr: 'BREACHED' }}</span>
   }
   <div class="progress-bar">
     <div class="progress-fill" [style.width.%]="progressPercent()"></div>

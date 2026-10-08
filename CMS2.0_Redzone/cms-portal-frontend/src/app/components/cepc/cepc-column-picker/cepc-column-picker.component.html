@@ -1,0 +1,118 @@
+<p-dialog [visible]="visible()" (visibleChange)="visible.set($event)" (onShow)="initializePicker()" [modal]="true"
+  [closable]="true" [draggable]="false" [resizable]="false" styleClass="cp-dialog" header=" ">
+
+  <div class="cp">
+
+    <!-- Header -->
+    <div class="cp-header">
+      <div class="cp-header__badge">
+        <i class="pi pi-objects-column"></i>
+      </div>
+      <div class="cp-header__text">
+        <h3>{{ 'ui.cepc.picker.title' | translateOr: 'Manage Columns' }}</h3>
+        <p>{{ 'ui.cepc.picker.subtitle'
+          | translateOr: 'Choose which columns to display in "{{table}}" table'
+          : { table: tableNameKey() | translateOr: tableName() } }}</p>
+      </div>
+    </div>
+
+    <!-- Search — PrimeNG IconField + InputIcon -->
+    <div class="cp-search-wrap">
+      <p-iconfield class="cp-search">
+        <p-inputicon styleClass="pi pi-search" />
+        <input type="text" pInputText
+          [placeholder]="'ui.cepc.picker.find' | translateOr: 'Find a column...'"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)" class="cp-search__input" />
+      </p-iconfield>
+      @if (isSearchActive()) {
+        <button class="cp-search-wrap__clear" (click)="searchQuery.set('')" type="button"
+          [pTooltip]="'ui.cepc.picker.clear_search' | translateOr: 'Clear search'" tooltipPosition="left">
+          <i class="pi pi-times"></i>
+        </button>
+      }
+    </div>
+
+    <!-- Toolbar -->
+    <div class="cp-toolbar">
+      <span class="cp-toolbar__stat">
+        <strong>{{ selectedCount() }}</strong> / {{ totalCount() }}
+        {{ 'ui.cepc.picker.selected' | translateOr: 'selected' }}
+      </span>
+      <div class="cp-toolbar__actions">
+        @if (!allFilteredSelected()) {
+          <p-button [text]="true" severity="primary" size="small" icon="pi pi-check-square"
+            [label]="'ui.cepc.picker.select_all' | translateOr: 'Select All'" (onClick)="toggleAll(true)"
+            styleClass="cp-toolbar__btn" />
+        }
+        @if (!noneFilteredSelected()) {
+          <p-button [text]="true" severity="secondary" size="small" icon="pi pi-minus-circle"
+            [label]="'ui.cepc.picker.deselect' | translateOr: 'Deselect'" (onClick)="toggleAll(false)"
+            styleClass="cp-toolbar__btn" />
+        }
+      </div>
+    </div>
+
+    <!-- Column list -->
+    <div class="cp-list" [class.cp-list--locked]="isSearchActive()">
+      @for (col of filteredItems(); track col.field) {
+        <div class="cp-row"
+          [class.cp-row--active]="col.visible"
+          [class.cp-row--inactive]="!col.visible"
+          [class.cp-row--drop-target]="dropTargetField === col.field"
+          [attr.draggable]="!isSearchActive()"
+          (dragstart)="onDragStart(col.field)"
+          (dragover)="onDragOver($event, col.field)"
+          (dragleave)="dropTargetField = null"
+          (dragend)="onDragEnd()">
+
+          @if (!isSearchActive()) {
+            <span class="cp-row__grip" [pTooltip]="'ui.cepc.picker.drag_hint' | translateOr: 'Drag to reorder'"
+              tooltipPosition="left" [tooltipOptions]="{showDelay: 600}">
+              <i class="pi pi-ellipsis-v"></i>
+              <i class="pi pi-ellipsis-v"></i>
+            </span>
+          }
+
+          <p-checkbox [binary]="true" [ngModel]="col.visible" (ngModelChange)="toggleItem(col.field)"
+            [inputId]="'cp-' + col.field" />
+
+          <label [for]="'cp-' + col.field" class="cp-row__name">
+            {{ col.labelKey | translateOr: col.header }}
+          </label>
+
+          @if (col.visible) {
+            <p-tag [value]="'ui.cepc.picker.on' | translateOr: 'ON'" severity="info" [rounded]="true"
+              styleClass="cp-row__tag" />
+          }
+        </div>
+      } @empty {
+        <div class="cp-empty">
+          <i class="pi pi-search"></i>
+          <span>{{ 'ui.cepc.picker.no_match' | translateOr: 'No columns match "{{query}}"'
+            : { query: searchQuery() } }}</span>
+        </div>
+      }
+    </div>
+
+    <p-divider />
+
+    <!-- Footer -->
+    <div class="cp-footer">
+      <p-button [text]="true" severity="secondary" size="small" icon="pi pi-history"
+        [label]="'ui.cepc.picker.reset' | translateOr: 'Reset to Default'" (onClick)="resetToDefault()"
+        [pTooltip]="'ui.cepc.picker.reset_tooltip'
+          | translateOr: 'Restore all columns to default order and visibility'" tooltipPosition="top"
+        styleClass="cp-footer__reset" />
+
+      <div class="cp-footer__end">
+        <p-button [text]="true" severity="secondary" [label]="'ui.cepc.picker.cancel' | translateOr: 'Cancel'"
+          (onClick)="cancel()" styleClass="cp-footer__cancel" />
+        <p-button severity="primary" icon="pi pi-check" [label]="'ui.cepc.picker.apply' | translateOr: 'Apply'"
+          (onClick)="save()" [disabled]="selectedCount() === 0" styleClass="cp-footer__apply" />
+      </div>
+    </div>
+
+  </div>
+
+</p-dialog>

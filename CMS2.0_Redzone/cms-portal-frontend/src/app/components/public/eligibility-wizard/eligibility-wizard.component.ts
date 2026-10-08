@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { environment } from '../../../../environments/environment';
+import { scrollToTop } from '../../../utils/accessibility';
 
 interface WizardQuestion {
   id: number;
@@ -180,6 +181,7 @@ export class EligibilityWizardComponent implements OnInit {
   next() {
     if (this.currentStep() < this.totalSteps() - 1) {
       this.currentStep.update(s => s + 1);
+      scrollToTop();
     } else {
       this.checkEligibility();
     }
@@ -188,12 +190,14 @@ export class EligibilityWizardComponent implements OnInit {
   back() {
     if (this.currentStep() > 0) {
       this.currentStep.update(s => s - 1);
+      scrollToTop();
     }
   }
 
   private checkEligibility() {
     this.phase.set('checking');
     this.error.set('');
+    scrollToTop();
 
     const payload = this.answers();
 
@@ -203,6 +207,7 @@ export class EligibilityWizardComponent implements OnInit {
       next: (res) => {
         this.result.set(res);
         this.phase.set('result');
+        scrollToTop();
       },
       // UST11/6: this used to fall back to a computeLocalOutcome() that re-implemented the whole
       // eligibility determination with the window, the limitation period and every message baked
@@ -215,6 +220,7 @@ export class EligibilityWizardComponent implements OnInit {
       error: () => {
         this.error.set('');
         this.phase.set('unavailable');
+        scrollToTop();
       }
     });
   }
@@ -284,6 +290,7 @@ export class EligibilityWizardComponent implements OnInit {
     this.currentStep.set(0);
     this.answers.set({});
     this.result.set(null);
+    scrollToTop();
   }
 
   goHome() {

@@ -79,6 +79,15 @@ keycloak:
     password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 cms:
+  notification:
+    dispatch:
+      # How outbound EMAIL/SMS leaves this service.
+      #   kafka → publish to notification.dispatch; cms-notification-service sends and settles the
+      #           NOTIFICATION_DELIVERY_LOG row. Delivery rows stay PENDING until it does.
+      #   noop  → log the decision and deliver nothing (LoggingOutboundMessageAdapter).
+      # noop is the default when unset, so a misconfigured environment stays silent rather than
+      # mailing complainants unexpectedly.
+      mode: ${NOTIFICATION_DISPATCH_MODE:kafka}
   security:
     # X-User-* identity headers are a dev-local convenience ONLY. Stated explicitly rather than
     # relying on the annotation default, so switching it on is always a visible config change.

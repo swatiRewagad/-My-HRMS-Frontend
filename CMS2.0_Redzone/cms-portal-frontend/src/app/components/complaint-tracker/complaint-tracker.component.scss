@@ -386,6 +386,20 @@
   &:hover { text-decoration: underline; }
 }
 
+// UST106/UST111: File Appeal
+.appeal-section {
+  padding: 1.5rem; border-top: 1px solid #e0e0e0; text-align: center;
+  p { font-size: 14px; color: #666; margin-bottom: 8px; }
+}
+.btn-appeal {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; background: #fff7ed; color: #c2410c;
+  border: 1px solid #fed7aa; border-radius: 6px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+  &:hover { background: #ffedd5; border-color: #c2410c; }
+}
+
 // ═══ Phase 4 additions ═══
 
 // Table filter controls

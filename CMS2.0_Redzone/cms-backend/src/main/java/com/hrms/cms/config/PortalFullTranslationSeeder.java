@@ -316,6 +316,7 @@ public class PortalFullTranslationSeeder implements CommandLineRunner {
         seed("nm.date", "nm", "Date");
         seed("nm.reason", "nm", "Reason for Closure");
         seed("nm.download", "nm", "Download Closure Letter");
+        seed("nm.download_clauses_list", "nm", "Download List of Non-Maintainable Clauses");
         seed("nm.go_home", "nm", "Go to Home");
 
         // Duplicate

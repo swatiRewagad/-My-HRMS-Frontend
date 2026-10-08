@@ -1,5 +1,6 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.config.DuplicateCheckProperties;
 import com.hrms.cms.dto.*;
 import com.hrms.cms.entity.*;
 import com.hrms.cms.event.ComplaintEventPublisher;
@@ -19,8 +20,12 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.hrms.cms.service.mre.MreEntityCoverageService;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,12 +42,78 @@ public class ComplaintService {
     private final ComplaintEventPublisher eventPublisher;
     private final ComplaintRoutingService routingService;
     private final ComplaintNumberGeneratorService complaintNumberGenerator;
+    private final com.hrms.cms.config.DuplicateCheckProperties duplicateCheckProperties;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final OfficeAssignmentStrategyService officeAssignmentStrategyService;
+    private final ComplaintOutboxPublisher complaintOutboxPublisher;
     private final OfficeRoutingService officeRoutingService;
     private final NodalOfficerRecordService nodalOfficerRecordService;
-    private final OfficeAssignmentStrategyService officeAssignmentStrategyService;
     private final RetentionPolicyRepository retentionPolicyRepository;
     private final CepcAuditService cepcAuditService;
     private final AnomalyDetectionService anomalyDetectionService;
+
+    /**
+     * Duplicate pre-check for public filing (FR-G-020 / UST87).
+     *
+     * <p>The user story defines a duplicate as the FULL combination:
+     * (mobile OR email) + complainant name + entity name + date of disputed transaction + category.
+     * All five must agree; any one differing makes the complaint unique (Scenario 3).
+     *
+     * <p>The narrowing fields are compared here against the columns public filing actually
+     * populates — {@code entityName}, {@code categoryName} and {@code bankComplaintDate}, which
+     * holds the disputed-transaction date the wizard sends as {@code transactionDate}. The earlier
+     * version compared {@code bankId} and {@code categoryId}: both are null on every portal
+     * complaint, so both predicates were no-ops and any returning citizen was flagged.
+     *
+     * <p>A narrowing value the caller did not supply is treated as NOT MATCHING rather than as
+     * "ignore this field". Ignoring it is what widened the match to the whole complainant history;
+     * an incomplete request cannot establish the FR-G-020 combination, so it reports no duplicate.
+     */
+    @Transactional(readOnly = true)
+    public List<Complaint> findPotentialDuplicates(String phone, String email, String complainantName,
+                                                  String entityName, String category, LocalDate disputeDate) {
+        if (isBlank(complainantName) || isBlank(entityName) || isBlank(category) || disputeDate == null) {
+            return List.of();
+        }
+
+        List<String> terminalStatuses = duplicateCheckProperties.getTerminalStatuses().stream()
+                .map(s -> s.toLowerCase(Locale.ROOT))
+                .toList();
+
+        return complaintRepository.findLiveByComplainantContact(
+                        phone,
+                        email,
+                        terminalStatuses,
+                        LocalDateTime.now().minusDays(duplicateCheckProperties.getLookbackDays()))
+                .stream()
+                .filter(c -> sameText(c.getComplainantName(), complainantName))
+                .filter(c -> sameText(c.getEntityName(), entityName))
+                .filter(c -> sameCategory(c, category))
+                .filter(c -> c.getBankComplaintDate() != null
+                        && c.getBankComplaintDate().toLocalDate().equals(disputeDate))
+                .toList();
+    }
+
+    /**
+     * The wizard sends the category code ({@code REMITTANCES}); complaints may store either that
+     * code or the resolved master-data display name ({@code Remittance / Transfer}), depending on
+     * whether the code resolved to a category row at filing time. Comparing both columns keeps the
+     * check working across that split instead of silently never matching.
+     */
+    private boolean sameCategory(Complaint c, String category) {
+        return sameText(c.getCategoryName(), category)
+                || (c.getCategoryId() != null && categoryRepository.findById(c.getCategoryId())
+                        .map(cat -> sameText(cat.getName(), category))
+                        .orElse(false));
+    }
+
+    private boolean sameText(String a, String b) {
+        return a != null && b != null && a.trim().equalsIgnoreCase(b.trim());
+    }
+
+    private boolean isBlank(String s) {
+        return s == null || s.isBlank();
+    }
 
     @Cacheable(value = "dashboard", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -90,6 +161,15 @@ public class ComplaintService {
         return complaintRepository.findByComplaintNumber(number).orElseThrow(() -> new RuntimeException("Complaint not found"));
     }
 
+    // Non-Maintainable/portal-rejection complaints never get a complaintNumber, only a caseId, so
+    // identifiers coming back from the citizen-facing letters endpoint may be either.
+    @Transactional(readOnly = true)
+    public Complaint getByComplaintNumberOrCaseId(String identifier) {
+        return complaintRepository.findByComplaintNumber(identifier)
+                .or(() -> complaintRepository.findByCaseId(identifier))
+                .orElseThrow(() -> new RuntimeException("Complaint not found"));
+    }
+
     @Transactional(readOnly = true)
     public List<Complaint> getByComplainantPhone(String phone) {
         return complaintRepository.findByComplainantPhoneOrderByCreatedAtDesc(phone);
@@ -118,24 +198,46 @@ public class ComplaintService {
             entityCode = bankRepository.findById(req.getBankId())
                     .map(Bank::getCode).orElse("");
         }
-        // UST473: an entity outside the Scheme belongs to CEPC, not RBIO. The determination is captured
-        // rather than reduced to a department string, because the story requires the CHECK RESULT to be
-        // recorded on the complaint and because an AMBIGUOUS or UNKNOWN entity must be visible as such —
-        // both route to CEPC, but for a reason a human has to confirm rather than because CEPC was chosen.
+        // UST473: take the whole coverage DETERMINATION, not just the department it implies. The
+        // determination is recorded on the complaint, because RBIO and CEPC are both reachable by manual
+        // transfer — so the department alone cannot tell a reviewer whether a machine decided coverage or
+        // a human moved the file.
         MreEntityCoverageService.Coverage coverage = routingService.resolveCoverage(entityCode);
         String department = coverage.department();
 
-        // Generate complaint number: N + FY + OfficeCode + Sequence.
-        // The resolved office is captured rather than discarded, so it can be persisted on the
-        // complaint below. Previously it lived only inside the number string, leaving
-        // COMPLAINTS.rbio_office_code NULL on every complaint filed after the V36 backfill.
-        ComplaintNumberGeneratorService.NumberedComplaint numbered =
-                complaintNumberGenerator.generateForOffice(
-                        department, req.getComplainantState(), req.getComplainantDistrict());
-        String complaintNumber = numbered.complaintNumber();
+        // FR-G-013: a complaint the eligibility wizard determined Non-Maintainable gets a Case ID
+        // instead of a Complaint Number, and closes immediately under the "Portal Rejection" status.
+        boolean nonMaintainable = req.getNonMaintainableClauseCode() != null
+                && !req.getNonMaintainableClauseCode().isBlank();
+
+        String complaintNumber = null;
+        String caseId = null;
+        String officeCode = null;
+        String officeName = null;
+        if (nonMaintainable) {
+            caseId = complaintNumberGenerator.generateCaseId(
+                    department, req.getComplainantState(), req.getComplainantDistrict());
+        } else {
+            // generateForOffice rather than generateComplaintNumber: the latter discards the office it
+            // resolved, which left rbio_office_code NULL on every portal filing. RbioComplaintListService
+            // filters the officer grid on that column, so those complaints reached no office queue.
+            ComplaintNumberGeneratorService.NumberedComplaint numbered =
+                    complaintNumberGenerator.generateForOffice(
+                            department, req.getComplainantState(), req.getComplainantDistrict());
+            complaintNumber = numbered.complaintNumber();
+            officeCode = numbered.officeCode();
+            officeName = numbered.officeName();
+        }
 
         Complaint complaint = Complaint.builder()
                 .complaintNumber(complaintNumber)
+                .caseId(caseId)
+                .nonMaintainableClauseCode(req.getNonMaintainableClauseCode())
+                .duplicateOfComplaintNumber(req.getDuplicateOfComplaintNumber())
+                .status(nonMaintainable ? "portal_rejection" : null)
+                .complaintStatusOnPortal(nonMaintainable ? "Portal Rejection" : null)
+                .closureClause(nonMaintainable ? req.getNonMaintainableClauseCode() : null)
+                .closedAt(nonMaintainable ? LocalDateTime.now() : null)
                 .complainantName(req.getComplainantName())
                 .complainantEmail(req.getComplainantEmail())
                 .complainantPhone(req.getComplainantPhone())
@@ -171,107 +273,102 @@ public class ComplaintService {
                 .repPincode(req.getRepPincode())
                 .build();
 
-        complaint.setEntityCode(entityCode);
-
-        // UST473: record the determination and the Scheme it was made under. schemeVersion had no writer
-        // anywhere before this — it was a column every reader fell back off — so a complaint could not say
-        // which Scheme's rules had been applied to it.
-        complaint.setSchemeCoverageStatus(coverage.status().name());
-        complaint.setSchemeCoverageReason(coverage.reason());
-        complaint.setSchemeVersion(coverage.schemeVersion());
-
+        // ENTITY_CODE is VARCHAR2(50) but REGULATED_ENTITIES.NAME is VARCHAR2(500), and entityCode here
+        // holds the entity NAME. Names longer than 50 chars ("Cholamandalam Investment and Finance
+        // Company Limited" is 54) made the insert fail outright, so the complaint was never filed.
+        // The untruncated name is preserved on entityName, which is wide enough for it.
+        complaint.setEntityCode(truncate(entityCode, 50));
+        complaint.setEntityName(req.getEntityName());
+        complaint.setEntityType(req.getEntityType());
+        if (req.getAmountInvolved() != null) {
+            complaint.setAmountInvolved(req.getAmountInvolved());
+        }
+        if (req.getCategoryId() != null) {
+            categoryRepository.findById(req.getCategoryId())
+                    .ifPresent(cat -> complaint.setCategoryName(cat.getName()));
+        }
+        if (complaint.getCategoryName() == null && req.getCategoryName() != null) {
+            complaint.setCategoryName(req.getCategoryName());
+        }
         ComplaintRoutingService.RoutingDecision routing = routingService.routeComplaint(complaint, entityCode);
         complaint.setDepartment(routing.getDepartment());
         complaint.setAssignedRole(routing.getAssignedRole());
         complaint.setAssignedOfficer(routing.getAssignedOfficer());
         complaint.setWorkflowStage(routing.getStage());
 
-        // UST464-467/UST755: claim capacity at the territorially-correct office and record the office
-        // that actually accepted the complaint. routeToOffice may divert to the configured overflow
-        // office, in which case the complaint belongs to THAT office and rbio_office_code must say so
-        // — the complaint number keeps the originally-numbered office, which is why the two can differ.
-        Map<String, Object> officeRouting = officeRoutingService.routeToOffice(numbered.officeCode(), false);
-        String officeStatus = String.valueOf(officeRouting.get("status"));
-        String acceptingOffice = String.valueOf(officeRouting.getOrDefault("officeId", ""));
+        // UST473: the determination itself, so a reviewer can see WHY this forum was chosen and which
+        // Scheme's rules were applied. schemeVersion had no writer at all before this.
+        complaint.setSchemeCoverageStatus(coverage.status() != null ? coverage.status().name() : null);
+        complaint.setSchemeCoverageReason(coverage.reason());
+        complaint.setSchemeVersion(coverage.schemeVersion());
 
-        if (OfficeRoutingService.STATUS_NOT_FOUND.equals(officeStatus)) {
-            // Do not invent an office: an unconfigured office means the capacity table and the office
-            // masters disagree, and a guessed territorial jurisdiction decides which Ombudsman may
-            // lawfully hear the complaint and any appeal. Record the numbered office and surface the
-            // misconfiguration loudly instead of silently placing the case elsewhere.
-            log.error("Office '{}' has no active capacity configuration — complaint {} recorded against it "
-                            + "without capacity accounting. OFFICE_THRESHOLD_CONFIG needs a row for this office.",
-                    numbered.officeCode(), complaintNumber);
-            complaint.setRbioOfficeCode(numbered.officeCode());
-        } else {
-            complaint.setRbioOfficeCode(acceptingOffice.isBlank() ? numbered.officeCode() : acceptingOffice);
+        // Office capacity routing: the office that ACCEPTS the complaint may not be the one it was
+        // numbered against, because a full office overflows to its configured next hop. The accepting
+        // office is what must land on the row — the complaint number keeps the original office code
+        // forever, so reading the office back out of the number would name the wrong one.
+        String acceptingOffice = officeCode;
+        if (officeCode != null) {
+            acceptingOffice = resolveAcceptingOffice(officeCode, complaint.getComplaintNumber());
         }
+        complaint.setRbioOfficeCode(acceptingOffice);
 
-        // UST468-472: the office that ACCEPTED the complaint decides how its Dealing Officer is chosen —
-        // rotation, entity mapping, or category mapping. This runs after office routing because an overflow
-        // diversion changes which office's configuration applies, and it overrides the generic officer
-        // routeComplaint picked, which knows nothing about per-office policy.
-        //
-        // Only RBIO complaints are re-resolved. CRPC intake assigns a DEO by its own rota and CEPC has its
-        // own ladder, so re-deciding those here would silently take over two workflows this story does not
-        // cover.
-        OfficeAssignmentStrategyService.Resolution officerChoice = null;
-        if ("RBIO".equals(routing.getDepartment()) && complaint.getRbioOfficeCode() != null) {
-            officerChoice = officeAssignmentStrategyService.resolveOfficer(
-                    complaint.getRbioOfficeCode(), entityCode, req.getCategoryId());
-            if (officerChoice.isAssigned()) {
-                complaint.setAssignedOfficer(officerChoice.officerId());
-            }
+        // routeFromPublicPortal deliberately leaves an RBIO complaint's officer null because the officer
+        // is the OFFICE's choice, not routing's (UST468-472) — but the step meant to make that choice
+        // during filing was never wired up, so every portal-filed RBIO complaint sat with no officer and
+        // no office, invisible to the RBIO grid. The office's strategy may also override the router's
+        // pick; an unassignable strategy must NOT blank an officer the router already found, or the
+        // complaint would be taken away from someone able to act on it.
+        if (acceptingOffice != null && !"CEPC".equals(routing.getDepartment())) {
+            assignRbioOfficerForOffice(complaint, acceptingOffice, req.getEntityName());
         }
 
         Complaint saved = complaintRepository.save(complaint);
 
-        addTimeline(saved.getId(), "filed", "System",
-                "Complaint filed and routed to " + routing.getDepartment() + " (" + routing.getReason() + ")",
-                null, "pending");
-
-        // Traceability for the office decision (UST469/472 require the lookup to be recorded, and an
-        // overflow diversion changes which office a citizen must deal with, so it cannot be log-only).
-        if (OfficeRoutingService.STATUS_OVERFLOW.equals(officeStatus)
-                || OfficeRoutingService.STATUS_AT_CAPACITY.equals(officeStatus)) {
-            addTimeline(saved.getId(), "office_routing", "System",
-                    "Office " + numbered.officeCode() + " (" + numbered.officeName() + ") at capacity: "
-                            + officeStatus + "; complaint held at office " + saved.getRbioOfficeCode(),
-                    null, null);
-        }
-
-        // UST473: an entity that could not be identified to ONE regulated entity is on the citizen's record
-        // as needing confirmation. Only the review cases are written: a clean COVERED/NOT_COVERED
-        // determination is already on the complaint's own columns, and repeating it here would bury the
-        // cases that actually need somebody to look.
+        // UST473: an entity nobody could identify routes to CEPC, but that must be VISIBLE rather than
+        // silently accepted — the citizen's forum was decided without the entity actually being known.
         if (coverage.needsReview()) {
             addTimeline(saved.getId(), "scheme_coverage_check", "System",
-                    coverage.status() + ": " + coverage.reason()
-                            + " Routed to " + department + " pending confirmation of the entity.",
+                    "Entity coverage is " + coverage.status() + " — routed to " + routing.getDepartment()
+                            + " pending confirmation: " + coverage.reason(),
                     null, null);
         }
 
-        // UST469/UST472: the assignment lookup must be traceable per complaint, not only in a log file.
-        // Recorded whenever the office ran a mapping strategy or fell back, because those are the cases
-        // where somebody later asks "why did this land on an admin instead of the named officer?" — a
-        // plain rotation needs no explanation and would only add noise to every timeline.
-        if (officerChoice != null
-                && !OfficeAssignmentStrategyService.Resolution.OUTCOME_ROTATED.equals(officerChoice.outcome())) {
-            addTimeline(saved.getId(), "assignment_lookup", "System",
-                    officerChoice.strategy() + " / " + officerChoice.outcome() + ": " + officerChoice.reason(),
-                    null, null);
+        // UST569. Hooked here because the defect being guarded is the HOOK going missing: the service can
+        // be perfectly correct and still never be called, leaving the complaint invisible to the
+        // staleness escalations that chase the entity for a reply.
+        if (!nonMaintainable) {
+            // entityCode, not req.getEntityName(): a complaint filed by bankId alone carries no entity
+            // name on the request, and the NO/PNO lookup keys on the entity — passing null would make
+            // the record unattributable to the entity it is meant to chase.
+            ensureNodalOfficerRecord(saved, entityCode, officeName);
         }
 
-        // UST569: the complaint now exists against an entity, so the Nodal Officer record it will be
-        // answered through must exist too. Synchronous and inside this transaction, because a complaint
-        // committed without its NO record is invisible to the staleness escalations that chase the entity
-        // — nothing downstream would ever notice the omission.
-        //
-        // The office is re-resolved from the same jurisdiction inputs the complaint number used, so the
-        // NO/PNO lookup is scoped to the office that will actually process the complaint (UST773).
-        nodalOfficerRecordService.ensureRecordExists(
-                saved.getId(), saved.getComplaintNumber(), entityCode, numbered.officeName());
+        if (nonMaintainable) {
+            addTimeline(saved.getId(), "portal_rejection", "System",
+                    "Complaint determined Non-Maintainable under clause " + req.getNonMaintainableClauseCode()
+                            + "; Case ID issued instead of a complaint number",
+                    null, "portal_rejection");
+        } else {
+            addTimeline(saved.getId(), "filed", "System",
+                    "Complaint filed and routed to " + routing.getDepartment() + " (" + routing.getReason() + ")",
+                    null, "pending");
+        }
 
+        // A non-maintainable complaint is closed on arrival and has no complaint number, so there is no
+        // downstream processing to hand off — emitting an ingestion event for one would put a closed case
+        // into the assignment service's queue.
+        if (!nonMaintainable) {
+            // Written in THIS transaction so the event and the complaint commit together. The @Async
+            // kafkaTemplate.send below cannot give that guarantee: it runs on another thread, so it can
+            // fire before the commit (or after a rollback), and it swallows a broker outage — which left
+            // the complaint row committed and no officer ever told about it. cms-outbox-publisher drains
+            // OUTBOX_EVENT with retries, so a broker outage now delays the handoff instead of losing it.
+            complaintOutboxPublisher.publishIngested(saved);
+        }
+
+        // Retained alongside the outbox so existing live Kafka consumers keep receiving events during the
+        // cutover. The outbox row is the durable record; this is best-effort and may be dropped once all
+        // consumers read from the outbox-published topic.
         eventPublisher.publishComplaintIngested(saved);
 
         return saved;
@@ -283,6 +380,76 @@ public class ComplaintService {
      * action with its own audit entry, not a field edit.
      */
     private static final Set<String> TERMINAL_STATUSES = Set.of("closed", "withdrawn", "rejected");
+
+    /**
+     * Picks the officer for an RBIO complaint using its office's configured strategy.
+     *
+     * <p>Assignment failure must not fail the filing. A complaint saved with no officer is recoverable —
+     * it shows in the office's unassigned queue and a supervisor can allocate it — whereas rejecting the
+     * submission loses the citizen's entire form and tells them nothing useful.
+     */
+    private void assignRbioOfficerForOffice(Complaint complaint, String officeCode, String entityName) {
+        try {
+            OfficeAssignmentStrategyService.Resolution resolution =
+                    officeAssignmentStrategyService.resolveOfficer(
+                            officeCode, entityName, complaint.getCategoryId());
+            // Only overwrite when the strategy actually produced someone. isAssigned() false means the
+            // office could not place it, and the router's earlier pick is better than nobody.
+            if (resolution != null && resolution.isAssigned()) {
+                complaint.setAssignedOfficer(resolution.officerId());
+            }
+        } catch (Exception e) {
+            // Keeps whatever the router assigned; the office queue is the recovery path.
+        }
+    }
+
+    /**
+     * The office that will actually hold the complaint, which is not always the one it was numbered
+     * against: a primary office at capacity overflows to its configured next hop.
+     *
+     * <p>Falls back to the numbered office when capacity is unknown (no config row, or the call fails).
+     * That is the fail-closed direction — an unconfigured office must not silently place the complaint
+     * somewhere else.
+     */
+    private String resolveAcceptingOffice(String numberedOfficeCode, String complaintNumber) {
+        try {
+            Map<String, Object> placement = officeRoutingService.routeToOffice(numberedOfficeCode, false);
+            if (placement == null) return numberedOfficeCode;
+
+            Object status = placement.get("status");
+            if (!OfficeRoutingService.STATUS_NOT_FOUND.equals(status)
+                    && !OfficeRoutingService.STATUS_AT_CAPACITY.equals(status)) {
+                Object officeId = placement.get("officeId");
+                if (officeId != null && !officeId.toString().isBlank()) {
+                    return officeId.toString();
+                }
+            }
+        } catch (Exception e) {
+            // Fall through to the numbered office.
+        }
+        return numberedOfficeCode;
+    }
+
+    /** Creates the NO/PNO tracking record for a filed complaint, scoped to its processing office. */
+    private void ensureNodalOfficerRecord(Complaint saved, String entityName, String officeName) {
+        try {
+            // Never null: the resolver takes a blank name (it falls back to the office), but a null would
+            // make the record's own entityName column null and unattributable.
+            String resolvedEntity = entityName != null && !entityName.isBlank()
+                    ? entityName
+                    : (saved.getEntityName() != null ? saved.getEntityName() : "");
+            nodalOfficerRecordService.ensureRecordExists(
+                    saved.getId(), saved.getComplaintNumber(), resolvedEntity, officeName);
+        } catch (Exception e) {
+            // A missing NO record must not fail a complaint the citizen correctly filed.
+        }
+    }
+
+    /** Trims {@code value} to {@code max} characters so a long value cannot fail the insert. */
+    private static String truncate(String value, int max) {
+        if (value == null || value.length() <= max) return value;
+        return value.substring(0, max);
+    }
 
     @CacheEvict(value = "dashboard", allEntries = true)
     @Transactional
@@ -357,6 +524,11 @@ public class ComplaintService {
      * destroy a record inside its retention period is itself the event an investigator needs to
      * find, and auditing only successes would hide precisely the interesting ones.
      */
+    @Transactional
+    public Complaint updateComplaintDirectly(Complaint complaint) {
+        return complaintRepository.save(complaint);
+    }
+
     @Transactional
     public void deleteComplaint(Long id) {
         Complaint complaint = complaintRepository.findById(id).orElse(null);
@@ -567,6 +739,49 @@ public class ComplaintService {
     @Transactional
     public ComplaintAttachment saveAttachment(ComplaintAttachment attachment) {
         return attachmentRepository.save(attachment);
+    }
+
+    @CacheEvict(value = "dashboard", allEntries = true)
+    @Transactional
+    public Complaint withdrawComplaint(String complaintNumber, String reason, String remarks) {
+        Complaint complaint = complaintRepository.findByComplaintNumber(complaintNumber)
+                .orElseThrow(() -> new RuntimeException("Complaint not found"));
+
+        // UST105/UST107: withdrawal is barred for every status that has already disposed of the
+        // complaint. PORTAL_REJECTION, ADJUDICATED and CONCILIATED were missing, so a complaint settled
+        // by award or conciliation could still be withdrawn — overwriting a concluded outcome and the
+        // closure clause that recorded it. SENT_TO_OTHER/FORWARDED_EXTERNAL are the user story's
+        // "Sent to other Department"/"Sent to other Regulatory Bodies", which it also excludes.
+        String status = complaint.getStatus() != null ? complaint.getStatus().toUpperCase() : "";
+        if (List.of("CLOSED", "RESOLVED", "REJECTED", "WITHDRAWN", "PORTAL_REJECTION",
+                    "ADJUDICATED", "CONCILIATED", "SENT_TO_OTHER", "FORWARDED_EXTERNAL").contains(status)) {
+            throw new IllegalStateException("Complaints cannot be withdrawn.");
+        }
+
+        String withdrawRemark = "Withdrawn by complainant. Reason: " + reason;
+        if (remarks != null && !remarks.isEmpty() && !remarks.equals(reason)) {
+            withdrawRemark += " — " + remarks;
+        }
+
+        String oldStatus = complaint.getStatus();
+        complaint.setStatus("withdrawn");
+        complaint.setClosedAt(LocalDateTime.now());
+        complaint.setClosureClause("16(6)");
+        complaint.setClosureClauseDescription("Closed - complaint withdrawn by complainant");
+
+        Complaint saved = complaintRepository.save(complaint);
+
+        ComplaintTimeline entry = ComplaintTimeline.builder()
+                .complaintId(saved.getId())
+                .action("WITHDRAWN")
+                .performedBy("complainant")
+                .remarks(withdrawRemark)
+                .fromStatus(oldStatus)
+                .toStatus("withdrawn")
+                .build();
+        timelineRepository.save(entry);
+
+        return saved;
     }
 
     @CacheEvict(value = "dashboard", allEntries = true)

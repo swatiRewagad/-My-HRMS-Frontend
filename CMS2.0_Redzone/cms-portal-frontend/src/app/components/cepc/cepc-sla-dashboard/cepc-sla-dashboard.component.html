@@ -3,8 +3,8 @@
     <div class="topbar-left">
       <button class="back-btn" (click)="goBack()">&larr;</button>
       <div class="title-block">
-        <h2>CEPC - SLA Compliance Dashboard</h2>
-        <span class="subtitle">Service Level Agreement Monitoring</span>
+        <h2>{{ 'ui.cepc.sla.title' | translateOr: 'CEPC - SLA Compliance Dashboard' }}</h2>
+        <span class="subtitle">{{ 'ui.cepc.sla.subtitle' | translateOr: 'Service Level Agreement Monitoring' }}</span>
       </div>
     </div>
     <div class="topbar-right">
@@ -19,18 +19,18 @@
     @if (loading()) {
       <div class="loading-state">
         <div class="spinner"></div>
-        <span>Loading SLA data...</span>
+        <span>{{ 'ui.cepc.sla.loading' | translateOr: 'Loading SLA data...' }}</span>
       </div>
     } @else {
       <!-- Stats Cards -->
       <div class="stats-row">
         <div class="stat-card total">
           <span class="stat-value">{{ stats().total }}</span>
-          <span class="stat-label">Total Active</span>
+          <span class="stat-label">{{ 'ui.cepc.sla.total_active' | translateOr: 'Total Active' }}</span>
         </div>
         <div class="stat-card on-track">
           <span class="stat-value">{{ stats().onTrack }}</span>
-          <span class="stat-label">On Track</span>
+          <span class="stat-label">{{ 'ui.cepc.sla.on_track' | translateOr: 'On Track' }}</span>
         </div>
         <div class="stat-card at-risk">
           <span class="stat-value">{{ stats().atRisk }}</span>
@@ -38,30 +38,30 @@
         </div>
         <div class="stat-card breached">
           <span class="stat-value">{{ stats().breached }}</span>
-          <span class="stat-label">Breached</span>
+          <span class="stat-label">{{ 'ui.cepc.sla.breached' | translateOr: 'Breached' }}</span>
         </div>
       </div>
 
       <!-- Compliance Chart (CSS bar chart) -->
       <div class="chart-section">
-        <h3>SLA Compliance</h3>
+        <h3>{{ 'ui.cepc.sla.compliance' | translateOr: 'SLA Compliance' }}</h3>
         <div class="bar-chart">
           <div class="bar-row">
-            <span class="bar-label">On Track</span>
+            <span class="bar-label">{{ 'ui.cepc.sla.on_track' | translateOr: 'On Track' }}</span>
             <div class="bar-track">
               <div class="bar-fill green" [style.width.%]="stats().total ? (stats().onTrack / stats().total * 100) : 0"></div>
             </div>
             <span class="bar-value">{{ stats().onTrack }}</span>
           </div>
           <div class="bar-row">
-            <span class="bar-label">At Risk</span>
+            <span class="bar-label">{{ 'ui.cepc.sla.at_risk' | translateOr: 'At Risk' }}</span>
             <div class="bar-track">
               <div class="bar-fill orange" [style.width.%]="stats().total ? (stats().atRisk / stats().total * 100) : 0"></div>
             </div>
             <span class="bar-value">{{ stats().atRisk }}</span>
           </div>
           <div class="bar-row">
-            <span class="bar-label">Breached</span>
+            <span class="bar-label">{{ 'ui.cepc.sla.breached' | translateOr: 'Breached' }}</span>
             <div class="bar-track">
               <div class="bar-fill red" [style.width.%]="stats().total ? (stats().breached / stats().total * 100) : 0"></div>
             </div>
@@ -70,24 +70,24 @@
         </div>
         <div class="compliance-pct">
           <span class="pct-value">{{ compliancePercent() }}%</span>
-          <span class="pct-label">Overall Compliance</span>
+          <span class="pct-label">{{ 'ui.cepc.sla.overall_compliance' | translateOr: 'Overall Compliance' }}</span>
         </div>
       </div>
 
       <!-- Breached / At-Risk Table -->
       @if (breachedComplaints().length > 0 || atRiskComplaints().length > 0) {
         <div class="alert-section">
-          <h3>Attention Required</h3>
+          <h3>{{ 'ui.cepc.sla.attention_required' | translateOr: 'Attention Required' }}</h3>
           <div class="table-container">
             <table class="sla-table">
               <thead>
                 <tr>
-                  <th>Complaint No.</th>
-                  <th>Subject</th>
-                  <th>Officer</th>
-                  <th>SLA Status</th>
-                  <th>Days</th>
-                  <th>Action</th>
+                  <th>{{ 'ui.cepc.sla.complaint_no' | translateOr: 'Complaint No.' }}</th>
+                  <th>{{ 'ui.cepc.dv.field.subject' | translateOr: 'Subject' }}</th>
+                  <th>{{ 'ui.cepc.sla.officer' | translateOr: 'Officer' }}</th>
+                  <th>{{ 'ui.cepc.sla.status' | translateOr: 'SLA Status' }}</th>
+                  <th>{{ 'ui.cepc.sla.days' | translateOr: 'Days' }}</th>
+                  <th>{{ 'ui.cepc.dv.field.action' | translateOr: 'Action' }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -101,7 +101,7 @@
                     </td>
                     <td class="days-overdue">{{ c.daysOverdue }}d overdue</td>
                     <td>
-                      <button class="action-link" (click)="openComplaint(c.complaintNumber)">View</button>
+                      <button class="action-link" (click)="openComplaint(c.complaintNumber)">{{ 'ui.cepc.sla.view' | translateOr: 'View' }}</button>
                     </td>
                   </tr>
                 }
@@ -115,7 +115,7 @@
                     </td>
                     <td class="days-remaining">{{ c.daysRemaining }}d left</td>
                     <td>
-                      <button class="action-link" (click)="openComplaint(c.complaintNumber)">View</button>
+                      <button class="action-link" (click)="openComplaint(c.complaintNumber)">{{ 'ui.cepc.sla.view' | translateOr: 'View' }}</button>
                     </td>
                   </tr>
                 }
@@ -126,8 +126,8 @@
       } @else {
         <div class="all-clear">
           <span class="all-clear-icon">&#10003;</span>
-          <h3>All Clear</h3>
-          <p>No breached or at-risk complaints.</p>
+          <h3>{{ 'ui.cepc.sla.all_clear' | translateOr: 'All Clear' }}</h3>
+          <p>{{ 'ui.cepc.sla.empty' | translateOr: 'No breached or at-risk complaints.' }}</p>
         </div>
       }
     }

@@ -47,6 +47,7 @@ class ComplaintServiceTest {
     @Mock private OfficeRoutingService officeRoutingService;
     @Mock private NodalOfficerRecordService nodalOfficerRecordService;
     @Mock private OfficeAssignmentStrategyService officeAssignmentStrategyService;
+    @Mock private ComplaintOutboxPublisher complaintOutboxPublisher;
     @Mock private RetentionPolicyRepository retentionPolicyRepository;
     @Mock private CepcAuditService cepcAuditService;
     @Mock private AnomalyDetectionService anomalyDetectionService;

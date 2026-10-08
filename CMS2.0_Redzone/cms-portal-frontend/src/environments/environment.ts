@@ -4,8 +4,9 @@ export const environment = {
   // cms-workflow-service runs separately on 8083 with a /cms-workflow context path. Officer-pool
   // calls were previously sent to apiBaseUrl, which never serves /cms-workflow/** and 404'd.
   workflowBaseUrl: 'http://localhost:8083',
-  keycloakUrl: 'http://localhost:9090',
+  keycloakUrl: 'http://localhost:8180',
   realm: 'cms',
+  storageBaseUrl: '/api/v1/storage',
 
   // Dev mode: auto-populate OTP with default value for testing
   devAutoPopulateOtp: true,

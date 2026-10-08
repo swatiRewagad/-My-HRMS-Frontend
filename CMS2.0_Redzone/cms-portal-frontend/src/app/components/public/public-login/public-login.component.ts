@@ -7,6 +7,7 @@ import { CitizenAuthApiService, CaptchaResponse } from '../../../services/citize
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { TranslationService } from '../../../services/translation.service';
 import { environment } from '../../../../environments/environment';
+import { scrollToTop } from '../../../utils/accessibility';
 
 @Component({
   selector: 'app-public-login',
@@ -154,6 +155,7 @@ export class PublicLoginComponent implements OnDestroy {
         }
         this.startResendTimer(res.resendAfterSeconds);
         this.loading.set(false);
+        scrollToTop();
       },
       error: (err) => {
         this.loading.set(false);
@@ -218,6 +220,7 @@ export class PublicLoginComponent implements OnDestroy {
         }
         this.startResendTimer(res.resendAfterSeconds);
         this.loading.set(false);
+        scrollToTop();
       },
       error: (err) => {
         this.loading.set(false);
@@ -320,6 +323,7 @@ export class PublicLoginComponent implements OnDestroy {
           this.devOtpPopulated.set(false);
           this.clearResendTimer();
           this.loadCaptcha();
+          scrollToTop();
         } else {
           this.otpError = body?.message || 'Verification failed.';
         }
@@ -372,6 +376,7 @@ export class PublicLoginComponent implements OnDestroy {
           this.otpSent.set(false);
           this.loginError = body.message || 'Please request an OTP first.';
           this.loadCaptcha();
+          scrollToTop();
         } else {
           this.otpError = body?.message || 'Failed to resend OTP. Please try again.';
         }
@@ -399,6 +404,7 @@ export class PublicLoginComponent implements OnDestroy {
     this.clearResendTimer();
     // The challenge tied to the abandoned attempt is single-use; a fresh one is needed for the new number.
     this.loadCaptcha();
+    scrollToTop();
   }
 
   toggleEmailFallback() {

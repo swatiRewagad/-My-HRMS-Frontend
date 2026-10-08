@@ -23,6 +23,7 @@ import { RbioEmailCommunicationComponent } from '../../rbio/rbio-email-communica
 import { RbioLegalCaseComponent } from '../../rbio/rbio-legal-case/rbio-legal-case.component';
 import { ToastService } from '../../../services/toast.service';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
+import { TranslateOrPipe } from '../../../pipes/translate-or.pipe';
 
 interface TimelineEntry {
   action: string;
@@ -51,7 +52,7 @@ interface ActionDef extends WorkflowAction {
 @Component({
   selector: 'app-cepc-complaint-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent, ComplaintSummaryComponent, ContextRailComponent, RbioEmailCommunicationComponent, RbioLegalCaseComponent],
+  imports: [CommonModule, FormsModule, CepcSlaIndicatorComponent, CepcTimelineComponent, CepcConciliationComponent, StatusBadgeComponent, CommentThreadComponent, WorkflowActionBarComponent, ComplaintSummaryComponent, ContextRailComponent, RbioEmailCommunicationComponent, RbioLegalCaseComponent, TranslateOrPipe],
   templateUrl: './cepc-complaint-detail.component.html',
   styleUrl: './cepc-complaint-detail.component.scss'
 })

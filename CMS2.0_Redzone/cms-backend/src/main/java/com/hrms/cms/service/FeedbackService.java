@@ -19,8 +19,18 @@ public class FeedbackService {
     private final ComplaintFeedbackRepository feedbackRepository;
     private final ComplaintRepository complaintRepository;
 
+    /**
+     * The statuses that count as "closed" for feedback purposes (UST109).
+     *
+     * <p>Previously only closed/resolved/rejected. That excluded the statuses a complaint reaches when
+     * it is actually disposed of on its merits — a complaint settled by award (adjudicated) or by
+     * conciliation, or withdrawn, or rejected at the portal — so the citizens with the most to say about
+     * the process were the ones refused the feedback form. Kept in step with the closed set the RBIO
+     * status vocabulary already treats as terminal.
+     */
     private static final Set<String> TERMINAL_STATUSES = Set.of(
-            "closed", "resolved", "rejected"
+            "closed", "resolved", "rejected",
+            "adjudicated", "conciliated", "withdrawn", "portal_rejection"
     );
 
     /**
@@ -70,10 +80,10 @@ public class FeedbackService {
             throw new IllegalArgumentException("Source of information is required.");
         }
 
+        // UST109 Q6 is OPTIONAL. Requiring it rejected an otherwise complete questionnaire over the one
+        // question the citizen is entitled to skip, and the portal's own form marks it optional — so a
+        // valid submission from the UI was refused by the API.
         String cmsPortalAwareness = getString(request, "cmsPortalAwareness");
-        if (cmsPortalAwareness == null || cmsPortalAwareness.isBlank()) {
-            throw new IllegalArgumentException("CMS Portal awareness level is required.");
-        }
 
         // ── 6. Validate optional text-length fields ──────────────────────
         String feedbackText = getString(request, "feedbackText");

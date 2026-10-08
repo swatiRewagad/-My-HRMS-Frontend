@@ -2,6 +2,21 @@
 // to duplicate it here are gone, along with the emoji dot and the doc-link markup for a `documents[]`
 // field no endpoint has ever returned.
 
+// styles.scss's --surface-card/--text-heading/etc. are static :root values with no .cepc-dark variant —
+// that token system is shared app-wide (RBIO, other portals), so retheming it globally is out of scope
+// here. Re-point just the handful this panel paints with onto the PrimeNG tokens the rest of the CEPC
+// detail page already uses, which DO flip under .cepc-dark. Scoped to :host-context(.cepc-dark) so no
+// other consumer of the global tokens is affected.
+:host-context(.cepc-dark) {
+  --surface-card: var(--p-content-background, #ffffff);
+  --surface-subtle: var(--p-content-hover-background, #f1f5f9);
+  --border-subtle: var(--p-content-border-color, #e2e8f0);
+  --border-input: var(--p-content-border-color, #d1d5db);
+  --text-heading: var(--p-text-color, #1e293b);
+  --text-secondary: var(--p-text-muted-color, #475569);
+  --text-muted: var(--p-text-muted-color, #64748b);
+}
+
 .cepc-timeline {
   background: var(--surface-card);
   border-radius: var(--radius-lg);

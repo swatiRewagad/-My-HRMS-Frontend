@@ -43,7 +43,8 @@ public class ComplaintFeedback {
     @Column(length = 500)
     private String sourceOtherText;
 
-    @Column(nullable = false, length = 50)
+    // Nullable: UST109 Q6 is optional, so a questionnaire that skips it must still persist.
+    @Column(length = 50)
     private String cmsPortalAwareness;
 
     @Column(length = 500)

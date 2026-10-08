@@ -1,0 +1,41 @@
+<div class="col-attachments-panel">
+  <div class="attachments-panel-wrapper">
+    <div class="attachment-panel-header">
+      <h4><i class="pi pi-paperclip"></i> {{ 'ui.cepc.dv.tab.attachments' | translateOr: 'Attachments' }}</h4>
+      <button class="sidebar-expand-btn" (click)="close.emit()"><i class="pi pi-chevron-right"></i></button>
+    </div>
+    <label class="attach-new-btn">
+      <input type="file" (change)="uploadFile.emit($event)" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" multiple hidden />
+      <i class="pi pi-plus"></i> {{ 'ui.cepc.panel.attach_new_document' | translateOr: 'Attach New Document' }}
+    </label>
+    <div class="attachment-list">
+      @if (loadingSidebarAttachments || uploadingDocument) {
+        <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> {{ uploadingDocument ? 'Uploading...' : 'Loading...' }}</p>
+      } @else if (sidebarAttachments.length > 0) {
+        @for (att of sidebarAttachments; track att.id) {
+          <div class="doc-item">
+            <div class="doc-icon" [class.doc-icon-pdf]="att.type.includes('pdf')">
+              @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+              @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
+              @else if (att.type.includes('sheet') || att.type.includes('excel') || att.name.endsWith('.xls') || att.name.endsWith('.xlsx')) { <i class="pi pi-file-excel"></i> }
+              @else { <i class="pi pi-file"></i> }
+            </div>
+            <div class="doc-info">
+              <span class="doc-name">{{ att.name }}</span>
+              <span class="doc-meta">{{ att.size }} {{ att.uploadedBy ? 'Uploaded by ' + att.uploadedBy : '' }}</span>
+            </div>
+            <div class="doc-actions">
+              <button [title]="'ui.cepc.sla.view' | translateOr: 'View'" (click)="previewAttachment.emit(att)"><i class="pi pi-eye"></i></button>
+              <button [title]="'ui.cepc.dv.action.download' | translateOr: 'Download'" (click)="downloadAttachment.emit(att)"><i class="pi pi-download"></i></button>
+            </div>
+          </div>
+        }
+        <div class="download-all-link">
+          <a (click)="downloadAll.emit()"><i class="pi pi-download"></i> {{ 'ui.cepc.panel.download_all' | translateOr: 'Download All' }}</a>
+        </div>
+      } @else {
+        <p class="sidebar-empty">{{ 'ui.cepc.panel.no_attachments' | translateOr: 'No attachments' }}</p>
+      }
+    </div>
+  </div>
+</div>

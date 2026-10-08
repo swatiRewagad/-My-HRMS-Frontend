@@ -1,0 +1,52 @@
+<div class="dh">
+  <h1 class="dh-title">{{ 'ui.cepc.dash.title'
+    | translateOr: '{{dept}} Complaints' : { dept: dept.cfg().label } }}</h1>
+
+  <div class="dh-actions">
+    <p-button size="small" [label]="'ui.cepc.dash.advanced_search' | translateOr: 'Advanced Search'"
+      icon="pi pi-search" [text]="true"
+      [loading]="isSearching()" (onClick)="toggleAdvancedSearch.emit(true)" />
+
+    @if (advSearchActive()) {
+      <p-button size="small" [label]="'ui.cepc.dash.clear_search' | translateOr: 'Clear Search'"
+        icon="pi pi-times" [text]="true"
+        severity="danger" [loading]="isSearching()" (onClick)="clearSearch.emit()" />
+    }
+
+    <div class="dh-filter-group">
+      <p-button size="small" icon="pi pi-filter"
+        [label]="activeFilterCount() > 0
+          ? ('ui.cepc.dash.filter_count' | translateOr: 'Filter ({{count}})' : { count: '' + activeFilterCount() })
+          : ('ui.cepc.dash.filter' | translateOr: 'Filter')"
+        [outlined]="activeFilterCount() > 0"
+        [text]="activeFilterCount() === 0"
+        [loading]="isSearching()" (onClick)="isFilterOpen.set(true)" />
+
+      <app-cepc-dashboard-filter [(visible)]="isFilterOpen"
+        [activeFilters]="activeFilters()"
+        (filterApply)="filtersChanged.emit($event)" />
+    </div>
+
+    <p-select size="small" [options]="translatedStatusCodes()" [(ngModel)]="selectedStatusCode"
+      optionLabel="label"
+      optionValue="value" [loading]="isSearching()" (onChange)="statusFilterSelect.emit($event)"
+      [placeholder]="'ui.cepc.dash.select_status' | translateOr: 'Select a status'" styleClass="dh-select"
+      scrollHeight="auto" />
+
+    @if (isDOUser()) {
+      <p-button size="small" [label]="'ui.cepc.dash.draft_complaint' | translateOr: 'Draft Complaint'"
+        icon="pi pi-plus"
+        [loading]="isSearching()" (onClick)="createComplaint.emit()" />
+    }
+  </div>
+</div>
+
+@if (filterChips().length > 0) {
+  <div class="dh-chips">
+    @for (chip of filterChips(); track chip.category + chip.value) {
+      <p-chip [label]="chip.label" [removable]="true" (onRemove)="removeChip(chip.category, chip.value)" />
+    }
+    <p-button [text]="true" severity="danger" [label]="'ui.cepc.dash.clear_all' | translateOr: 'Clear All'"
+      size="small" (onClick)="clearAllFilters()" />
+  </div>
+}

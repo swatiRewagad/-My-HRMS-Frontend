@@ -18,10 +18,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -194,22 +196,38 @@ public class NotificationService {
             log.debug("STOMP push failed for {} ({}): {}", target, type, e.getMessage());
         }
 
+        // No dispatchRef: an in-app notification never leaves the application, so there is nothing
+        // for another service to settle.
         log(notification.getId(), target, type, NotificationDeliveryLog.CHANNEL_IN_APP,
                 failure == null ? NotificationDeliveryLog.STATUS_SENT : NotificationDeliveryLog.STATUS_FAILED,
-                failure, relatedEntityId);
+                failure, relatedEntityId, null);
 
         return notification.getId();
     }
 
+    /**
+     * Attempts one channel and records the outcome.
+     *
+     * <p>The attempt may end PENDING rather than SENT: with the Kafka adapter active, cms-backend only
+     * hands the message off and cms-notification-service settles the row later by {@code dispatchRef}.
+     * A row left PENDING is therefore a real signal — a message that reached no gateway — and is
+     * re-drivable, which a SENT row written on hand-off would not have been.
+     */
     private void dispatch(String channel, Long notificationId, String target, String type,
                           String title, String message, String relatedEntityId) {
+        String dispatchRef = UUID.randomUUID().toString();
         try {
-            outboundMessagePort.send(channel, target, title, message, relatedEntityId);
-            log(notificationId, target, type, channel, NotificationDeliveryLog.STATUS_SENT, null,
-                    relatedEntityId);
+            OutboundMessagePort.Outcome outcome =
+                    outboundMessagePort.send(channel, target, title, message, relatedEntityId, dispatchRef);
+
+            String status = outcome == OutboundMessagePort.Outcome.QUEUED
+                    ? NotificationDeliveryLog.STATUS_PENDING
+                    : NotificationDeliveryLog.STATUS_SENT;
+
+            log(notificationId, target, type, channel, status, null, relatedEntityId, dispatchRef);
         } catch (Exception e) {
             log(notificationId, target, type, channel, NotificationDeliveryLog.STATUS_FAILED,
-                    truncate(e.getMessage()), relatedEntityId);
+                    truncate(e.getMessage()), relatedEntityId, dispatchRef);
             log.warn("{} dispatch failed for {} ({}): {}", channel, target, type, e.getMessage());
         }
     }
@@ -237,7 +255,7 @@ public class NotificationService {
     }
 
     private void log(Long notificationId, String recipient, String type, String channel,
-                     String status, String error, String complaintNumber) {
+                     String status, String error, String complaintNumber, String dispatchRef) {
         try {
             deliveryLogRepository.save(NotificationDeliveryLog.builder()
                     .notificationId(notificationId)
@@ -247,6 +265,9 @@ public class NotificationService {
                     .status(status)
                     .errorMessage(error)
                     .relatedComplaintNumber(complaintNumber)
+                    .dispatchRef(dispatchRef)
+                    .settledAt(NotificationDeliveryLog.STATUS_PENDING.equals(status)
+                            ? null : LocalDateTime.now())
                     .build());
         } catch (Exception e) {
             // Never let an audit-write failure suppress the notification itself.

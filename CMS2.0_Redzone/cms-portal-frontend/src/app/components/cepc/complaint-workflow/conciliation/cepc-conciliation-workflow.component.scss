@@ -1,0 +1,53 @@
+@use '../../cepc-complaint-details-view/cepc-complaint-details-view.component.scss' as *;
+
+// The @use above pulls in the parent's `:host { background: #f5f7fa; }` too, which recompiles
+// against THIS component's own host and paints it pale gray instead of white — override it here.
+//
+// Also bounds this component's own height to whatever `.col-complaint-form` gives it, so `.form-scroll`
+// below can be the thing that scrolls (with a visible scrollbar) instead of the outer panel silently
+// absorbing the overflow with its scrollbar hidden (see `.col-complaint-form { scrollbar-width: none }`).
+:host {
+  background: var(--p-content-background, #fff);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.form-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--p-content-border-color, #cbd5e1); border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--p-text-muted-color, #94a3b8); }
+}
+
+// Parent's heading rule is `.col-complaint-form .panel-header h3`, but this component's root
+// `.panel-header` isn't nested inside a `.col-complaint-form` wrapper, so that rule never matches
+// here and the "Conciliation" heading falls back to the browser's default h3 (bigger/bolder than
+// "Assessment" and the other tab headings). Restate it directly so the sizing stays in sync.
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  min-height: 50px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--p-content-border-color, #f1f5f9);
+  position: sticky;
+  top: 0;
+  background: var(--p-content-background, #fff);
+  z-index: 10;
+
+  h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}

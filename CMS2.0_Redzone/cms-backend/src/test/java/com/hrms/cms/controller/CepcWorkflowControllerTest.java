@@ -50,8 +50,6 @@ class CepcWorkflowControllerTest {
 
     @MockBean private ComplaintRepository complaintRepository;
     @MockBean private ComplaintAttachmentRepository complaintAttachmentRepository;
-    // See the note in RbioWorkflowControllerTest: unused here, but WorkflowController's constructor
-    // takes it, and an unmockable constructor parameter fails the whole slice at context refresh.
     @MockBean private ComplaintCategoryRepository complaintCategoryRepository;
     @MockBean private ComplaintService complaintService;
     @MockBean private BankRepository bankRepository;

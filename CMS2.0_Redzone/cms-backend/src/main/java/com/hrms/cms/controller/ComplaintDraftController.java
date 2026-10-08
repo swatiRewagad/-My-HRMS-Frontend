@@ -34,10 +34,24 @@ public class ComplaintDraftController {
 
         String formDataJson = serializeToJson(request.get("formData"));
         String eligibilityJson = serializeToJson(request.get("eligibilityAnswers"));
+        String eligibilityFormDataJson = serializeToJson(request.get("eligibilityFormData"));
 
-        // Upsert: one draft per phone number
-        ComplaintDraft draft = draftRepository.findByPhoneOrderByUpdatedAtDesc(phone)
-                .stream().findFirst().orElse(null);
+        // Update the draft the client is actually editing; fall back to the
+        // newest draft for the phone only when the client has no draftId yet.
+        String requestedDraftId = (String) request.get("draftId");
+        ComplaintDraft draft = null;
+        if (requestedDraftId != null && !requestedDraftId.isBlank()) {
+            draft = draftRepository.findByDraftId(requestedDraftId)
+                    .filter(d -> phone.equals(d.getPhone()))
+                    .orElse(null);
+            if (draft == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "success", false, "message", "Draft not found for this phone"));
+            }
+        } else {
+            draft = draftRepository.findByPhoneOrderByUpdatedAtDesc(phone)
+                    .stream().findFirst().orElse(null);
+        }
 
         if (draft == null) {
             draft = new ComplaintDraft();
@@ -48,9 +62,25 @@ public class ComplaintDraftController {
         draft.setEntityName(entityName);
         draft.setFormDataJson(formDataJson);
         draft.setEligibilityAnswersJson(eligibilityJson);
+        draft.setEligibilityFormDataJson(eligibilityFormDataJson);
         draft.setCurrentStep(currentStep);
         draft.setPhase(phase);
 
+        Integer highestStepReached = request.get("highestStepReached") != null
+                ? ((Number) request.get("highestStepReached")).intValue() : null;
+        Integer eligibilityStep = request.get("eligibilityStep") != null
+                ? ((Number) request.get("eligibilityStep")).intValue() : null;
+        draft.setHighestStepReached(highestStepReached);
+        draft.setEligibilityStep(eligibilityStep);
+
+        Object accountTypes = request.get("checkedAccountTypes");
+        if (accountTypes instanceof List) {
+            draft.setCheckedAccountTypes(String.join(",", (List<String>) accountTypes));
+        }
+        draft.setDateDisplayJson(serializeToJson(request.get("dateDisplay")));
+        draft.setDeclarationChecked(Boolean.TRUE.equals(request.get("declarationChecked")));
+        draft.setDeclaration2Checked(Boolean.TRUE.equals(request.get("declaration2Checked")));
+        draft.setAttachmentMetaJson(serializeToJson(request.get("attachmentMeta")));
         draftRepository.save(draft);
 
         Map<String, Object> data = Map.of("draftId", draft.getDraftId());
@@ -63,18 +93,9 @@ public class ComplaintDraftController {
     public ResponseEntity<Map<String, Object>> getDrafts(@RequestParam String phone) {
         List<ComplaintDraft> drafts = draftRepository.findByPhoneOrderByUpdatedAtDesc(phone);
 
-        List<Map<String, Object>> items = drafts.stream().map(d -> {
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("draftId", d.getDraftId());
-            item.put("phone", d.getPhone());
-            item.put("entityName", d.getEntityName());
-            item.put("currentStep", d.getCurrentStep());
-            item.put("phase", d.getPhase());
-            item.put("updatedAt", d.getUpdatedAt() != null ? d.getUpdatedAt().toString() : "");
-            item.put("formData", deserializeJson(d.getFormDataJson()));
-            item.put("eligibilityAnswers", deserializeJson(d.getEligibilityAnswersJson()));
-            return item;
-        }).collect(Collectors.toList());
+        List<Map<String, Object>> items = drafts.stream()
+                .map(this::buildDraftResponse)
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(Map.of(
                 "success", true, "message", "Drafts retrieved", "data", items,
@@ -90,15 +111,7 @@ public class ComplaintDraftController {
         }
 
         ComplaintDraft d = opt.get();
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("draftId", d.getDraftId());
-        data.put("phone", d.getPhone());
-        data.put("entityName", d.getEntityName());
-        data.put("currentStep", d.getCurrentStep());
-        data.put("phase", d.getPhase());
-        data.put("updatedAt", d.getUpdatedAt() != null ? d.getUpdatedAt().toString() : "");
-        data.put("formData", deserializeJson(d.getFormDataJson()));
-        data.put("eligibilityAnswers", deserializeJson(d.getEligibilityAnswersJson()));
+        Map<String, Object> data = buildDraftResponse(d);
 
         return ResponseEntity.ok(Map.of(
                 "success", true, "message", "OK", "data", data,
@@ -114,12 +127,38 @@ public class ComplaintDraftController {
                 "timestamp", LocalDateTime.now().toString()));
     }
 
+    private Map<String, Object> buildDraftResponse(ComplaintDraft d) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("draftId", d.getDraftId());
+        item.put("phone", d.getPhone());
+        item.put("entityName", d.getEntityName());
+        item.put("currentStep", d.getCurrentStep());
+        item.put("phase", d.getPhase());
+        item.put("highestStepReached", d.getHighestStepReached());
+        item.put("eligibilityStep", d.getEligibilityStep());
+        item.put("createdAt", d.getCreatedAt() != null ? d.getCreatedAt().toString() : "");
+        item.put("updatedAt", d.getUpdatedAt() != null ? d.getUpdatedAt().toString() : "");
+        item.put("formData", deserializeJson(d.getFormDataJson()));
+        item.put("eligibilityFormData", deserializeJson(d.getEligibilityFormDataJson()));
+        item.put("eligibilityAnswers", deserializeJson(d.getEligibilityAnswersJson()));
+        if (d.getCheckedAccountTypes() != null && !d.getCheckedAccountTypes().isBlank()) {
+            item.put("checkedAccountTypes", Arrays.asList(d.getCheckedAccountTypes().split(",")));
+        } else {
+            item.put("checkedAccountTypes", List.of());
+        }
+        item.put("dateDisplay", deserializeJson(d.getDateDisplayJson()));
+        item.put("declarationChecked", Boolean.TRUE.equals(d.getDeclarationChecked()));
+        item.put("declaration2Checked", Boolean.TRUE.equals(d.getDeclaration2Checked()));
+        item.put("attachmentMeta", deserializeList(d.getAttachmentMetaJson()));
+        return item;
+    }
+
     private String serializeToJson(Object obj) {
-        if (obj == null) return "{}";
+        if (obj == null) return null;
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
-            return "{}";
+            return null;
         }
     }
 
@@ -130,6 +169,16 @@ public class ComplaintDraftController {
             return objectMapper.readValue(json, Map.class);
         } catch (Exception e) {
             return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> deserializeList(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, List.class);
+        } catch (Exception e) {
+            return List.of();
         }
     }
 }

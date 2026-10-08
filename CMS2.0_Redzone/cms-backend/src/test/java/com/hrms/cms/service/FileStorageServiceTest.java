@@ -3,7 +3,9 @@ package com.hrms.cms.service;
 import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.entity.ComplaintAttachmentData;
 import com.hrms.cms.entity.SystemConfig;
+import com.hrms.cms.repository.ComplaintAttachmentDataRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import com.hrms.cms.repository.SystemConfigRepository;
 import org.junit.jupiter.api.*;
@@ -16,6 +18,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +34,7 @@ import static org.mockito.Mockito.*;
 class FileStorageServiceTest {
 
     @Mock private ComplaintAttachmentRepository attachmentRepository;
+    @Mock private ComplaintAttachmentDataRepository attachmentDataRepository;
 
     private FileStorageConfig config;
     private FileStorageService fileStorageService;
@@ -82,7 +86,7 @@ class FileStorageServiceTest {
                         .map(value -> SystemConfig.builder().configKey(inv.getArgument(0)).configValue(value).build()));
         UploadLimitsService uploadLimits = new UploadLimitsService(new SystemConfigService(repository));
 
-        fileStorageService = new FileStorageService(config, attachmentRepository,
+        fileStorageService = new FileStorageService(config, attachmentRepository, attachmentDataRepository,
                 new FileUploadValidator(config, uploadLimits), uploadLimits);
     }
 
@@ -178,7 +182,8 @@ class FileStorageServiceTest {
             assertThat(result.getOriginalName()).isEqualTo("report.pdf");
             assertThat(result.getContentType()).isEqualTo("application/pdf");
             assertThat(result.getComplaintId()).isEqualTo(1L);
-            assertThat(result.getStoragePath()).startsWith("CMS-001/");
+            verify(attachmentDataRepository).save(argThat(data ->
+                    data.getAttachmentId().equals(1L) && Arrays.equals(data.getFileData(), PDF)));
         }
 
         @Test
@@ -226,27 +231,62 @@ class FileStorageServiceTest {
     }
 
     @Nested
-    class GetFilePath {
+    class ReadContent {
 
         @Test
-        void shouldReturnPathForExistingAttachment() {
+        void shouldReturnContentFromDatabase() throws IOException {
             ComplaintAttachment att = ComplaintAttachment.builder()
-                    .id(1L).storagePath("CMS-001/file.pdf").build();
+                    .id(1L).originalName("file.pdf").contentType("application/pdf").build();
             when(attachmentRepository.findById(1L)).thenReturn(Optional.of(att));
+            ComplaintAttachmentData data = ComplaintAttachmentData.builder()
+                    .attachmentId(1L).fileData(PDF).build();
+            when(attachmentDataRepository.findById(1L)).thenReturn(Optional.of(data));
 
-            Path result = fileStorageService.getFilePath(1L);
+            Optional<FileStorageService.AttachmentContent> result = fileStorageService.readContent(1L);
 
-            assertThat(result.toString()).contains("CMS-001");
-            assertThat(result.toString()).contains("file.pdf");
+            assertThat(result).isPresent();
+            assertThat(result.get().fileName()).isEqualTo("file.pdf");
+            assertThat(result.get().contentType()).isEqualTo("application/pdf");
+            assertThat(result.get().bytes()).isEqualTo(PDF);
         }
 
         @Test
-        void shouldThrowWhenAttachmentNotFound() {
+        void shouldFallBackToLegacyFileWhenNoDatabaseBytes() throws IOException {
+            Path complaintDir = tempDir.resolve("CMS-001");
+            Files.createDirectories(complaintDir);
+            Path file = complaintDir.resolve("file.pdf");
+            Files.write(file, PDF);
+
+            ComplaintAttachment att = ComplaintAttachment.builder()
+                    .id(1L).originalName("file.pdf").contentType("application/pdf")
+                    .storagePath("CMS-001/file.pdf").build();
+            when(attachmentRepository.findById(1L)).thenReturn(Optional.of(att));
+            when(attachmentDataRepository.findById(1L)).thenReturn(Optional.empty());
+
+            Optional<FileStorageService.AttachmentContent> result = fileStorageService.readContent(1L);
+
+            assertThat(result).isPresent();
+            assertThat(result.get().bytes()).isEqualTo(PDF);
+        }
+
+        @Test
+        void shouldReturnEmptyWhenAttachmentNotFound() {
             when(attachmentRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> fileStorageService.getFilePath(99L))
-                    .isInstanceOf(RuntimeException.class)
-                    .hasMessage("Attachment not found");
+            Optional<FileStorageService.AttachmentContent> result = fileStorageService.readContent(99L);
+
+            assertThat(result).isEmpty();
+        }
+
+        @Test
+        void shouldReturnEmptyWhenBytesAreNowhereToBeFound() {
+            ComplaintAttachment att = ComplaintAttachment.builder().id(1L).build();
+            when(attachmentRepository.findById(1L)).thenReturn(Optional.of(att));
+            when(attachmentDataRepository.findById(1L)).thenReturn(Optional.empty());
+
+            Optional<FileStorageService.AttachmentContent> result = fileStorageService.readContent(1L);
+
+            assertThat(result).isEmpty();
         }
     }
 

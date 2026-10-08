@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
+import { TranslateOrPipe } from '../../../pipes/translate-or.pipe';
 
 @Component({
   selector: 'app-cepc-conciliation',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateOrPipe],
   templateUrl: './cepc-conciliation.component.html',
   styleUrl: './cepc-conciliation.component.scss'
 })

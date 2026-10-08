@@ -1,8 +1,10 @@
 package com.hrms.cms.service;
 
+import com.hrms.cms.entity.CaseIdSequence;
 import com.hrms.cms.entity.ComplaintNumberSequence;
 import com.hrms.cms.entity.OfficeCodeMaster;
 import com.hrms.cms.entity.OmbudsmanOfficeMaster;
+import com.hrms.cms.repository.CaseIdSequenceRepository;
 import com.hrms.cms.repository.ComplaintNumberSequenceRepository;
 import com.hrms.cms.repository.OfficeCodeMasterRepository;
 import com.hrms.cms.repository.OmbudsmanOfficeMasterRepository;
@@ -24,6 +26,7 @@ public class ComplaintNumberGeneratorService {
     private final OmbudsmanOfficeMasterRepository ombudsmanOfficeRepo;
     private final OfficeCodeMasterRepository officeCodeRepo;
     private final ComplaintNumberSequenceRepository sequenceRepo;
+    private final CaseIdSequenceRepository caseIdSequenceRepo;
 
     /**
      * The office a complaint was numbered against, alongside the number itself.
@@ -57,6 +60,24 @@ public class ComplaintNumberGeneratorService {
         log.info("Generated complaint number: {} (office={}, code={}, FY={}, seq={})",
                 complaintNumber, officeName, officeCode, financialYear, nextSequence);
         return new NumberedComplaint(complaintNumber, officeName, officeCode);
+    }
+
+    /**
+     * Generates a Case ID for a complaint closed as Non-Maintainable at eligibility screening
+     * (FR-G-013). Backed by its own CASE_ID_SEQUENCE counter — kept separate from
+     * COMPLAINT_NUMBER_SEQUENCE so Case IDs and Complaint Numbers never share a sequence value.
+     */
+    @Transactional
+    public String generateCaseId(String department, String complainantState, String complainantDistrict) {
+        String officeName = resolveOfficeName(department, complainantState, complainantDistrict);
+        String officeCode = resolveOfficeCode(officeName);
+        String financialYear = computeFinancialYear(LocalDate.now());
+        int nextSequence = getNextCaseIdSequence(officeCode, financialYear);
+
+        String caseId = String.format("CID%s%s%06d", financialYear, officeCode, nextSequence);
+        log.info("Generated case ID: {} (office={}, code={}, FY={}, seq={})",
+                caseId, officeName, officeCode, financialYear, nextSequence);
+        return caseId;
     }
 
     /**
@@ -174,17 +195,27 @@ public class ComplaintNumberGeneratorService {
         return exclusionClause.contains(dLower);
     }
 
+    private static final String OFFICE_TYPE_BO = "BO";
+
+    /**
+     * The ombudsman offices this method resolves ({@code resolveOfficeName}'s output) are always seeded with
+     * {@code officeType='BO'} — plain {@code findByOfficeNameAndIsActiveTrue} would also match a CEPC office
+     * row sharing the same name (e.g. "Bengaluru") and throw on the duplicate, or silently return whichever
+     * row happened to exist. Filtering to 'BO' keeps this method bound to the ombudsman code regardless of
+     * what else is seeded under the same office name.
+     */
     private String resolveOfficeCode(String officeName) {
         // Normalize office name for matching (e.g., "Chennai-I" -> "Chennai")
         // OFFICE_CODE_MASTER may have simplified names
-        Optional<OfficeCodeMaster> exact = officeCodeRepo.findByOfficeNameAndIsActiveTrue(officeName);
+        Optional<OfficeCodeMaster> exact =
+                officeCodeRepo.findByOfficeNameAndOfficeTypeAndIsActiveTrue(officeName, OFFICE_TYPE_BO);
         if (exact.isPresent()) {
             return exact.get().getOfficeCode();
         }
 
         // Try base name (e.g., "Mumbai-I" -> "Mumbai I")
         String normalized = officeName.replace("-", " ");
-        exact = officeCodeRepo.findByOfficeNameAndIsActiveTrue(normalized);
+        exact = officeCodeRepo.findByOfficeNameAndOfficeTypeAndIsActiveTrue(normalized, OFFICE_TYPE_BO);
         if (exact.isPresent()) {
             return exact.get().getOfficeCode();
         }
@@ -200,7 +231,7 @@ public class ComplaintNumberGeneratorService {
         return "New Delhi I";
     }
 
-    String computeFinancialYear(LocalDate date) {
+    public String computeFinancialYear(LocalDate date) {
         int year = date.getYear();
         int month = date.getMonthValue();
 
@@ -231,6 +262,28 @@ public class ComplaintNumberGeneratorService {
                     .updatedAt(LocalDateTime.now())
                     .build();
             sequenceRepo.save(newSeq);
+            return 1;
+        }
+    }
+
+    private int getNextCaseIdSequence(String officeCode, String financialYear) {
+        Optional<CaseIdSequence> existing =
+                caseIdSequenceRepo.findByOfficeCodeAndFinancialYearForUpdate(officeCode, financialYear);
+
+        if (existing.isPresent()) {
+            CaseIdSequence seq = existing.get();
+            seq.setLastSequence(seq.getLastSequence() + 1);
+            seq.setUpdatedAt(LocalDateTime.now());
+            caseIdSequenceRepo.save(seq);
+            return seq.getLastSequence();
+        } else {
+            CaseIdSequence newSeq = CaseIdSequence.builder()
+                    .officeCode(officeCode)
+                    .financialYear(financialYear)
+                    .lastSequence(1)
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+            caseIdSequenceRepo.save(newSeq);
             return 1;
         }
     }

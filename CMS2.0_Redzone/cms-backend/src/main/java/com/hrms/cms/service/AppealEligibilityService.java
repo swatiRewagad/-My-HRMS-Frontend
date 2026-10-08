@@ -4,6 +4,7 @@ import com.hrms.cms.entity.Appeal;
 import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.ClosureClauseMaster;
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.ClosureClauseMaster.AppealParty;
 import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.SystemConfig;
 import com.hrms.cms.repository.AppealRepository;
@@ -89,6 +90,23 @@ public class AppealEligibilityService {
             result.put("delayedFiling", false);
             result.put("reason", "Complaint is still active (status: " + complaint.getStatus()
                     + "). Appeals can only be filed against closed/resolved complaints.");
+            return result;
+        }
+
+        // 2b. The closure clause must actually be appealable by the complainant (UST111). Status alone
+        // (closed/non-maintainable) says nothing about this — e.g. 16(2)(a) time-barred or 16(2)(b)
+        // frivolous closures are terminal but not appealable, per CLOSURE_CLAUSE_MASTER.
+        boolean appealable;
+        try {
+            appealable = classificationService.isAppealable(complaint, AppealParty.COMPLAINANT);
+        } catch (AppealClassificationService.UnmappedClauseException e) {
+            // Fails closed: an unclassifiable clause must not be offered as appealable.
+            appealable = false;
+        }
+        if (!appealable) {
+            result.put("eligible", false);
+            result.put("delayedFiling", false);
+            result.put("reason", "This complaint's closure is not eligible for appeal under the applicable clause.");
             return result;
         }
 

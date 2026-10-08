@@ -1,6 +1,8 @@
 package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.ReActivityStatus;
+import com.hrms.cms.entity.TimelineEventSource;
 import com.hrms.cms.repository.ComplaintRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -48,6 +51,19 @@ public class CepcWorkflowService {
     @org.springframework.beans.factory.annotation.Autowired(required = false)
     private ForwardTargetService forwardTargetService;
 
+    /**
+     * The RE-side activity ladder and response clock, driven by FORWARD_TO_RE.
+     *
+     * <p>Optional on the same basis as the collaborators above. When absent the forward still moves the
+     * complaint — unlike an inter-office transfer there is no approval to queue, so the columns alone are
+     * a coherent outcome; only the activity badge and the deadline are missed.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ReActivityStatusService reActivityStatusService;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private ReResponseDeadlineService reResponseDeadlineService;
+
     /** The first param with a non-blank value, or null. Trailing whitespace counts as absent. */
     private static String firstNonBlank(Map<String, String> params, String... names) {
         if (params == null) return null;
@@ -79,20 +95,67 @@ public class CepcWorkflowService {
             "CEPC_DO", Set.of(
                     "ACCEPT", "REQUEST_INFO", "INFO_RECEIVED", "FORWARD_DEPT",
                     "COMMENTS_RECEIVED", "SCHEDULE_MEETING", "SUBMIT_FOR_REVIEW",
-                    "FORWARD_TO_INCHARGE", "FORWARD_TO_CONTACT"
+                    "FORWARD_TO_INCHARGE", "FORWARD_TO_CONTACT", "FORWARD_TO_RE",
+                    // The Final Decision tab's Close Complaint, for the one case this role reaches that tab
+                    // at all: a complaint handed back down by Mark for Closure. The state gate that keeps a
+                    // DO from closing anything else lives in CepcSendForApprovalController, not here — this
+                    // map only answers "is the role allowed to attempt the action", not "right now".
+                    "CLOSE_COMPLAINT"
             ),
             "CEPC_REVIEWER", Set.of(
-                    "APPROVE_REVIEW", "FORWARD_TO_CLOSING_AUTHORITY", "SEND_BACK_DO"
+                    "APPROVE_REVIEW", "FORWARD_TO_CLOSING_AUTHORITY", "SEND_BACK_DO",
+                    // The reviewer's Forward tab offers this one destination and no other — deliberately
+                    // narrower than the incharge and closing authority, who keep the regulatory-body and
+                    // other-office arms too. Without the grant the tab opened, took a department and 403d.
+                    "FORWARD_TO_OTHER_RBI_DEPT",
+                    // The Send for Approval dialog's manual hand-up to a named in-charge — resolveAction
+                    // gives this the same action name as a DO's forward, since both are "forward to the
+                    // next rung above me". Distinct from APPROVE_REVIEW, which round-robins with no
+                    // manual assignee. Without this grant the dialog opened, took an assignee and 403d.
+                    "FORWARD_TO_INCHARGE",
+                    // The Final Decision tab's Close Complaint, same grant as every other rung.
+                    "CLOSE_COMPLAINT"
             ),
             "CEPC_INCHARGE", Set.of(
-                    "APPROVE_CLOSURE", "SEND_BACK_REVIEWER", "SEND_BACK_DO", "REASSIGN"
+                    "APPROVE_CLOSURE", "SEND_BACK_REVIEWER", "SEND_BACK_DO", "REASSIGN",
+                    // The Forward tab is enabled for this role as well as the closing authority
+                    // (cepc-complaint-details-view.component.html:216). Without these three the tab opened,
+                    // accepted a destination and then 403d on submit — an incharge was offered a button that
+                    // could not work. Not a widening of real authority: forwarding records the complaint as
+                    // `forwarded_external` because it belongs to another regulator, which is a routing
+                    // decision, and this role already holds APPROVE_CLOSURE — the stronger power of ending a
+                    // complaint on its merits.
+                    "FORWARD_TO_OTHER_OFFICE", "FORWARD_TO_REGULATORY_BODY", "FORWARD_TO_OTHER_RBI_DEPT",
+                    // Kept for the "Send for Approval" dropdown's own hand-up to the closing authority — a
+                    // distinct action from the Final Decision tab's Mark for Closure below.
+                    "FORWARD_TO_CLOSING_AUTHORITY",
+                    // The Final Decision tab's Mark for Closure. Both the incharge and the closing authority
+                    // send this same target now — it hands the complaint back down to the dealing officer to
+                    // carry out the closure, rather than up the ladder. Without this grant the button opened,
+                    // accepted input and then 403d.
+                    "MARK_FOR_CLOSURE",
+                    // The Final Decision tab's Close Complaint, same grant as every other rung.
+                    "CLOSE_COMPLAINT"
             ),
             "CEPC_CLOSING_AUTHORITY", Set.of(
                     "CLOSE_COMPLAINT", "SEND_BACK_INCHARGE", "FORWARD_TO_OTHER_OFFICE",
-                    "FORWARD_TO_REGULATORY_BODY", "FORWARD_TO_OTHER_RBI_DEPT", "REOPEN"
+                    "FORWARD_TO_REGULATORY_BODY", "FORWARD_TO_OTHER_RBI_DEPT", "REOPEN",
+                    // The Final Decision tab's outcomes.
+                    "REJECT", "SETTLE", "WITHDRAW", "ISSUE_ADVISORY", "PASS_AWARD",
+                    // Mark for Closure on a complaint already at this rung — a closing authority flagging
+                    // their own complaint rather than closing it outright. Distinct from the incharge's
+                    // FORWARD_TO_CLOSING_AUTHORITY grant above: this role is already at the target rung, so
+                    // resolveAction gives it its own action name instead of a same-rung REASSIGN.
+                    "MARK_FOR_CLOSURE",
+                    // The "Send Back" button on this role's own desk now offers both rungs below Incharge,
+                    // not just the one directly beneath it — resolveAction gives each the same action name
+                    // an in-charge's own send-back would use for that target. Without the grant the button
+                    // opened, took an assignee and 403d.
+                    "SEND_BACK_REVIEWER", "SEND_BACK_DO"
             ),
             "CEPC_ADMIN", Set.of(
-                    "REASSIGN", "ESCALATE", "CLOSE_COMPLAINT", "REOPEN"
+                    "REASSIGN", "ESCALATE", "CLOSE_COMPLAINT", "REOPEN",
+                    "REJECT", "SETTLE", "WITHDRAW", "ISSUE_ADVISORY", "PASS_AWARD"
             ),
             "CEPC_CONTACT_PERSON", Set.of(
                     "CONTACT_RESPONSE", "CONTACT_REASSIGN"
@@ -308,7 +371,7 @@ public class CepcWorkflowService {
                 break;
 
             case "REQUEST_INFO":
-                complaint.setStatus("info_requested");
+                complaint.setStatus(CepcStatus.INFORMATION_REQUIRED);
                 complaint.setWorkflowStage("AWAITING_INFO");
                 break;
 
@@ -339,16 +402,19 @@ public class CepcWorkflowService {
                 }
                 break;
 
+            // The three ladder forwards below take `targetUser` when the caller named one and fall back to
+            // the round robin when they did not. They used to round-robin unconditionally, so the officer
+            // the forwarding screen asked the user to pick was discarded and the complaint landed on
+            // somebody else — the manual assignment mode the dialog offers had no effect at all.
             case "SUBMIT_FOR_REVIEW":
-                complaint.setStatus("reviewer_review");
+                complaint.setStatus(CepcStatus.SENT_TO_REVIEWER);
                 complaint.setAssignedRole("CEPC_REVIEWER");
                 complaint.setWorkflowStage("REVIEWER_REVIEW");
-                String reviewer = assignByRole("CEPC_REVIEWER");
-                if (reviewer != null) complaint.setAssignedOfficer(reviewer);
+                assignTargetOrRoundRobin(complaint, params, "CEPC_REVIEWER");
                 break;
 
             case "APPROVE_REVIEW":
-                complaint.setStatus("incharge_review");
+                complaint.setStatus(CepcStatus.SENT_TO_INCHARGE);
                 complaint.setAssignedRole("CEPC_INCHARGE");
                 complaint.setWorkflowStage("INCHARGE_REVIEW");
                 String incharge = assignByRole("CEPC_INCHARGE");
@@ -363,73 +429,124 @@ public class CepcWorkflowService {
                 if (!backToDo.isEmpty()) complaint.setAssignedOfficer(backToDo);
                 break;
 
+            // Both of these used to write the DESTINATION's forward status — SENT_TO_REVIEWER and
+            // SENT_TO_INCHARGE — which is the status a complaint carries when it arrives for review, not
+            // when it is pushed back for rework. A sent-back complaint was therefore indistinguishable
+            // from a freshly forwarded one, and only SEND_BACK_DO ever produced `sent_back`: the
+            // "Sent Back to Me" dashboard tab could never see a reviewer's or an in-charge's send-back,
+            // and ACCEPT (valid on `sent_back`) was not offered to the officer who had to redo the work.
+            // The stage still records WHO it went back to.
             case "SEND_BACK_REVIEWER":
-                complaint.setStatus("reviewer_review");
+                complaint.setStatus("sent_back");
                 complaint.setAssignedRole("CEPC_REVIEWER");
-                complaint.setWorkflowStage("REVIEWER_REVIEW");
+                complaint.setWorkflowStage("SENT_BACK_TO_REVIEWER");
                 String backToRev = params.getOrDefault("targetUser", "");
                 if (!backToRev.isEmpty()) complaint.setAssignedOfficer(backToRev);
                 break;
 
             case "SEND_BACK_INCHARGE":
-                complaint.setStatus("incharge_review");
+                complaint.setStatus("sent_back");
                 complaint.setAssignedRole("CEPC_INCHARGE");
-                complaint.setWorkflowStage("INCHARGE_REVIEW");
+                complaint.setWorkflowStage("SENT_BACK_TO_INCHARGE");
                 String backToIc = params.getOrDefault("targetUser", "");
                 if (!backToIc.isEmpty()) complaint.setAssignedOfficer(backToIc);
                 break;
 
             case "FORWARD_TO_INCHARGE":
-                complaint.setStatus("incharge_review");
+                complaint.setStatus(CepcStatus.SENT_TO_INCHARGE);
                 complaint.setAssignedRole("CEPC_INCHARGE");
                 complaint.setWorkflowStage("INCHARGE_REVIEW");
-                String ic = assignByRole("CEPC_INCHARGE");
-                if (ic != null) complaint.setAssignedOfficer(ic);
+                assignTargetOrRoundRobin(complaint, params, "CEPC_INCHARGE");
                 break;
 
             case "FORWARD_TO_CLOSING_AUTHORITY":
-                complaint.setStatus("awaiting_closure");
+                complaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
                 complaint.setAssignedRole("CEPC_CLOSING_AUTHORITY");
                 complaint.setWorkflowStage("AWAITING_CLOSURE");
-                String ca = assignByRole("CEPC_CLOSING_AUTHORITY");
-                if (ca != null) complaint.setAssignedOfficer(ca);
+                assignTargetOrRoundRobin(complaint, params, "CEPC_CLOSING_AUTHORITY");
                 break;
 
             case "APPROVE_CLOSURE":
-                complaint.setStatus("awaiting_closure");
+                complaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
                 complaint.setAssignedRole("CEPC_CLOSING_AUTHORITY");
                 complaint.setWorkflowStage("AWAITING_CLOSURE");
                 break;
 
             case "CLOSE_COMPLAINT":
-                complaint.setStatus("closed");
-                complaint.setClosedAt(LocalDateTime.now());
-                complaint.setResolvedAt(LocalDateTime.now());
-                complaint.setWorkflowStage("CLOSED");
-                String closureCause = params.getOrDefault("closureCause", "RESOLVED");
-                complaint.setClosureCause(closureCause);
-                // UST576: Custom closure text
-                String customClosureText = params.getOrDefault("customClosureText", "");
-                if (!customClosureText.isEmpty()) {
-                    complaint.setCustomClosureText(customClosureText);
-                }
-                // UST581-584: Closure clause
-                String closureClause = params.getOrDefault("closureClause", "");
-                if (!closureClause.isEmpty()) {
-                    complaint.setClosureClause(closureClause);
-                }
-                // UST580: Closure authority info
-                String closureAuthorityName = params.getOrDefault("closureAuthorityName", "");
-                String closureAuthorityDesignation = params.getOrDefault("closureAuthorityDesignation", "");
-                if (!closureAuthorityName.isEmpty()) {
-                    complaint.setClosureAuthorityName(closureAuthorityName);
-                }
-                if (!closureAuthorityDesignation.isEmpty()) {
-                    complaint.setClosureAuthorityDesignation(closureAuthorityDesignation);
-                }
-                // UST504-505, UST757, UST763: Auto-dispatch closure letter if email exists
-                autoDispatchClosureLetter(complaint);
+                closeComplaint(complaint, params, params.getOrDefault("closureCause", "RESOLVED"));
                 break;
+
+            // The Final Decision tab's Mark for Closure, for either an incharge or a closing authority
+            // flagging the complaint as decided. The complaint goes back down to the dealing officer, who
+            // carries out the actual closure, rather than up the ladder — the decision has already been
+            // made at this rung, so there is nothing left to approve further up.
+            case "MARK_FOR_CLOSURE":
+                complaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
+                complaint.setAssignedRole("CEPC_DO");
+                complaint.setWorkflowStage("MARKED_FOR_CLOSURE");
+                assignTargetOrRoundRobin(complaint, params, "CEPC_DO");
+                break;
+
+            // ═══ The Final Decision tab's five other outcomes ═══
+            //
+            // Each lands on a status the dashboard filter vocabulary already knows. A rejection or a
+            // settlement is a closure with a different cause recorded against it, not a status of its own:
+            // inventing `rejected` or `settled` would take the complaint out of every tab and KPI on the
+            // dashboard, so it would vanish from the screen rather than show as concluded.
+
+            case "REJECT":
+                closeComplaint(complaint, params, "REJECTED");
+                break;
+
+            case "SETTLE":
+                closeComplaint(complaint, params, "SETTLED");
+                break;
+
+            case "WITHDRAW":
+                // Same status the complainant-facing withdrawal writes, so both routes feed the dashboard's
+                // Withdrawn tab rather than only one of them.
+                complaint.setStatus(CepcStatus.COMPLAINT_WITHDRAWN);
+                complaint.setWorkflowStage("WITHDRAWN");
+                complaint.setWithdrawalDate(LocalDateTime.now());
+                complaint.setClosedAt(LocalDateTime.now());
+                String withdrawnBy = params.getOrDefault("actor", "");
+                if (!withdrawnBy.isEmpty()) {
+                    complaint.setWithdrawnBy(withdrawnBy);
+                }
+                String withdrawalReason = params.getOrDefault("remarks", "");
+                if (!withdrawalReason.isEmpty()) {
+                    complaint.setWithdrawalReason(withdrawalReason);
+                }
+                break;
+
+            case "ISSUE_ADVISORY": {
+                // COMPLAINT_SETTLED, not COMPLAINT_CLOSED: an advisory carries a compliance date, and the complaint
+                // stays open until the entity has complied or the date has passed.
+                complaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
+                complaint.setWorkflowStage("ADVISORY_ISSUED");
+                complaint.setAdvisoryIssuedAt(LocalDateTime.now());
+                String advisoryText = firstNonBlank(params, "advisoryText", "remarks");
+                if (advisoryText != null) {
+                    complaint.setAdvisoryText(advisoryText);
+                }
+                break;
+            }
+
+            case "PASS_AWARD": {
+                // Also COMPLAINT_SETTLED, and for the same reason: the award has been passed but not yet
+                // implemented, and the implementation date is what closes it.
+                complaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
+                complaint.setWorkflowStage("AWARD_PASSED");
+                complaint.setAwardPassedDate(LocalDate.now());
+                String implementationDate = params.getOrDefault("awardImplementationDate", "");
+                if (!implementationDate.isEmpty()) {
+                    LocalDate implementBy = parseIsoDate(implementationDate);
+                    if (implementBy != null) {
+                        complaint.setAwardImplementedDate(implementBy);
+                    }
+                }
+                break;
+            }
 
             case "REASSIGN":
                 String targetUser = params.getOrDefault("targetUser", "");
@@ -449,6 +566,49 @@ public class CepcWorkflowService {
                 complaint.setEscalatedAt(LocalDateTime.now());
                 complaint.setWorkflowStage("ESCALATED");
                 break;
+
+            // FORWARD_TO_RE was reachable in name only: the notification switch has handled it since the
+            // RE portal landed, but no arm here ever ran, so the action fell through to the default and
+            // threw. Nothing in the codebase wrote assignedRole="RE", which is what the dashboard's
+            // "Sent to RE", "Pending with RE" and "Response from RE" views select on — all three were
+            // structurally empty. The RE-side ladder and clock already exist; this arm is the missing
+            // caller, not new machinery.
+            case "FORWARD_TO_RE": {
+                complaint.setStatus("forwarded");
+                complaint.setAssignedRole("RE");
+                complaint.setWorkflowStage("FORWARDED_TO_RE");
+                String entityCode = complaint.getEntityCode();
+                if (entityCode != null && !entityCode.isBlank()) {
+                    complaint.setAssignedOfficer(entityCode);
+                }
+
+                String actor = params.getOrDefault("actor", "system");
+                if (reActivityStatusService != null) {
+                    reActivityStatusService.recordActivity(complaint, ReActivityStatus.NOT_OPENED, actor,
+                            TimelineEventSource.MANUAL, "Forwarded to the Regulated Entity for response");
+                }
+                if (reResponseDeadlineService != null) {
+                    // A null chosen date means "use the configured window", which is what the officer gets
+                    // when they forward without naming a date.
+                    LocalDate chosen = null;
+                    String requested = firstNonBlank(params, "responseDeadline", "reResponseDeadline");
+                    if (requested != null) {
+                        try {
+                            chosen = LocalDate.parse(requested);
+                        } catch (Exception e) {
+                            log.debug("Could not parse responseDeadline {}; using the configured window", requested);
+                        }
+                    }
+                    String communication = params.getOrDefault("communication", "13(1) Notice");
+                    ReResponseDeadlineService.DeadlineResult result =
+                            reResponseDeadlineService.setDeadline(complaint, chosen, communication);
+                    if (!result.accepted()) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "cepc.forward_re.error.deadline_rejected: " + result.reason());
+                    }
+                }
+                break;
+            }
 
             case "FORWARD_TO_CONTACT":
                 String contactPerson = params.getOrDefault("targetUser", "");
@@ -564,8 +724,12 @@ public class CepcWorkflowService {
                 break;
             }
 
-            case "REOPEN":
-                complaint.setStatus("in_progress");
+            case "REOPEN": {
+                // Reopened and not yet picked up again — matches CepcDashboardFilterSeeder's
+                // "Reopened Complaints" filter, which is keyed on this status rather than on
+                // stage=REOPENED. Writing "in_progress" here made a reopened complaint
+                // indistinguishable from one actively being worked, and the dashboard filter never matched it.
+                complaint.setStatus(CepcStatus.COMPLAINT_REOPEN);
                 complaint.setResolvedAt(null);
                 complaint.setClosedAt(null);
                 complaint.setWorkflowStage("REOPENED");
@@ -573,13 +737,32 @@ public class CepcWorkflowService {
                 int currentReopenCount = complaint.getReopenCount() != null ? complaint.getReopenCount() : 0;
                 complaint.setReopenCount(currentReopenCount + 1);
                 complaint.setLastReopenedAt(LocalDateTime.now());
+                // Complaint Reopened Date: an officer-supplied date from the Final Decision tab, defaulting
+                // to now when absent or unparsable rather than blocking the reopen over a form field.
+                LocalDate reopenedDate = parseIsoDate(params.get("reopenedDate"));
+                complaint.setReopenedAt(reopenedDate != null ? reopenedDate.atStartOfDay() : LocalDateTime.now());
+                // The free-text reason belongs in the TEXT column, not the length-50 `reopenReason` column,
+                // which would truncate it.
+                complaint.setReopenJustification(params.getOrDefault("remarks", ""));
+                // Dealing Official reassignment, when the closing authority picked one.
+                String reopenTargetUser = params.getOrDefault("targetUser", "");
+                if (!reopenTargetUser.isEmpty()) {
+                    complaint.setAssignedOfficer(reopenTargetUser);
+                    complaint.setAssignedRole("CEPC_DO");
+                }
                 // Recalculate SLA from reopen time
                 cepcSlaService.applySlaDeadline(complaint);
                 break;
+            }
 
             default:
                 throw new IllegalArgumentException("Unknown CEPC action: " + action);
         }
+    }
+
+    /** Whether the complaint is sitting in {@code sent_back} at the given send-back stage. */
+    private static boolean isSentBackTo(String status, String stage, String expectedStage) {
+        return "sent_back".equals(status) && expectedStage.equals(stage);
     }
 
     /**
@@ -592,50 +775,89 @@ public class CepcWorkflowService {
         if (status == null) return false;
 
         switch (action) {
+            // COMPLAINT_REOPEN is included alongside "assigned": a reopened complaint sits unpicked-up
+            // exactly like a freshly assigned one, and the dealing officer must be able to act on it
+            // without the dashboard filter ever seeing it as "in_progress" before anyone has touched it.
             case "ACCEPT":
-                return "assigned".equals(status) || "sent_back".equals(status);
+                return "assigned".equals(status) || "sent_back".equals(status)
+                        || CepcStatus.COMPLAINT_REOPEN.equals(status);
 
             case "REQUEST_INFO":
             case "FORWARD_DEPT":
             case "SCHEDULE_MEETING":
             case "SUBMIT_FOR_REVIEW":
-            case "FORWARD_TO_INCHARGE":
             case "FORWARD_TO_CONTACT":
-                return "in_progress".equals(status) || "assigned".equals(status);
+            case "FORWARD_TO_RE":
+                return "in_progress".equals(status) || "assigned".equals(status)
+                        || CepcStatus.COMPLAINT_REOPEN.equals(status);
+
+            // Reachable from a DO's own desk (the DO forwarding straight to in-charge) as well as from a
+            // reviewer's desk (the reviewer's manual Send for Approval hand-up) — both resolve to this same
+            // action name in CepcSendForApprovalController#resolveAction.
+            case "FORWARD_TO_INCHARGE":
+                return "in_progress".equals(status) || "assigned".equals(status)
+                        || CepcStatus.COMPLAINT_REOPEN.equals(status)
+                        || CepcStatus.SENT_TO_REVIEWER.equals(status)
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_REVIEWER");
 
             case "INFO_RECEIVED":
-                return "info_requested".equals(status);
+                return CepcStatus.INFORMATION_REQUIRED.equals(status);
 
             case "COMMENTS_RECEIVED":
                 return "forwarded".equals(status);
 
+            // The rework states are reachable two ways. A complaint arrives for review carrying the
+            // destination's own status, and it arrives for REWORK carrying `sent_back` with the stage
+            // naming who it went back to. Both have to offer the same actions: an in-charge whose closure
+            // was pushed back still has to approve or bounce it, and keying only on `SENT_TO_INCHARGE`
+            // would leave them holding a complaint with nothing they are allowed to do to it.
             case "APPROVE_REVIEW":
             case "SEND_BACK_DO":
-                return "reviewer_review".equals(status);
+                return CepcStatus.SENT_TO_REVIEWER.equals(status)
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_REVIEWER");
 
             case "FORWARD_TO_CLOSING_AUTHORITY":
-                return "reviewer_review".equals(status) || "incharge_review".equals(status);
+                return CepcStatus.SENT_TO_REVIEWER.equals(status) || CepcStatus.SENT_TO_INCHARGE.equals(status)
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_REVIEWER")
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_INCHARGE");
 
             case "APPROVE_CLOSURE":
+                return CepcStatus.SENT_TO_INCHARGE.equals(status)
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_INCHARGE");
+
+            // Reachable from an in-charge's own desk (approving forward, pushed back) as well as a closing
+            // authority's own desk (the Send Back to Reviewer button, at COMPLAINT_SETTLED) — both resolve
+            // to this action name in CepcSendForApprovalController#resolveAction.
             case "SEND_BACK_REVIEWER":
-                return "incharge_review".equals(status);
+                return CepcStatus.SENT_TO_INCHARGE.equals(status)
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_INCHARGE")
+                        || CepcStatus.COMPLAINT_SETTLED.equals(status);
 
             case "CLOSE_COMPLAINT":
+            case "MARK_FOR_CLOSURE":
             case "SEND_BACK_INCHARGE":
             case "FORWARD_TO_OTHER_OFFICE":
             case "FORWARD_TO_REGULATORY_BODY":
+                return CepcStatus.COMPLAINT_SETTLED.equals(status);
+
+            // The reviewer forwards to another RBI department from their own review stage, which is upstream
+            // of COMPLAINT_SETTLED — gating this on COMPLAINT_SETTLED alone would mean the reviewer never holds
+            // the complaint at a state where their only forwarding destination is reachable.
             case "FORWARD_TO_OTHER_RBI_DEPT":
-                return "awaiting_closure".equals(status);
+                return CepcStatus.COMPLAINT_SETTLED.equals(status) || CepcStatus.SENT_TO_REVIEWER.equals(status)
+                        || isSentBackTo(status, stage, "SENT_BACK_TO_REVIEWER");
 
             case "REOPEN":
-                return "closed".equals(status) || "resolved".equals(status);
+                return CepcStatus.COMPLAINT_CLOSED.equals(status) || "resolved".equals(status);
 
             case "REASSIGN":
                 // Can reassign at any active state
-                return !List.of("closed", "resolved", "rejected", "withdrawn").contains(status);
+                return !List.of(CepcStatus.COMPLAINT_CLOSED, "resolved", "rejected",
+                        CepcStatus.COMPLAINT_WITHDRAWN).contains(status);
 
             case "ESCALATE":
-                return "in_progress".equals(status) || "assigned".equals(status);
+                return "in_progress".equals(status) || "assigned".equals(status)
+                        || CepcStatus.COMPLAINT_REOPEN.equals(status);
 
             case "CONTACT_RESPONSE":
             case "CONTACT_REASSIGN":
@@ -668,6 +890,78 @@ public class CepcWorkflowService {
             return userId;
         } catch (Exception e) {
             log.warn("Failed to assign user by role {}: {}", role, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Gives the complaint to the officer the caller named, or to the next one in the round robin for
+     * {@code role} when they named nobody.
+     */
+    private void assignTargetOrRoundRobin(Complaint complaint, Map<String, String> params, String role) {
+        String named = params.getOrDefault("targetUser", "");
+        if (!named.isBlank()) {
+            complaint.setAssignedOfficer(named.trim());
+            return;
+        }
+        String pooled = assignByRole(role);
+        if (pooled != null) {
+            complaint.setAssignedOfficer(pooled);
+        }
+    }
+
+    /**
+     * Concludes a complaint, recording {@code closureCause} as the reason.
+     *
+     * <p>Shared by CLOSE_COMPLAINT, REJECT and SETTLE. All three end the complaint the same way and differ
+     * only in the cause, so they must agree on the status, the dates and whether a closure letter goes out —
+     * a rejection that skipped the letter would leave the complainant with no notification that their
+     * complaint had ended.
+     */
+    private void closeComplaint(Complaint complaint, Map<String, String> params, String closureCause) {
+        complaint.setStatus(CepcStatus.COMPLAINT_CLOSED);
+        complaint.setClosedAt(LocalDateTime.now());
+        complaint.setResolvedAt(LocalDateTime.now());
+        complaint.setWorkflowStage("CLOSED");
+        complaint.setClosureCause(closureCause);
+        // UST576: Custom closure text
+        String customClosureText = params.getOrDefault("customClosureText", "");
+        if (!customClosureText.isEmpty()) {
+            complaint.setCustomClosureText(customClosureText);
+        }
+        // UST581-584: Closure clause
+        String closureClause = params.getOrDefault("closureClause", "");
+        if (!closureClause.isEmpty()) {
+            complaint.setClosureClause(closureClause);
+        }
+        // UST580: Closure authority info
+        String closureAuthorityName = params.getOrDefault("closureAuthorityName", "");
+        String closureAuthorityDesignation = params.getOrDefault("closureAuthorityDesignation", "");
+        if (!closureAuthorityName.isEmpty()) {
+            complaint.setClosureAuthorityName(closureAuthorityName);
+        }
+        if (!closureAuthorityDesignation.isEmpty()) {
+            complaint.setClosureAuthorityDesignation(closureAuthorityDesignation);
+        }
+        // UST504-505, UST757, UST763: Auto-dispatch closure letter if email exists
+        autoDispatchClosureLetter(complaint);
+    }
+
+    /**
+     * Reads a date the client sent, tolerating an ISO timestamp.
+     *
+     * <p>Returns null rather than throwing: these dates arrive from an optional field on a decision form,
+     * and a mistyped implementation date must not roll back a closure the officer has already authorised.
+     */
+    private static LocalDate parseIsoDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        try {
+            return LocalDate.parse(trimmed.length() > 10 ? trimmed.substring(0, 10) : trimmed);
+        } catch (Exception e) {
+            log.warn("Unparseable date '{}' in workflow params - ignored", raw);
             return null;
         }
     }

@@ -8,15 +8,45 @@
       <div class="form-group">
         <label>{{ 'feedback.ref_label' | translate }} <span class="required">*</span></label>
         <input type="text" class="form-input" [(ngModel)]="complaintId" name="complaintId"
-               placeholder="e.g., CMP-20260525-000001">
+               placeholder="e.g., CMP-20260525-000001" (ngModelChange)="clearErrorIfValid()">
       </div>
 
-      <!-- FR-G-031: Rating -->
+      <!-- Q1: Ease of filing and tracking -->
       <div class="rating-section">
-        <h3>{{ 'feedback.rate_title' | translate }}</h3>
-
         <div class="rating-group">
-          <label id="overall-rating-label">{{ 'feedback.overall' | translate }} <span class="required">*</span></label>
+          <label id="ease-rating-label">1. Ease of filing and tracking the complaint <span class="required">*</span></label>
+          <div class="stars" role="group" aria-labelledby="ease-rating-label">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button class="star-btn" [class.active]="star <= easeOfFiling" (click)="setRating('easeOfFiling', star)" type="button"
+                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= easeOfFiling">
+                <i class="pi" [class.pi-star-fill]="star <= easeOfFiling" [class.pi-star]="star > easeOfFiling" aria-hidden="true"></i>
+              </button>
+            }
+            @if (easeOfFiling > 0) {
+              <span class="rating-text" aria-live="polite">{{ ratingLabels[easeOfFiling] }}</span>
+            }
+          </div>
+        </div>
+
+        <!-- Q2: Grievance redressed within a reasonable time -->
+        <div class="rating-group">
+          <label id="redress-rating-label">2. Grievance redressed within a reasonable time <span class="required">*</span></label>
+          <div class="stars" role="group" aria-labelledby="redress-rating-label">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button class="star-btn" [class.active]="star <= grievanceRedressTime" (click)="setRating('grievanceRedressTime', star)" type="button"
+                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= grievanceRedressTime">
+                <i class="pi" [class.pi-star-fill]="star <= grievanceRedressTime" [class.pi-star]="star > grievanceRedressTime" aria-hidden="true"></i>
+              </button>
+            }
+            @if (grievanceRedressTime > 0) {
+              <span class="rating-text" aria-live="polite">{{ ratingLabels[grievanceRedressTime] }}</span>
+            }
+          </div>
+        </div>
+
+        <!-- Q3: Overall experience with the resolution provided -->
+        <div class="rating-group">
+          <label id="overall-rating-label">3. Overall experience with the resolution provided <span class="required">*</span></label>
           <div class="stars" role="group" aria-labelledby="overall-rating-label">
             @for (star of [1,2,3,4,5]; track star) {
               <button class="star-btn" [class.active]="star <= overallRating" (click)="setRating('overallRating', star)" type="button"
@@ -29,88 +59,27 @@
             }
           </div>
         </div>
-
-        <div class="rating-group">
-          <label id="timeliness-rating-label">{{ 'feedback.timeliness' | translate }}</label>
-          <div class="stars" role="group" aria-labelledby="timeliness-rating-label">
-            @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= timelinessRating" (click)="setRating('timelinessRating', star)" type="button"
-                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= timelinessRating">
-                <i class="pi" [class.pi-star-fill]="star <= timelinessRating" [class.pi-star]="star > timelinessRating" aria-hidden="true"></i>
-              </button>
-            }
-            @if (timelinessRating > 0) {
-              <span class="rating-text" aria-live="polite">{{ ratingLabels[timelinessRating] }}</span>
-            }
-          </div>
-        </div>
-
-        <div class="rating-group">
-          <label id="communication-rating-label">{{ 'feedback.communication' | translate }}</label>
-          <div class="stars" role="group" aria-labelledby="communication-rating-label">
-            @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= communicationRating" (click)="setRating('communicationRating', star)" type="button"
-                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= communicationRating">
-                <i class="pi" [class.pi-star-fill]="star <= communicationRating" [class.pi-star]="star > communicationRating" aria-hidden="true"></i>
-              </button>
-            }
-            @if (communicationRating > 0) {
-              <span class="rating-text" aria-live="polite">{{ ratingLabels[communicationRating] }}</span>
-            }
-          </div>
-        </div>
-
-        <div class="rating-group">
-          <label id="satisfaction-rating-label">{{ 'feedback.satisfaction' | translate }}</label>
-          <div class="stars" role="group" aria-labelledby="satisfaction-rating-label">
-            @for (star of [1,2,3,4,5]; track star) {
-              <button class="star-btn" [class.active]="star <= satisfactionRating" (click)="setRating('satisfactionRating', star)" type="button"
-                      [attr.aria-label]="star + ' star' + (star > 1 ? 's' : '')" [attr.aria-pressed]="star <= satisfactionRating">
-                <i class="pi" [class.pi-star-fill]="star <= satisfactionRating" [class.pi-star]="star > satisfactionRating" aria-hidden="true"></i>
-              </button>
-            }
-            @if (satisfactionRating > 0) {
-              <span class="rating-text" aria-live="polite">{{ ratingLabels[satisfactionRating] }}</span>
-            }
-          </div>
-        </div>
       </div>
 
-      <!-- FR-G-038: Mandatory questions (UST109) -->
-      <div class="rating-group">
-        <label id="ease-rating-label">{{ 'feedback.ease' | translate }} <span class="required">*</span></label>
-        <div class="stars" role="group" aria-labelledby="ease-rating-label">
-          @for (star of [1,2,3,4,5]; track star) {
-            <button class="star-btn" [class.active]="star <= easeOfFiling" (click)="easeOfFiling = star" type="button"
-                    [attr.aria-label]="star + ' star'" [attr.aria-pressed]="star <= easeOfFiling">
-              <i class="pi" [class.pi-star-fill]="star <= easeOfFiling" [class.pi-star]="star > easeOfFiling" aria-hidden="true"></i>
-            </button>
-          }
-          @if (easeOfFiling > 0) {
-            <span class="rating-text">{{ ratingLabels[easeOfFiling] }}</span>
-          }
-        </div>
-      </div>
-
-      <div class="rating-group">
-        <label id="redress-rating-label">{{ 'feedback.redress' | translate }} <span class="required">*</span></label>
-        <div class="stars" role="group" aria-labelledby="redress-rating-label">
-          @for (star of [1,2,3,4,5]; track star) {
-            <button class="star-btn" [class.active]="star <= grievanceRedressTime" (click)="grievanceRedressTime = star" type="button"
-                    [attr.aria-label]="star + ' star'" [attr.aria-pressed]="star <= grievanceRedressTime">
-              <i class="pi" [class.pi-star-fill]="star <= grievanceRedressTime" [class.pi-star]="star > grievanceRedressTime" aria-hidden="true"></i>
-            </button>
-          }
-          @if (grievanceRedressTime > 0) {
-            <span class="rating-text">{{ ratingLabels[grievanceRedressTime] }}</span>
-          }
-        </div>
-      </div>
-
+      <!-- Q4: Any other feedback (optional) -->
       <div class="form-group">
-        <label>{{ 'feedback.source_label' | translate }} <span class="required">*</span></label>
-        <select class="form-select" [(ngModel)]="sourceOfInformation" name="sourceOfInformation">
-          <option value="">{{ 'feedback.source_placeholder' | translate }}</option>
+        <label>4. Any other feedback <span class="optional">(Optional)</span></label>
+        <div class="textarea-with-speech">
+          <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
+                    placeholder="Share your feedback..." (ngModelChange)="onFeedbackTextChange()"></textarea>
+          <app-speech-button (transcription)="feedbackText = feedbackText + ' ' + $event"></app-speech-button>
+        </div>
+        <span class="char-count">{{ feedbackText.length }}/500</span>
+        @if (feedbackTextError) {
+          <span class="field-error">{{ feedbackTextError }}</span>
+        }
+      </div>
+
+      <!-- Q5: Source of information about Ombudsman Scheme -->
+      <div class="form-group">
+        <label>5. Source of information about Ombudsman Scheme <span class="required">*</span></label>
+        <select class="form-select" [(ngModel)]="sourceOfInformation" name="sourceOfInformation" (ngModelChange)="clearErrorIfValid()">
+          <option value="">-- Select --</option>
           @for (src of sourceOptions; track src) {
             <option [value]="src">{{ src }}</option>
           }
@@ -119,40 +88,25 @@
 
       @if (sourceOfInformation === 'Others') {
         <div class="form-group">
-          <label>{{ 'feedback.source_specify' | translate }} <span class="required">*</span></label>
+          <label>Please specify <span class="required">*</span> <span class="optional">(max 500 characters, no special characters)</span></label>
           <input type="text" class="form-input" [(ngModel)]="sourceOtherText" name="sourceOtherText"
-                 placeholder="Enter source" maxlength="500">
+                 placeholder="Enter source" (ngModelChange)="onSourceOtherTextChange()">
+          @if (sourceOtherTextError) {
+            <span class="field-error">{{ sourceOtherTextError }}</span>
+          }
         </div>
       }
 
+      <!-- Q6: Whether CMS Portal content helped increase awareness -->
       <div class="form-group">
-        <label>{{ 'feedback.awareness' | translate }} <span class="required">*</span></label>
+        <label>6. Whether CMS Portal content helped increase awareness about grievance redress at RBI <span class="optional">(Optional)</span></label>
         <div class="radio-group">
-          @for (opt of awarenessOptions; track opt) {
-            <label class="radio-label" [class.selected]="cmsPortalAwareness === opt">
-              <input type="radio" name="cmsPortalAwareness" [value]="opt" [(ngModel)]="cmsPortalAwareness">
-              {{ opt }}
-            </label>
-          }
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label>{{ 'feedback.additional' | translate }}</label>
-        <div class="textarea-with-speech">
-          <textarea class="form-textarea" [(ngModel)]="feedbackText" name="feedbackText" rows="4"
-                    placeholder="Share your experience in detail..." maxlength="500"></textarea>
-          <app-speech-button (transcription)="feedbackText = feedbackText + ' ' + $event"></app-speech-button>
-        </div>
-        <span class="char-count">{{ feedbackText.length }}/500</span>
-      </div>
-
-      <div class="form-group">
-        <label>{{ 'feedback.suggestions' | translate }}</label>
-        <div class="textarea-with-speech">
-          <textarea class="form-textarea" [(ngModel)]="suggestions" name="suggestions" rows="3"
-                    placeholder="Any suggestions to improve our services?"></textarea>
-          <app-speech-button (transcription)="suggestions = suggestions + ' ' + $event"></app-speech-button>
+          <label class="radio-label">
+            <input type="radio" name="awarenessHelped" [(ngModel)]="awarenessHelped" value="Yes"> Yes
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="awarenessHelped" [(ngModel)]="awarenessHelped" value="No"> No
+          </label>
         </div>
       </div>
 

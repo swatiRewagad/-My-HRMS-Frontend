@@ -56,13 +56,22 @@ spring:
 
 keycloak:
   admin:
-    server-url: http://localhost:9090
+    # 8180, the port the local container publishes and the one application.yml already defaults to. This
+    # override said 9090, where nothing listens, so dev-local was the only profile unable to read role
+    # members — and rotation fails CLOSED by design, so every round-robin assignment silently produced an
+    # unassigned complaint: an approved office transfer left the file belonging to nobody.
+    server-url: http://localhost:8180
     realm: cms
     client-id: admin-cli
     username: admin
     password: admin
 
 cms:
+  notification:
+    dispatch:
+      # Local runs must never mail a real complainant or officer, and there is no Kafka broker or
+      # cms-notification-service here. Everything is logged and discarded.
+      mode: noop
   security:
     # Lets the E2E suites and local tooling declare an identity via X-User-* headers. Deliberately
     # NOT set in application.yml: a deployed instance must derive AA role and actor from the verified

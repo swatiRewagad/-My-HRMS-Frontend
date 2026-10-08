@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
 import { environment } from '../../../../environments/environment';
 import { CepcSlaIndicatorComponent } from '../cepc-sla-indicator/cepc-sla-indicator.component';
+import { TranslateOrPipe } from '../../../pipes/translate-or.pipe';
 
 interface SlaComplaint {
   complaintNumber: string;
@@ -18,7 +19,7 @@ interface SlaComplaint {
 @Component({
   selector: 'app-cepc-sla-dashboard',
   standalone: true,
-  imports: [CommonModule, CepcSlaIndicatorComponent],
+  imports: [CommonModule, CepcSlaIndicatorComponent, TranslateOrPipe],
   templateUrl: './cepc-sla-dashboard.component.html',
   styleUrl: './cepc-sla-dashboard.component.scss'
 })

@@ -27,6 +27,11 @@ public interface SimulatedEmailRepository extends JpaRepository<SimulatedEmail, 
     /** Fallback for rows linked by number rather than id, which some intake paths write. */
     List<SimulatedEmail> findByComplaintNumberOrderBySentAtAsc(String complaintNumber);
 
+    List<SimulatedEmail> findByComplaintNumberOrderBySentAtDesc(String complaintNumber);
+
     /** Thread lookup used when re-linking an email after its subject was edited (UST657). */
     List<SimulatedEmail> findByThreadIdOrderBySentAtDesc(String threadId);
+
+    /** One contact person's own email log, oldest first — separate from the complaint's shared one. */
+    List<SimulatedEmail> findByContactPersonIdOrderBySentAtAsc(Long contactPersonId);
 }

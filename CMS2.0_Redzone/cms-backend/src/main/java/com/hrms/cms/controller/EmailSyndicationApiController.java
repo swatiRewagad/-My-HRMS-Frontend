@@ -3,12 +3,14 @@ package com.hrms.cms.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hrms.cms.dto.IncomingEmailRequest;
+import com.hrms.cms.entity.AaOfficerPool;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.DraftStatus;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.EmailDraftAttachment;
 import com.hrms.cms.entity.EmailIgnoreEntry;
 import com.hrms.cms.entity.IgnoredEmailLog;
+import com.hrms.cms.repository.AaOfficerPoolRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftAttachmentRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
@@ -65,6 +67,13 @@ public class EmailSyndicationApiController {
     private final OcrEligibilityService ocrEligibilityService;
     private final EmailDeduplicationService deduplicationService;
     private final IntakeAttachmentValidator intakeAttachmentValidator;
+    private final AaOfficerPoolRepository officerPoolRepository;
+
+    /** The {@code WF_OFFICER_POOL.role_group} value holding data-entry operators. */
+    private static final String DEO_ROLE_GROUP = "DEO";
+
+    /** Shown when the pool declares no per-officer ceiling, matching the frontend's own fallback. */
+    private static final int DEFAULT_DEO_THRESHOLD = 20;
 
     @Value("${cms.eligibility.scheme-version:RBIOS_2021}")
     private String schemeVersion;
@@ -1134,26 +1143,99 @@ public class EmailSyndicationApiController {
         return user == null || user.isBlank() ? "system" : user;
     }
 
+    /**
+     * The DEO roster the Email Communication tab balances assignment on.
+     *
+     * <p>Keycloak owns who is a DEO; {@code WF_OFFICER_POOL} owns their leave state, office and threshold.
+     * Three of those four were compiled-in constants here — {@code isOnLeave:false}, {@code maxThreshold:20}
+     * and no office at all — so the screen's "on leave" badge could never light up, the load bar was measured
+     * against a number no administrator had set, and the office filter matched nothing. A DEO on leave was
+     * offered as an assignee.
+     *
+     * <p>Neither source alone is authoritative about MEMBERSHIP, so the two are UNIONED by user id — the same
+     * reconciliation {@link com.hrms.cms.controller.KeycloakUserController#getAvailability} already performs
+     * for every other role. A pool row whose account Keycloak does not know still appears, because the
+     * alternative is a roster that silently empties whenever the realm is unreachable or a DEO's account has
+     * not been created yet, and an empty roster reads on screen as "no data" rather than "misconfigured".
+     *
+     * <p>Where both sources describe the same officer the pool wins on leave, office and threshold, which it
+     * owns — but {@code isActive} is the AND of the two: a Keycloak account that is disabled cannot be logged
+     * into, so assigning it a draft strands that work no matter what the pool says.
+     *
+     * <p>{@code currentLoad} replaces {@code currentAssignedCount}: the frontend reads the former
+     * ({@code …component.ts:1655}), so the old key left every DEO at load 0 and the automatic pick — which
+     * sorts on headroom — degenerated into alphabetical order. It was also counted by DISPLAY NAME while
+     * {@code assignedTo} holds a user id (see {@code DataInitializer:73-76}, which migrated exactly that), so
+     * the number was structurally zero regardless of the key it was published under.
+     */
     @GetMapping("/deo")
     public Map<String, Object> getDeos() {
-        List<Map<String, Object>> keycloakDeos = keycloakUserService.getDeos();
-        List<Map<String, Object>> deos = new ArrayList<>();
-        int sortOrder = 1;
-        for (Map<String, Object> kc : keycloakDeos) {
-            Map<String, Object> deo = new LinkedHashMap<>();
-            deo.put("id", sortOrder);
-            deo.put("userId", kc.get("userId"));
-            deo.put("displayName", kc.get("displayName"));
-            deo.put("email", kc.getOrDefault("email", ""));
-            deo.put("isActive", Boolean.TRUE.equals(kc.get("enabled")));
-            deo.put("isOnLeave", false);
-            deo.put("maxThreshold", 20);
-            deo.put("currentAssignedCount", draftRepository.findByAssignedToOrderByCreatedAtDesc(
-                    (String) kc.get("displayName")).size());
-            deo.put("sortOrder", sortOrder++);
-            deos.add(deo);
+        Map<String, Map<String, Object>> byUser = new LinkedHashMap<>();
+
+        for (Map<String, Object> kc : keycloakUserService.getDeos()) {
+            String userId = str(kc.get("userId"));
+            if (userId.isBlank()) continue;
+            Map<String, Object> row = deoRow(userId, kc.get("displayName"), kc.get("email"));
+            row.put("isActive", Boolean.TRUE.equals(kc.get("enabled")));
+            byUser.put(userId, row);
         }
-        return wrapResponse(deos);
+
+        for (AaOfficerPool pool : officerPoolRepository.findByRoleGroupOrderByUserIdAsc(DEO_ROLE_GROUP)) {
+            String userId = str(pool.getUserId());
+            if (userId.isBlank()) continue;
+            Map<String, Object> row = byUser.computeIfAbsent(userId,
+                    id -> deoRow(id, pool.getDisplayName(), null));
+
+            row.put("id", pool.getId());
+            row.put("isActive", pool.isActive() && Boolean.TRUE.equals(row.get("isActive")));
+            row.put("isOnLeave", pool.isOnLeave());
+            row.put("officeCode", str(pool.getRegionalOffice()));
+            // 0 and null both mean "unlimited" in the pool, but the load bar needs a denominator; the
+            // frontend's own fallback is 20, so it is named here rather than left to be inferred.
+            row.put("maxThreshold", pool.hasUnlimitedThreshold()
+                    ? DEFAULT_DEO_THRESHOLD : pool.getMaxWorkload());
+            row.put("inPool", true);
+        }
+
+        Map<String, Long> loadByUserId = new HashMap<>();
+        List<String> openStatuses = DraftStatus.OPEN.stream().map(Enum::name).toList();
+        for (Object[] row : draftRepository.countOpenGroupedByAssignee(openStatuses)) {
+            loadByUserId.put((String) row[0], ((Number) row[1]).longValue());
+        }
+
+        int sortOrder = 1;
+        for (Map<String, Object> row : byUser.values()) {
+            row.put("currentLoad", loadByUserId.getOrDefault((String) row.get("userId"), 0L));
+            row.put("sortOrder", sortOrder++);
+        }
+        return wrapResponse(new ArrayList<>(byUser.values()));
+    }
+
+    /**
+     * A roster entry carrying what is true of a DEO that only one of the two sources has heard of.
+     *
+     * <p>The defaults are permissive on purpose: nothing has said this officer is on leave or capped, so
+     * claiming either would be an invention. {@code isActive} is overwritten by both callers, which do know.
+     */
+    private static Map<String, Object> deoRow(String userId, Object displayName, Object email) {
+        String name = str(displayName);
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", 0L);
+        row.put("userId", userId);
+        row.put("displayName", name.isBlank() ? userId : name);
+        row.put("email", str(email));
+        row.put("isActive", true);
+        row.put("isOnLeave", false);
+        row.put("officeCode", "");
+        row.put("maxThreshold", DEFAULT_DEO_THRESHOLD);
+        row.put("currentLoad", 0L);
+        row.put("inPool", false);
+        row.put("sortOrder", 0);
+        return row;
+    }
+
+    private static String str(Object value) {
+        return value == null ? "" : value.toString().trim();
     }
 
     @GetMapping("/deo/eligible")

@@ -38,6 +38,15 @@ export function setPageTitle(title: string) {
   document.title = `${title} | RBI Complaint Management System`;
 }
 
+/**
+ * Router navigation scrolls to top via withInMemoryScrolling (app.config.ts), but in-component
+ * step/phase switches (multi-step forms, OTP flows) don't trigger a navigation, so callers must
+ * scroll manually after changing step/phase.
+ */
+export function scrollToTop(): void {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
 export const WCAG_CONTRAST_RATIOS = {
   normalText: 4.5,
   largeText: 3,
