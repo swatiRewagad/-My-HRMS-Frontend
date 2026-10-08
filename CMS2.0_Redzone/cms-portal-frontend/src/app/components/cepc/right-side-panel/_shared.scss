@@ -1,0 +1,162 @@
+// Shared partial for the right-side-panel children — rules genuinely reused across sections in the
+// original cepc-complaint-details-view.component.scss (.doc-item by Past Complaints + Attachment,
+// .history-slide-panel/.entry-detail-* by History + Legal Case). Not a component stylesheet itself.
+
+.sidebar-expand-btn {
+  width: 24px; height: 24px;
+  border: none; background: none;
+  color: var(--p-text-muted-color, #94a3b8); cursor: pointer;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  &:hover { background: var(--p-content-hover-background, #f1f5f9); color: var(--p-text-muted-color, #475569); }
+}
+
+.sidebar-loading {
+  font-size: 11px; color: var(--p-text-muted-color, #64748b); text-align: center; padding: 10px 0;
+  i { margin-right: 4px; }
+}
+
+.sidebar-empty {
+  font-size: 12px;
+  color: var(--p-text-muted-color, #94a3b8);
+  text-align: center;
+  padding: 16px 0;
+}
+
+.sidebar-icon-img {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.doc-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--p-content-border-color, #e8ecf0); border-radius: 8px; margin-bottom: 8px;
+  background: var(--p-content-background, #fff);
+  &:last-child { margin-bottom: 0; }
+
+  .doc-icon {
+    width: 36px; height: 36px; border-radius: 8px; background: #d1fae5;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    i { font-size: 16px; color: #10b981; }
+    &.doc-icon-pdf { background: #ede9fe; i { color: #7c3aed; } }
+  }
+  .doc-info {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    .doc-name { font-size: 12px; font-weight: 600; color: var(--p-text-color, #1e293b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .doc-meta { font-size: 10px; color: var(--p-text-muted-color, #94a3b8); }
+  }
+  .doc-actions {
+    display: flex; gap: 2px;
+    button {
+      width: 24px; height: 24px; border-radius: 4px; border: none; background: none;
+      cursor: pointer; color: var(--p-text-muted-color, #64748b); display: flex; align-items: center; justify-content: center; font-size: 12px;
+      &:hover { background: var(--p-content-hover-background, #f1f5f9); color: #3b82f6; }
+    }
+  }
+}
+
+/* ═══ PANEL HEADER (PINNED AT TOP) — shared by History and Legal Case ═══ */
+.history-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
+  flex-shrink: 0;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--p-text-color, #1e293b);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    i { color: var(--p-text-muted-color, #64748b); font-size: 15px; }
+  }
+
+  .history-panel-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .hide-comments-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border: 1px solid var(--p-content-border-color, #e2e8f0);
+    border-radius: 16px;
+    background: var(--p-content-background, #ffffff);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--p-text-muted-color, #475569);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+
+    &:hover { border-color: var(--p-content-border-color, #cbd5e1); }
+    &.active { background: var(--p-content-hover-background, #f1f5f9); color: var(--p-text-color, #1e293b); font-weight: 600; }
+  }
+
+  .sidebar-expand-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--p-text-muted-color, #64748b);
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    &:hover { color: var(--p-text-color, #1e293b); }
+  }
+}
+
+/* ═══ TIMELINE SLIDE PANEL CONTAINER — shared by History and Legal Case ═══ */
+.history-slide-panel {
+  width: 280px;
+  flex-shrink: 0;
+  background: var(--p-content-background, #ffffff);
+  border-left: 1px solid var(--p-content-border-color, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 16px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+.entry-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.entry-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entry-detail-label {
+  font-size: 12px;
+  color: var(--p-text-muted-color, #94a3b8);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  min-width: auto;
+
+  &::after {
+    content: ':';
+  }
+}
+
+.entry-detail-value {
+  font-size: 12px;
+  color: var(--p-text-muted-color, #334155);
+  font-weight: 700;
+}

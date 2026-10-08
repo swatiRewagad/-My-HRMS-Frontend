@@ -1,0 +1,51 @@
+@if (activePanel === 'pastComplaints') {
+  <app-right-side-panel-past-complaints
+    [pastComplaints]="pastComplaints"
+    [loadingPastComplaints]="loadingPastComplaints"
+    [sidebarAttachments]="sidebarAttachments"
+    [loadingSidebarAttachments]="loadingSidebarAttachments"
+    [complaintOffice]="complaintOffice"
+    (refresh)="refreshPastComplaints.emit()"
+    (downloadAttachment)="downloadAttachment.emit($event)">
+  </app-right-side-panel-past-complaints>
+}
+
+@if (activePanel === 'attachments') {
+  <app-right-side-panel-attachment
+    [sidebarAttachments]="sidebarAttachments"
+    [loadingSidebarAttachments]="loadingSidebarAttachments"
+    [uploadingDocument]="uploadingDocument"
+    (close)="closePanel.emit()"
+    (uploadFile)="uploadFile.emit($event)"
+    (previewAttachment)="previewAttachment.emit($event)"
+    (downloadAttachment)="downloadAttachment.emit($event)"
+    (downloadAll)="downloadAllAttachments.emit()">
+  </app-right-side-panel-attachment>
+}
+
+@if (activePanel === 'history') {
+  <app-right-side-panel-history
+    [historyEntries]="historyEntries"
+    [loadingHistory]="loadingHistory"
+    [hideComments]="hideComments"
+    (hideCommentsChange)="hideCommentsChange.emit($event)"
+    (close)="closePanel.emit()">
+  </app-right-side-panel-history>
+}
+
+@if (activePanel === 'legalCase') {
+  <app-right-side-panel-legal-case
+    [legalCase]="legalCase"
+    [loadingLegalCase]="loadingLegalCase"
+    [showLegalCaseDialog]="showLegalCaseDialog"
+    [legalCaseSaving]="legalCaseSaving"
+    [legalCaseError]="legalCaseError"
+    [legalCaseForm]="legalCaseForm"
+    [legalCaseRegionOptions]="legalCaseRegionOptions"
+    (close)="closePanel.emit()"
+    (openEditor)="openLegalCaseEditor.emit()"
+    (closeDialog)="closeLegalCaseDialog.emit()"
+    (legalCaseFormChange)="legalCaseFormChange.emit($event)"
+    (save)="saveLegalCase.emit()">
+  </app-right-side-panel-legal-case>
+}

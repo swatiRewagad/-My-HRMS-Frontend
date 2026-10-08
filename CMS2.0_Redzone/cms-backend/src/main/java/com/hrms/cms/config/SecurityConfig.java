@@ -128,6 +128,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/complaints").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/complaints/check-duplicate").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/complaints/recent").permitAll()
+                // MUST stay above the {complaintNumber} rule below, for the same reason /recent does:
+                // that pattern's character class accepts the literal segment "nodal-records", and the first
+                // matching rule wins — so listed after it, the CEPC worklist would be anonymous and would
+                // hand out every complainant's name, mobile and email. The /** rule in the staff block far
+                // below never gets consulted. Sub-paths are multi-segment and so are not shadowed.
+                .requestMatchers(HttpMethod.GET, "/api/v1/complaints/nodal-records").hasAnyRole(STAFF_ROLES)
                 .requestMatchers(HttpMethod.GET, "/api/v1/complaints/{complaintNumber:[A-Za-z0-9\\-/]+}").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/complaints").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/complaints/*/withdraw").permitAll()
@@ -161,6 +167,14 @@ public class SecurityConfig {
                 // RBIO_ADMIN is the Ombudsman Admin who owns RBIO user administration (UST443-455), so
                 // they need the user directory. Restricting this to ADMIN would have forced the new
                 // screens to run as a realm super-admin, which is a wider grant than the story asks for.
+                // MUST precede the RBIO_ADMIN rule below — Spring applies the FIRST matching rule. These
+                // three are read-only rosters the CEPC assignment and forward dialogs need in order to
+                // offer a destination at all, so without this split every CEPC officer 403s and the
+                // dialogs open empty. Kept to the three specific paths rather than widening
+                // /api/v1/keycloak/**, which also carries the RBIO user-administration routes.
+                .requestMatchers(HttpMethod.GET, "/api/v1/keycloak/offices",
+                        "/api/v1/keycloak/users/availability",
+                        "/api/v1/keycloak/users/next-assignee").hasAnyRole(STAFF_ROLES)
                 .requestMatchers("/api/v1/keycloak/**").hasAnyRole("RBIO_ADMIN", "ADMIN")
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
 
@@ -173,7 +187,47 @@ public class SecurityConfig {
                 // ── Workflow, scoped per office ─────────────────────────────────────────
                 .requestMatchers("/api/v1/workflow/rbio/**").hasAnyRole(RBIO_ROLES)
                 .requestMatchers("/api/v1/workflow/cepc/**").hasAnyRole(CEPC_ROLES)
+                // The CEPC detail view's Forward tab, "Other Office" branch. It posts here
+                // (cepc-complaint-details-view.component.ts:863) because an inter-office move is the CRPC
+                // transfer machinery whichever department starts it — but no CEPC role is in CRPC_ROLES, so
+                // under the /api/v1/crpc/** rule below every CEPC forward to another office 403s in every
+                // profile except dev-local, where DevLocalSecurityConfig permits everything and hides it.
+                //
+                // MUST stay above that rule: the first matching rule wins. CRPC_ROLES is repeated here for
+                // the same reason — this matcher shadows the broader one for this exact path, so omitting
+                // them would lock the CRPC head out of the transfer screen this endpoint was built for.
+                // Only the request verb is widened; approving and rejecting a transfer stay with CRPC.
+                .requestMatchers(HttpMethod.POST, "/api/v1/crpc/head/transfers/request")
+                        .hasAnyRole("CRPC_HEAD", "CRPC_ADMIN", "CRPC_INCHARGE", "DEO", "REVIEWER",
+                                "CEPC_CLOSING_AUTHORITY", "CEPC_INCHARGE", "CEPC_ADMIN", "ADMIN")
                 .requestMatchers("/api/v1/crpc/**").hasAnyRole(CRPC_ROLES)
+                // The CEPC dashboard's grid, KPI cards and tab badges. Restricted to CEPC rather than all
+                // STAFF_ROLES because the rows are a CEPC worklist: the response carries complainant names
+                // and subjects, which an RE-portal or helpdesk role has no business enumerating.
+                .requestMatchers("/api/v1/search/**").hasAnyRole(CEPC_ROLES)
+                // The status-filter vocabulary. Open to all staff: it returns filter LABELS, no complaint
+                // data, and other departments will serve their own codes from the same path.
+                .requestMatchers("/api/v1/departments/*/role-status").hasAnyRole(STAFF_ROLES)
+
+                // Officer notes on a complaint and on its nodal records. Named explicitly because the
+                // citizen-facing /api/v1/complaints rules above are permitAll and everything else under
+                // that prefix would otherwise fall through to anyRequest().authenticated() — which is any
+                // logged-in complainant, and these are internal assessment notes they must not read or
+                // write. The single-segment permitAll at the complaint-number rule does not reach these.
+                // The same reasoning covers the two decision routes: they move a complaint through the
+                // approval ladder and can close it outright, and without a rule here they would land on
+                // anyRequest().authenticated() — satisfied by any complainant's own token.
+                // The same reasoning again for correspondence and history. The Email Communication tab's
+                // rows are the office's own letters to the entity and the regulator, drafts included, and
+                // the history is the internal audit trail — both were reachable by any authenticated
+                // complainant, who could read every message written about their case and, on the POST, send
+                // mail from the office's own address.
+                .requestMatchers("/api/v1/complaints/*/comments",
+                        "/api/v1/complaints/*/send-for-approval",
+                        "/api/v1/complaints/*/office-head-decision",
+                        "/api/v1/complaints/*/emails", "/api/v1/complaints/*/emails/**",
+                        "/api/v1/complaints/*/history", "/api/v1/complaints/*/history/**",
+                        "/api/v1/complaints/nodal-records/**").hasAnyRole(STAFF_ROLES)
 
                 // ── Remaining staff surfaces ────────────────────────────────────────────
                 .requestMatchers("/api/v1/workflow/**", "/api/v1/appeals/**", "/api/v1/re-portal/**",

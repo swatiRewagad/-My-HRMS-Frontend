@@ -1,0 +1,215 @@
+<div class="panel-header">
+  <h3><i class="pi pi-users"></i> {{ 'ui.cepc.dv.tab.conciliation' | translateOr: 'Conciliation' }}</h3>
+</div>
+<div class="form-scroll assessment-scroll">
+  @if (conciliationLoading()) {
+    <div class="conciliation-loading"><i class="pi pi-spin pi-spinner"></i> {{ 'ui.cepc.conc.loading_details' | translateOr: 'Loading conciliation details…' }}</div>
+  } @else {
+    @if (conciliationError()) {
+      <div class="conciliation-alert error" role="alert">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>{{ conciliationError() }}</span>
+        <button type="button" class="btn-link" (click)="loadConciliation(true)">{{ 'ui.cepc.dv.action.retry' | translateOr: 'Retry' }}</button>
+      </div>
+    }
+    @if (conciliationSaved()) {
+      <div class="conciliation-alert success" role="status">
+        <i class="pi pi-check-circle"></i> <span>{{ 'ui.cepc.conc.details_saved' | translateOr: 'Conciliation details saved.' }}</span>
+      </div>
+    }
+
+    @if (conciliationCurrent(); as current) {
+      <div class="conciliation-current-meta">
+        <span class="conciliation-chip" [class]="'conciliation-chip st-' + current.meetingStatus">{{ conciliationStatusLabel(current.meetingStatus) }}</span>
+        <span class="conciliation-meta-text">
+          Last updated by {{ current.updatedBy || current.createdBy || '—' }}@if (current.updatedAt) { on {{ formatCommentDate(current.updatedAt) }} }
+        </span>
+      </div>
+    }
+
+    <div class="form-group">
+      <label>{{ 'ui.cepc.conc.meeting_status' | translateOr: 'Meeting Status' }} <span class="required">*</span></label>
+      <select [(ngModel)]="meetingStatus" name="meetingStatus" [disabled]="isReadOnlyViewer">
+        @for (status of conciliationStatuses; track status.value) {
+          <option [value]="status.value">{{ status.label }}</option>
+        }
+      </select>
+    </div>
+
+    @if (conciliationOpensNewMeeting && conciliationCurrent()) {
+      <div class="conciliation-alert info">
+        <i class="pi pi-info-circle"></i>
+        <span>{{ 'ui.cepc.conc.new_meeting_warning' | translateOr: 'Saving this will start a new meeting. The current meeting is kept, unchanged, in the history below.' }}</span>
+      </div>
+    }
+
+    <div class="form-row-2col">
+      <div class="form-group">
+        <label>Meeting Date @if (conciliationRequiresSchedule) { <span class="required">*</span> }</label>
+        <input type="date" [(ngModel)]="meetingDate" name="meetingDate" [disabled]="isReadOnlyViewer" />
+        @if (conciliationFieldErrors()['meetingDate']) {
+          <span class="field-error">{{ conciliationFieldErrors()['meetingDate'] }}</span>
+        }
+      </div>
+      <div class="form-group">
+        <label>Meeting Time @if (conciliationRequiresSchedule) { <span class="required">*</span> }</label>
+        <input type="time" [(ngModel)]="meetingTime" name="meetingTime" [disabled]="isReadOnlyViewer" />
+        @if (conciliationFieldErrors()['meetingTime']) {
+          <span class="field-error">{{ conciliationFieldErrors()['meetingTime'] }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="conciliation-consent">
+      <div class="conciliation-consent-row">
+        <span class="conciliation-consent-label">{{ 'ui.cepc.conc.accepted_by_complainant' | translateOr: 'Accepted by Complainant' }}</span>
+        <div class="conciliation-radios">
+          <label><input type="radio" [ngModel]="acceptedByComplainant" [value]="true" (ngModelChange)="acceptedByComplainant = $event" name="acceptedByComplainant" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</label>
+          <label><input type="radio" [ngModel]="acceptedByComplainant" [value]="false" (ngModelChange)="acceptedByComplainant = $event" name="acceptedByComplainant" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</label>
+        </div>
+      </div>
+      <div class="conciliation-consent-row">
+        <span class="conciliation-consent-label">{{ 'ui.cepc.conc.accepted_by_entity' | translateOr: 'Accepted by Regulated Entity' }}</span>
+        <div class="conciliation-radios">
+          <label><input type="radio" [ngModel]="acceptedByEntity" [value]="true" (ngModelChange)="acceptedByEntity = $event" name="acceptedByEntity" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</label>
+          <label><input type="radio" [ngModel]="acceptedByEntity" [value]="false" (ngModelChange)="acceptedByEntity = $event" name="acceptedByEntity" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</label>
+        </div>
+      </div>
+      <div class="conciliation-consent-row">
+        <span class="conciliation-consent-label">{{ 'ui.cepc.conc.via_video_conference' | translateOr: 'Conducted through Video Conference' }}</span>
+        <div class="conciliation-radios">
+          <label><input type="radio" [ngModel]="conductedThroughVc" [value]="true" (ngModelChange)="conductedThroughVc = $event" name="conductedThroughVc" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</label>
+          <label><input type="radio" [ngModel]="conductedThroughVc" [value]="false" (ngModelChange)="conductedThroughVc = $event" name="conductedThroughVc" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{ 'ui.cepc.conc.meeting_comments' | translateOr: 'Meeting Comments' }}</label>
+      <div class="textarea-with-speech">
+        <textarea [(ngModel)]="meetingComments" name="meetingComments" rows="4" maxlength="4000"
+                  [disabled]="isReadOnlyViewer" [placeholder]="'ui.cepc.conc.what_was_discussed' | translateOr: 'What was discussed and agreed in the meeting'"></textarea>
+        @if (!isReadOnlyViewer) {
+          <app-speech-button [disabled]="isReadOnlyViewer" (transcription)="appendSpeech('meetingComments', $event)"></app-speech-button>
+        }
+      </div>
+      <div class="conciliation-counter">{{ meetingComments.length }}/4000</div>
+      @if (conciliationFieldErrors()['meetingComments']) {
+        <span class="field-error">{{ conciliationFieldErrors()['meetingComments'] }}</span>
+      }
+    </div>
+
+    <div class="conciliation-consent-row">
+      <span class="conciliation-consent-label">{{ 'ui.cepc.conc.want_other_entities' | translateOr: 'Want to add other entities' }}</span>
+      <div class="conciliation-radios">
+        <label><input type="radio" [ngModel]="wantOtherEntities" [value]="true" (ngModelChange)="wantOtherEntities = $event" name="wantOtherEntities" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</label>
+        <label><input type="radio" [ngModel]="wantOtherEntities" [value]="false" (ngModelChange)="wantOtherEntities = $event" name="wantOtherEntities" [disabled]="isReadOnlyViewer" /> {{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</label>
+      </div>
+    </div>
+
+    @if (wantOtherEntities) {
+      @for (slot of otherEntities; track $index) {
+        <div class="form-group entity-search-group">
+          <label>Entity Name {{ $index + 1 }}</label>
+          <div class="entity-search-wrapper">
+            <input type="text"
+              [ngModel]="slot.searchText"
+              (ngModelChange)="onOtherEntitySearchInput($index, $event)"
+              (blur)="onOtherEntityBlur($index)"
+              [name]="'otherEntitySearch' + $index"
+              [disabled]="isReadOnlyViewer"
+              [placeholder]="'ui.cepc.dv.action.select_a_value' | translateOr: 'Select a Value'"
+              autocomplete="off" />
+            <i class="pi entity-search-icon"
+              [class.pi-search]="!slot.loading"
+              [class.pi-spinner]="slot.loading"
+              [class.pi-spin]="slot.loading"></i>
+          </div>
+          @if (slot.showDropdown && !slot.loading && slot.results.length === 0) {
+            <ul class="entity-dropdown">
+              <li class="entity-dropdown-empty">{{ 'ui.cepc.dv.empty.no_entity_match' | translateOr: 'No entity matches that name' }}</li>
+            </ul>
+          }
+          @if (slot.showDropdown && slot.results.length > 0) {
+            <ul class="entity-dropdown">
+              <!-- mousedown, not click: blur fires first and closes the list. -->
+              @for (entity of slot.results; track entity.id) {
+                <li (mousedown)="selectOtherEntity($index, entity)">
+                  <span class="entity-name">{{ entity.name }}</span>
+                  <span class="entity-dept">{{ entity.department }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      }
+    }
+  }
+</div>
+
+<!-- Conciliation Confirmation Dialog -->
+@if (showConciliationDialog()) {
+  <div class="modal-overlay" (click)="cancelConciliationDialog()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>{{ 'ui.cepc.dv.tab.conciliation' | translateOr: 'Conciliation' }}</span>
+      </div>
+      <div class="modal-body">
+        <div class="confirmation-header">
+          <i class="pi pi-info-circle confirmation-icon"></i>
+          <div class="confirmation-text">
+            <strong>{{ 'ui.cepc.dv.section.confirmation' | translateOr: 'Confirmation' }}</strong>
+            <p>Are you sure you want to <strong>{{ meetingActionPhrase(meetingStatus) }}</strong>?</p>
+          </div>
+          <button class="modal-close" (click)="cancelConciliationDialog()">&times;</button>
+        </div>
+
+        <div class="status-change">
+          <span class="status-label">{{ 'ui.cepc.dv.field.expected_status_change' | translateOr: 'Expected Status Change' }} <i class="pi pi-info-circle"></i></span>
+          <div class="status-flow">
+            <span class="status-badge create"><i class="pi pi-circle-fill"></i> {{ (complaintStatusNavLabel || formatStatusLabel(complaintStatusNav)) || formatStatusLabel(complaintStatus) }}</span>
+            <i class="pi pi-arrow-right flow-arrow"></i>
+            <span class="status-badge meeting-scheduled"><i class="pi pi-link"></i> {{ meetingStatusBadgeLabel(meetingStatus) }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="cancelConciliationDialog()">{{ 'ui.cepc.dv.action.cancel' | translateOr: 'Cancel' }}</button>
+        <button class="btn btn-primary" (click)="confirmConciliationDialog()" [disabled]="conciliationSaving()">
+          @if (conciliationSaving()) { <span class="spinner-sm"></span> Saving... } @else { Confirm }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Meeting Scheduled Success -->
+@if (showMeetingScheduledSuccess()) {
+  <div class="modal-overlay" (click)="closeMeetingScheduledSuccess()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-body">
+        <div class="success-page">
+          <div class="success-icon"><i class="pi pi-check-circle"></i></div>
+          @if (meetingStatus === 'COMPLETED') {
+            <h2>{{ 'ui.cepc.conc.meeting_marked_completed' | translateOr: 'Meeting Marked Completed' }}</h2>
+            <p>{{ 'ui.cepc.dv.tab.complaint' | translateOr: 'Complaint' }} <strong>{{ complaintNumber || complaintId }}</strong> — meeting marked completed.</p>
+          } @else if (meetingStatus === 'CANCELLED') {
+            <h2>{{ 'ui.cepc.conc.meeting_cancelled' | translateOr: 'Meeting Cancelled' }}</h2>
+            <p>{{ 'ui.cepc.dv.tab.complaint' | translateOr: 'Complaint' }} <strong>{{ complaintNumber || complaintId }}</strong> — meeting cancelled.</p>
+          } @else if (meetingStatus === 'RESCHEDULED') {
+            <h2>{{ 'ui.cepc.conc.meeting_rescheduled' | translateOr: 'Meeting Rescheduled' }}</h2>
+            <p>{{ 'ui.cepc.dv.tab.complaint' | translateOr: 'Complaint' }} <strong>{{ complaintNumber || complaintId }}</strong> — meeting rescheduled for
+              <strong>{{ meetingDate }}</strong> at <strong>{{ meetingTime }}</strong>.
+            </p>
+          } @else {
+            <h2>{{ 'ui.status.meeting_scheduled' | translateOr: 'Meeting Scheduled' }}</h2>
+            <p>{{ 'ui.cepc.dv.tab.complaint' | translateOr: 'Complaint' }} <strong>{{ complaintNumber || complaintId }}</strong> — meeting scheduled for
+              <strong>{{ meetingDate }}</strong> at <strong>{{ meetingTime }}</strong>.
+            </p>
+          }
+          <button class="btn btn-primary" (click)="closeMeetingScheduledSuccess()">{{ 'ui.cepc.dv.action.close' | translateOr: 'Close' }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

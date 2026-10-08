@@ -8,54 +8,63 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="login-container">
-      <div class="login-card">
-        <div class="logo-section">
-          <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="logo" onerror="this.style.display='none'">
-          <h1>CMS Staff Portal</h1>
-          <p class="subtitle">Complaint Management System - Internal Access</p>
+    @if (checkingSession) {
+      <div class="login-container">
+        <div class="session-check">
+          <span class="spinner"></span>
+          <p>Checking your session...</p>
         </div>
+      </div>
+    } @else {
+      <div class="login-container">
+        <div class="login-card">
+          <div class="logo-section">
+            <img src="assets/corporates-rbi-logo.jpg" alt="RBI" class="logo" onerror="this.style.display='none'">
+            <h1>CMS Staff Portal</h1>
+            <p class="subtitle">Complaint Management System - Internal Access</p>
+          </div>
 
-        <div class="info-section">
-          <h3>Department Access</h3>
-          <div class="dept-grid">
-            <div class="dept-card">
-              <span class="dept-badge rbio">RBIO</span>
-              <span>Officer, Supervisor, Conciliator, Adjudicator</span>
-            </div>
-            <div class="dept-card">
-              <span class="dept-badge cepc">CEPC</span>
-              <span>Officer, Supervisor, Conciliator, Adjudicator</span>
-            </div>
-            <div class="dept-card">
-              <span class="dept-badge crpc">CRPC</span>
-              <span>DEO, Reviewer, Head, Admin, Incharge</span>
-            </div>
-            <div class="dept-card">
-              <span class="dept-badge admin">ADMIN</span>
-              <span>System Administrator</span>
+          <div class="info-section">
+            <h3>Department Access</h3>
+            <div class="dept-grid">
+              <div class="dept-card">
+                <span class="dept-badge rbio">RBIO</span>
+                <span>Officer, Supervisor, Conciliator, Adjudicator</span>
+              </div>
+              <div class="dept-card">
+                <span class="dept-badge cepc">CEPC</span>
+                <span>Officer, Supervisor, Conciliator, Adjudicator</span>
+              </div>
+              <div class="dept-card">
+                <span class="dept-badge crpc">CRPC</span>
+                <span>DEO, Reviewer, Head, Admin, Incharge</span>
+              </div>
+              <div class="dept-card">
+                <span class="dept-badge admin">ADMIN</span>
+                <span>System Administrator</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <button class="login-btn" (click)="login()" [disabled]="loading">
-          @if (loading) {
-            <span class="spinner"></span> Redirecting to SSO...
-          } @else {
-            Sign in with Keycloak SSO
+          <button class="login-btn" (click)="login()" [disabled]="loading">
+            @if (loading) {
+              <span class="spinner"></span> Redirecting to SSO...
+            } @else {
+              Sign in with Keycloak SSO
+            }
+          </button>
+
+          @if (error) {
+            <div class="error-msg">{{ error }}</div>
           }
-        </button>
 
-        @if (error) {
-          <div class="error-msg">{{ error }}</div>
-        }
-
-        <p class="help-text">
-          You will be redirected to the secure authentication portal.
-          Contact IT Admin for access credentials.
-        </p>
+          <p class="help-text">
+            You will be redirected to the secure authentication portal.
+            Contact IT Admin for access credentials.
+          </p>
+        </div>
       </div>
-    </div>
+    }
   `,
   styles: [`
     .login-container {
@@ -110,20 +119,36 @@ import { KeycloakAuthService } from '../../../services/keycloak-auth.service';
     @keyframes spin { to { transform: rotate(360deg); } }
     .error-msg { background: #fbe9e7; color: #d32f2f; padding: 10px; border-radius: 6px; margin-top: 15px; font-size: 13px; text-align: center; }
     .help-text { text-align: center; color: #999; font-size: 12px; margin-top: 15px; }
+    .session-check {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; color: white;
+    }
+    .session-check .spinner {
+      width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white; border-radius: 50%;
+      animation: spin 0.8s linear infinite; display: inline-block;
+    }
   `]
 })
 export class StaffLoginComponent implements OnInit {
   private auth = inject(KeycloakAuthService);
   private router = inject(Router);
 
+  checkingSession = true;
   loading = false;
   error = '';
 
   async ngOnInit() {
-    const authenticated = await this.auth.init();
-    if (authenticated) {
-      this.router.navigate(['/staff/dashboard']);
+    try {
+      const authenticated = await this.auth.init();
+      if (authenticated) {
+        void this.router.navigate(this.auth.getPostLoginRoute());
+        return;
+      }
+    } catch (err) {
+      console.error('Session check failed:', err);
     }
+    this.checkingSession = false;
   }
 
   async login() {

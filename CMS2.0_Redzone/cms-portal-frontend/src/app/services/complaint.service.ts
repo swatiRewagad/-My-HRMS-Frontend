@@ -4,15 +4,31 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
 import { ApiResponse } from '../models/api-response.model';
-import { ComplaintRegistrationRequest, ComplaintAcknowledgement, ComplaintStatus } from '../models/complaint.model';
+import {
+  ComplaintRegistrationRequest,
+  ComplaintAcknowledgement,
+  ComplaintStatus,
+  NonMaintainableRegistrationRequest,
+  NonMaintainableRegistrationResponse,
+} from '../models/complaint.model';
 
 export interface DraftPayload {
   phone: string;
+  draftId?: string;
   entityName: string;
   formData: Record<string, any>;
+  eligibilityFormData: Record<string, any>;
   eligibilityAnswers: Record<string, any>;
   currentStep: number;
+  highestStepReached?: number;
+  eligibilityStep?: number;
   phase: string;
+  checkedAccountTypes?: string[];
+  dateDisplay?: Record<string, string>;
+  declarationChecked?: boolean;
+  declaration2Checked?: boolean;
+  attachmentMeta?: { name: string; type: string; size: number }[];
+  draftVersion?: number;
 }
 
 export interface DraftRecord {
@@ -20,9 +36,18 @@ export interface DraftRecord {
   phone: string;
   entityName: string;
   formData: Record<string, any>;
+  eligibilityFormData?: Record<string, any>;
   eligibilityAnswers: Record<string, any>;
   currentStep: number;
+  highestStepReached?: number;
+  eligibilityStep?: number;
   phase: string;
+  checkedAccountTypes?: string[];
+  dateDisplay?: Record<string, string>;
+  declarationChecked?: boolean;
+  declaration2Checked?: boolean;
+  attachmentMeta?: { name: string; type: string; size: number }[];
+  draftVersion?: number;
   updatedAt: string;
 }
 
@@ -34,6 +59,13 @@ export class ComplaintService {
 
   registerComplaint(request: ComplaintRegistrationRequest): Observable<ComplaintAcknowledgement> {
     return this.http.post<ApiResponse<ComplaintAcknowledgement>>(this.baseUrl, request)
+      .pipe(map(res => res.data));
+  }
+
+  // FR-G-013: issues a real backend Case ID the moment the eligibility wizard determines a
+  // complaint Non-Maintainable, in place of the complaint-number flow above.
+  registerNonMaintainable(request: NonMaintainableRegistrationRequest): Observable<NonMaintainableRegistrationResponse> {
+    return this.http.post<ApiResponse<NonMaintainableRegistrationResponse>>(`${this.baseUrl}/non-maintainable`, request)
       .pipe(map(res => res.data));
   }
 
@@ -53,6 +85,9 @@ export class ComplaintService {
   /**
    * Withdraws a complaint, carrying the supporting documents when the citizen attached any.
    *
+   * `phone` is authorisation, not metadata: the endpoint rejects the request unless it matches
+   * the complaint's registered mobile number.
+   *
    * Two request shapes on purpose. With no documents this posts JSON exactly as it always has, so
    * nothing about the common case changes. With documents it posts multipart — and the files are
    * actually SENT, which they previously were not: the withdrawal form collected them, showed a
@@ -65,18 +100,20 @@ export class ComplaintService {
     complaintId: string,
     reason: string,
     remarks: string,
+    phone: string,
     documents: File[] = [],
   ): Observable<void> {
     const url = `${this.baseUrl}/${complaintId}/withdraw`;
 
     if (!documents.length) {
-      return this.http.post<ApiResponse<void>>(url, { reason, remarks })
+      return this.http.post<ApiResponse<void>>(url, { reason, remarks, phone })
         .pipe(map(() => undefined));
     }
 
     const formData = new FormData();
     formData.append('reason', reason);
     formData.append('remarks', remarks ?? '');
+    formData.append('phone', phone);
     documents.forEach(file => formData.append('documents', file, file.name));
 
     // No explicit Content-Type: the browser must set it so the multipart boundary is included.

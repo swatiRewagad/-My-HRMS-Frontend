@@ -21,16 +21,37 @@ package com.hrms.cms.service;
  */
 public interface OutboundMessagePort {
 
+    /** What an accepted call actually achieved. */
+    enum Outcome {
+        /** Handed to a real gateway, or deliberately discarded by the no-op adapter. Terminal. */
+        SENT,
+        /** Queued for another service to send. The caller's record stays PENDING until settled. */
+        QUEUED
+    }
+
+    /**
+     * Dispatch without a correlation key, for callers that track delivery in their own tables
+     * ({@code COMMUNICATION_OUTBOX}, upload links) rather than NOTIFICATION_DELIVERY_LOG.
+     */
+    default Outcome send(String channel, String recipient, String subject, String body,
+                         String relatedReference) {
+        return send(channel, recipient, subject, body, relatedReference, null);
+    }
+
     /**
      * @param channel          EMAIL or SMS
      * @param recipient        user id, email address or mobile number
      * @param subject          subject line; ignored for SMS
      * @param body             message body
      * @param relatedReference complaint or appeal number, for correlation in logs
+     * @param dispatchRef      key the sending service settles the caller's delivery row by; null when
+     *                         the caller has no row to settle
+     * @return whether the message was sent outright or only queued
      * @throws OutboundDispatchException when the message is refused or dispatch fails; the caller
      *                                   records a FAILED delivery attempt rather than losing the event
      */
-    void send(String channel, String recipient, String subject, String body, String relatedReference);
+    Outcome send(String channel, String recipient, String subject, String body,
+                 String relatedReference, String dispatchRef);
 
     /** Thrown when a message is refused or cannot be dispatched. */
     class OutboundDispatchException extends RuntimeException {

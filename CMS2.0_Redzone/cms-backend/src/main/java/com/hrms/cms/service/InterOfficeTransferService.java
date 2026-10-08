@@ -93,6 +93,15 @@ public class InterOfficeTransferService {
         return requestTransfer(complaintNumber, fromOffice, toOffice, transferType, reason, requestedBy, null);
     }
 
+    /** Backwards-compatible overload for callers that carry no separate "sent from office" comments. */
+    @Transactional
+    public InterOfficeTransfer requestTransfer(String complaintNumber, String fromOffice, String toOffice,
+                                               String transferType, String reason, String requestedBy,
+                                               String language) {
+        return requestTransfer(complaintNumber, fromOffice, toOffice, transferType, reason, null,
+                requestedBy, language);
+    }
+
     /**
      * Records a PENDING transfer and moves the complaint to "Sent to Other Office" (UST557, 560, 564).
      *
@@ -102,11 +111,15 @@ public class InterOfficeTransferService {
      *
      * <p>{@code previousOwner} is captured NOW rather than at approval. That is what makes a rejection able to
      * return the complaint to the officer who held it — see the field's own comment.
+     *
+     * <p>{@code officeComments} is the Forward milestone's "Sent from office comments" — a separate value
+     * from {@code reason} ("Reason for Transfer"), kept on its own column so the two remain independently
+     * queryable rather than one overloading the other.
      */
     @Transactional
     public InterOfficeTransfer requestTransfer(String complaintNumber, String fromOffice, String toOffice,
-                                               String transferType, String reason, String requestedBy,
-                                               String language) {
+                                               String transferType, String reason, String officeComments,
+                                               String requestedBy, String language) {
         if (reason == null || reason.isBlank()) {
             // UST559/556: the Reason for Transfer is mandatory before Save and Proceed. Enforced here as well
             // as at the action layer, because this method is reachable from the CRPC Head controller too.
@@ -135,6 +148,7 @@ public class InterOfficeTransferService {
                 .toOffice(toOffice)
                 .transferType(transferType)
                 .reason(reason)
+                .officeComments(officeComments)
                 .requestedBy(requestedBy)
                 .status("PENDING")
                 .previousOwner(previousOwner)

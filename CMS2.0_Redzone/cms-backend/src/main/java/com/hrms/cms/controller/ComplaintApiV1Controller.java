@@ -1,16 +1,17 @@
 package com.hrms.cms.controller;
 
-import com.hrms.cms.config.DuplicateCheckProperties;
 import com.hrms.cms.dto.FileComplaintRequest;
-import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
+import com.hrms.cms.entity.ComplaintAttachment;
 import com.hrms.cms.entity.ComplaintTimeline;
+import com.hrms.cms.entity.SimulatedEmail;
 import com.hrms.cms.entity.RbioStatusMaster;
 import com.hrms.cms.entity.ReActivityStatus;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.RbioStatusMasterRepository;
+import com.hrms.cms.repository.SimulatedEmailRepository;
 import com.hrms.cms.service.CepcAuditService;
 import com.hrms.cms.service.CitizenSessionService;
 import com.hrms.cms.service.CitizenStageMapper;
@@ -21,7 +22,6 @@ import com.hrms.cms.service.NotificationConfigService;
 import com.hrms.cms.service.NotificationService;
 import com.hrms.cms.service.PiiMaskingService;
 import com.hrms.cms.service.PiiRevealService;
-import com.hrms.cms.entity.ComplaintAttachment;
 import com.hrms.cms.security.RequestIdentity;
 import com.hrms.cms.security.RequestIdentityResolver;
 import com.hrms.cms.service.triage.IntakeTriageService;
@@ -31,7 +31,6 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,9 +38,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import org.springframework.data.domain.PageRequest;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -53,14 +54,26 @@ public class ComplaintApiV1Controller {
     private final ComplaintService complaintService;
     private final BankRepository bankRepository;
     private final ComplaintCategoryRepository categoryRepository;
+    private final SimulatedEmailRepository simulatedEmailRepository;
     private final ComplaintRepository complaintRepository;
     // RBIO_STATUS_MASTER backs the milestone ladder; see milestoneLadder().
     private final RbioStatusMasterRepository rbioStatusMasterRepository;
     private final IntakeTriageService triageService;
+    // NOTE: these two were silently dropped by the automatic merge (ours deleted them relative to the
+    // merge base while theirs left them untouched, so a non-conflicting 3-way merge took ours'
+    // deletion) even though resolveCitizenMobile() and the withdrawal/track audit calls kept from the
+    // incoming side still require them. Restored here so that kept code compiles.
     private final CitizenSessionService citizenSessionService;
     private final CepcAuditService auditService;
-    private final DuplicateCheckProperties duplicateCheckProps;
     private final Validator validator;
+    private final com.hrms.cms.service.ComplaintRoutingService complaintRoutingService;
+    private final com.hrms.cms.service.KeycloakUserService keycloakUserService;
+    private final com.hrms.cms.repository.OfficerAvailabilityRepository officerAvailabilityRepository;
+    private final com.hrms.cms.repository.OfficeCodeMasterRepository officeCodeMasterRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.hrms.cms.repository.ClosureClauseMasterRepository closureClauseMasterRepository;
+    private final com.hrms.cms.service.ComplaintLetterPdfService complaintLetterPdfService;
+    private final com.hrms.cms.service.AppealClassificationService appealClassificationService;
     private final RequestIdentityResolver requestIdentityResolver;
     private final PiiMaskingService piiMaskingService;
     private final PiiRevealService piiRevealService;
@@ -139,6 +152,7 @@ public class ComplaintApiV1Controller {
         req.setComplainantAddress((String) request.get("complainantAddress"));
         req.setComplainantState((String) request.get("complainantState"));
         req.setComplainantDistrict((String) request.get("complainantDistrict"));
+        req.setComplainantPincode(trimToNull(request.get("complainantPincode")));
         req.setSubject((String) request.getOrDefault("subject", ""));
         req.setDescription((String) request.getOrDefault("description", ""));
         req.setPriority((String) request.getOrDefault("priority", "medium"));
@@ -165,6 +179,32 @@ public class ComplaintApiV1Controller {
         if (request.get("reRepliedAndDissatisfied") != null) {
             req.setReRepliedAndDissatisfied(Boolean.valueOf(request.get("reRepliedAndDissatisfied").toString()));
         }
+        if (request.get("amountInvolved") != null) {
+            req.setAmountInvolved(new java.math.BigDecimal(request.get("amountInvolved").toString()));
+        }
+
+        // Fields the wizard collects that were previously dropped on the floor here, leaving the
+        // review screen blank even though the citizen had filled them in.
+        req.setReliefSought(trimToNull(request.get("reliefSought")));
+        req.setBankBranch(trimToNull(request.get("bankBranch")));
+        req.setAccountNumber(trimToNull(request.get("accountNumber")));
+        req.setBankComplaintReference(trimToNull(request.get("bankComplaintReference")));
+        req.setRepName(trimToNull(request.get("repName")));
+        req.setRepEmail(trimToNull(request.get("repEmail")));
+        req.setRepPhone(trimToNull(request.get("repPhone")));
+        req.setEntityState(trimToNull(request.get("entityState")));
+        req.setEntityDistrict(trimToNull(request.get("entityDistrict")));
+        req.setEntityBranchName(trimToNull(request.get("entityBranchName")));
+        req.setBankComplaintDate(trimToNull(request.get("transactionDate")));
+        if (request.get("eligibilityAnswers") instanceof Map<?, ?> ea) {
+            req.setEligibilityAnswers((Map<String, Object>) ea);
+        }
+        if (request.get("wizardFormData") instanceof Map<?, ?> wf) {
+            req.setWizardFormData((Map<String, Object>) wf);
+        }
+        req.setNonMaintainableClauseCode(trimToNull(request.get("nonMaintainableClauseCode")));
+        req.setNonMaintainableStatusCode(trimToNull(request.get("nonMaintainableStatusCode")));
+        req.setDuplicateOfComplaintNumber(trimToNull(request.get("duplicateOfComplaintNumber")));
         if (request.get("reReplyDate") != null && !request.get("reReplyDate").toString().isBlank()) {
             req.setReReplyDate(java.time.LocalDate.parse(request.get("reReplyDate").toString()));
         }
@@ -172,26 +212,10 @@ public class ComplaintApiV1Controller {
             req.setDeclarationAccepted(Boolean.valueOf(request.get("declarationAccepted").toString()));
         }
 
-        // D7: the wizard validates nine representative fields as mandatory and then the payload was
-        // discarded here, leaving an officer no way to reach or verify the representative.
-        if (request.get("hasAuthRep") != null) {
-            req.setHasAuthRep(Boolean.valueOf(request.get("hasAuthRep").toString()));
-        }
-        if (request.get("throughAdvocate") != null) {
-            req.setThroughAdvocate(Boolean.valueOf(request.get("throughAdvocate").toString()));
-        }
-        req.setRepName(asString(request.get("repName")));
-        req.setRepPhone(asString(request.get("repPhone")));
-        req.setRepEmail(asString(request.get("repEmail")));
-        req.setRepAddress(asString(request.get("repAddress")));
-        req.setRepState(asString(request.get("repState")));
-        req.setRepDistrict(asString(request.get("repDistrict")));
-        req.setRepCity(asString(request.get("repCity")));
-        req.setRepPincode(asString(request.get("repPincode")));
-
         // Resolve category name to ID
         if (request.get("category") != null) {
             String categoryName = request.get("category").toString();
+            req.setCategoryName(categoryName);
             categoryRepository.findFirstByNameIgnoreCase(categoryName)
                     .ifPresent(cat -> req.setCategoryId(cat.getId()));
         }
@@ -227,18 +251,76 @@ public class ComplaintApiV1Controller {
                     c.getComplaintNumber(), e.toString());
         }
 
+        boolean nonMaintainable = c.getCaseId() != null;
+
         Map<String, Object> ack = new LinkedHashMap<>();
-        ack.put("complaintId", c.getComplaintNumber());
-        ack.put("status", "REGISTERED");
+        ack.put("complaintId", nonMaintainable ? c.getCaseId() : c.getComplaintNumber());
+        ack.put("caseId", c.getCaseId());
+        ack.put("complaintNumber", c.getComplaintNumber());
+        ack.put("status", nonMaintainable ? "PORTAL_REJECTION" : "REGISTERED");
         ack.put("registeredAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : LocalDateTime.now().toString());
         ack.put("slaDueDate", c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : LocalDateTime.now().plusDays(30).toString());
-        ack.put("acknowledgementMessage", "Your complaint has been registered successfully. Use the reference number to track status.");
+        ack.put("acknowledgementMessage", nonMaintainable
+                ? "Your complaint has been determined Non-Maintainable. Use the Case ID to reference this closure."
+                : "Your complaint has been registered successfully. Use the reference number to track status.");
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
         response.put("message", "Complaint registered successfully");
         response.put("data", ack);
         response.put("correlationId", UUID.randomUUID().toString());
+        response.put("timestamp", LocalDateTime.now().toString());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    /**
+     * FR-G-013: issues a real Case ID for a complaint the eligibility wizard determined
+     * Non-Maintainable, before the citizen has reached (or filled in) the full filing form.
+     *
+     * <p>Only the fields the eligibility stage actually knows are required; subject/description are
+     * not available yet, so this builds a minimal {@link FileComplaintRequest} rather than reusing
+     * {@link #registerComplaint}'s full field mapping.
+     */
+    @PostMapping("/non-maintainable")
+    public ResponseEntity<Map<String, Object>> registerNonMaintainable(@RequestBody Map<String, Object> request) {
+        String clauseCode = trimToNull(request.get("clauseCode"));
+        if (clauseCode == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false, "message", "clauseCode is required"));
+        }
+
+        FileComplaintRequest req = new FileComplaintRequest();
+        req.setComplainantName(Objects.toString(request.getOrDefault("complainantName", "Not provided")));
+        req.setComplainantEmail(trimToNull(request.get("complainantEmail")));
+        req.setComplainantPhone(trimToNull(request.get("complainantPhone")));
+        req.setComplainantState(trimToNull(request.get("complainantState")));
+        req.setComplainantDistrict(trimToNull(request.get("complainantDistrict")));
+        req.setEntityName(trimToNull(request.get("entityName")));
+        req.setSubject("Non-Maintainable at eligibility screening — clause " + clauseCode);
+        req.setDescription("Complaint determined Non-Maintainable at the eligibility screening stage.");
+        req.setNonMaintainableClauseCode(clauseCode);
+        req.setNonMaintainableStatusCode(trimToNull(request.get("statusCode")));
+
+        Set<ConstraintViolation<FileComplaintRequest>> violations = validator.validate(req);
+        if (!violations.isEmpty()) {
+            String errors = violations.stream()
+                    .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                    .collect(Collectors.joining("; "));
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false, "message", "Validation failed: " + errors));
+        }
+
+        Complaint c = complaintService.fileComplaint(req);
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("caseId", c.getCaseId());
+        data.put("status", "PORTAL_REJECTION");
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "Case ID issued");
+        response.put("data", data);
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -291,9 +373,18 @@ public class ComplaintApiV1Controller {
     }
 
     /**
-     * UST76: duplicate pre-check run before a public complaint is submitted.
-     * Matches on phone OR email for the same entity + category within the configured lookback
-     * window, ignoring complaints that have reached a terminal status.
+     * Duplicate pre-check the wizard runs before submitting (UST87 / FR-G-020).
+     *
+     * <p>FR-G-020 defines a duplicate as the full combination
+     * (mobile OR email) + complainant name + entity name + date of disputed transaction + category,
+     * against a complaint that is still live. Terminal statuses are excluded so a citizen may
+     * re-file once a matter is closed.
+     *
+     * <p>Name, entity, date and category are passed through as the citizen typed them and matched
+     * in {@link ComplaintService} against the columns public filing populates. Resolving them to
+     * BANKS/CATEGORY ids here is what broke the control: the portal's entity dropdown is fed from
+     * REGULATED_ENTITIES and its categories are codes, so neither id ever resolved, and a null id
+     * meant "ignore this field" — reducing the check to "has this phone filed anything recently".
      */
     @PostMapping("/check-duplicate")
     public ResponseEntity<Map<String, Object>> checkDuplicate(@RequestBody Map<String, Object> request) {
@@ -301,39 +392,50 @@ public class ComplaintApiV1Controller {
         String email = trimToNull(request.get("email"));
 
         if (phone == null && email == null) {
-            return ResponseEntity.badRequest().body(
-                    errorBody("MISSING_IDENTIFIER", "A mobile number or email address is required to check for duplicates."));
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "error", "MISSING_IDENTIFIER",
+                    "message", "A phone or an email is required"));
         }
 
-        Long bankId = resolveBankId(trimToNull(request.get("entityName")));
-        Long categoryId = resolveCategoryId(trimToNull(request.get("category")));
+        String complainantName = trimToNull(request.get("complainantName"));
+        String entityName = trimToNull(request.get("entityName"));
+        String category = trimToNull(request.get("category"));
 
-        LocalDateTime since = LocalDateTime.now().minusDays(duplicateCheckProps.getLookbackDays());
-        List<Complaint> matches = complaintRepository.findPotentialDuplicates(
-                phone, email, bankId, categoryId, duplicateCheckProps.getTerminalStatuses(), since);
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        if (matches.isEmpty()) {
-            data.put("duplicate", false);
-        } else {
-            Complaint match = matches.get(0);
-            // Phone is the stronger signal, so report it when it is what actually matched.
-            boolean phoneMatched = phone != null && phone.equals(match.getComplainantPhone());
-            data.put("duplicate", true);
-            data.put("matchedOn", phoneMatched ? "phone" : "email");
-            data.put("complaintNumber", match.getComplaintNumber());
-            data.put("status", match.getStatus() != null ? match.getStatus().toUpperCase() : null);
-            data.put("filedAt", match.getCreatedAt() != null ? match.getCreatedAt().toString() : null);
+        java.time.LocalDate disputeDate = null;
+        String rawDisputeDate = trimToNull(request.get("disputeDate"));
+        if (rawDisputeDate != null) {
+            try {
+                disputeDate = java.time.LocalDate.parse(rawDisputeDate);
+            } catch (java.time.format.DateTimeParseException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "error", "INVALID_DISPUTE_DATE",
+                        "message", "disputeDate must be an ISO date (yyyy-MM-dd)"));
+            }
         }
+
+        List<Complaint> matches = complaintService.findPotentialDuplicates(
+                phone, email, complainantName, entityName, category, disputeDate);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
-        response.put("message", "Duplicate check completed");
-        response.put("data", data);
-        // The Angular client reads these off the root, so mirror them for backward compatibility.
-        response.putAll(data);
         response.put("timestamp", LocalDateTime.now().toString());
 
+        if (matches.isEmpty()) {
+            response.put("duplicate", false);
+            return ResponseEntity.ok(response);
+        }
+
+        Complaint match = matches.get(0);
+        // Phone is the stronger signal, so report it whenever it is what actually matched.
+        boolean phoneMatched = phone != null && phone.equals(match.getComplainantPhone());
+
+        response.put("duplicate", true);
+        response.put("matchedOn", phoneMatched ? "phone" : "email");
+        response.put("complaintNumber", match.getComplaintNumber());
+        response.put("status", match.getStatus());
+        response.put("filedAt", match.getCreatedAt() != null ? match.getCreatedAt().toString() : null);
         return ResponseEntity.ok(response);
     }
 
@@ -343,164 +445,178 @@ public class ComplaintApiV1Controller {
         return s.isEmpty() ? null : s;
     }
 
-    /** Entity names come from the BANKS master table — an unknown name widens the check rather than failing it. */
-    private Long resolveBankId(String entityName) {
-        if (entityName == null) return null;
-        return bankRepository.findAll().stream()
-                .filter(b -> entityName.equalsIgnoreCase(b.getName()) || entityName.equalsIgnoreCase(b.getCode()))
-                .map(Bank::getId)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private Long resolveCategoryId(String category) {
-        if (category == null) return null;
-        return categoryRepository.findFirstByNameIgnoreCase(category)
-                .map(cat -> cat.getId())
-                .orElse(null);
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> readJsonMap(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        try {
+            return objectMapper.readValue(json, Map.class);
+        } catch (Exception e) {
+            return Map.of();
+        }
     }
 
     @GetMapping
-    public ResponseEntity<Map<String, Object>> getComplaintsByPhone(
-            @RequestParam(required = false) String phone,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir,
-            @RequestParam(required = false) String status,
-            HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getComplaintsByPhone(@RequestParam String phone) {
+        List<Complaint> complaints = complaintService.getByComplainantPhone(phone);
 
-        // UST98: the complaint list is scoped to the authenticated citizen's own mobile.
-        // The client-supplied phone is never trusted — it is only checked for mismatch.
-        String sessionMobile = resolveCitizenMobile(request);
-        if (sessionMobile == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-                    errorBody("SESSION_EXPIRED", "Your session has expired. Please verify your mobile number again."));
-        }
-        if (phone != null && !phone.isBlank() && !phone.equals(sessionMobile)) {
-            auditService.logActionAsync("N/A", "TRACK_LIST_DENIED", sessionMobile, "CITIZEN",
-                    "Attempted to list complaints for a different mobile number", null, null, null);
-            // UST873: counted, so repeated probing for other people's complaints raises an alert
-            // instead of only leaving an audit row nobody aggregates.
-            anomalyDetectionService.recordOwnershipDenial(sessionMobile, null,
-                    "Attempted to list complaints for a different mobile number", request);
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-                    errorBody("FORBIDDEN", "You can only view complaints filed with your own mobile number."));
-        }
-        phone = sessionMobile;
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
-        // Cap page size at 50
-        size = Math.min(size, 50);
+        // Resolved once for the whole page rather than per row — the clause master is small and
+        // static, and a lookup inside the map() would re-query for every complaint.
+        Map<String, String> clauseLabels = closureClauseMasterRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        m -> m.getClauseCode().toUpperCase(),
+                        m -> m.getLabel(),
+                        (a, b) -> a));
 
-        // Validate sortBy to prevent injection — only allow known columns
-        Set<String> allowedSortFields = Set.of("createdAt", "status", "complaintNumber", "priority", "closedAt");
-        if (!allowedSortFields.contains(sortBy)) {
-            sortBy = "createdAt";
-        }
-
-        Sort sort = "asc".equalsIgnoreCase(sortDir)
-                ? Sort.by(Sort.Direction.ASC, sortBy)
-                : Sort.by(Sort.Direction.DESC, sortBy);
-        PageRequest pageable = PageRequest.of(page, size, sort);
-
-        Page<Complaint> complaintPage;
-        if (STATUS_FILTER_OPEN.equalsIgnoreCase(status)) {
-            // "Open" is a SET, not a stored status. Filtering on it as an exact value returned zero rows
-            // for every citizen, because no complaint is ever stored with status 'open'.
-            complaintPage = complaintRepository.findByComplainantPhoneAndStatusNotIn(
-                    phone,
-                    settledStatuses.stream().map(String::toLowerCase).toList(),
-                    pageable);
-        } else if (status != null && !status.isBlank()) {
-            complaintPage = complaintRepository.findByComplainantPhoneAndStatus(phone, status.toLowerCase(), pageable);
-        } else {
-            complaintPage = complaintRepository.findByComplainantPhone(phone, pageable);
-        }
-
-        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MMM yyyy");
-
-        List<Map<String, Object>> items = complaintPage.getContent().stream().map(c -> {
-            String bankName = "";
-            if (c.getBankId() != null) {
+        // NOTE (merge judgment call, hunk 7): the incoming side also added phone-ownership
+        // enforcement (resolveCitizenMobile + audit/anomaly calls) and page/sort/status query params
+        // to this endpoint's SIGNATURE. That signature-level change sits OUTSIDE any marked conflict
+        // hunk — our side had already independently rewritten this method to the simpler
+        // `@RequestParam String phone` form with no pagination, so git's 3-way merge auto-resolved
+        // the signature and surrounding ownership-check block to our side without flagging a conflict
+        // (only this stream-building block disagreed enough to be marked). Retrofitting the
+        // page/size/sortBy/sortDir/status/HttpServletRequest pagination here would require changing
+        // that unconflicted signature too, which is out of scope for resolving the 10 marked hunks.
+        // Keeping our (signature-compatible) stream here; the citizen pagination/sorting feature is
+        // not reachable through this endpoint post-merge and should be revisited as a follow-up.
+        List<Map<String, Object>> items = complaints.stream().map(c -> {
+            // Public filing stores the RE as entityName and leaves bankId null, so resolving only
+            // via bankId fell through to the subject — the citizen saw "ATM_DEBIT_CARD" in the
+            // Regulated Entity Name column instead of their bank.
+            String bankName = c.getEntityName() != null ? c.getEntityName() : "";
+            if (bankName.isEmpty() && c.getBankId() != null) {
                 bankName = bankRepository.findById(c.getBankId())
                         .map(b -> b.getName()).orElse("");
             }
 
-            String categoryName = "General";
-            if (c.getCategoryId() != null) {
-                categoryName = categoryRepository.findById(c.getCategoryId())
-                        .map(cat -> cat.getName()).orElse("General");
-            }
-
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("complaintNumber", c.getComplaintNumber());
-            item.put("createdAt", c.getCreatedAt() != null ? c.getCreatedAt().toString() : "");
-            item.put("createdAtFormatted", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
-            item.put("categoryName", categoryName);
+            // Portal Rejection (FR-G-013) complaints never get a complaintNumber, only a caseId —
+            // falling back avoids leaving the ID column blank for every non-maintainable row.
+            item.put("complaintId", c.getComplaintNumber() != null ? c.getComplaintNumber() : c.getCaseId());
             item.put("entityName", bankName.isEmpty() ? c.getSubject() : bankName);
+            item.put("complaintDate", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
             item.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "PENDING");
-            item.put("closureClause", c.getClosureClause());
-            item.put("closedAt", c.getClosedAt() != null ? c.getClosedAt().toString() : null);
-            item.put("closedAtFormatted", c.getClosedAt() != null ? c.getClosedAt().format(fmt) : null);
-            item.put("priority", c.getPriority() != null ? c.getPriority().toUpperCase() : "MEDIUM");
-            // Keep legacy field for backward compat
-            item.put("complaintId", c.getComplaintNumber());
+            item.put("comments", c.getDescription() != null ? c.getDescription().substring(0, Math.min(c.getDescription().length(), 50)) : "");
+
+            // Closure details. The clause code is stored on the complaint; the human-readable label
+            // lives in the clause master, so resolve it and fall back to the bare code.
+            String clause = c.getClosureClause();
+            item.put("closureClause", clause == null || clause.isBlank()
+                    ? ""
+                    : clauseLabels.getOrDefault(clause.toUpperCase(), clause));
+            item.put("closureDate", c.getClosedAt() != null ? c.getClosedAt().format(fmt) : "");
+
+            // UST111: "File an Appeal" must only be offered for closures under a clause the complainant
+            // may appeal (15(1)(a)/15(1)(b)), not for every closed/non-maintainable complaint. Fails
+            // closed — an unmapped or absent clause is not appealable.
+            boolean appealable = false;
+            try {
+                appealable = appealClassificationService.isAppealable(
+                        c, com.hrms.cms.entity.ClosureClauseMaster.AppealParty.COMPLAINANT);
+            } catch (com.hrms.cms.service.AppealClassificationService.UnmappedClauseException ignored) {
+                // No clause recorded yet, or clause absent from the master — not appealable.
+            }
+            item.put("appealable", appealable);
+
+            // Letters are generated on demand, so the list advertises the download URLs rather than
+            // stored files. The acknowledgement exists as soon as the complaint does; the closure
+            // letter only once it has actually been closed. Non-Maintainable/portal-rejection
+            // complaints have no complaintNumber, only a caseId — falling back avoids baking the
+            // literal string "null" into the URL.
+            String identifier = c.getComplaintNumber() != null ? c.getComplaintNumber() : c.getCaseId();
+            String base = "/api/v1/complaints/" + identifier + "/letters/";
+            item.put("acknowledgementLetterUrl", base + "acknowledgement");
+            item.put("closureLetterUrl", c.getClosedAt() != null ? base + "closure" : "");
             return item;
         }).collect(Collectors.toList());
-
-        Map<String, Object> paginatedData = new LinkedHashMap<>();
-        paginatedData.put("content", items);
-        paginatedData.put("totalElements", complaintPage.getTotalElements());
-        paginatedData.put("totalPages", complaintPage.getTotalPages());
-        paginatedData.put("currentPage", complaintPage.getNumber());
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
         response.put("message", "Complaints retrieved");
-        response.put("data", paginatedData);
+        response.put("data", items);
         response.put("timestamp", LocalDateTime.now().toString());
 
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Citizen-facing acknowledgement / closure letter as a PDF.
+     *
+     * <p>Separate from the staff {@code /api/v1/crpc/closure-letter} endpoint, which is role-guarded,
+     * returns HTML, and renders the full Scheme template. This one is the citizen's copy: it is reachable
+     * with the complaint number alone, because that is the only credential the My Complaints table has.
+     *
+     * <p>The identifier in the path may be a complaintNumber or, for Non-Maintainable/portal-rejection
+     * complaints that never get a complaintNumber, a caseId instead (see the URL built in
+     * {@link #getComplaintsByPhone}).
+     */
+    @GetMapping("/{identifier}/letters/{type}")
+    public ResponseEntity<byte[]> downloadLetter(@PathVariable String identifier,
+                                                 @PathVariable String type) {
+        if (!"acknowledgement".equals(type) && !"closure".equals(type)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Complaint c;
+        try {
+            c = complaintService.getByComplaintNumberOrCaseId(identifier);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // A closure letter for a complaint that is still open would state a closure that has not
+        // happened, so it is withheld until there is a closure date to print.
+        if ("closure".equals(type) && c.getClosedAt() == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] pdf = complaintLetterPdfService.render(c, type);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + type + "-" + identifier + ".pdf\"")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
     @GetMapping("/{complaintNumber}")
-    public ResponseEntity<Map<String, Object>> getComplaintDetail(@PathVariable String complaintNumber,
-                                                                 HttpServletRequest request) {
+    public ResponseEntity<Map<String, Object>> getComplaintDetail(
+            @PathVariable String complaintNumber, HttpServletRequest request) {
         Complaint c;
         try {
             c = complaintService.getByComplaintNumber(complaintNumber);
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                    errorBody("NOT_FOUND", "Complaint number not found, please check and try again."));
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("success", false);
+            error.put("message", "Complaint not found");
+            error.put("data", null);
+            error.put("correlationId", UUID.randomUUID().toString());
+            error.put("timestamp", LocalDateTime.now().toString());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         }
-
-        // UST98/UST99: tracking by reference number stays public, but complainant PII is only
-        // returned in full to the owning citizen (verified session).
-        //
-        // UST875: staff no longer get full PII by simply being staff. Presence of an Authorization
-        // header used to be the whole test, so any non-empty string unmasked a complainant's name
-        // and phone. Staff now receive masked values and must ask for a reveal, which is audited.
-        String sessionMobile = resolveCitizenMobile(request);
-        boolean isOwner = sessionMobile != null && sessionMobile.equals(c.getComplainantPhone());
-        RequestIdentity identity = requestIdentityResolver.resolve(request);
-        boolean isStaff = identity != null && !identity.isRe();
-        boolean piiAllowed = isOwner;
-
-        auditService.logActionAsync(complaintNumber, "TRACK_VIEWED",
-                isOwner ? sessionMobile : (isStaff ? "STAFF" : "ANONYMOUS"),
-                isOwner ? "CITIZEN" : (isStaff ? "STAFF" : "PUBLIC"),
-                "Complaint status viewed via tracker", null, null, null);
         List<ComplaintTimeline> timeline = complaintService.getTimeline(c.getId());
 
-        String bankName = "";
-        if (c.getBankId() != null) {
+        // Anyone with the complaint number can reach this endpoint by design (UST98/UST99 — open
+        // tracking), but complaint numbers are a sequential counter (ComplaintNumberGeneratorService),
+        // not a secret, so the PII below must stay masked unless the caller's citizen session proves
+        // they are the complainant. Same ownership check performWithdrawal uses.
+        // Staff are the other legitimate reader: CEPC's complaint-detail and create-complaint screens
+        // populate the complainant block from this endpoint, so masking on a staff call blanks fields the
+        // officer is handling the case from. RE staff are excluded inside canReveal (they work for the
+        // entity being complained about).
+        String sessionMobile = resolveCitizenMobile(request);
+        boolean revealed = (sessionMobile != null && sessionMobile.equals(c.getComplainantPhone()))
+                || piiMaskingService.canReveal(requestIdentityResolver.resolve(request));
+
+        String bankName = c.getEntityName() != null ? c.getEntityName() : "";
+        if (bankName.isEmpty() && c.getBankId() != null) {
             bankName = bankRepository.findById(c.getBankId())
                     .map(b -> b.getName())
                     .orElse("");
         }
 
-        String categoryName = "General";
-        if (c.getCategoryId() != null) {
+        String categoryName = c.getCategoryName() != null ? c.getCategoryName() : "General";
+        if ("General".equals(categoryName) && c.getCategoryId() != null) {
             categoryName = categoryRepository.findById(c.getCategoryId())
                     .map(cat -> cat.getName()).orElse("General");
         }
@@ -508,7 +624,19 @@ public class ComplaintApiV1Controller {
         String registeredAt = c.getCreatedAt() != null ? c.getCreatedAt().toString() : "";
         String slaDueDate = c.getCreatedAt() != null ? c.getCreatedAt().plusDays(30).toString() : "";
 
-        // Compute citizen-facing 4-stage timeline
+        List<ComplaintAttachment> attachments = complaintService.getAttachments(c.getId());
+        List<Map<String, Object>> attachmentList = attachments.stream().map(a -> {
+            Map<String, Object> am = new LinkedHashMap<>();
+            am.put("id", a.getId());
+            am.put("fileName", a.getOriginalName());
+            am.put("name", a.getOriginalName());
+            am.put("contentType", a.getContentType());
+            am.put("size", a.getFileSize() != null ? formatFileSize(a.getFileSize()) : null);
+            am.put("uploadedAt", a.getUploadedAt() != null ? a.getUploadedAt().toString() : null);
+            return am;
+        }).collect(Collectors.toList());
+
+        // Compute citizen-facing 4-stage timeline (feeds detail.currentStage / detail.stages below).
         Map<String, Object> stageData = CitizenStageMapper.mapToStages(c, timeline);
 
         Map<String, Object> detail = new LinkedHashMap<>();
@@ -520,24 +648,42 @@ public class ComplaintApiV1Controller {
         detail.put("status", c.getStatus() != null ? c.getStatus().toUpperCase() : "NEW");
         detail.put("subject", c.getSubject());
         detail.put("description", c.getDescription());
-        detail.put("complainantName",
-                piiMaskingService.apply("complainantName", c.getComplainantName(), piiAllowed));
-        detail.put("complainantPhone",
-                piiMaskingService.apply("complainantPhone", c.getComplainantPhone(), piiAllowed));
-        detail.put("complainantEmail",
-                piiMaskingService.apply("complainantEmail", c.getComplainantEmail(), piiAllowed));
-        detail.put("accountNumber",
-                piiMaskingService.apply("accountNumber", c.getAccountNumber(), piiAllowed));
-        detail.put("piiMasked", !piiAllowed && piiMaskingService.isMaskingEnabled());
-        detail.put("canRevealPii", piiMaskingService.canReveal(identity));
+        detail.put("complainantName", piiMaskingService.apply("complainantName", c.getComplainantName(), revealed));
+        detail.put("complainantEmail", piiMaskingService.apply("complainantEmail", c.getComplainantEmail(), revealed));
+        detail.put("complainantPhone", piiMaskingService.apply("complainantPhone", c.getComplainantPhone(), revealed));
+        detail.put("complainantAddress", piiMaskingService.apply("complainantAddress", c.getComplainantAddress(), revealed));
+        detail.put("complainantState", c.getComplainantState());
+        detail.put("complainantDistrict", c.getComplainantDistrict());
+        detail.put("complainantPincode", c.getComplainantPincode());
         detail.put("entityName", bankName);
-        detail.put("entityType", "BANK");
-        detail.put("amountInvolved", 0);
+        detail.put("entityType", c.getEntityType() != null ? c.getEntityType() : "BANK");
+        detail.put("entityCategory", c.getEntityCategory());
+        detail.put("bsrCode", c.getEntityBsrCode());
+        detail.put("entityPincode", c.getEntityPincode());
+        detail.put("entityState", c.getEntityState());
+        detail.put("entityDistrict", c.getEntityDistrict());
+        detail.put("entityCity", c.getEntityCity());
+        detail.put("entityBranchName", c.getEntityBranchName());
+        detail.put("entityBranchCategory", c.getEntityBranchCategory());
+        detail.put("entityAddress", c.getEntityAddress());
+        detail.put("cosmosCode", c.getCosmosCode());
+        detail.put("schemeVersion", c.getSchemeVersion());
+        detail.put("bankBranch", c.getBankBranch());
+        detail.put("accountNumber", piiMaskingService.apply("accountNumber", c.getAccountNumber(), revealed));
+        detail.put("amountInvolved", c.getAmountInvolved() != null ? c.getAmountInvolved() : 0);
+        detail.put("reliefSought", c.getReliefSought());
+        detail.put("filingType", c.getFilingType());
+        detail.put("priorReComplaint", c.getPriorReComplaint());
+        detail.put("reComplaintDate", c.getReComplaintDate() != null ? c.getReComplaintDate().toString() : null);
+        detail.put("reComplaintReference", c.getReComplaintReference());
+        detail.put("reRepliedAndDissatisfied", c.getReRepliedAndDissatisfied());
+        detail.put("bankComplaintReference", c.getBankComplaintReference());
         detail.put("transactionDate", c.getBankComplaintDate() != null ? c.getBankComplaintDate().toString() : null);
         detail.put("assignedTeam", c.getAssignedOfficer() != null ? c.getAssignedOfficer() : "Unassigned");
         detail.put("assignedTo", c.getAssignedOfficer());
         detail.put("registeredAt", registeredAt);
         detail.put("createdAt", registeredAt);
+        detail.put("filedAt", c.getFiledAt() != null ? c.getFiledAt().toString() : registeredAt);
         detail.put("slaDueDate", slaDueDate);
         detail.put("resolutionSummary", null);
         detail.put("resolvedAt", c.getResolvedAt() != null ? c.getResolvedAt().toString() : null);
@@ -619,49 +765,48 @@ public class ComplaintApiV1Controller {
             tm.put("eventSource", t.getEventSource() != null ? t.getEventSource().name() : "MANUAL");
             return tm;
         }).collect(Collectors.toList()));
-
-        // ═══ UST852: RE Activity Status — staff-only, and read-only ═══
-        // This endpoint also serves the public tracker, so the entity's internal progress is gated on
-        // the staff check above: telling a complainant their bank "has not opened" the record invites
-        // a conversation RBI has not agreed to have. There is deliberately no setter anywhere on the
-        // staff side — the ladder is derived from RE actions only.
-        if (isStaff) {
-            ReActivityStatus activity = c.getReActivityStatus() == null
-                    ? ReActivityStatus.NOT_OPENED
-                    : c.getReActivityStatus();
-
-            Map<String, Object> reActivity = new LinkedHashMap<>();
-            reActivity.put("status", activity.name());
-            reActivity.put("labelKey", activity.translationKey());
-            reActivity.put("changedAt", c.getReActivityChangedAt() != null
-                    ? c.getReActivityChangedAt().toString() : null);
-            reActivity.put("nudgeThresholdDays", c.getReActivityNudgeDays());
-            reActivity.put("nudgedAt", c.getReActivityNudgedAt() != null
-                    ? c.getReActivityNudgedAt().toString() : null);
-            reActivity.put("readOnly", true);
-            detail.put("reActivity", reActivity);
-
-            // Ladder movements only, so staff can read the progression without wading through the
-            // whole workflow timeline (UST852).
-            detail.put("reActivityHistory", timeline.stream()
-                    .filter(t -> t.getAction() != null && t.getAction().startsWith("RE_ACTIVITY_"))
-                    .map(t -> {
-                        Map<String, Object> h = new LinkedHashMap<>();
-                        h.put("fromStatus", t.getFromStatus());
-                        h.put("toStatus", t.getToStatus());
-                        h.put("performedBy", t.getPerformedBy());
-                        h.put("eventSource", t.getEventSource() != null ? t.getEventSource().name() : "MANUAL");
-                        h.put("remarks", t.getRemarks());
-                        h.put("timestamp", t.getPerformedAt() != null ? t.getPerformedAt().toString() : "");
-                        return h;
-                    })
-                    .collect(Collectors.toList()));
-        }
         detail.put("communications", List.of());
-        detail.put("documents", List.of());
+        detail.put("documents", attachmentList);
+        detail.put("attachments", attachmentList);
         detail.put("triageSignal", c.getTriageSignal());
         detail.put("triageFlags", c.getTriageFlags());
         detail.put("eligibilityTimeline", c.getEligibilityTimeline());
+        detail.put("hasRepresentative", c.getRepName() != null && !c.getRepName().isBlank());
+        detail.put("representativeName", c.getRepName());
+        detail.put("representativeEmail", c.getRepEmail());
+        detail.put("representativePhone", c.getRepPhone());
+        detail.put("eligibilityAnswers", readJsonMap(c.getEligibilityAnswersJson()));
+        detail.put("wizardFormData", readJsonMap(c.getWizardFormDataJson()));
+        detail.put("closureClause", c.getClosureClause());
+
+        // UST111: tracker's "File an Appeal" action must only be offered for closures under a
+        // clause the complainant may appeal (15(1)(a)/15(1)(b)) — same rule as the history list
+        // (see appealable above). Fails closed on an unmapped or absent clause.
+        boolean detailAppealable = false;
+        try {
+            detailAppealable = appealClassificationService.isAppealable(
+                    c, com.hrms.cms.entity.ClosureClauseMaster.AppealParty.COMPLAINANT);
+        } catch (com.hrms.cms.service.AppealClassificationService.UnmappedClauseException ignored) {
+            // No clause recorded yet, or clause absent from the master — not appealable.
+        }
+        detail.put("appealable", detailAppealable);
+        detail.put("proposedAction", c.getProposedAction());
+        detail.put("proposedClause", c.getProposedClause());
+        detail.put("forwardedOfficeCode", c.getForwardedOfficeCode());
+        detail.put("forwardedOfficeName", c.getForwardedOfficeCode() != null
+                ? officeCodeMasterRepository.findByOfficeCodeAndIsActiveTrue(c.getForwardedOfficeCode())
+                        .map(o -> o.getOfficeName()).orElse(c.getForwardedOfficeCode())
+                : null);
+        detail.put("preForwardOfficer", c.getPreForwardOfficer());
+        detail.put("preForwardRole", c.getPreForwardRole());
+        detail.put("closureClauseDescription", c.getClosureClauseDescription());
+        detail.put("complaintStatusOnPortal", c.getComplaintStatusOnPortal());
+        detail.put("speakingOrderGenerated", c.getSpeakingOrderGenerated());
+        detail.put("gistOfCase", c.getGistOfCase());
+        detail.put("gistOfCaseRegional", c.getGistOfCaseRegional());
+        detail.put("department", c.getDepartment());
+        detail.put("workflowStage", c.getWorkflowStage());
+        detail.put("piiMasked", !revealed);
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", true);
@@ -1150,9 +1295,7 @@ public class ComplaintApiV1Controller {
             item.put("complaintNumber", c.getComplaintNumber());
             item.put("subject", c.getSubject());
             item.put("entityName", bankName);
-            // UST875: this endpoint is anonymous, so it returned every recent complainant's real name
-            // to any caller — a bulk harvest. Masked unconditionally; no caller here is identified.
-            item.put("complainantName", piiMaskingService.apply("complainantName", c.getComplainantName(), false));
+            item.put("complainantName", c.getComplainantName());
             item.put("status", c.getStatus());
             item.put("date", c.getCreatedAt() != null ? c.getCreatedAt().format(fmt) : "");
             return item;
@@ -1167,10 +1310,46 @@ public class ComplaintApiV1Controller {
         return ResponseEntity.ok(response);
     }
 
-    /** Blank strings are normalised to null so an omitted optional field is not stored as "". */
-    private static String asString(Object value) {
-        if (value == null) return null;
-        String s = value.toString().trim();
-        return s.isEmpty() ? null : s;
+    // The officer-facing comment threads, send-for-approval and office-head-decision used to be served
+    // from here too, on the same paths as ComplaintCommentController and CepcSendForApprovalController.
+    // Two handlers for one path is an Ambiguous mapping: it aborted startup rather than picking a winner.
+    // Those dedicated controllers own the routes now - they role-guard the action and go through the
+    // workflow/transfer services, which these copies did not. This class keeps only the citizen-facing API.
+    //
+    // MERGE NOTE: this used to also be where a simpler @PostMapping("/{complaintNumber}/withdraw")
+    // lived (phone-in-body ownership check, no documents, no NON_WITHDRAWABLE_STATUSES deny-list). It
+    // is superseded by withdrawComplaint/withdrawComplaintWithDocuments above, which own this same
+    // path split across a JSON arm and a MULTIPART arm — keeping both the old and the new handler
+    // would be an ambiguous mapping on "/{complaintNumber}/withdraw" and fail application startup, so
+    // the old handler was removed rather than merged. complaintService.withdrawComplaint(..) was its
+    // only caller.
+
+    private static String formatFileSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.0f KB", bytes / 1024.0);
+        return String.format("%.1f MB", bytes / (1024.0 * 1024));
+    }
+
+    /**
+     * Round-robin assignment scoped to a specific office. Falls back to the unscoped
+     * role-wide round robin if no officer's OfficerAvailability record matches the office.
+     */
+    private String assignOfficerByRoleAndOffice(String role, String officeCode) {
+        List<Map<String, Object>> officers = keycloakUserService.getUsersByRole(role);
+        List<Map<String, Object>> officeMatched = new ArrayList<>();
+        for (Map<String, Object> officer : officers) {
+            String userId = (String) officer.get("userId");
+            officerAvailabilityRepository.findByUserIdAndRole(userId, role).ifPresent(oa -> {
+                if (officeCode != null && officeCode.equals(oa.getOfficeCode())) {
+                    officeMatched.add(officer);
+                }
+            });
+        }
+        if (officeMatched.isEmpty()) {
+            return complaintRoutingService.assignOfficerByRole(role);
+        }
+        String picked = complaintRoutingService.assignOfficerByRole(role);
+        boolean pickedInOffice = officeMatched.stream().anyMatch(o -> picked.equals(o.get("userId")));
+        return pickedInOffice ? picked : (String) officeMatched.get(0).get("userId");
     }
 }

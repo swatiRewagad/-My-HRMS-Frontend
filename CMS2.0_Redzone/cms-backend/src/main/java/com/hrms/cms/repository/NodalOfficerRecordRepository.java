@@ -17,6 +17,14 @@ public interface NodalOfficerRecordRepository extends JpaRepository<NodalOfficer
     List<NodalOfficerRecord> findByComplaintNumber(String complaintNumber);
 
     /**
+     * Records for a whole page of complaints at once.
+     *
+     * <p>The dashboard grid shows the nodal officer and PNO on every row, and a page can hold 200 rows.
+     * Looking each up through {@link #findFirstByComplaintNumber} would be 200 round trips per page.
+     */
+    List<NodalOfficerRecord> findByComplaintNumberIn(Collection<String> complaintNumbers);
+
+    /**
      * The uniqueness check behind UST569's create-if-absent.
      *
      * <p>Keyed on complaintNumber alone and deliberately NOT on (entityCode, complaintNumber):
@@ -26,6 +34,8 @@ public interface NodalOfficerRecordRepository extends JpaRepository<NodalOfficer
     Optional<NodalOfficerRecord> findFirstByComplaintNumber(String complaintNumber);
 
     boolean existsByComplaintNumber(String complaintNumber);
+
+    Optional<NodalOfficerRecord> findByRecordNumber(String recordNumber);
 
     List<NodalOfficerRecord> findByStatus(String status);
 

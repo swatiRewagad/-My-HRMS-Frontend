@@ -88,6 +88,7 @@ public class CrpcHeadController {
                 request.get("toOffice"),
                 request.get("transferType"),
                 request.get("reason"),
+                request.get("comments"),
                 actorOf(jwt, request),
                 request.get("language")
         ));
@@ -105,7 +106,8 @@ public class CrpcHeadController {
             return jwt.getSubject();
         }
         String fromBody = body == null ? null
-                : firstNonBlank(body.get("approvedBy"), body.get("actor"), body.get("rejectedBy"));
+                : firstNonBlank(body.get("approvedBy"), body.get("actor"), body.get("rejectedBy"),
+                        body.get("requestedBy"));
         return fromBody == null ? "SYSTEM" : fromBody;
     }
 

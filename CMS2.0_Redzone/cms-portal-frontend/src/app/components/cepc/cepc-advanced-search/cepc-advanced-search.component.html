@@ -1,0 +1,107 @@
+<p-dialog [header]="'ui.cepc.dash.advanced_search' | translateOr: 'Advanced Search'" [visible]="visible()" (visibleChange)="visible.set($event)" [modal]="true"
+    [draggable]="false" [resizable]="false" [breakpoints]="{ '1199px': '75vw', '575px': '90vw' }"
+    [style]="{ width: '50vw' }" styleClass="search-dialog-override">
+
+    <div class="search-grid">
+        <div class="search-field">
+            <label for="complaintNumber">{{ 'ui.cepc.dv.field.complaint_number' | translateOr: 'Complaint Number' }}</label>
+            <input id="complaintNumber" type="text" pInputText [(ngModel)]="advSearch.complaintNumber"
+                [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        </div>
+
+        <div class="search-field">
+            <label for="id">{{ 'ui.cepc.as.complaint_id' | translateOr: 'Complaint Id' }}</label>
+            <input id="id" type="text" pInputText [(ngModel)]="advSearch.id" [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" maxlength="20"
+                (keypress)="allowOnlyNumbersOnKeypress($event)" (paste)="allowOnlyNumbersOnPaste($event)" />
+        </div>
+
+        <div class="search-field">
+            <label for="complainantName">{{ 'ui.cepc.dv.field.complainant_name' | translateOr: 'Complainant Name' }}</label>
+            <input id="complainantName" type="text" pInputText [(ngModel)]="advSearch.complainantName" maxlength="30"
+                [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        </div>
+
+        <div class="search-field">
+            <label for="complainantPhone">{{ 'ui.cepc.as.complainant_mobile' | translateOr: 'Complainant Mobile Number' }}</label>
+            <input id="complainantPhone" type="text" pInputText [(ngModel)]="advSearch.complainantPhone" maxlength="10"
+                [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" (keypress)="allowOnlyNumbersOnKeypress($event)"
+                (paste)="allowOnlyNumbersOnPaste($event)" />
+        </div>
+
+        <div class="search-field">
+            <label for="complainantEmail">{{ 'ui.cepc.as.complainant_email' | translateOr: 'Complainant Email' }}</label>
+            <input id="complainantEmail" type="email" pInputText [(ngModel)]="advSearch.complainantEmail"
+                [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        </div>
+
+        <div class="search-field">
+            <label for="fromEmailId">{{ 'ui.cepc.as.from_email_id' | translateOr: 'From Email ID' }}</label>
+            <input id="fromEmailId" type="email" pInputText [(ngModel)]="advSearch.fromEmailId"
+                [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        </div>
+
+        <div class="search-field">
+            <label for="filingType">{{ 'ui.cepc.dv.field.mode_of_receipt' | translateOr: 'Mode of Receipt' }}</label>
+            <p-select id="filingType" [(ngModel)]="advSearch.filingType" [options]="receiptOptions" [showClear]="true"
+                [loading]="isMasterDataLoading" optionLabel="label" optionValue="value" [placeholder]="'ui.cepc.dv.action.select_a_value' | translateOr: 'Select a Value'"
+                appendTo="body">
+            </p-select>
+        </div>
+
+        <div class="search-field">
+            <label for="entityName">{{ 'ui.cepc.dv.field.entity_name' | translateOr: 'Entity Name' }}</label>
+            <p-select id="entityName" [options]="entityOptions" [(ngModel)]="advSearch.entityName" optionLabel="label"
+                optionValue="value" [filter]="true" (onFilter)="onEntitySearch($event)" filterBy="label"
+                [showClear]="true" [placeholder]="'ui.cepc.as.select_a_bank' | translateOr: 'Select a Bank'">
+                <ng-template #dropdownicon>
+                    <i [class]="isEntityLoading ? 'pi pi-spin pi-spinner' : 'pi pi-search'"></i>
+                </ng-template>
+                <ng-template #emptyfilter>
+                    <span>
+                        {{ isEntityLoading ? 'Searching Banks API...' : 'No matching banks found' }}
+                    </span>
+                </ng-template>
+            </p-select>
+        </div>
+
+        <div class="search-field full-width">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.3rem;">
+                <label for="subject">{{ 'ui.cepc.dv.field.subject' | translateOr: 'Subject' }}</label>
+                <span style="font-size: 0.75rem; color: #6c757d;">
+                    {{ advSearch.subject?.length || 0 }}/4000
+                </span>
+            </div>
+            <input id="subject" type="text" pInputText [(ngModel)]="advSearch.subject" [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'"
+                maxlength="4000" style="width: 100%;" />
+        </div>
+
+        <div class="search-field">
+            <label for="nodalOfficerName">{{ 'ui.cepc.as.no_contact_person' | translateOr: 'NO/ Contact Person' }}</label>
+            <input id="nodalOfficerName" type="text" pInputText [(ngModel)]="advSearch.nodalOfficerName" maxlength="30"
+                [placeholder]="'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value'" />
+        </div>
+
+        <div class="search-field">
+            <label for="categoryId">{{ 'ui.cepc.as.complaint_main_category' | translateOr: 'Complaint Main Category' }}</label>
+            <p-select id="categoryId" [(ngModel)]="advSearch.categoryId" [options]="categoryOptions"
+                [loading]="isMasterDataLoading" optionLabel="label" optionValue="value" [placeholder]="'ui.cepc.dv.action.select_a_value' | translateOr: 'Select a Value'"
+                appendTo="body">
+            </p-select>
+        </div>
+
+        <div class="search-field">
+            <label for="filedAt">{{ 'ui.cepc.as.reported_on' | translateOr: 'Reported On' }}</label>
+            <p-datepicker id="filedAt" [(ngModel)]="advSearch.filedAt" dateFormat="dd-mm-yy" placeholder="DD-MM-YYYY"
+                [showClear]="true" [showIcon]="true" [readonlyInput]="true" inputId="filedAt" iconDisplay="input" [maxDate]="maxDate"
+                appendTo="body">
+            </p-datepicker>
+        </div>
+    </div>
+
+    <div class="modal-footer-actions">
+        <p-button [label]="'ui.cepc.as.clear_filters' | translateOr: 'Clear Filters'" severity="secondary" variant="text" (onClick)="onInternalClearClick()" />
+        <p-button [label]="'ui.cepc.dv.action.cancel' | translateOr: 'Cancel'" variant="text" (onClick)="visible.set(false)" />
+        <p-button [label]="'ui.cepc.dv.action.search' | translateOr: 'Search'" severity="primary" (onClick)="applyAdvancedSearch()" />
+    </div>
+
+</p-dialog>

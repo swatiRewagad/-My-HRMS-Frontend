@@ -77,6 +77,7 @@
   /* ── Accent (secondary categorical fills) ── */
   --accent-violet-bg: #ede9fe;
   --accent-violet-fg: #5b21b6;
+  --accent-violet-solid: #8b5cf6;
   --accent-indigo-bg: #e0e7ff;
   --accent-indigo-fg: #3730a3;
   --accent-indigo-solid: #6366f1;
@@ -238,6 +239,35 @@ body.high-contrast {
     background: #ff6b35 !important;
     color: #000 !important;
   }
+
+  // .lang-select keeps its own light translucent background (see public-layout.component.scss),
+  // so it needs to go dark here too, matching .main-header/.scheme-card above.
+  .lang-select {
+    background: #1a1a1a !important;
+    color: #fff !important;
+    border-color: #fff !important;
+
+    option {
+      background: #1a1a1a !important;
+      color: #fff !important;
+    }
+  }
+}
+
+/* PrimeNG tooltip: black background, white text, for all p-tooltip instances */
+.p-tooltip .p-tooltip-text {
+  background: #000;
+  color: #fff;
+}
+.p-tooltip .p-tooltip-arrow {
+  border-top-color: #000;
+}
+.p-tooltip.p-tooltip-right .p-tooltip-arrow,
+.p-tooltip.p-tooltip-bottom .p-tooltip-arrow {
+  border-right-color: #000;
+}
+.p-tooltip.p-tooltip-left .p-tooltip-arrow {
+  border-left-color: #000;
 }
 
 /* Speech-to-text textarea wrapper */
@@ -248,4 +278,25 @@ body.high-contrast {
   gap: 8px;
   textarea { flex: 1; }
   app-speech-button { margin-top: 6px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CEPC MODULE SCOPE
+   The CEPC components are a port of the RBIO set and carry their own PrimeNG-
+   based look. Everything they need is confined to this selector so the rest of
+   the portal keeps the design tokens above.
+
+   app-font-size-controls sets --app-text-scale (a unitless ratio to the 14px
+   default, e.g. 16/14) on documentElement. It is read HERE rather than on
+   :root deliberately: consuming it globally would rescale every screen in
+   the portal, not just CEPC. zoom (not font-size) is used so the stepper
+   rescales every element in the subtree uniformly, including the many CEPC
+   components that hardcode their own font-size in px and would otherwise
+   ignore an inherited font-size change.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cepc-scope {
+  // No --app-text-scale declaration here: declaring it would shadow the value the control writes
+  // to documentElement and the stepper would silently do nothing. The fallback (1) is "no zoom".
+  zoom: var(--app-text-scale, 1);
+  font-family: 'Noto Sans', sans-serif;
 }

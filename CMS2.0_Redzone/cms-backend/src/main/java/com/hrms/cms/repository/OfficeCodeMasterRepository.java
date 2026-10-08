@@ -12,6 +12,8 @@ public interface OfficeCodeMasterRepository extends JpaRepository<OfficeCodeMast
 
     Optional<OfficeCodeMaster> findByOfficeNameAndIsActiveTrue(String officeName);
 
+    Optional<OfficeCodeMaster> findByOfficeNameAndOfficeTypeAndIsActiveTrue(String officeName, String officeType);
+
     Optional<OfficeCodeMaster> findByOfficeCodeAndIsActiveTrue(String officeCode);
 
     /**

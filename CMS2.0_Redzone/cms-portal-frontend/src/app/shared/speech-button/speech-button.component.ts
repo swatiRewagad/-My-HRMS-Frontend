@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
   imports: [CommonModule],
   template: `
     @if (supported) {
-      <button type="button" class="speech-btn" [class.recording]="isRecording()"
+      <button type="button" class="speech-btn" [class.recording]="isRecording()" [disabled]="disabled"
               (click)="toggle()" [title]="isRecording() ? 'Stop recording' : 'Voice input'">
         <i class="pi" [class.pi-microphone]="!isRecording()" [class.pi-stop]="isRecording()"></i>
       </button>
@@ -24,6 +24,7 @@ import { CommonModule } from '@angular/common';
       color: #666; font-size: 15px; transition: all 0.2s;
       &:hover { border-color: #2460b9; color: #2460b9; }
       &.recording { background: #d32f2f; border-color: #d32f2f; color: #fff; animation: pulse 1.5s infinite; }
+      &:disabled { opacity: 0.5; cursor: not-allowed; border-color: #ddd; color: #666; }
     }
     .recording-indicator {
       font-size: 11px; color: #d32f2f; display: inline-flex; align-items: center; gap: 4px;
@@ -34,6 +35,7 @@ import { CommonModule } from '@angular/common';
 })
 export class SpeechButtonComponent implements OnDestroy {
   @Input() lang = 'en-IN';
+  @Input() disabled = false;
   @Output() transcription = new EventEmitter<string>();
 
   private zone = inject(NgZone);

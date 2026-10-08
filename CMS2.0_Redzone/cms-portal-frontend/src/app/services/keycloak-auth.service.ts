@@ -27,6 +27,13 @@ export interface StaffUser {
   reviewerTier?: string;
 }
 
+/**
+ * Mirrors app.routes.ts's CEPC_ROLES (minus ADMIN, handled separately above). Kept in sync by hand:
+ * getPostLoginRoute() must only aim a login at /cepc for roles the staffRoleGuard there will actually
+ * admit, otherwise the user burns a redirect + a failed guard check before landing on /staff/unauthorized.
+ */
+const CEPC_ADMITTED_ROLES = ['CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY', 'CEPC_ADMIN'];
+
 @Injectable({ providedIn: 'root' })
 export class KeycloakAuthService {
 
@@ -144,6 +151,19 @@ export class KeycloakAuthService {
 
   hasAnyRole(roles: string[]): boolean {
     return roles.some(r => this.hasRole(r));
+  }
+
+  getPostLoginRoute(): string[] {
+    const dept = this.currentUser()?.department?.toUpperCase();
+    const roles = this.getRoles();
+
+    if (roles.includes('ADMIN')) return ['/admin/dashboard'];
+    if (dept === 'CRPC' || roles.includes('DEO') || roles.includes('REVIEWER') || roles.includes('CRPC_HEAD')) return ['/crpc/home'];
+    if (dept === 'RBIO' || roles.some(r => r.startsWith('RBIO_'))) return ['/staff/rbio/tasks'];
+    if (roles.some(r => CEPC_ADMITTED_ROLES.includes(r))) return ['/cepc'];
+    if (dept === 'AA' || roles.some(r => r.startsWith('AA_'))) return ['/aa/dashboard'];
+    if (dept === 'RE' || roles.some(r => r.startsWith('RE_'))) return ['/re-portal/dashboard'];
+    return ['/staff/dashboard'];
   }
 
   private updateAuthState(): void {

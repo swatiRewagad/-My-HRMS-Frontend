@@ -3,6 +3,8 @@ package com.hrms.cms.service;
 import com.hrms.cms.config.FileStorageConfig;
 import com.hrms.cms.dto.ChunkUploadResponse;
 import com.hrms.cms.entity.ComplaintAttachment;
+import com.hrms.cms.entity.ComplaintAttachmentData;
+import com.hrms.cms.repository.ComplaintAttachmentDataRepository;
 import com.hrms.cms.repository.ComplaintAttachmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import java.nio.file.*;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -26,11 +29,21 @@ public class FileStorageService {
 
     private final FileStorageConfig config;
     private final ComplaintAttachmentRepository attachmentRepository;
+    private final ComplaintAttachmentDataRepository attachmentDataRepository;
     private final FileUploadValidator uploadValidator;
 
     /** Size and count limits are runtime configuration; see {@link FileUploadValidator}. */
     private final UploadLimitsService uploadLimits;
 
+    /**
+     * One attachment's bytes together with the two things a response needs to describe them.
+     *
+     * @param fileName    the name to offer the user — the name they uploaded, never a storage name
+     * @param contentType the stored type, so the answer does not depend on sniffing a file that may not exist
+     */
+    public record AttachmentContent(String fileName, String contentType, byte[] bytes) {}
+
+    @Transactional
     public ChunkUploadResponse handleChunkUpload(
             MultipartFile chunk,
             String uploadId,
@@ -83,43 +96,42 @@ public class FileStorageService {
                     .build();
         }
 
-        // All chunks received — assemble
-        Path complaintDir = config.getComplaintDir(complaintNumber);
-        Files.createDirectories(complaintDir);
-
-        String storedName = UUID.randomUUID() + "_" + sanitizeFileName(fileName);
-        Path finalPath = complaintDir.resolve(storedName);
-
-        assembleChunks(chunkDir, finalPath, totalChunks);
-
-        // Cleanup temp chunks
-        cleanupChunkDir(chunkDir);
+        // All chunks received — assemble. Inside the upload's own temp directory, which is deleted whole
+        // below: the assembled payload is a staging area, not storage, so nothing should outlive this call.
+        Path assembled = chunkDir.resolve("assembled");
+        assembleChunks(chunkDir, assembled, totalChunks);
 
         // The magic bytes only exist once every chunk has landed, so a disguised payload can only be
         // caught here — and must be deleted, not merely reported, or it stays on disk unreferenced.
-        String signatureError = uploadValidator.checkAssembledSignature(finalPath, fileName);
+        String signatureError = uploadValidator.checkAssembledSignature(assembled, fileName);
         if (signatureError != null) {
-            Files.deleteIfExists(finalPath);
+            cleanupChunkDir(chunkDir);
             return ChunkUploadResponse.builder()
                     .message(signatureError)
                     .complete(false)
                     .build();
         }
 
-        String checksum = computeChecksum(finalPath);
+        String checksum = computeChecksum(assembled);
+        byte[] bytes = Files.readAllBytes(assembled);
 
         ComplaintAttachment attachment = ComplaintAttachment.builder()
                 .complaintId(complaintId)
-                .fileName(storedName)
+                .fileName(sanitizeFileName(fileName))
                 .originalName(fileName)
                 .contentType(detectContentType(fileName))
-                .fileSize(Files.size(finalPath))
-                .storagePath(complaintNumber + "/" + storedName)
+                .fileSize((long) bytes.length)
                 .build();
 
         ComplaintAttachment saved = attachmentRepository.save(attachment);
+        attachmentDataRepository.save(ComplaintAttachmentData.builder()
+                .attachmentId(saved.getId())
+                .fileData(bytes)
+                .build());
 
-        log.info("File assembled: {} -> {} (checksum: {})", fileName, finalPath, checksum);
+        cleanupChunkDir(chunkDir);
+
+        log.info("File stored: {} ({} bytes, checksum: {})", fileName, bytes.length, checksum);
 
         return ChunkUploadResponse.builder()
                 .uploadId(actualUploadId)
@@ -128,7 +140,6 @@ public class FileStorageService {
                 .complete(true)
                 .attachmentId(saved.getId())
                 .fileName(saved.getOriginalName())
-                .storagePath(saved.getStoragePath())
                 .message("Upload complete")
                 .build();
     }
@@ -148,6 +159,8 @@ public class FileStorageService {
      * <p>The three-argument overload above delegates here with nulls, so every existing caller keeps
      * its current behaviour and no call site silently starts claiming a provenance it does not know.
      *
+     * @param complaintNumber retained for the callers that pass it, but no longer used to place the file:
+     *                        the bytes go to {@link ComplaintAttachmentData}, not to a per-complaint folder
      * @param uploadedBy   the uploader's identity; null when genuinely unknown
      * @param source       ComplaintAttachment.SOURCE_* — the capacity the uploader acted in
      * @param documentType optional classification, e.g. MEETING_MINUTES
@@ -178,29 +191,111 @@ public class FileStorageService {
                 .sum();
         uploadValidator.validateBatch(List.of(file), existing.size(), existingBytes);
 
-        Path complaintDir = config.getComplaintDir(complaintNumber);
-        Files.createDirectories(complaintDir);
-
-        String storedName = UUID.randomUUID() + "_" + sanitizeFileName(file.getOriginalFilename());
-        Path target = complaintDir.resolve(storedName);
-
-        try (InputStream in = file.getInputStream()) {
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
-        }
+        byte[] bytes = file.getBytes();
 
         ComplaintAttachment attachment = ComplaintAttachment.builder()
                 .complaintId(complaintId)
-                .fileName(storedName)
+                // The uploaded name made safe, NOT a storage name. This used to be
+                // "<uuid>_<name>" because it had to be unique on disk, and that machine-generated
+                // string was what the download endpoint offered the user as the filename.
+                .fileName(sanitizeFileName(file.getOriginalFilename()))
                 .originalName(file.getOriginalFilename())
                 .contentType(file.getContentType())
-                .fileSize(file.getSize())
-                .storagePath(complaintNumber + "/" + storedName)
+                .fileSize((long) bytes.length)
                 .uploadedBy(uploadedBy)
                 .source(source)
                 .documentType(documentType)
                 .build();
 
-        return attachmentRepository.save(attachment);
+        ComplaintAttachment saved = attachmentRepository.save(attachment);
+        attachmentDataRepository.save(ComplaintAttachmentData.builder()
+                .attachmentId(saved.getId())
+                .fileData(bytes)
+                .build());
+
+        return saved;
+    }
+
+    /**
+     * The bytes of one attachment plus what a response needs to name and type them.
+     *
+     * <p>Empty when the attachment does not exist, or when its bytes are in neither the database nor the
+     * legacy folder — callers answer 404 for both, because to a client they are the same thing.
+     */
+    @Transactional(readOnly = true)
+    public Optional<AttachmentContent> readContent(Long attachmentId) {
+        ComplaintAttachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
+        if (attachment == null) {
+            return Optional.empty();
+        }
+        byte[] bytes = readBytes(attachment);
+        if (bytes == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new AttachmentContent(displayName(attachment), contentTypeOf(attachment), bytes));
+    }
+
+    private byte[] readBytes(ComplaintAttachment attachment) {
+        ComplaintAttachmentData stored = attachmentDataRepository.findById(attachment.getId()).orElse(null);
+        if (stored != null && stored.getFileData() != null) {
+            return stored.getFileData();
+        }
+
+        Path legacy = legacyFilePath(attachment);
+        if (legacy == null || !Files.isReadable(legacy)) {
+            return null;
+        }
+        try {
+            return Files.readAllBytes(legacy);
+        } catch (IOException e) {
+            log.warn("Attachment {} is recorded at {} but could not be read", attachment.getId(), legacy, e);
+            return null;
+        }
+    }
+
+    /**
+     * Where an attachment taken before this change lives on disk, or null if it has no such file.
+     *
+     * <p>storagePath is database-held text, so it is resolved against the configured root and rejected if
+     * it escapes — a traversal in that column would otherwise read any file the process can.
+     */
+    private Path legacyFilePath(ComplaintAttachment attachment) {
+        String storagePath = attachment.getStoragePath();
+        if (storagePath == null || storagePath.isBlank()) {
+            return null;
+        }
+        Path root = Paths.get(config.getRootPath()).normalize();
+        Path file = root.resolve(storagePath).normalize();
+        if (!file.startsWith(root)) {
+            log.warn("Attachment {} has a storage path outside the attachment root: {}",
+                    attachment.getId(), storagePath);
+            return null;
+        }
+        return file;
+    }
+
+    /**
+     * The name to hand a downloading user: the name they uploaded.
+     *
+     * <p>Trailing path segments are stripped rather than trusted. Upload validation already rejects
+     * separators, but this value reaches a Content-Disposition header and the column predates that check.
+     */
+    private String displayName(ComplaintAttachment attachment) {
+        String name = attachment.getOriginalName() == null || attachment.getOriginalName().isBlank()
+                ? attachment.getFileName()
+                : attachment.getOriginalName();
+        if (name == null || name.isBlank()) {
+            return "attachment";
+        }
+        int lastSeparator = Math.max(name.lastIndexOf('/'), name.lastIndexOf('\\'));
+        String bare = lastSeparator < 0 ? name : name.substring(lastSeparator + 1);
+        return bare.isBlank() ? "attachment" : bare;
+    }
+
+    private String contentTypeOf(ComplaintAttachment attachment) {
+        return attachment.getContentType() == null || attachment.getContentType().isBlank()
+                ? detectContentType(displayName(attachment))
+                : attachment.getContentType();
     }
 
     /**
@@ -228,11 +323,11 @@ public class FileStorageService {
             java.util.Set<String> usedNames = new java.util.HashSet<>();
 
             for (ComplaintAttachment a : attachments) {
-                Path source = Paths.get(config.getRootPath(), a.getStoragePath());
-                if (!Files.exists(source) || !Files.isReadable(source)) {
+                byte[] bytes = readBytes(a);
+                if (bytes == null) {
                     missing.append(a.getOriginalName()).append(" (id ").append(a.getId()).append(")\n");
-                    log.warn("Attachment {} for complaint {} is recorded but missing on disk at {}",
-                            a.getId(), complaintNumber, source);
+                    log.warn("Attachment {} for complaint {} is recorded but its bytes could not be read",
+                            a.getId(), complaintNumber);
                     continue;
                 }
 
@@ -240,7 +335,7 @@ public class FileStorageService {
                 // would throw and abort the whole bundle.
                 String entryName = uniqueEntryName(a, usedNames);
                 zip.putNextEntry(new java.util.zip.ZipEntry(entryName));
-                Files.copy(source, zip);
+                zip.write(bytes);
                 zip.closeEntry();
                 written++;
             }
@@ -256,8 +351,17 @@ public class FileStorageService {
         return written;
     }
 
+    /**
+     * What one document is called inside the bundle: the name it was uploaded under.
+     *
+     * <p>Deliberately not {@link #sanitizeFileName}, which exists to make a name safe as a FILESYSTEM name
+     * and so replaces every space with an underscore — "My Statement.pdf" used to arrive inside the zip as
+     * "My_Statement.pdf", a renamed document. A zip entry only has to carry no path, or extracting the
+     * archive could write outside the directory it was extracted into; {@link #displayName} already strips
+     * that, and ".." is neutralised here for the same reason.
+     */
     private String uniqueEntryName(ComplaintAttachment a, java.util.Set<String> used) {
-        String base = sanitizeFileName(a.getOriginalName() == null ? a.getFileName() : a.getOriginalName());
+        String base = displayName(a).replace("..", "_");
         String candidate = base;
         int suffix = 2;
         while (!used.add(candidate)) {
@@ -274,20 +378,16 @@ public class FileStorageService {
         return config.getRootPath();
     }
 
-    @Transactional(readOnly = true)
-    public Path getFilePath(Long attachmentId) {
-        ComplaintAttachment attachment = attachmentRepository.findById(attachmentId)
-                .orElseThrow(() -> new RuntimeException("Attachment not found"));
-        return Paths.get(config.getRootPath(), attachment.getStoragePath());
-    }
-
     @Transactional
     public void deleteAttachment(Long attachmentId) throws IOException {
         ComplaintAttachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new RuntimeException("Attachment not found"));
 
-        Path filePath = Paths.get(config.getRootPath(), attachment.getStoragePath());
-        Files.deleteIfExists(filePath);
+        Path legacy = legacyFilePath(attachment);
+        if (legacy != null) {
+            Files.deleteIfExists(legacy);
+        }
+        attachmentDataRepository.deleteById(attachmentId);
         attachmentRepository.delete(attachment);
     }
 

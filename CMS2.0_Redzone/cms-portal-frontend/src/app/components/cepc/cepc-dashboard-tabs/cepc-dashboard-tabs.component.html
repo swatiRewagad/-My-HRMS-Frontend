@@ -1,0 +1,30 @@
+<div class="dashboard-tabs-container">
+  <p-tabs [value]="activeTab()" (valueChange)="onTabContainerChange($event)">
+    <p-tablist>
+      @for (tab of tabsConfig(); track tab.value) {
+        <p-tab [value]="tab.value">
+          <span class="tab-label-wrapper">
+            {{ tab.labelKey | translateOr: tab.label }}
+            @if (tab?.count !== undefined && tab?.count !== null) {
+              <p-badge [value]="'' + tab.count" styleClass="tab-count-badge" />
+            }
+          </span>
+        </p-tab>
+      }
+    </p-tablist>
+
+    <p-tabpanels styleClass="cepc-merged-tabpanels"
+        [style]="{ background: 'transparent', border: 'none' }">
+      @for (tab of tabsConfig(); track tab.value) {
+        <p-tabpanel [value]="tab.value" [style]="{ padding: '0' }">
+          @if (activeTab() === tab.value) {
+            <app-cepc-dashboard-table [complaints]="complaints()" [isSearching]="isSearching()"
+                [totalRecords]="totalRecords()" [activeTabValue]="tab.value" [tabConfig]="tab"
+                (queryChanged)="handleTableQuerySearch($event)">
+            </app-cepc-dashboard-table>
+          }
+        </p-tabpanel>
+      }
+    </p-tabpanels>
+  </p-tabs>
+</div>

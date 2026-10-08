@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Sets {@code COMPLAINTS.record_version = 0} on rows where it is NULL.
@@ -39,20 +39,36 @@ public class ComplaintVersionBackfill implements CommandLineRunner {
 
     private final EntityManager entityManager;
 
+    /**
+     * The transaction is managed here rather than with {@code @Transactional} on {@link #run}, so that the
+     * catch below sits OUTSIDE the transaction boundary.
+     *
+     * <p>With the annotation the "never block startup" promise could not be kept: a failing statement marks
+     * the transaction rollback-only inside Hibernate, so swallowing the exception merely deferred it to the
+     * commit, which then threw {@code UnexpectedRollbackException} from the runner and aborted the boot —
+     * exactly the outcome the catch exists to prevent. Committing (or rolling back) before catching is what
+     * actually makes the failure non-fatal.
+     */
+    private final TransactionTemplate transactionTemplate;
+
     @Override
-    @Transactional
     public void run(String... args) {
         try {
-            int updated = entityManager
-                    .createNativeQuery("UPDATE COMPLAINTS SET record_version = 0 WHERE record_version IS NULL")
-                    .executeUpdate();
-            if (updated > 0) {
+            Integer updated = transactionTemplate.execute(status -> entityManager
+                    // Lowercase and unquoted on purpose. Complaint declares @Table(name = "COMPLAINTS"), but
+                    // Boot's CamelCaseToUnderscoresNamingStrategy folds that to `complaints`, so the literal
+                    // uppercase name matched no table on a case-sensitive server (Linux MySQL defaults to
+                    // lower_case_table_names=0) and this backfill silently never ran there. Unquoted
+                    // lowercase resolves on MySQL either way and on Oracle, which folds it to uppercase.
+                    .createNativeQuery("UPDATE complaints SET record_version = 0 WHERE record_version IS NULL")
+                    .executeUpdate());
+            if (updated != null && updated > 0) {
                 log.info("Backfilled record_version=0 on {} complaint(s) that predate optimistic locking", updated);
             }
         } catch (Exception e) {
             // Never block startup. A failure here means writes to legacy rows will fail loudly at the
             // point of use, which is far easier to diagnose than an application that refuses to boot.
-            log.warn("Could not backfill COMPLAINTS.record_version: {}", e.getMessage());
+            log.warn("Could not backfill complaints.record_version: {}", e.getMessage());
         }
     }
 }

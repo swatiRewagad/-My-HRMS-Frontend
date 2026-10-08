@@ -28,7 +28,12 @@ import { environment } from '../../../../environments/environment';
       </header>
 
       <main class="content">
-        @if (user()) {
+        @if (checkingRedirect) {
+          <div class="redirect-loading">
+            <span class="spinner"></span>
+            <p>Loading your dashboard...</p>
+          </div>
+        } @else if (user()) {
           <div class="welcome-section">
             <h1>Welcome, {{ user()!.firstName }}!</h1>
             <p>Role: <strong>{{ user()!.roles.join(', ') }}</strong></p>
@@ -165,6 +170,16 @@ import { environment } from '../../../../environments/environment';
       font-size: 13px;
     }
     .refresh-btn:hover { background: #e8eaf6; }
+    .redirect-loading {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; padding: 80px 0; color: #555;
+    }
+    .redirect-loading .spinner {
+      width: 28px; height: 28px; border: 3px solid rgba(26,35,126,0.2);
+      border-top-color: #1a237e; border-radius: 50%;
+      animation: spin 0.8s linear infinite; display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
   `]
 })
 export class StaffDashboardComponent implements OnInit, OnDestroy {
@@ -176,6 +191,7 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
   user = this.auth.currentUser;
   pendingCount = signal(0);
   completedCount = signal(0);
+  checkingRedirect = true;
 
   async ngOnInit() {
     const authenticated = await this.auth.init();
@@ -184,36 +200,14 @@ export class StaffDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Auto-redirect based on department/role
-    const dept = this.auth.currentUser()?.department?.toUpperCase();
-    const roles = this.auth.getRoles();
-
-    if (roles.includes('ADMIN')) {
-      this.router.navigate(['/admin/dashboard']);
-      return;
-    }
-    if (dept === 'CRPC' || roles.includes('DEO') || roles.includes('REVIEWER') || roles.includes('CRPC_HEAD')) {
-      this.router.navigate(['/crpc/home']);
-      return;
-    }
-    if (dept === 'RBIO' || roles.some(r => r.startsWith('RBIO_'))) {
-      this.router.navigate(['/staff/rbio/tasks']);
-      return;
-    }
-    if (dept === 'CEPC' || roles.some(r => r.startsWith('CEPC_'))) {
-      this.router.navigate(['/cepc/dashboard']);
-      return;
-    }
-    if (dept === 'AA' || roles.some(r => r.startsWith('AA_'))) {
-      this.router.navigate(['/aa/dashboard']);
-      return;
-    }
-    if (dept === 'RE' || roles.some(r => r.startsWith('RE_'))) {
-      this.router.navigate(['/re-portal/dashboard']);
+    const destination = this.auth.getPostLoginRoute();
+    if (destination[0] !== '/staff/dashboard') {
+      this.router.navigate(destination);
       return;
     }
 
-    // Fallback: stay on this page
+    // No matching department — this is genuinely the right page.
+    this.checkingRedirect = false;
     this.loadCounts();
 
     this.routeSub = this.router.events

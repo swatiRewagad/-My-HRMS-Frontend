@@ -1,9 +1,9 @@
 <div class="cepc-conciliation">
-  <h4>Conciliation Proceedings</h4>
+  <h4>{{ 'ui.cepc.conc.proceedings' | translateOr: 'Conciliation Proceedings' }}</h4>
 
   <!-- Status -->
   <div class="conciliation-status">
-    <span class="status-label">Status:</span>
+    <span class="status-label">{{ 'ui.cepc.conc.status_prefix' | translateOr: 'Status:' }}</span>
     <span class="status-value" [attr.data-status]="conciliationStatus">
       @switch (conciliationStatus) {
         @case ('SETTLED') { Settled }
@@ -17,7 +17,7 @@
   <!-- Parties Involved -->
   @if (partiesInvolved.length > 0) {
     <div class="parties-section">
-      <h5>Parties Involved</h5>
+      <h5>{{ 'ui.cepc.conc.parties_involved' | translateOr: 'Parties Involved' }}</h5>
       <div class="parties-list">
         @for (party of partiesInvolved; track party.role) {
           <div class="party-item">
@@ -45,40 +45,40 @@
     </div>
 
     @if (uploadingMinutes()) {
-      <p class="upload-status">Uploading minutes...</p>
+      <p class="upload-status">{{ 'ui.cepc.conc.uploading_minutes' | translateOr: 'Uploading minutes...' }}</p>
     }
     @if (minutesUploaded()) {
-      <p class="upload-status success">Minutes uploaded successfully.</p>
+      <p class="upload-status success">{{ 'ui.cepc.conc.minutes_uploaded' | translateOr: 'Minutes uploaded successfully.' }}</p>
     }
   }
 
   <!-- Schedule Hearing Form -->
   @if (showScheduleForm()) {
     <div class="form-section">
-      <h5>Schedule Conciliation Hearing</h5>
+      <h5>{{ 'ui.cepc.conc.schedule_hearing' | translateOr: 'Schedule Conciliation Hearing' }}</h5>
       <div class="form-grid">
         <div class="form-field">
-          <label>Date *</label>
+          <label>{{ 'ui.cepc.conc.date_required' | translateOr: 'Date *' }}</label>
           <input type="date" [(ngModel)]="hearingDate" />
         </div>
         <div class="form-field">
-          <label>Time *</label>
+          <label>{{ 'ui.cepc.conc.time_required' | translateOr: 'Time *' }}</label>
           <input type="time" [(ngModel)]="hearingTime" />
         </div>
         <div class="form-field full">
-          <label>Venue</label>
-          <input type="text" [(ngModel)]="hearingVenue" placeholder="Meeting venue or video link" />
+          <label>{{ 'ui.cepc.conc.venue' | translateOr: 'Venue' }}</label>
+          <input type="text" [(ngModel)]="hearingVenue" [placeholder]="'ui.cepc.conc.ph.venue' | translateOr: 'Meeting venue or video link'" />
         </div>
         <div class="form-field full">
-          <label>Notes</label>
-          <textarea [(ngModel)]="hearingNotes" rows="3" placeholder="Additional instructions..."></textarea>
+          <label>{{ 'ui.cepc.conc.notes' | translateOr: 'Notes' }}</label>
+          <textarea [(ngModel)]="hearingNotes" rows="3" [placeholder]="'ui.cepc.conc.ph.additional_instructions' | translateOr: 'Additional instructions...'"></textarea>
         </div>
       </div>
       <div class="form-actions">
         <button class="submit-btn" [disabled]="processing() || !hearingDate || !hearingTime" (click)="submitScheduleHearing()">
           @if (processing()) { Scheduling... } @else { Confirm Schedule }
         </button>
-        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        <button class="cancel-btn" (click)="cancelForm()">{{ 'ui.cepc.dv.action.cancel' | translateOr: 'Cancel' }}</button>
       </div>
     </div>
   }
@@ -86,31 +86,31 @@
   <!-- Outcome Form -->
   @if (showOutcomeForm()) {
     <div class="form-section">
-      <h5>Record Conciliation Outcome</h5>
+      <h5>{{ 'ui.cepc.conc.record_outcome' | translateOr: 'Record Conciliation Outcome' }}</h5>
       <div class="form-grid">
         <div class="form-field full">
-          <label>Outcome *</label>
+          <label>{{ 'ui.cepc.conc.outcome_required' | translateOr: 'Outcome *' }}</label>
           <select [(ngModel)]="outcomeType">
-            <option value="SETTLED">Settled</option>
-            <option value="FAILED">Failed</option>
+            <option value="SETTLED">{{ 'ui.cepc.conc.settled' | translateOr: 'Settled' }}</option>
+            <option value="FAILED">{{ 'ui.cepc.conc.failed' | translateOr: 'Failed' }}</option>
           </select>
         </div>
         @if (outcomeType === 'SETTLED') {
           <div class="form-field full">
-            <label>Compensation Amount (if applicable)</label>
-            <input type="number" [(ngModel)]="compensationAmount" placeholder="Amount in INR" />
+            <label>{{ 'ui.cepc.conc.compensation_amount' | translateOr: 'Compensation Amount (if applicable)' }}</label>
+            <input type="number" [(ngModel)]="compensationAmount" [placeholder]="'ui.cepc.conc.amount_in_inr' | translateOr: 'Amount in INR'" />
           </div>
         }
         <div class="form-field full">
-          <label>Summary Notes *</label>
-          <textarea [(ngModel)]="summaryNotes" rows="4" placeholder="Conciliation outcome summary..."></textarea>
+          <label>{{ 'ui.cepc.conc.summary_notes_required' | translateOr: 'Summary Notes *' }}</label>
+          <textarea [(ngModel)]="summaryNotes" rows="4" [placeholder]="'ui.cepc.conc.ph.outcome_summary' | translateOr: 'Conciliation outcome summary...'"></textarea>
         </div>
       </div>
       <div class="form-actions">
         <button class="submit-btn" [disabled]="processing() || !summaryNotes.trim()" (click)="submitOutcome()">
           @if (processing()) { Recording... } @else { Record Outcome }
         </button>
-        <button class="cancel-btn" (click)="cancelForm()">Cancel</button>
+        <button class="cancel-btn" (click)="cancelForm()">{{ 'ui.cepc.dv.action.cancel' | translateOr: 'Cancel' }}</button>
       </div>
     </div>
   }

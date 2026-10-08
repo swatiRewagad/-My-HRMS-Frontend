@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ComplaintService } from '../../../services/complaint.service';
+import { PublicAuthService } from '../../../services/public-auth.service';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
@@ -36,6 +37,7 @@ export class WithdrawComplaintComponent implements OnInit {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private complaintService = inject(ComplaintService);
+  private authService = inject(PublicAuthService);
   // Public: the templates render the configured limit in their upload hints.
   uploadLimits = inject(UploadLimitsService);
 
@@ -113,10 +115,17 @@ export class WithdrawComplaintComponent implements OnInit {
     this.error = '';
     this.loading.set(true);
 
+    // `phone` is authorisation, not metadata: the withdraw endpoint rejects the request unless it
+    // matches the complaint's registered mobile number. This page's tracker call returns a
+    // ComplaintStatus, which carries no complainant phone, so the authenticated citizen's own
+    // session identifier is the only one available here — the same source every other public
+    // component behind publicAuthGuard uses (see complaint-history, public-layout, file-complaint).
+    const phone = this.authService.userIdentifier();
+
     // The documents go WITH the withdrawal (UST107 scenario 4). They used to be collected here and
     // never sent anywhere.
     this.complaintService.withdrawComplaint(
-      this.complaintId, this.reason, this.additionalRemarks, this.withdrawalDocs,
+      this.complaintId, this.reason, this.additionalRemarks, phone, this.withdrawalDocs,
     ).subscribe({
       next: () => {
         this.withdrawnRef = this.complaintId;

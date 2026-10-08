@@ -1,0 +1,131 @@
+<div class="history-slide-panel legal-case-panel">
+  <div class="history-panel-header">
+    <h3><i class="pi pi-briefcase"></i> {{ 'ui.cepc.lc.cases' | translateOr: 'Legal Cases' }}</h3>
+    <button class="sidebar-expand-btn" (click)="close.emit()" [title]="'ui.cepc.dv.action.close' | translateOr: 'Close'">
+      <i class="pi pi-chevron-right"></i>
+    </button>
+  </div>
+
+  <button class="btn btn-outline legal-case-update-btn" (click)="openEditor.emit()">
+    <i class="pi pi-pencil"></i> {{ 'ui.cepc.lc.update_details' | translateOr: 'Update Details' }}
+  </button>
+
+  @if (loadingLegalCase) {
+    <div class="history-loading">
+      <i class="pi pi-spin pi-spinner"></i> {{ 'ui.cepc.lc.loading' | translateOr: 'Loading...' }}
+    </div>
+  } @else {
+    <div class="legal-case-field-list">
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.case_no_year' | translateOr: 'Case No./WP No & Year' }}</span><span class="entry-detail-value">{{ legalCase?.caseNumber || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.court_name' | translateOr: 'Name of the Court' }}</span><span class="entry-detail-value">{{ legalCase?.courtName || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.parties_of_case' | translateOr: 'Parties of Case' }}</span><span class="entry-detail-value">{{ legalCase?.partiesOfCase || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.region_of_legal_team' | translateOr: 'Region of Legal Team Involved' }}</span><span class="entry-detail-value">{{ legalCase?.regionOfLegalTeam || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.rbi_first_respondent' | translateOr: 'Whether RBI/OBO is the 1st Respondent' }}</span><span class="entry-detail-value">{{ legalCase?.rbiFirstRespondent === true ? 'Yes' : legalCase?.rbiFirstRespondent === false ? 'No' : '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.appearance_required' | translateOr: 'Appearance required in the Hearing' }}</span><span class="entry-detail-value">{{ legalCase?.appearanceRequired === true ? 'Yes' : legalCase?.appearanceRequired === false ? 'No' : '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.brief_particulars' | translateOr: 'Brief particular/Subject matter of the case and nature of relief claimed' }}</span><span class="entry-detail-value">{{ legalCase?.subjectMatter || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.advocate_name' | translateOr: 'Name of the Advocate' }}</span><span class="entry-detail-value">{{ legalCase?.advocateName || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.assistant_legal_advisor' | translateOr: 'Assistant Legal Advisor' }}</span><span class="entry-detail-value">{{ legalCase?.assistantLegalAdvisor || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.next_hearing_date' | translateOr: 'Date of next hearing' }}</span><span class="entry-detail-value">{{ legalCase?.nextHearingDate || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.remarks_present_status' | translateOr: 'Remarks/Present status of the Case' }}</span><span class="entry-detail-value">{{ legalCase?.presentStatus || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.action_taken_so_far' | translateOr: 'Action taken so far' }}</span><span class="entry-detail-value">{{ legalCase?.actionTakenSoFar || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.action_to_be_taken' | translateOr: 'Action to be taken' }}</span><span class="entry-detail-value">{{ legalCase?.actionToBeTaken || '-' }}</span></div>
+      <div class="legal-case-field"><span class="entry-detail-label">{{ 'ui.cepc.lc.monetary_claim_details' | translateOr: 'Details of Monetary claim against RBI and the provisions made thereof' }}</span><span class="entry-detail-value">{{ legalCase?.monetaryClaimDetails || '-' }}</span></div>
+    </div>
+  }
+</div>
+
+<!-- Legal Case Dialog — the Legal Case panel's single "Update Details" form. One dossier per
+     complaint, unlike Contact Persons, so there is no list here — just the form, pre-filled from
+     whatever is already recorded. -->
+@if (showLegalCaseDialog) {
+  <div class="modal-overlay" (click)="closeDialog.emit()">
+    <div class="modal-content legal-case-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header-bar">
+        <span>{{ 'ui.cepc.lc.update_details_title' | translateOr: 'Legal Case — Update Details' }}</span>
+      </div>
+      <div class="modal-body">
+        <div class="final-decision-form legal-case-form">
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.case_no_year' | translateOr: 'Case No./WP No & Year' }}</label>
+            <input type="text" [(ngModel)]="localForm.caseNumber" (ngModelChange)="onFieldChange()" maxlength="100" />
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.court_name' | translateOr: 'Name of the Court' }}</label>
+            <input type="text" [(ngModel)]="localForm.courtName" (ngModelChange)="onFieldChange()" maxlength="150" />
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.parties_of_case' | translateOr: 'Parties of Case' }}</label>
+            <input type="text" [(ngModel)]="localForm.partiesOfCase" (ngModelChange)="onFieldChange()" maxlength="255" />
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.region_of_legal_team' | translateOr: 'Region of Legal Team Involved' }}</label>
+            <select [(ngModel)]="localForm.regionOfLegalTeam" (ngModelChange)="onFieldChange()">
+              <option [ngValue]="''">{{ 'ui.cepc.dv.action.select' | translateOr: 'Select' }}</option>
+              @for (o of legalCaseRegionOptions; track o.officeCode) {
+                <option [ngValue]="o.officeName">{{ o.officeName }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.rbi_first_respondent' | translateOr: 'Whether RBI/OBO is the 1st Respondent' }}</label>
+            <select [(ngModel)]="localForm.rbiFirstRespondent" (ngModelChange)="onFieldChange()">
+              <option [ngValue]="null">{{ 'ui.cepc.dv.action.select' | translateOr: 'Select' }}</option>
+              <option [ngValue]="true">{{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</option>
+              <option [ngValue]="false">{{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.appearance_required' | translateOr: 'Appearance required in the Hearing' }}</label>
+            <select [(ngModel)]="localForm.appearanceRequired" (ngModelChange)="onFieldChange()">
+              <option [ngValue]="null">{{ 'ui.cepc.dv.action.select' | translateOr: 'Select' }}</option>
+              <option [ngValue]="true">{{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</option>
+              <option [ngValue]="false">{{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</option>
+            </select>
+          </div>
+          <div class="form-group full-width">
+            <label>{{ 'ui.cepc.lc.brief_particulars' | translateOr: 'Brief particular/Subject matter of the case and nature of relief claimed' }}</label>
+            <textarea [(ngModel)]="localForm.subjectMatter" (ngModelChange)="onFieldChange()" rows="3" maxlength="2000"></textarea>
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.advocate_name' | translateOr: 'Name of the Advocate' }}</label>
+            <input type="text" [(ngModel)]="localForm.advocateName" (ngModelChange)="onFieldChange()" maxlength="100" />
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.assistant_legal_advisor' | translateOr: 'Assistant Legal Advisor' }}</label>
+            <input type="text" [(ngModel)]="localForm.assistantLegalAdvisor" (ngModelChange)="onFieldChange()" maxlength="100" />
+          </div>
+          <div class="form-group">
+            <label>{{ 'ui.cepc.lc.next_hearing_date' | translateOr: 'Date of next hearing' }}</label>
+            <input type="date" [(ngModel)]="localForm.nextHearingDate" (ngModelChange)="onFieldChange()" [min]="todayIso" />
+          </div>
+          <div class="form-group full-width">
+            <label>{{ 'ui.cepc.lc.remarks_present_status' | translateOr: 'Remarks/Present status of the Case' }}</label>
+            <textarea [(ngModel)]="localForm.presentStatus" (ngModelChange)="onFieldChange()" rows="3" maxlength="2000"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>{{ 'ui.cepc.lc.action_taken_so_far' | translateOr: 'Action taken so far' }}</label>
+            <textarea [(ngModel)]="localForm.actionTakenSoFar" (ngModelChange)="onFieldChange()" rows="3" maxlength="2000"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>{{ 'ui.cepc.lc.action_to_be_taken' | translateOr: 'Action to be taken' }}</label>
+            <textarea [(ngModel)]="localForm.actionToBeTaken" (ngModelChange)="onFieldChange()" rows="3" maxlength="2000"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>{{ 'ui.cepc.lc.monetary_claim_details' | translateOr: 'Details of Monetary claim against RBI and the provisions made thereof' }}</label>
+            <textarea [(ngModel)]="localForm.monetaryClaimDetails" (ngModelChange)="onFieldChange()" rows="3" maxlength="2000"></textarea>
+          </div>
+        </div>
+
+        @if (legalCaseError) {
+          <div class="inline-error"><i class="pi pi-exclamation-triangle"></i> {{ legalCaseError }}</div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" (click)="closeDialog.emit()">{{ 'ui.cepc.dv.action.cancel' | translateOr: 'Cancel' }}</button>
+        <button class="btn btn-primary" [disabled]="legalCaseSaving" (click)="save.emit()">
+          @if (legalCaseSaving) { <span class="spinner-sm"></span> Saving... } @else { Save }
+        </button>
+      </div>
+    </div>
+  </div>
+}

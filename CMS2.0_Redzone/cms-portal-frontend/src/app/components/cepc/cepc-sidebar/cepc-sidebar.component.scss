@@ -1,0 +1,122 @@
+:host {
+  display: block;
+  position: sticky;
+  top: var(--cepc-header-height, 3.5rem);
+  height: calc(100vh - var(--cepc-header-height, 3.5rem));
+  z-index: 999;
+}
+
+.sb {
+  background: #06152d;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0.75rem 0.5rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sb-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+// ── Nav Item ────────────────────────────────────────────────────
+
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.7rem 0.75rem;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  white-space: nowrap;
+  outline: none;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+
+  &--active {
+    background: var(--p-primary-color, #2563eb);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+
+    &:hover {
+      background: var(--p-primary-color, #2563eb);
+    }
+
+    .sb-item__icon {
+      color: #ffffff;
+    }
+  }
+}
+
+.sb-item__icon {
+  font-size: 1.05rem;
+  min-width: 1.25rem;
+  text-align: center;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.sb-item__label {
+  display: inline-block;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+// ── Toggle Button ───────────────────────────────────────────────
+
+.sb-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  outline: none;
+  white-space: nowrap;
+
+  i {
+    font-size: 0.85rem;
+    min-width: 1.25rem;
+    text-align: center;
+    flex-shrink: 0;
+    transition: color 0.2s ease;
+  }
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.5);
+  }
+}
+
+.sb-toggle__label {
+  display: inline-block;
+  white-space: nowrap;
+}

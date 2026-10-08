@@ -14,4 +14,10 @@ public final class KafkaTopics {
     public static final String COMPLAINT_WITHDRAWN = "complaint.withdrawn";
     public static final String APPEAL_FILED = "appeal.filed";
     public static final String COMPLAINT_DLQ = "complaint.dlq";
+
+    /**
+     * One outbound email/SMS awaiting dispatch. cms-backend publishes; cms-notification-service
+     * consumes, sends, and settles the NOTIFICATION_DELIVERY_LOG row identified by dispatchRef.
+     */
+    public static final String NOTIFICATION_DISPATCH = "notification.dispatch";
 }

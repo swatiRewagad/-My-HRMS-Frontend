@@ -56,6 +56,10 @@ class AppealEligibilityServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Appealability-by-clause is covered separately below; default to appealable so the
+        // pre-existing window/status scenarios continue to exercise only what they intend to.
+        lenient().when(classificationService.isAppealable(any(), any())).thenReturn(true);
+
         closedComplaintWithin30Days = Complaint.builder()
                 .id(1L)
                 .complaintNumber("CMP-20260625-001")
@@ -347,6 +351,33 @@ class AppealEligibilityServiceTest {
                     .build();
             when(appealRepository.findByOriginalComplaintNumber("CMP-20260625-001"))
                     .thenReturn(List.of(activeAppeal));
+
+            Map<String, Object> result = appealEligibilityService.checkEligibility("CMP-20260625-001");
+
+            assertThat(result.get("eligible")).isEqualTo(false);
+        }
+
+        @Test
+        @DisplayName("should be ineligible when the closure clause is not appealable by the complainant (UST111)")
+        void shouldBeIneligibleWhenClauseNotAppealable() {
+            when(complaintRepository.findByComplaintNumber("CMP-20260625-001"))
+                    .thenReturn(Optional.of(closedComplaintWithin30Days));
+            when(classificationService.isAppealable(eq(closedComplaintWithin30Days), eq(com.hrms.cms.entity.ClosureClauseMaster.AppealParty.COMPLAINANT)))
+                    .thenReturn(false);
+
+            Map<String, Object> result = appealEligibilityService.checkEligibility("CMP-20260625-001");
+
+            assertThat(result.get("eligible")).isEqualTo(false);
+            assertThat(result.get("reason").toString()).contains("not eligible for appeal");
+        }
+
+        @Test
+        @DisplayName("should be ineligible when the closure clause is unmapped (fails closed)")
+        void shouldBeIneligibleWhenClauseUnmapped() {
+            when(complaintRepository.findByComplaintNumber("CMP-20260625-001"))
+                    .thenReturn(Optional.of(closedComplaintWithin30Days));
+            when(classificationService.isAppealable(any(), any()))
+                    .thenThrow(new AppealClassificationService.UnmappedClauseException("no clause", null, "RBIOS_2021"));
 
             Map<String, Object> result = appealEligibilityService.checkEligibility("CMP-20260625-001");
 

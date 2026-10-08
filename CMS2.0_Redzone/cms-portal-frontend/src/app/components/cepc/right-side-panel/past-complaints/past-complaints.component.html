@@ -1,0 +1,97 @@
+<div class="col-right-sidebar">
+  <!-- Reference Section -->
+  <div class="sidebar-section ref-section">
+    <div class="sidebar-section-header">
+      <h4><i class="pi pi-cog"></i> {{ 'ui.cepc.panel.reference' | translateOr: 'Reference' }}</h4>
+      <button class="sidebar-expand-btn"><i class="pi pi-chevron-right"></i></button>
+    </div>
+  </div>
+
+  <!-- Past Complaints Section -->
+  <div class="sidebar-section pc-section">
+    <div class="sidebar-section-header">
+      <h4><img src="assets/pastComplint.png" alt="" class="sidebar-icon-img" /> {{ 'ui.cepc.dv.tab.past_complaints' | translateOr: 'Past Complaints' }} <span class="sidebar-count-badge">{{ pastComplaints.length }}</span></h4>
+      <button class="sidebar-expand-btn" (click)="refresh.emit()"><i class="pi pi-refresh"></i></button>
+    </div>
+    <div class="sidebar-section-body">
+      <div class="sidebar-search">
+        <i class="pi pi-search"></i>
+        <input type="text" [placeholder]="'ui.cepc.dv.action.search' | translateOr: 'Search'" />
+      </div>
+      <div class="pc-list-scroll">
+        @if (loadingPastComplaints) {
+          <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> {{ 'ui.cepc.lc.loading' | translateOr: 'Loading...' }}</p>
+        } @else if (pastComplaints.length > 0) {
+          @for (pc of pastComplaints; track pc.complaintId; let idx = $index) {
+            <div class="past-complaint-card"
+                 [class.pc-active-card]="pc.status !== 'COMPLETED' && pc.status !== 'RESOLVED'"
+                 [class.pc-completed-card]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
+              <div class="pc-status-row">
+                <span class="pc-status"
+                      [class.active]="pc.status !== 'COMPLETED' && pc.status !== 'RESOLVED'"
+                      [class.completed]="pc.status === 'COMPLETED' || pc.status === 'RESOLVED'">
+                  @if (pc.status === 'COMPLETED' || pc.status === 'RESOLVED') {
+                    <i class="pi pi-file"></i> Completed
+                  } @else {
+                    <i class="pi pi-check-circle"></i> Active
+                  }
+                </span>
+                @if (pc.status === 'COMPLETED' || pc.status === 'RESOLVED') {
+                  <span class="pc-clock-icon"><i class="pi pi-history"></i></span>
+                }
+              </div>
+              <div class="pc-details">
+                <span class="pc-field">{{ 'ui.cepc.panel.complaint_id_prefix' | translateOr: 'Complaint Id:' }} <strong>{{ pc.complaintNumber }}</strong></span>
+                <span class="pc-field">{{ 'ui.cepc.panel.modified_date_prefix' | translateOr: 'Modified Date:' }} <strong>{{ pc.updatedAt }}</strong></span>
+                <span class="pc-field">{{ 'ui.cepc.panel.processing_office_prefix' | translateOr: 'Processing Office:' }} <strong>{{ pc.department || complaintOffice || '—' }}</strong></span>
+              </div>
+              <p class="pc-entity">{{ 'ui.cepc.panel.entity_prefix' | translateOr: 'Entity:' }} <strong>{{ pc.entityName || '—' }}</strong></p>
+              <p class="pc-subject">{{ pc.subject }}</p>
+            </div>
+          }
+        } @else {
+          <p class="sidebar-empty">{{ 'ui.cepc.panel.no_past_complaints' | translateOr: 'No past complaints found' }}</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Documents Section -->
+  <div class="sidebar-section documents-section">
+    <div class="sidebar-section-header">
+      <h4><i class="pi pi-file"></i> {{ 'ui.cepc.panel.documents' | translateOr: 'Documents' }}</h4>
+    </div>
+    <div class="sidebar-section-body">
+      <div class="sidebar-search">
+        <i class="pi pi-search"></i>
+        <input type="text" [placeholder]="'ui.cepc.dv.action.search' | translateOr: 'Search'" />
+      </div>
+      <div class="doc-list-scroll">
+        @if (loadingSidebarAttachments) {
+          <p class="sidebar-loading"><i class="pi pi-spin pi-spinner"></i> {{ 'ui.cepc.lc.loading' | translateOr: 'Loading...' }}</p>
+        } @else if (sidebarAttachments.length > 0) {
+          @for (att of sidebarAttachments; track att.id) {
+            <div class="doc-item">
+              <div class="doc-icon" [class.doc-icon-pdf]="att.type.includes('pdf')">
+                @if (att.type.includes('pdf')) { <i class="pi pi-file-pdf"></i> }
+                @else if (att.type.includes('image')) { <i class="pi pi-image"></i> }
+                @else if (att.type.includes('sheet') || att.type.includes('excel') || att.name.endsWith('.xls') || att.name.endsWith('.xlsx')) { <i class="pi pi-file-excel"></i> }
+                @else { <i class="pi pi-file"></i> }
+              </div>
+              <div class="doc-info">
+                <span class="doc-name">{{ att.name }}</span>
+                <span class="doc-meta">{{ att.size }} Uploaded by {{ att.uploadedBy || '—' }}</span>
+              </div>
+              <div class="doc-actions">
+                <button [title]="'ui.cepc.sla.view' | translateOr: 'View'"><i class="pi pi-eye"></i></button>
+                <button [title]="'ui.cepc.dv.action.download' | translateOr: 'Download'" (click)="downloadAttachment.emit(att)"><i class="pi pi-download"></i></button>
+              </div>
+            </div>
+          }
+        } @else {
+          <p class="sidebar-empty">{{ 'ui.cepc.panel.no_documents_attached' | translateOr: 'No documents attached' }}</p>
+        }
+      </div>
+    </div>
+  </div>
+</div>

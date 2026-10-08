@@ -1,0 +1,204 @@
+$bp-sm: 480px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+
+:host {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.625rem;
+  width: 100%;
+  max-width: 120rem;
+  padding: 0;
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (min-width: $bp-md) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (min-width: $bp-lg) {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.3fr);
+  }
+}
+
+.kpi-card-surface {
+  --p-card-body-padding: 0;
+  --p-card-body-gap: 0;
+  --p-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --p-card-border-radius: 0.1875rem;
+
+  background-color: var(--p-content-background, #fff);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    border-color: var(--p-primary-color, #cbd5e1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10);
+  }
+
+  &.kpi-selected {
+    border-color: var(--p-primary-color, #3b82f6);
+    background-color: color-mix(in srgb, var(--p-primary-color, #3b82f6) 5%, transparent);
+    box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--p-primary-color, #3b82f6) 15%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--p-primary-color, #2460b9);
+    outline-offset: 1px;
+    border-color: var(--p-primary-color, #3b82f6);
+  }
+
+  &.kpi-card-static {
+    cursor: default;
+
+    &:hover {
+      border-color: transparent;
+      transform: none;
+      box-shadow: var(--p-card-shadow);
+    }
+  }
+}
+
+.kpi-flex-container {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0.5rem 0.75rem;
+}
+
+.kpi-left-section {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.kpi-icon-circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.8125rem;
+
+  &.bg-blue {
+    background-color: color-mix(in srgb, var(--p-blue-500, #3b82f6) 18%, transparent);
+    color: var(--p-blue-500, #3b82f6);
+  }
+
+  &.bg-orange {
+    background-color: color-mix(in srgb, var(--p-orange-500, #f97316) 18%, transparent);
+    color: var(--p-orange-500, #f97316);
+  }
+
+  &.bg-red {
+    background-color: color-mix(in srgb, var(--p-red-500, #ef4444) 18%, transparent);
+    color: var(--p-red-500, #ef4444);
+  }
+}
+
+.kpi-text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1 1 0;
+  justify-content: center;
+}
+
+.kpi-label-title {
+  color: var(--p-text-muted-color, #4b5563);
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.75rem;
+}
+
+// nowrap is load-bearing: the cards are a grid of equal-height items, so letting the SLA card's
+// three metrics wrap onto a second row stretches all five cards with it.
+.metric-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+
+.metric-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 1 1 auto;
+
+  @media (max-width: #{$bp-sm - 1}) {
+    flex: 0 0 auto;
+  }
+}
+
+.metric-col-header {
+  color: var(--p-text-muted-color, #6b7280);
+  line-height: 1.1;
+  font-weight: 500;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.metric-col-value {
+  font-weight: 700;
+  color: var(--p-text-color, #111827);
+  margin: 0;
+  line-height: 1.1;
+  font-size: 0.9375rem;
+}
+
+.color-red {
+  color: var(--p-red-500, #ef4444);
+}
+
+.color-orange {
+  color: var(--p-orange-500, #f97316);
+}
+
+.color-green {
+  color: var(--p-green-500, #10b981);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card-surface {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}
+
+@media (forced-colors: active) {
+  .kpi-card-surface {
+    border: 2px solid ButtonText;
+
+    &.kpi-selected {
+      border-color: Highlight;
+    }
+  }
+
+  .kpi-icon-circle {
+    border: 1px solid ButtonText;
+  }
+}

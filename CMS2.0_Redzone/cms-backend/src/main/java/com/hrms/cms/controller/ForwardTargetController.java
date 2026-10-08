@@ -51,12 +51,13 @@ public class ForwardTargetController {
      * cannot offer a destination the server will then refuse. An empty list means no body has been verified —
      * the caller must show that and refuse the forward, NOT fall back to a compiled-in list.
      */
-    @GetMapping("/regulatory-bodies")
+    @GetMapping({"/regulatory-bodies", "/regulators"})
     public ResponseEntity<Map<String, Object>> regulatoryBodies(
-            @RequestParam(defaultValue = "false") boolean includeUnverified) {
-        List<Map<String, Object>> bodies = includeUnverified
+            @RequestParam(defaultValue = "false") boolean includeUnverified,
+            @RequestParam(required = false) String q) {
+        List<Map<String, Object>> bodies = filterByQuery(includeUnverified
                 ? forwardTargetService.allRegulatoryBodies()
-                : forwardTargetService.regulatoryBodies();
+                : forwardTargetService.regulatoryBodies(), q);
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("count", bodies.size());
         // Named explicitly so a caller can tell "no bodies are configured" from "none are verified yet" —
@@ -67,8 +68,9 @@ public class ForwardTargetController {
 
     /** The RBI departments a complaint may be forwarded to (UST761, 534, 527-528). */
     @GetMapping("/rbi-departments")
-    public ResponseEntity<Map<String, Object>> rbiDepartments() {
-        List<Map<String, Object>> departments = forwardTargetService.departments();
+    public ResponseEntity<Map<String, Object>> rbiDepartments(
+            @RequestParam(required = false) String q) {
+        List<Map<String, Object>> departments = filterByQuery(forwardTargetService.departments(), q);
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("count", departments.size());
         return buildResponse(true, "RBI departments retrieved", meta, departments);
@@ -90,6 +92,28 @@ public class ForwardTargetController {
         meta.put("layout", cepc ? ForwardTargetService.LAYOUT_CEPC : ForwardTargetService.LAYOUT_RBIO);
         meta.put("count", offices.size());
         return buildResponse(true, "Transfer offices retrieved", meta, offices);
+    }
+
+    /**
+     * Narrows a destination list by the type-ahead's {@code q}, on code and name.
+     *
+     * <p>The masters hold tens of rows, so this filters the list the service already built rather than
+     * pushing a LIKE into the repository. A blank or absent {@code q} means "everything" — the dropdown asks
+     * for the full list before the officer has typed anything, and treating that as a search for the empty
+     * string would return nothing and look like an unconfigured master.
+     */
+    private static List<Map<String, Object>> filterByQuery(List<Map<String, Object>> rows, String q) {
+        if (q == null || q.isBlank()) {
+            return rows;
+        }
+        String term = q.trim().toLowerCase();
+        return rows.stream()
+                .filter(row -> matches(row.get("code"), term) || matches(row.get("name"), term))
+                .toList();
+    }
+
+    private static boolean matches(Object value, String term) {
+        return value != null && String.valueOf(value).toLowerCase().contains(term);
     }
 
     private static Map<String, Object> envelope(boolean success, String message, Object data) {

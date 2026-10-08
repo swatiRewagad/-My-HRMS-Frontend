@@ -309,11 +309,24 @@ public class ForwardTargetService {
         return payload;
     }
 
+    /**
+     * Carries each field under BOTH names its two callers read.
+     *
+     * <p>The RBIO service types this as {@code {deptCode, deptName}} while the CEPC Forward tab reads
+     * {@code {id, code, name, email}} — and that tab REFUSES the forward when the email is empty, telling the
+     * officer "This department has no email on record" about a department whose email is right here. One
+     * response satisfying both is the alternative to a coordinated release, and dropping either set would
+     * break a working screen to tidy a payload.
+     */
     private static Map<String, Object> toDepartmentPayload(RbiDepartmentMaster dept) {
         Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", dept.getId());
         payload.put("deptCode", dept.getDeptCode());
         payload.put("deptName", dept.getDeptName());
+        payload.put("code", dept.getDeptCode());
+        payload.put("name", dept.getDeptName());
         payload.put("contactEmail", dept.getContactEmail());
+        payload.put("email", dept.getContactEmail());
         payload.put("displayOrder", dept.getDisplayOrder());
         return payload;
     }
@@ -328,6 +341,8 @@ public class ForwardTargetService {
         payload.put("code", body.getBodyCode());
         payload.put("name", body.getBodyName());
         payload.put("contactEmail", body.getContactEmail());
+        // Same address under the name the CEPC Forward tab reads; see toDepartmentPayload's comment.
+        payload.put("email", body.getContactEmail());
         payload.put("emailVerified", "Y".equalsIgnoreCase(body.getEmailVerified()));
         payload.put("forwardable", body.forwardable());
         payload.put("address", body.getAddress());

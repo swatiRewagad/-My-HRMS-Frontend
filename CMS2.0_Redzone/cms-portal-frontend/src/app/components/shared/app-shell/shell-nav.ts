@@ -37,12 +37,14 @@ export const SHELL_NAV: ShellNavItem[] = [
   {
     labelKey: 'ui.nav.cepc_dashboard',
     icon: 'pi pi-inbox',
-    route: '/cepc/dashboard',
-    roles: [
-      'CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_OFFICER', 'CEPC_SUPERVISOR',
-      'CEPC_CLOSING_AUTHORITY', 'CEPC_CONCILIATOR', 'CEPC_ADJUDICATOR', 'CEPC_CONTACT_PERSON',
-      'CEPC_ADMIN', 'ADMIN',
-    ],
+    route: '/cepc',
+    // Must stay in step with CEPC_ROLES in app.routes.ts: offering a link the guard then rejects
+    // reads as a broken portal rather than as a permission boundary. CEPC_ROLES there is only
+    // these six roles -- CEPC_OFFICER/CEPC_SUPERVISOR/CEPC_CONCILIATOR/CEPC_ADJUDICATOR/
+    // CEPC_CONTACT_PERSON are NOT in it (CEPC_CONTACT_PERSON has its own queue under
+    // /staff/cepc/**), so including them here would offer a link the guard bounces to
+    // /staff/unauthorized.
+    roles: ['CEPC_DO', 'CEPC_REVIEWER', 'CEPC_INCHARGE', 'CEPC_CLOSING_AUTHORITY', 'CEPC_ADMIN', 'ADMIN'],
   },
   {
     labelKey: 'ui.nav.rbio_workbench',

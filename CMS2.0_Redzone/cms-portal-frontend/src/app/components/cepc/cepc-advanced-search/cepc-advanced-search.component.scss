@@ -1,0 +1,88 @@
+.search-dialog-override {
+    display: flex;
+    flex-direction: column;
+
+    ::ng-deep .p-dialog-content {
+        overflow-y: auto;
+        max-height: 100%;
+        background: var(--p-content-background);
+        color: var(--p-text-color);
+    }
+}
+
+.search-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 1.5rem;
+    row-gap: 1.25rem;
+
+    @media (max-width: 1200px) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.search-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    margin-bottom: 1rem;
+
+    label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--p-text-muted-color, #4b5563);
+        white-space: nowrap;
+    }
+
+    input[pInputText],
+    p-select,
+    p-datepicker {
+        width: 100% !important;
+    }
+
+    &.full-width {
+        grid-column: span 3;
+
+        @media (max-width: 1200px) {
+            grid-column: span 2;
+        }
+
+        @media (max-width: 768px) {
+            grid-column: span 1;
+        }
+    }
+}
+
+.modal-footer-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+
+    border-top: 1px solid var(--p-content-border-color, transparent);
+    padding-top: 1rem;
+}
+
+:host ::ng-deep {
+
+    .p-select,
+    .p-datepicker,
+    .p-datepicker-input,
+    .p-inputtext {
+        width: 100% !important;
+    }
+}
+
+.error-text {
+    display: block;
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}

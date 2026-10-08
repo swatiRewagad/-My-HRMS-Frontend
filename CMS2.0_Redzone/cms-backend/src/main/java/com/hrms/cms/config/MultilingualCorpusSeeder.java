@@ -304,7 +304,10 @@ public class MultilingualCorpusSeeder implements CommandLineRunner {
 
     private long countCorpusRows() {
         return ((Number) entityManager
-                .createNativeQuery("SELECT COUNT(*) FROM COMPLAINTS WHERE complaint_number LIKE :prefix")
+                // Lowercase and unquoted, matching ComplaintVersionBackfill: Linux MySQL defaults to
+                // lower_case_table_names=0, so the uppercase literal matches no table there even though
+                // @Table(name = "COMPLAINTS") does, via Boot's CamelCaseToUnderscoresNamingStrategy.
+                .createNativeQuery("SELECT COUNT(*) FROM complaints WHERE complaint_number LIKE :prefix")
                 .setParameter("prefix", NUMBER_PREFIX + "%")
                 .getSingleResult()).longValue();
     }
@@ -360,7 +363,7 @@ public class MultilingualCorpusSeeder implements CommandLineRunner {
 
     private int pinOne(String number, LocalDateTime at) {
         return entityManager.createNativeQuery(
-                        "UPDATE COMPLAINTS SET created_at = :at, filed_at = :at, updated_at = :at "
+                        "UPDATE complaints SET created_at = :at, filed_at = :at, updated_at = :at "
                                 + "WHERE complaint_number = :number")
                 .setParameter("at", at)
                 .setParameter("number", number)

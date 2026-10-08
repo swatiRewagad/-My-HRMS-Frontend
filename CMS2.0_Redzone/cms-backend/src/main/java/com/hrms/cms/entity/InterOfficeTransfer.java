@@ -34,6 +34,10 @@ public class InterOfficeTransfer {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
+    /** "Sent from office comments" — distinct from {@link #reason}, per the Forward milestone's field split. */
+    @Column(columnDefinition = "TEXT")
+    private String officeComments;
+
     @Column(columnDefinition = "TEXT")
     private String rejectionComment;
 

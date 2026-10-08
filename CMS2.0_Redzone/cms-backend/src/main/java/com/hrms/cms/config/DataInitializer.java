@@ -1,18 +1,24 @@
 package com.hrms.cms.config;
 
+import com.hrms.cms.entity.AccountTypeMaster;
 import com.hrms.cms.entity.Bank;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ComplaintCategory;
 import com.hrms.cms.entity.EmailDraft;
 import com.hrms.cms.entity.ExtractionRule;
 import com.hrms.cms.entity.FormConfig;
+import com.hrms.cms.entity.OfficeCodeMaster;
+import com.hrms.cms.entity.OmbudsmanOfficeMaster;
 import com.hrms.cms.entity.RegulatedEntity;
+import com.hrms.cms.repository.AccountTypeMasterRepository;
 import com.hrms.cms.repository.BankRepository;
 import com.hrms.cms.repository.ComplaintCategoryRepository;
 import com.hrms.cms.repository.ComplaintRepository;
 import com.hrms.cms.repository.EmailDraftRepository;
 import com.hrms.cms.repository.ExtractionRuleRepository;
 import com.hrms.cms.repository.FormConfigRepository;
+import com.hrms.cms.repository.OfficeCodeMasterRepository;
+import com.hrms.cms.repository.OmbudsmanOfficeMasterRepository;
 import com.hrms.cms.repository.RegulatedEntityRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
@@ -36,11 +42,40 @@ public class DataInitializer implements CommandLineRunner {
     private final RegulatedEntityRepository regulatedEntityRepo;
     private final EmailDraftRepository emailDraftRepo;
     private final ExtractionRuleRepository extractionRuleRepo;
+    private final AccountTypeMasterRepository accountTypeRepo;
+    private final OmbudsmanOfficeMasterRepository ombudsmanOfficeRepo;
+    private final OfficeCodeMasterRepository officeCodeRepo;
 
     @Override
     public void run(String... args) {
-        if (categoryRepo.count() == 0) {
-            seedCategories();
+        try {
+            if (categoryRepo.count() == 0) {
+                seedCategories();
+            }
+            if (bankRepo.count() == 0) {
+                seedBanks();
+            }
+            if (formConfigRepo.count() == 0) {
+                seedComplaintForm();
+            }
+            if (complaintRepo.count() == 0) {
+                seedComplaints();
+            }
+            if (regulatedEntityRepo.count() == 0) {
+                seedRegulatedEntities();
+            }
+            if (extractionRuleRepo.count() == 0) {
+                seedExtractionRules();
+            }
+            if (accountTypeRepo.count() == 0) {
+                seedAccountTypes();
+            }
+            if (emailDraftRepo.count() == 0) {
+                seedCrpcEmailDrafts();
+            }
+            migrateUuidDraftIds();
+        } catch (Exception e) {
+            System.out.println("DataInitializer warning: " + e.getMessage());
         }
         if (bankRepo.count() == 0) {
             seedBanks();
@@ -57,7 +92,218 @@ public class DataInitializer implements CommandLineRunner {
         if (extractionRuleRepo.count() == 0) {
             seedExtractionRules();
         }
+        if (accountTypeRepo.count() == 0) {
+            seedAccountTypes();
+        }
+        if (emailDraftRepo.count() == 0) {
+            seedCrpcEmailDrafts();
+        }
+        if (ombudsmanOfficeRepo.count() == 0) {
+            seedOmbudsmanOfficeMaster();
+        }
+        if (officeCodeRepo.count() == 0) {
+            seedOfficeCodeMaster();
+        }
         migrateUuidDraftIds();
+    }
+
+    private void seedCrpcEmailDrafts() {
+        LocalDateTime now = LocalDateTime.now();
+
+        // Draft 1: Standard email complaint - ATM issue (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100001")
+                .threadId("THR-EMAIL-001")
+                .senderEmail("ramesh.gupta@gmail.com")
+                .subject("ATM did not dispense cash but Rs 20,000 debited from my account")
+                .body("Dear Sir/Madam,\n\nI am writing to complain about an ATM transaction failure. On 15th August 2026, I tried to withdraw Rs 20,000 from HDFC Bank ATM at MG Road, Pune. The machine displayed 'Transaction Cancelled' but the amount was debited from my savings account (A/C No: 1234567890).\n\nI have already complained to the bank branch on 16th August but no resolution has been provided. My mobile number is 9876543210.\n\nAddress: Flat 12B, Sunrise Apartments, MG Road, Pune, Maharashtra - 411001\n\nKindly look into this matter urgently.\n\nRegards,\nRamesh Gupta")
+                .complainantName("Ramesh Gupta")
+                .complainantPhone("9876543210")
+                .complainantAddress("Flat 12B, Sunrise Apartments, MG Road, Pune")
+                .complainantState("MH")
+                .complainantDistrict("Pune")
+                .complainantPincode("411001")
+                .category("ATM")
+                .entityName("HDFC Bank")
+                .entityType("BANK")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .amountInvolved(20000.0)
+                .receivedAt(now.minusDays(2))
+                .createdAt(now.minusDays(2))
+                .build());
+
+        // Draft 2: Credit card fraud complaint (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100002")
+                .threadId("THR-EMAIL-002")
+                .senderEmail("priya.mehta@yahoo.com")
+                .subject("Unauthorized credit card transactions - Rs 45,000 charged")
+                .body("To Whom It May Concern,\n\nI wish to report unauthorized transactions on my ICICI Bank credit card ending 8976. On 12th August 2026, three transactions totaling Rs 45,000 were made on Amazon and Flipkart which I did not authorize. My card was in my possession the entire time.\n\nI have blocked the card and raised a dispute with ICICI Bank on 13th Aug. Reference number: ICR-2026-45678. However, no temporary credit has been provided.\n\nPlease investigate this matter. Contact: 9123456789. Residing at 45, Sector 22, Noida, Uttar Pradesh - 201301.\n\nPriya Mehta")
+                .complainantName("Priya Mehta")
+                .complainantPhone("9123456789")
+                .complainantAddress("45, Sector 22, Noida")
+                .complainantState("UP")
+                .complainantDistrict("Gautam Buddha Nagar")
+                .complainantPincode("201301")
+                .category("CREDIT_CARD")
+                .entityName("ICICI Bank")
+                .entityType("BANK")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .amountInvolved(45000.0)
+                .receivedAt(now.minusDays(1))
+                .createdAt(now.minusDays(1))
+                .build());
+
+        // Draft 3: UPI fraud - PhonePe (CEPC entity, assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100003")
+                .threadId("THR-EMAIL-003")
+                .senderEmail("anil.sharma@hotmail.com")
+                .subject("PhonePe unauthorized UPI debit of Rs 8,500")
+                .body("Sir,\n\nPhonePe debited Rs 8,500 from my linked SBI account without my authorization on 10th August 2026. I did not initiate any payment. The UPI transaction ID is 2026081090123456.\n\nI raised a complaint with PhonePe (Ticket #PH-2026-99887) on 11th Aug but they say the transaction is legitimate. I have never shared my UPI PIN with anyone.\n\nMy details:\nName: Anil Sharma\nPhone: 9988776655\nAddress: 78, Gandhi Nagar, Jaipur, Rajasthan - 302015\n\nPlease help.\nAnil Sharma")
+                .complainantName("Anil Sharma")
+                .complainantPhone("9988776655")
+                .complainantAddress("78, Gandhi Nagar, Jaipur")
+                .complainantState("RJ")
+                .complainantDistrict("Jaipur")
+                .complainantPincode("302015")
+                .category("UPI")
+                .entityName("PhonePe Private Limited")
+                .entityType("PAYMENT_SYSTEM")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .amountInvolved(8500.0)
+                .receivedAt(now.minusHours(18))
+                .createdAt(now.minusHours(18))
+                .build());
+
+        // Draft 4: Loan harassment - NBFC (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100004")
+                .threadId("THR-EMAIL-004")
+                .senderEmail("sunita.devi@gmail.com")
+                .subject("Harassment by Bajaj Finance recovery agents")
+                .body("Respected Sir/Madam,\n\nI am being harassed by Bajaj Finance recovery agents. My EMI was delayed by only 7 days due to medical emergency (husband hospitalized). Recovery agents are coming to my house at 6 AM, using abusive language in front of neighbors, and threatening my family.\n\nLoan Account: BAF-PL-2024-567890. Total outstanding is Rs 1,80,000. I have paid all previous EMIs on time for 18 months.\n\nThis is causing mental trauma to my family. Please intervene.\n\nSunita Devi\nMobile: 9876501234\nAddress: 23, Shivaji Nagar, Kolhapur, Maharashtra - 416001")
+                .complainantName("Sunita Devi")
+                .complainantPhone("9876501234")
+                .complainantAddress("23, Shivaji Nagar, Kolhapur")
+                .complainantState("MH")
+                .complainantDistrict("Kolhapur")
+                .complainantPincode("416001")
+                .category("LOAN")
+                .entityName("Bajaj Finance Limited")
+                .entityType("NBFC")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .amountInvolved(180000.0)
+                .receivedAt(now.minusHours(12))
+                .createdAt(now.minusHours(12))
+                .build());
+
+        // Draft 5: Vernacular complaint in Hindi (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100005")
+                .threadId("THR-EMAIL-005")
+                .senderEmail("mohan.yadav@gmail.com")
+                .subject("बैंक खाते से अनधिकृत निकासी - कृपया सहायता करें")
+                .body("महोदय,\n\nमेरे पंजाब नेशनल बैंक के बचत खाते (खाता संख्या: 0987654321) से 8 अगस्त 2026 को बिना मेरी अनुमति के रु 35,000 की निकासी हुई है। मैंने कोई ATM लेनदेन नहीं किया था और न ही किसी को अपना PIN दिया है।\n\nमैंने बैंक शाखा में शिकायत दर्ज की है (संदर्भ: PNB-CMP-2026-12345) लेकिन 10 दिन हो गए, कोई कार्रवाई नहीं हुई।\n\nनाम: मोहन यादव\nमोबाइल: 9011223344\nपता: 56, विकास नगर, लखनऊ, उत्तर प्रदेश - 226022\n\nकृपया मेरी मदद करें।")
+                .complainantName("Mohan Yadav")
+                .complainantPhone("9011223344")
+                .complainantAddress("56, Vikas Nagar, Lucknow")
+                .complainantState("UP")
+                .complainantDistrict("Lucknow")
+                .complainantPincode("226022")
+                .category("ATM")
+                .entityName("Punjab National Bank")
+                .entityType("BANK")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .isVernacular(true)
+                .detectedLanguage("HINDI")
+                .languageName("Hindi")
+                .amountInvolved(35000.0)
+                .receivedAt(now.minusHours(6))
+                .createdAt(now.minusHours(6))
+                .build());
+
+        // Draft 6: Not a complaint - just a general inquiry (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100006")
+                .threadId("THR-EMAIL-006")
+                .senderEmail("info@techstartup.in")
+                .subject("Inquiry about RBI payment aggregator license process")
+                .body("Dear RBI Team,\n\nWe are a fintech startup looking to apply for a Payment Aggregator license under the RBI guidelines. Could you please share the detailed process, documentation requirements, and timeline for the application?\n\nAlso, is there a helpdesk or nodal officer we can contact for queries during the application process?\n\nRegards,\nVikram Sinha\nCTO, TechStartup Payments Pvt Ltd\nMobile: 9876509876\nEmail: vikram@techstartup.in\nAddress: WeWork, BKC, Mumbai, Maharashtra - 400051")
+                .complainantName("Vikram Sinha")
+                .complainantPhone("9876509876")
+                .complainantAddress("WeWork, BKC, Mumbai")
+                .complainantState("MH")
+                .complainantDistrict("Mumbai")
+                .complainantPincode("400051")
+                .category("GENERAL")
+                .entityName("")
+                .entityType("")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .receivedAt(now.minusHours(4))
+                .createdAt(now.minusHours(4))
+                .build());
+
+        // Draft 7: Physical letter - CPGRAMS forwarded (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100007")
+                .threadId("THR-CPGRAMS-001")
+                .senderEmail("cpgrams-forward@gov.in")
+                .subject("CPGRAMS Forwarded: Gold loan ornaments not returned by Muthoot Finance")
+                .body("CPGRAMS Reference: PMOPG/D/2026/0812345\n\nComplainant: Lakshmi Narayanan\nMobile: 9090909090\nAddress: 12, Temple Street, Coimbatore, Tamil Nadu - 641001\n\nComplaint Details:\nI repaid my gold loan (Loan A/C: MF-GL-2025-98765) in full on 1st July 2026 at Muthoot Finance, RS Puram Branch, Coimbatore. Despite full repayment, they have not returned my gold ornaments (total 45 grams). Each time I visit, they cite different reasons - system issue, branch manager not available, etc.\n\nAmount of gold loan was Rs 2,25,000 (fully repaid). Gold ornaments worth approximately Rs 3,00,000 at current market rate.\n\nThis has been going on for 45 days. Please intervene.")
+                .complainantName("Lakshmi Narayanan")
+                .complainantPhone("9090909090")
+                .complainantAddress("12, Temple Street, Coimbatore")
+                .complainantState("TN")
+                .complainantDistrict("Coimbatore")
+                .complainantPincode("641001")
+                .cpgramsNumber("PMOPG/D/2026/0812345")
+                .category("LOAN")
+                .entityName("Muthoot Finance Ltd")
+                .entityType("NBFC")
+                .modeOfReceipt("CPGRAMS")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .amountInvolved(225000.0)
+                .receivedAt(now.minusHours(3))
+                .createdAt(now.minusHours(3))
+                .build());
+
+        // Draft 8: Cooperative bank issue (assigned to deo.user)
+        emailDraftRepo.save(EmailDraft.builder()
+                .draftId("100008")
+                .threadId("THR-EMAIL-008")
+                .senderEmail("deepak.patil@gmail.com")
+                .subject("Saraswat Bank refusing to update nominee on FD account")
+                .body("Dear Ombudsman,\n\nI am facing an issue with Saraswat Co-operative Bank, Dadar Branch, Mumbai. They are refusing to update the nominee on my Fixed Deposit account (FD A/C: SAR-FD-2020-11223) despite providing all required documents (death certificate of earlier nominee, new nominee's Aadhaar, PAN).\n\nI have visited the branch 5 times in the last 2 months. Each time they ask for a different document. This seems like deliberate harassment.\n\nFD Amount: Rs 10,00,000 (maturing in Dec 2026).\n\nDeepak Patil\nMobile: 9876567890\nAddress: 34, Dadar West, Mumbai, Maharashtra - 400028")
+                .complainantName("Deepak Patil")
+                .complainantPhone("9876567890")
+                .complainantAddress("34, Dadar West, Mumbai")
+                .complainantState("MH")
+                .complainantDistrict("Mumbai")
+                .complainantPincode("400028")
+                .category("DEPOSIT")
+                .entityName("Saraswat Co-operative Bank Limited")
+                .entityType("COOPERATIVE_BANK")
+                .modeOfReceipt("EMAIL")
+                .status("ASSIGNED")
+                .assignedTo("deo.user")
+                .amountInvolved(1000000.0)
+                .receivedAt(now.minusHours(2))
+                .createdAt(now.minusHours(2))
+                .build());
     }
 
     private void migrateUuidDraftIds() {
@@ -65,7 +311,7 @@ public class DataInitializer implements CommandLineRunner {
         for (EmailDraft draft : drafts) {
             boolean changed = false;
             if (draft.getDraftId() != null && draft.getDraftId().contains("-") && draft.getDraftId().length() > 20) {
-                draft.setDraftId("DRF-" + String.format("%06d", draft.getId()));
+                draft.setDraftId(String.format("%06d", draft.getId()));
                 changed = true;
             }
             // Migrate displayName assignments to userId
@@ -387,6 +633,49 @@ public class DataInitializer implements CommandLineRunner {
                 .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER")
                 .entityCode("Canara Bank").workflowStage("INITIAL_REVIEW")
                 .createdAt(now.minusDays(6)).updatedAt(now.minusDays(6)).filedAt(now.minusDays(6))
+                .build());
+
+        // ═══ RBIO Complaints — Mumbai officer (rbio_mum1) queue ═══
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260606-200004")
+                .complainantName("Anjali Deshpande")
+                .complainantEmail("anjali.d@email.com")
+                .complainantPhone("9876600004")
+                .complainantState("Maharashtra").complainantDistrict("Mumbai")
+                .subject("HDFC Bank locker rent deducted twice in same month")
+                .description("HDFC Bank Fort branch deducted locker rent twice within the same billing cycle. Branch acknowledges error but no refund issued in 3 weeks.")
+                .status("assigned").priority("medium")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio_mum1")
+                .entityCode("HDFC Bank").entityState("Maharashtra").entityDistrict("Mumbai").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(1)).updatedAt(now.minusDays(1)).filedAt(now.minusDays(1))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260605-200005")
+                .complainantName("Rohit Shetty")
+                .complainantEmail("rohit.s@email.com")
+                .complainantPhone("9876600005")
+                .complainantState("Maharashtra").complainantDistrict("Mumbai")
+                .subject("ICICI Bank credit card annual fee charged despite waiver offer")
+                .description("Card was issued with a lifetime-free offer in writing. ICICI charged Rs 2,500 annual fee anyway. Branch redirects to call centre with no resolution.")
+                .status("in_progress").priority("high")
+                .filingType("EMAIL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio_mum1")
+                .entityCode("ICICI Bank").entityState("Maharashtra").entityDistrict("Mumbai").workflowStage("INVESTIGATION")
+                .createdAt(now.minusDays(3)).updatedAt(now.minusHours(12)).filedAt(now.minusDays(3))
+                .build());
+
+        complaintRepo.save(Complaint.builder()
+                .complaintNumber("CMP-20260604-200006")
+                .complainantName("Sneha Kulkarni")
+                .complainantEmail("sneha.k@email.com")
+                .complainantPhone("9876600006")
+                .complainantState("Maharashtra").complainantDistrict("Thane")
+                .subject("Bank of Baroda delaying gold loan disbursement by 2 weeks")
+                .description("Gold loan approved on paper 2 weeks ago against pledged jewellery, but disbursement still pending with no clear reason from Thane branch.")
+                .status("assigned").priority("low")
+                .filingType("WEB_PORTAL").department("RBIO").assignedRole("RBIO_OFFICER").assignedOfficer("rbio_mum1")
+                .entityCode("Bank of Baroda").entityState("Maharashtra").entityDistrict("Thane").workflowStage("INITIAL_REVIEW")
+                .createdAt(now.minusDays(5)).updatedAt(now.minusDays(5)).filedAt(now.minusDays(5))
                 .build());
     }
 
@@ -916,5 +1205,79 @@ public class DataInitializer implements CommandLineRunner {
                 .extractGroup(1).priority(100).isActive(true).sourceScope("BOTH").createdBy("system").build()
         );
         extractionRuleRepo.saveAll(rules);
+    }
+
+    private void seedAccountTypes() {
+        accountTypeRepo.saveAll(List.of(
+            AccountTypeMaster.builder().label("Savings Account").value("savings").active(true).sortOrder(1).build(),
+            AccountTypeMaster.builder().label("Current Account").value("current").active(true).sortOrder(2).build(),
+            AccountTypeMaster.builder().label("Loan Account").value("loan").active(true).sortOrder(3).build(),
+            AccountTypeMaster.builder().label("Fixed Deposit").value("fixed_deposit").active(true).sortOrder(4).build(),
+            AccountTypeMaster.builder().label("Recurring Deposit").value("recurring_deposit").active(true).sortOrder(5).build(),
+            AccountTypeMaster.builder().label("ATM / Debit Card").value("atm_debit").active(true).sortOrder(6).build(),
+            AccountTypeMaster.builder().label("Credit Card").value("credit_card").active(true).sortOrder(7).build(),
+            AccountTypeMaster.builder().label("Wallet").value("wallet").active(true).sortOrder(8).build(),
+            AccountTypeMaster.builder().label("PPF Account").value("ppf").active(true).sortOrder(9).build(),
+            AccountTypeMaster.builder().label("Others").value("others").active(true).sortOrder(10).build()
+        ));
+    }
+
+    private void seedOmbudsmanOfficeMaster() {
+        ombudsmanOfficeRepo.saveAll(List.of(
+            OmbudsmanOfficeMaster.builder().id(1).officeName("Ahmedabad").jurisdiction("Gujarat, Union Territories of Dadra and Nagar Haveli, Daman and Diu").build(),
+            OmbudsmanOfficeMaster.builder().id(2).officeName("Bengaluru").jurisdiction("Karnataka").build(),
+            OmbudsmanOfficeMaster.builder().id(3).officeName("Bhopal").jurisdiction("Madhya Pradesh").build(),
+            OmbudsmanOfficeMaster.builder().id(4).officeName("Bhubaneswar").jurisdiction("Odisha").build(),
+            OmbudsmanOfficeMaster.builder().id(5).officeName("Chandigarh").jurisdiction("Punjab and Union Territory of Chandigarh").build(),
+            OmbudsmanOfficeMaster.builder().id(6).officeName("Chennai-I").jurisdiction("Nine districts of Tamil Nadu viz., Thiruvallur, Chennai, Vellore, Ranipet, Kancheepuram, Chengalpattu, Krishnagiri, Tirupathur and Tiruvannamalai; and Union Territory of Andaman and Nicobar Islands").build(),
+            OmbudsmanOfficeMaster.builder().id(7).officeName("Chennai-II").jurisdiction("Tamil Nadu (excluding Districts of Thiruvallur, Chennai, Vellore, Ranipet, Kancheepuram, Chengalpattu, Krishnagiri, Tirupathur and Tiruvannamalai); and Union Territory of Puducherry (except Mahe Region)").build(),
+            OmbudsmanOfficeMaster.builder().id(8).officeName("Dehradun").jurisdiction("Uttarakhand and seven districts of Uttar Pradesh viz., Saharanpur, Shamli (Prabudh Nagar), Muzaffarnagar, Baghpat, Meerut, Bijnor and Amroha (Jyotiba Phule Nagar)").build(),
+            OmbudsmanOfficeMaster.builder().id(9).officeName("Guwahati").jurisdiction("Assam, Arunachal Pradesh, Manipur, Meghalaya, Mizoram, Nagaland and Tripura").build(),
+            OmbudsmanOfficeMaster.builder().id(10).officeName("Hyderabad").jurisdiction("Andhra Pradesh and Telangana").build(),
+            OmbudsmanOfficeMaster.builder().id(11).officeName("Jaipur").jurisdiction("Rajasthan").build(),
+            OmbudsmanOfficeMaster.builder().id(12).officeName("Jammu").jurisdiction("Union Territories of Jammu & Kashmir and Ladakh").build(),
+            OmbudsmanOfficeMaster.builder().id(13).officeName("Kanpur").jurisdiction("Uttar Pradesh (excluding Districts of Ghaziabad, Gautam Buddha Nagar, Saharanpur, Shamli (Prabudh Nagar), Muzaffarnagar, Baghpat, Meerut, Bijnor and Amroha (Jyotiba Phule Nagar))").build(),
+            OmbudsmanOfficeMaster.builder().id(14).officeName("Kolkata-I").jurisdiction("Three districts of West Bengal viz., Kolkata, South 24 Parganas, Howrah; and Sikkim").build(),
+            OmbudsmanOfficeMaster.builder().id(15).officeName("Kolkata-II").jurisdiction("West Bengal (excluding districts of Kolkata, South 24 Parganas and Howrah)").build(),
+            OmbudsmanOfficeMaster.builder().id(16).officeName("Mumbai-I").jurisdiction("Districts of Mumbai, Mumbai Suburban and Thane").build(),
+            OmbudsmanOfficeMaster.builder().id(17).officeName("Mumbai-II").jurisdiction("Goa and Maharashtra (except the districts of Mumbai, Mumbai Suburban and Thane)").build(),
+            OmbudsmanOfficeMaster.builder().id(18).officeName("New Delhi-I").jurisdiction("Delhi").build(),
+            OmbudsmanOfficeMaster.builder().id(19).officeName("New Delhi-II").jurisdiction("Haryana and Ghaziabad and Gautam Buddha Nagar districts of Uttar Pradesh").build(),
+            OmbudsmanOfficeMaster.builder().id(20).officeName("Patna").jurisdiction("Bihar").build(),
+            OmbudsmanOfficeMaster.builder().id(21).officeName("Raipur").jurisdiction("Chhattisgarh").build(),
+            OmbudsmanOfficeMaster.builder().id(22).officeName("Ranchi").jurisdiction("Jharkhand").build(),
+            OmbudsmanOfficeMaster.builder().id(23).officeName("Shimla").jurisdiction("Himachal Pradesh").build(),
+            OmbudsmanOfficeMaster.builder().id(24).officeName("Thiruvananthapuram").jurisdiction("Kerala, Union Territory of Lakshadweep and Union Territory of Puducherry (only Mahe Region)").build()
+        ));
+    }
+
+    private void seedOfficeCodeMaster() {
+        officeCodeRepo.saveAll(List.of(
+            OfficeCodeMaster.builder().officeType("BO").officeName("Ahmedabad").officeCode("001").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Bengaluru").officeCode("002").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Bhubaneswar").officeCode("003").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Bhopal").officeCode("004").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Kolkata-I").officeCode("005").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Chennai-I").officeCode("006").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Chandigarh").officeCode("007").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Guwahati").officeCode("008").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Hyderabad").officeCode("009").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Jaipur").officeCode("010").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Kanpur").officeCode("011").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Patna").officeCode("012").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Mumbai-I").officeCode("013").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("New Delhi-I").officeCode("014").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Thiruvananthapuram").officeCode("015").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("New Delhi-II").officeCode("016").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Dehradun").officeCode("017").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Ranchi").officeCode("018").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Raipur").officeCode("019").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Jammu").officeCode("020").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Mumbai-II").officeCode("021").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Kolkata-II").officeCode("022").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("New Delhi-III").officeCode("023").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Chennai-II").officeCode("024").build(),
+            OfficeCodeMaster.builder().officeType("BO").officeName("Shimla").officeCode("025").build()
+        ));
     }
 }

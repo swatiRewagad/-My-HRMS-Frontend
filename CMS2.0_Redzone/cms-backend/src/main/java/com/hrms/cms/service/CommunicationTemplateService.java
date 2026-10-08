@@ -9,15 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class CommunicationTemplateService {
 
     private final CommunicationTemplateRepository templateRepository;
-    private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\{\\{(\\w+)}}");
+    private final TemplateVariableRenderer variableRenderer;
 
     @Transactional(readOnly = true)
     public List<CommunicationTemplate> getAll() {
@@ -85,22 +83,10 @@ public class CommunicationTemplateService {
     }
 
     public String renderSubject(CommunicationTemplate template, Map<String, String> variables) {
-        return replaceVariables(template.getSubjectTemplate(), variables);
+        return variableRenderer.render(template.getSubjectTemplate(), variables);
     }
 
     public String renderBody(CommunicationTemplate template, Map<String, String> variables) {
-        return replaceVariables(template.getBodyTemplate(), variables);
-    }
-
-    private String replaceVariables(String templateText, Map<String, String> variables) {
-        Matcher matcher = VARIABLE_PATTERN.matcher(templateText);
-        StringBuilder result = new StringBuilder();
-        while (matcher.find()) {
-            String key = matcher.group(1);
-            String value = variables.getOrDefault(key, "{{" + key + "}}");
-            matcher.appendReplacement(result, Matcher.quoteReplacement(value));
-        }
-        matcher.appendTail(result);
-        return result.toString();
+        return variableRenderer.render(template.getBodyTemplate(), variables);
     }
 }

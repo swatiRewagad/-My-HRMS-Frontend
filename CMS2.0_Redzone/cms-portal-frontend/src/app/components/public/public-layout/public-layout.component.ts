@@ -25,6 +25,7 @@ export class PublicLayoutComponent {
 
   logout() {
     // Explicit variant: pressing Logout must not leave a "your session timed out" notice behind.
+    this.userMenuOpen = false;
     this.authService.logoutExplicitly();
     this.router.navigate(['/public']);
   }

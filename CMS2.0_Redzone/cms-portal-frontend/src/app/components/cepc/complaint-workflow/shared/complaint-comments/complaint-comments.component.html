@@ -1,0 +1,54 @@
+<!-- All Comments -->
+<div class="assessment-comments">
+  <h4 class="comments-title">{{ 'ui.cepc.dv.tab.all_comments' | translateOr: 'All Comments' }}</h4>
+  @for (comment of comments; track comment.id) {
+    <div class="comment-card">
+      <div class="comment-header">
+        <span class="comment-avatar" [style.background]="comment.color">{{ comment.initials }}</span>
+        <span class="comment-author">{{ comment.author }} @if (comment.role) { <span class="comment-role-badge">{{ comment.role }}</span>}</span>
+        <span class="comment-timestamp">{{ formatCommentDate(comment.createdAt || '') }}</span>
+      </div>
+      <p class="comment-body">
+        @if (comment.text.length > 150 && !expandedComments.has(comment.id)) {
+          {{ comment.text.substring(0, 150) }}
+          <a class="read-more" (click)="toggleCommentExpand(comment.id)">{{ 'ui.cepc.dv.action.read_more' | translateOr: '...read more' }}</a>
+        } @else {
+          {{ comment.text }}
+          @if (comment.text.length > 150) {
+            <a class="read-more" (click)="toggleCommentExpand(comment.id)">{{ 'ui.cepc.dv.action.show_less' | translateOr: 'show less' }}</a>
+          }
+        }
+      </p>
+    </div>
+  } @empty {
+    @if (showEmptyState) {
+      <div class="comment-card-No-comments">
+        {{ 'ui.cepc.panel.no_comments' | translateOr: 'No comments' }}
+      </div>
+    }
+  }
+</div>
+
+<!-- Add Comment -->
+@if (showAddComment) {
+  <div class="add-comment-section">
+    @if (showBookmarkButton) {
+      <div class="comment-label-row">
+        <label class="comment-label">{{ addCommentLabel }}</label>
+        <button class="bookmark-btn" [title]="'ui.cepc.dv.action.bookmark' | translateOr: 'Bookmark'"><i class="pi pi-bookmark"></i></button>
+      </div>
+    } @else if (showExpandIcon) {
+      <label class="comment-label">{{ addCommentLabel }} <i class="pi pi-expand"></i></label>
+    } @else {
+      <label class="comment-label">{{ addCommentLabel }}</label>
+    }
+    <div class="textarea-with-speech">
+      <textarea [ngModel]="commentText" (ngModelChange)="onCommentTextChange($event)" rows="3" maxlength="2000" [placeholder]="'ui.cepc.dv.ph.enter_text' | translateOr: 'Enter text here'"></textarea>
+      <app-speech-button (transcription)="onCommentTextChange(commentText + ' ' + $event)"></app-speech-button>
+    </div>
+    <div class="conciliation-counter">{{ commentText.length }}/2000</div>
+    @if (fieldError) {
+      <span class="field-error">{{ fieldError }}</span>
+    }
+  </div>
+}

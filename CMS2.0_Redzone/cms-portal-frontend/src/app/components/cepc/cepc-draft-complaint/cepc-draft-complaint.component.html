@@ -1,0 +1,504 @@
+<p-toast position="top-right"></p-toast>
+<div class="draft-complaint cepc-scope">
+  <app-cepc-header></app-cepc-header>
+
+  @if (loadState() === 'loading') {
+    <div class="summary-loading-page">
+      <i class="pi pi-spin pi-spinner"></i>
+      <p>Loading complaint {{ complaintId }}…</p>
+    </div>
+  } @else if (loadState() === 'failed') {
+    <div class="summary-loading-page">
+      <i class="pi pi-exclamation-triangle"></i>
+      <p>{{ loadError() }}</p>
+      <button class="btn btn-outline" (click)="goBack()">{{ 'ui.cepc.cc.back_to_dashboard' | translateOr: 'Back to Dashboard' }}</button>
+    </div>
+  } @else {
+
+    <!-- ═══ SUB-HEADER TAB BAR ═══ -->
+    <div class="sub-header">
+      <div class="complaint-tab active">
+        <i class="pi pi-file"></i>
+        Complaint {{ complaintId }}
+      </div>
+      <div class="complaint-tab add-tab" (click)="goBack()" title="Back to {{ dept.cfg().label }}">
+        <i class="pi pi-plus"></i>
+      </div>
+    </div>
+
+    <!-- ═══ META / KPI ROW ═══ -->
+    <div class="meta-row">
+      <button class="close-btn" (click)="goBack()"><i class="pi pi-times"></i></button>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-id-card"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">{{ 'ui.cepc.dv.field.complaint_id' | translateOr: 'Complaint ID' }} <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">{{ 'ui.cepc.cc.not_assigned' | translateOr: 'Not Assigned' }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-file"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">{{ 'ui.cepc.dv.field.complaint_number' | translateOr: 'Complaint Number' }} <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">{{ complaintNumber || 'Not Assigned' }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon red"><i class="pi pi-envelope"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">{{ 'ui.cepc.dv.field.mode_of_receipt' | translateOr: 'Mode of Receipt' }} <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">{{ modeOfReceipt || 'Not Assigned' }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon blue"><i class="pi pi-chart-bar"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">{{ 'ui.cepc.dv.field.status' | translateOr: 'Status' }} <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value"><i class="pi pi-flag status-flag"></i> {{ statusLabel }}</span>
+        </div>
+      </div>
+      <div class="meta-item">
+        <span class="meta-icon dark"><i class="pi pi-user"></i></span>
+        <div class="meta-text">
+          <span class="meta-label">{{ 'ui.cepc.cc.complaint_owner' | translateOr: 'Complaint Owner' }} <i class="pi pi-info-circle"></i></span>
+          <span class="meta-value">{{ assignedOfficer || 'Not Assigned' }}</span>
+        </div>
+      </div>
+      <div class="meta-actions">
+        <button class="btn btn-save" (click)="saveDraft()" [disabled]="saving()">
+          @if (saving()) { Saving... } @else { <i class="pi pi-save"></i> Save }
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ CONTENT: Two panels ═══ -->
+    <div class="content-box">
+      <div class="main-content-layout two-col">
+
+        <!-- ════ LEFT: Reference Complaint Copy ════ -->
+        <div class="col-email-syndicate" [class.panel-expanded]="pdfExpanded()">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-pdf"></i> {{ 'ui.cepc.cc.reference_complaint_copy' | translateOr: 'Reference Complaint Copy' }}</h3>
+            <button class="expand-btn" (click)="pdfExpanded.set(!pdfExpanded())">
+              @if (pdfExpanded()) { <i class="pi pi-window-minimize"></i> } @else { <i class="pi pi-window-maximize"></i> }
+            </button>
+          </div>
+
+          <div class="document-viewer-body">
+            <p class="scan-instruction"><strong>{{ 'ui.cepc.cc.scan_upload_physical_letter' | translateOr: 'Scan and Upload Physical Letter Copy' }}</strong> <i class="pi pi-info-circle"></i></p>
+
+            @if (!scannedFile) {
+              <div class="upload-area" [class.dragover]="isDragOver"
+                   (dragover)="onDragOver($event); isDragOver = true"
+                   (dragenter)="$event.preventDefault(); isDragOver = true"
+                   (dragleave)="isDragOver = false"
+                   (drop)="isDragOver = false; onFileDrop($event)">
+                <input id="fileInput" type="file" (change)="onFileSelected($event)"
+                       accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" class="file-hidden" />
+                <div class="upload-icon"><i class="pi pi-cloud-upload"></i></div>
+                <span class="file-upload-text">{{ 'ui.cepc.cc.drag_and_drop_file_here_or' | translateOr: 'Drag and Drop file here or' }} <label for="fileInput" class="file-upload-browse-link">{{ 'ui.cepc.cc.choose_file' | translateOr: 'Choose file' }}</label></span>
+              </div>
+              <div class="upload-meta-row">
+                <span>{{ 'ui.cepc.cc.formats_pdf_word_jpeg_png' | translateOr: 'Support formats: PDF, WORD, JPEG, PNG' }}</span>
+                <span>{{ 'ui.cepc.cc.max_size_5mb' | translateOr: 'Maximum size: 5MB' }}</span>
+              </div>
+            } @else {
+              @if (pdfPreviewUrl()) {
+                <div class="pdf-toolbar">
+                  <span class="file-name-label">{{ scannedFile.name }}</span>
+                  <div class="pdf-nav">
+                    <button class="icon-btn" (click)="pdfPage.set(Math.max(1, pdfPage() - 1))"><i class="pi pi-chevron-left"></i></button>
+                    <span class="page-info">{{ pdfPage() }} / {{ pdfTotalPages() }}</span>
+                    <button class="icon-btn" (click)="pdfPage.set(pdfPage() + 1)"><i class="pi pi-chevron-right"></i></button>
+                  </div>
+                </div>
+                <div class="pdf-viewer">
+                  <iframe [src]="pdfPreviewUrl()" class="pdf-frame"></iframe>
+                </div>
+              } @else {
+                <div class="file-info-card">
+                  <i class="pi pi-file-pdf"></i>
+                  <div class="file-details">
+                    <span class="file-name">{{ scannedFile.name }}</span>
+                    <span class="file-size">{{ (scannedFile.size / 1024 / 1024).toFixed(2) }} MB</span>
+                  </div>
+                </div>
+              }
+
+              <div class="doc-actions-bar">
+                @if (!ocrComplete()) {
+                  <button class="btn btn-ai-extract" (click)="runOcr()" [disabled]="ocrInProgress()">
+                    @if (ocrInProgress()) { <span class="spinner-sm"></span> Extracting... } @else { <i class="pi pi-bolt"></i> AI Extract }
+                  </button>
+                  <button class="btn btn-outline" (click)="skipOcr()">{{ 'ui.cepc.cc.skip' | translateOr: 'Skip' }}</button>
+                } @else {
+                  <span class="ocr-done"><i class="pi pi-check-circle"></i> {{ 'ui.cepc.cc.extraction_complete' | translateOr: 'Extraction complete' }}</span>
+                }
+                <button class="btn btn-outline btn-danger" (click)="removeFile()"><i class="pi pi-times"></i> {{ 'ui.cepc.cc.remove_file' | translateOr: 'Remove File' }}</button>
+              </div>
+            }
+
+            @if (scanError) {
+              <p class="error-text">{{ scanError }}</p>
+            }
+          </div>
+        </div>
+
+        <!-- ════ RIGHT: Complaint Form ════ -->
+        <div class="col-complaint-form" [class.panel-hidden]="pdfExpanded()">
+          <div class="panel-header">
+            <h3><i class="pi pi-file-edit"></i> {{ 'ui.cepc.dv.tab.complaint' | translateOr: 'Complaint' }}</h3>
+          </div>
+
+          @if (ocrComplete()) {
+            <div class="ocr-notice">
+              <i class="pi pi-exclamation-triangle"></i>
+              {{ 'ui.cepc.cc.extraction_disclaimer' | translateOr: 'Content extraction may not be 100% accurate. Please verify all information.' }}
+              <button class="dismiss-btn" (click)="ocrComplete.set(false)">&times;</button>
+            </div>
+          }
+
+          <div class="form-scroll">
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.basic" (click)="sectionExpanded.basic = !sectionExpanded.basic">
+                <i class="pi pi-list"></i> {{ 'ui.cepc.dv.section.basic_details' | translateOr: 'Basic Details' }}
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.basic" [class.pi-chevron-down]="!sectionExpanded.basic"></i>
+              </h5>
+              @if (sectionExpanded.basic) {
+                <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['subject']">
+                  <label>{{ 'ui.cepc.dv.field.subject' | translateOr: 'Subject' }} <span class="required">*</span></label>
+                  <textarea [(ngModel)]="subject" rows="2" [placeholder]="'ui.cepc.dv.ph.enter_text' | translateOr: 'Enter text here'"></textarea>
+                  @if (formSubmitAttempted && fieldErrors['subject']) {
+                    <span class="field-error">{{ fieldErrors['subject'] }}</span>
+                  }
+                </div>
+
+                <div class="form-group full-width" [class.has-error]="formSubmitAttempted && fieldErrors['description']">
+                  <label>{{ 'ui.cepc.dv.section.complaint_details' | translateOr: 'Complaint Details' }} <span class="required">*</span></label>
+                  <textarea [(ngModel)]="description" rows="3" [placeholder]="'ui.cepc.dv.ph.enter_text' | translateOr: 'Enter text here'"></textarea>
+                  @if (formSubmitAttempted && fieldErrors['description']) {
+                    <span class="field-error">{{ fieldErrors['description'] }}</span>
+                  }
+                </div>
+
+                <div class="form-group full-width">
+                  <label>{{ 'ui.cepc.dv.tab.comments' | translateOr: 'Comments' }}</label>
+                  <div class="textarea-with-speech">
+                    <textarea [(ngModel)]="comments" rows="2" [placeholder]="'ui.cepc.dv.ph.enter_text' | translateOr: 'Enter text here'" maxlength="3072"></textarea>
+                    <app-speech-button (transcription)="comments = comments + ' ' + $event"></app-speech-button>
+                  </div>
+                </div>
+
+                <div class="form-row-2col">
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['modeOfReceipt']">
+                    <label>{{ 'ui.cepc.dv.field.mode_of_receipt' | translateOr: 'Mode of Receipt' }} <span class="required">*</span></label>
+                    <select [(ngModel)]="modeOfReceipt">
+                      <option value="">{{ 'ui.cepc.cc.ph.enter_value' | translateOr: 'Enter a value' }}</option>
+                      <option value="PHYSICAL_LETTER">{{ 'ui.cepc.cc.physical_letter' | translateOr: 'Physical Letter' }}</option>
+                      <option value="EMAIL">{{ 'ui.cepc.dv.field.email' | translateOr: 'Email' }}</option>
+                      <option value="PORTAL">{{ 'ui.cepc.cc.portal' | translateOr: 'Portal' }}</option>
+                      <option value="CPGRAMS">{{ 'ui.cepc.cc.cpgrams' | translateOr: 'CPGRAMS' }}</option>
+                    </select>
+                    @if (formSubmitAttempted && fieldErrors['modeOfReceipt']) {
+                      <span class="field-error">{{ fieldErrors['modeOfReceipt'] }}</span>
+                    }
+                  </div>
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['receivedDate']">
+                    <label>{{ 'ui.cepc.cc.physical_letter_receipt_date' | translateOr: 'Physical Letter Receipt Date' }}</label>
+                    <input type="date" [(ngModel)]="receivedDate" placeholder="dd-mm-yyyy" />
+                    @if (formSubmitAttempted && fieldErrors['receivedDate']) {
+                      <span class="field-error">{{ fieldErrors['receivedDate'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-group full-width cpgram-checkbox-row">
+                  <label class="cpgram-checkbox-label">
+                    <input type="checkbox" [(ngModel)]="isCpgram" />
+                    <span>{{ 'ui.cepc.dv.field.is_cpgram' | translateOr: 'Is Complaint CPGRAM' }}</span>
+                  </label>
+                </div>
+                @if (isCpgram) {
+                  <div class="form-group full-width">
+                    <label>{{ 'ui.cepc.dv.field.cpgram_number' | translateOr: 'CPGRAM Number' }}</label>
+                    <input type="text" [(ngModel)]="cpgramsNumber" [placeholder]="'ui.cepc.cc.ph.enter_cpgram_number' | translateOr: 'Enter CPGRAM number'" />
+                  </div>
+                }
+              }
+            </section>
+
+            <!-- Eligibility -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.eligibility" (click)="sectionExpanded.eligibility = !sectionExpanded.eligibility">
+                <i class="pi pi-verified"></i> {{ 'ui.cepc.dv.tab.eligibility' | translateOr: 'Eligibility' }}
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.eligibility" [class.pi-chevron-down]="!sectionExpanded.eligibility"></i>
+              </h5>
+              @if (sectionExpanded.eligibility) {
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.proposed_complaint_type' | translateOr: 'Proposed Complaint Type' }}</label>
+                    <select [(ngModel)]="proposedComplaintType">
+                      <option value="NEW_COMPLAINT">{{ 'ui.cepc.dv.state.new_complaint' | translateOr: 'New Complaint' }}</option>
+                      <option value="SUGGESTION">{{ 'ui.cepc.cc.suggestion' | translateOr: 'Suggestion' }}</option>
+                      <option value="QUERY">{{ 'ui.cepc.cc.query' | translateOr: 'Query' }}</option>
+                    </select>
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>{{ 'ui.cepc.dv.field.entity_name' | translateOr: 'Entity Name' }}</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text"
+                        [ngModel]="eligibilityEntitySearch || eligibilityEntityName"
+                        (ngModelChange)="onEligibilityEntitySearch($event)"
+                        (focus)="onEligibilityEntitySearch(eligibilityEntitySearch || eligibilityEntityName)"
+                        (blur)="onEligibilityEntityBlur()"
+                        [placeholder]="'ui.cepc.dv.action.select_a_value' | translateOr: 'Select a Value'"
+                        autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                    @if (showEligibilityEntityDropdown() && eligibilityEntityResults().length > 0) {
+                      <ul class="entity-dropdown">
+                        @for (entity of eligibilityEntityResults(); track entity.id) {
+                          <li (mousedown)="selectEligibilityEntity(entity)">
+                            <span class="entity-name">{{ entity.name }}</span>
+                            <span class="entity-dept">{{ entity.department }}</span>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                </div>
+
+                <div class="eligibility-toggle">
+                  <label class="toggle-switch">
+                    <input type="checkbox" [(ngModel)]="markAllEligible" (change)="onMarkAllEligible()" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label">{{ 'ui.cepc.dv.action.mark_all_eligible' | translateOr: 'Mark all as eligible' }}</span>
+                </div>
+
+                <div class="eligibility-questions">
+                  @for (q of eligibilityQuestions; track q.key) {
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option">
+                          <input type="radio" [name]="q.key" [value]="true" [(ngModel)]="q.answer" />
+                          <span>{{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</span>
+                        </label>
+                        <label class="radio-option">
+                          <input type="radio" [name]="q.key" [value]="false" [(ngModel)]="q.answer" />
+                          <span>{{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</span>
+                        </label>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+            <!-- Entity Details -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.entity" (click)="sectionExpanded.entity = !sectionExpanded.entity">
+                <i class="pi pi-building"></i> {{ 'ui.cepc.dv.section.entity_details' | translateOr: 'Entity Details' }}
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.entity" [class.pi-chevron-down]="!sectionExpanded.entity"></i>
+              </h5>
+              @if (sectionExpanded.entity) {
+                <!-- Read-only entity info -->
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label class="readonly-label">{{ 'ui.cepc.dv.field.entity_name' | translateOr: 'Entity Name' }}</label>
+                    <span class="readonly-value">{{ entityName || '—' }}</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="readonly-label">{{ 'ui.cepc.dv.field.module_name' | translateOr: 'Module Name' }}</label>
+                    <span class="readonly-value">{{ moduleName || '—' }}</span>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label class="readonly-label">{{ 'ui.cepc.dv.field.entity_category' | translateOr: 'Entity Category' }}</label>
+                    <span class="readonly-value">{{ entityCategory || '—' }}</span>
+                  </div>
+                  <div class="form-group">
+                    <label class="readonly-label">{{ 'ui.cepc.dv.field.entity_type' | translateOr: 'Entity Type' }}</label>
+                    <span class="readonly-value">{{ entityTypeDisplay || '—' }}</span>
+                  </div>
+                </div>
+
+                <!-- Editable fields -->
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.bsr_code' | translateOr: 'BSR Code' }}</label>
+                    <input type="text" [(ngModel)]="bsrCode" [placeholder]="'ui.cepc.cc.ph.enter_bsr_code' | translateOr: 'Enter BSR code'" />
+                  </div>
+                  <div class="form-group" [class.has-error]="fieldErrors['entityPincode']">
+                    <label>{{ 'ui.cepc.dv.field.pincode' | translateOr: 'Pincode' }}</label>
+                    <input type="text" [(ngModel)]="entityPincode" (ngModelChange)="onEntityPincodeInput($event)" [placeholder]="'ui.cepc.cc.ph.enter_pincode' | translateOr: 'Enter pincode'" maxlength="6" />
+                    @if (fieldErrors['entityPincode']) {
+                      <span class="field-error">{{ fieldErrors['entityPincode'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.country' | translateOr: 'Country' }}</label>
+                    <input type="text" [(ngModel)]="entityCountry" [placeholder]="'ui.cepc.cc.ph.enter_country_name' | translateOr: 'Enter Country name'" />
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>{{ 'ui.cepc.dv.field.state' | translateOr: 'State' }}</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityState" [placeholder]="'ui.cepc.cc.ph.select_state_name' | translateOr: 'Select state name'" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group entity-search-group">
+                    <label>{{ 'ui.cepc.dv.field.district' | translateOr: 'District' }}</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityDistrict" [placeholder]="'ui.cepc.cc.ph.select_district_name' | translateOr: 'Select district name'" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>{{ 'ui.cepc.dv.field.city' | translateOr: 'City' }}</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityCity" [placeholder]="'ui.cepc.cc.ph.select_city_name' | translateOr: 'Select city name'" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group entity-search-group">
+                    <label>{{ 'ui.cepc.dv.field.entity_branch_name' | translateOr: 'Entity Branch Name' }}</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityBranchName" [placeholder]="'ui.cepc.cc.ph.select_entity_branch_name' | translateOr: 'Select entity branch name'" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                  <div class="form-group entity-search-group">
+                    <label>{{ 'ui.cepc.dv.field.entity_branch_category' | translateOr: 'Entity Branch Category' }}</label>
+                    <div class="entity-search-wrapper">
+                      <input type="text" [(ngModel)]="entityBranchCategory" [placeholder]="'ui.cepc.cc.ph.select_entity_branch_category' | translateOr: 'Select entity branch category'" autocomplete="off" />
+                      <i class="pi pi-search entity-search-icon"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.entity_address' | translateOr: 'Entity Address' }}</label>
+                    <input type="text" [(ngModel)]="entityAddress" [placeholder]="'ui.cepc.cc.ph.enter_entity_address' | translateOr: 'Enter entity address'" />
+                  </div>
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.cc.branch_center_name' | translateOr: 'Branch Center Name' }}</label>
+                    <input type="text" [(ngModel)]="branchCenterName" [placeholder]="'ui.cepc.cc.ph.enter_branch_center_name' | translateOr: 'Enter branch center name'" />
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.cosmos_code' | translateOr: 'COSMOS Code' }}</label>
+                    <input type="text" [(ngModel)]="cosmosCode" [placeholder]="'ui.cepc.cc.ph.enter_country_name' | translateOr: 'Enter Country name'" />
+                  </div>
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.asset_size_crores' | translateOr: 'Asset Size in Crores' }}</label>
+                    <div class="amount-input-wrapper">
+                      <span class="currency-prefix">₹</span>
+                      <input type="number" [(ngModel)]="assetSizeInCrores" [placeholder]="'ui.cepc.dv.ph.enter_amount' | translateOr: 'Enter Amount'" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Entity Yes/No questions -->
+                <div class="eligibility-questions entity-questions">
+                  @for (q of entityQuestions; track q.key) {
+                    <div class="eligibility-row">
+                      <span class="eligibility-question">{{ q.label }}</span>
+                      <div class="eligibility-options">
+                        <label class="radio-option">
+                          <input type="radio" [name]="q.key" [value]="true" [(ngModel)]="q.answer" />
+                          <span>{{ 'ui.cepc.dv.value.yes' | translateOr: 'Yes' }}</span>
+                        </label>
+                        <label class="radio-option">
+                          <input type="radio" [name]="q.key" [value]="false" [(ngModel)]="q.answer" />
+                          <span>{{ 'ui.cepc.dv.value.no' | translateOr: 'No' }}</span>
+                        </label>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </section>
+
+            <!-- Complainant Details -->
+            <section class="form-section">
+              <h5 class="section-title" [class.expanded]="sectionExpanded.complainant" (click)="sectionExpanded.complainant = !sectionExpanded.complainant">
+                <i class="pi pi-user"></i> {{ 'ui.cepc.dv.section.complainant_details' | translateOr: 'Complainant Details' }}
+                <i class="pi section-chevron" [class.pi-chevron-up]="sectionExpanded.complainant" [class.pi-chevron-down]="!sectionExpanded.complainant"></i>
+              </h5>
+              @if (sectionExpanded.complainant) {
+                <div class="form-row-2col">
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantName']">
+                    <label>{{ 'ui.cepc.dv.field.name' | translateOr: 'Name' }} <span class="required">*</span></label>
+                    <input type="text" [(ngModel)]="complainantName" [placeholder]="'ui.cepc.cc.full_name' | translateOr: 'Full name'" />
+                    @if (formSubmitAttempted && fieldErrors['complainantName']) {
+                      <span class="field-error">{{ fieldErrors['complainantName'] }}</span>
+                    }
+                  </div>
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantEmail']">
+                    <label>{{ 'ui.cepc.dv.field.email' | translateOr: 'Email' }}</label>
+                    <input type="email" [(ngModel)]="complainantEmail" [placeholder]="'ui.cepc.cc.email_address' | translateOr: 'Email address'" />
+                    @if (formSubmitAttempted && fieldErrors['complainantEmail']) {
+                      <span class="field-error">{{ fieldErrors['complainantEmail'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group" [class.has-error]="formSubmitAttempted && fieldErrors['complainantPhone']">
+                    <label>{{ 'ui.cepc.cc.phone' | translateOr: 'Phone' }}</label>
+                    <input type="tel" [(ngModel)]="complainantPhone" maxlength="10" [placeholder]="'ui.cepc.cc.ph.mobile_10_digit' | translateOr: '10-digit mobile'" />
+                    @if (formSubmitAttempted && fieldErrors['complainantPhone']) {
+                      <span class="field-error">{{ fieldErrors['complainantPhone'] }}</span>
+                    }
+                  </div>
+                  <div class="form-group" [class.has-error]="fieldErrors['complainantPincode']">
+                    <label>{{ 'ui.cepc.dv.field.pincode' | translateOr: 'Pincode' }}</label>
+                    <div class="pincode-field">
+                      <input type="text" [ngModel]="complainantPincode" (ngModelChange)="onPincodeInput($event)" maxlength="6" [placeholder]="'ui.cepc.cc.ph.pincode_6_digit' | translateOr: '6-digit pincode'" />
+                      @if (pincodeLoading()) { <span class="pincode-spinner">...</span> }
+                    </div>
+                    @if (fieldErrors['complainantPincode']) {
+                      <span class="field-error">{{ fieldErrors['complainantPincode'] }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="form-row-2col">
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.state' | translateOr: 'State' }}</label>
+                    <select [ngModel]="complainantState" (ngModelChange)="onStateChange($event)">
+                      <option value="">{{ 'ui.cepc.cc.ph.select_state' | translateOr: 'Select State' }}</option>
+                      @for (s of states(); track s) {
+                        <option [value]="s">{{ s }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>{{ 'ui.cepc.dv.field.district' | translateOr: 'District' }}</label>
+                    <select [(ngModel)]="complainantDistrict">
+                      <option value="">{{ 'ui.cepc.cc.ph.select_district' | translateOr: 'Select District' }}</option>
+                      @for (d of districts(); track d) {
+                        <option [value]="d">{{ d }}</option>
+                      }
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group full-width">
+                  <label>{{ 'ui.cepc.dv.field.address' | translateOr: 'Address' }}</label>
+                  <textarea [(ngModel)]="complainantAddress" rows="2" [placeholder]="'ui.cepc.cc.full_address' | translateOr: 'Full address'"></textarea>
+                </div>
+              }
+            </section>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,6 +1,7 @@
 package com.hrms.cms.service;
 
 import com.hrms.cms.entity.Appeal;
+import com.hrms.cms.entity.AppealStatus;
 import com.hrms.cms.entity.AppealTimeline;
 import com.hrms.cms.entity.ClosureClauseMaster.AppealParty;
 import com.hrms.cms.entity.Complaint;
@@ -59,6 +60,15 @@ public class AppealWorkflowService {
 
     /** Roles permitted to set aside the clause-derived classification. */
     private static final Set<String> OVERRIDE_ROLES = Set.of("AA_DO", "AA_REVIEWER", "AA_ADMIN");
+
+    /**
+     * The citizen-facing status a complaint carries once an appeal is filed against it (UST106).
+     *
+     * <p>Set on COMPLAINT_STATUS_ON_PORTAL rather than STATUS: STATUS drives the officer workflow state
+     * machine, and the parent complaint's own workflow is finished. Overwriting it would reopen a closed
+     * complaint in the RBIO/CEPC grids, where the appeal is the AA's work and not theirs.
+     */
+    private static final String PARENT_STATUS_APPEAL_FILED = "APPEAL_FILED";
 
     // The role matrix and the terminal-status list that used to live here are gone. Both are now
     // declared once in AaWorkflowTransition, and the terminal codes come from AppealStatus.TERMINAL_CODES
@@ -127,6 +137,21 @@ public class AppealWorkflowService {
         }
         if (appealGround == null || appealGround.isBlank()) {
             throw new IllegalArgumentException("appealGround is required");
+        }
+
+        // UST106: one appeal per complaint. Without this guard a citizen who resubmitted the form — or
+        // double-clicked it — got a second appeal row against the same complaint, each with its own
+        // number and its own AA_DO placement, so two officers worked the same grievance.
+        // UST106 AC3. AppealController already checks this, but the legacy fileAppeal(request) signature
+        // bypasses the controller entirely, so without a guard here a second appeal could still be
+        // created against one complaint — two appeal numbers, two AA_DO placements, two officers working
+        // the same grievance. Matches the controller's rule: a CLOSED appeal does not bar a new one,
+        // since the remand path legitimately ends one appeal and may warrant another.
+        boolean hasActiveAppeal = appealRepository.findByOriginalComplaintNumber(originalComplaintNumber)
+                .stream()
+                .anyMatch(a -> !AppealStatus.TERMINAL_CODES.contains(a.getStatus()));
+        if (hasActiveAppeal) {
+            throw new IllegalStateException("Appeal already filed for this complaint.");
         }
 
         // Check eligibility
@@ -214,6 +239,13 @@ public class AppealWorkflowService {
             timelineRemarks += " | appellant comments: " + comments;
         }
         addTimeline(appealNumber, "FILED", "SYSTEM", null, timelineRemarks, null, "filed");
+
+        // UST106 AC2: the parent complaint must show that an appeal is now pending against it. Only the
+        // APPEAL row carried that fact before, so the citizen's tracking view and the officer grid both
+        // still showed the complaint as plainly closed. closedAt/closureClause are left untouched — the
+        // original closure is a matter of record, and an appeal does not undo it.
+        parent.setComplaintStatusOnPortal(PARENT_STATUS_APPEAL_FILED);
+        complaintRepository.save(parent);
 
         // ═══ The PARENT COMPLAINT's own history records that it has been appealed ═══
         //

@@ -6,5 +6,13 @@
     "pathRewrite": {
       "^/api/pincode": "/pincode"
     }
+  },
+  "/api/v1/storage": {
+    "target": "http://localhost:8090",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/v1/storage": "/cms-storage/api/v1/storage"
+    }
   }
 }

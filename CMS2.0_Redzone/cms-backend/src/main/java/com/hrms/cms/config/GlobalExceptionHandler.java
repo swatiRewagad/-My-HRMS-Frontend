@@ -16,8 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -33,6 +36,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -360,6 +364,29 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleBadRequest(Exception ex) {
         log.warn("Malformed request: {}", ex.getMessage());
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * The wrong Content-Type is the caller's mistake, and the fix is to say which one to use.
+     *
+     * <p>Same family as the block above, and it hid the same way: posting JSON to a
+     * {@code consumes = "multipart/form-data"} endpoint — {@code /api/v1/email-syndication/drafts/physical-letter}
+     * is one — fell through to the catch-all and came back as 500 "An internal error occurred". That reads as a
+     * broken server for what is a two-character client fix, so the supported types are named in the message
+     * and echoed in the Accept-Patch-style {@code Accept} header Spring expects on a 415.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException ex) {
+        String supported = ex.getSupportedMediaTypes().stream()
+                .map(MediaType::toString)
+                .collect(Collectors.joining(", "));
+        log.warn("Unsupported Content-Type {} — this endpoint accepts: {}",
+                ex.getContentType(), supported.isEmpty() ? "(none declared)" : supported);
+        String message = supported.isEmpty()
+                ? "The request Content-Type is not supported by this endpoint."
+                : "The request Content-Type is not supported by this endpoint. Use one of: " + supported + ".";
+        return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE, message);
     }
 
     /**

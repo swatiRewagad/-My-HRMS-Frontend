@@ -60,6 +60,9 @@ public class AppealController {
             @RequestParam(required = false) String reliefSought,
             @RequestParam(required = false) String classification,
             @RequestParam(required = false) String reasonForDelay,
+            // UST113: the appellant's own contact details. The Appeal entity has always had these
+            // columns, but no endpoint accepted them, so they could only ever be copied from the parent
+            // complaint — an appellant reachable on a different number or email had no way to say so.
             @RequestParam(required = false) String appellantName,
             @RequestParam(required = false) String appellantPhone,
             @RequestParam(required = false) String appellantEmail,
@@ -78,27 +81,35 @@ public class AppealController {
             return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appeal details are required");
         }
 
+        // UST113 limits: comments 500 chars, name alphabetic and 100 chars, mobile exactly 10 digits.
+        // The 5000-char ceiling below belongs to the Appeal.appealGround column, which stores ground and
+        // details concatenated; it is kept as the backstop for that column, not as the field's own limit.
+        if (details.length() > 500) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Input must be within allowed character length.");
+        }
+        if (appellantName != null && !appellantName.isBlank()) {
+            if (appellantName.length() > 100) {
+                return buildErrorResponse(HttpStatus.BAD_REQUEST, "Input must be within allowed character length.");
+            }
+            if (!appellantName.matches("[\\p{L}\\s.'-]+")) {
+                return buildErrorResponse(HttpStatus.BAD_REQUEST, "Only letters are allowed.");
+            }
+        }
+        if (appellantPhone != null && !appellantPhone.isBlank() && !appellantPhone.matches("\\d{10}")) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Mobile number must be 10 digits.");
+        }
+        if (appellantEmail != null && !appellantEmail.isBlank()
+                && !appellantEmail.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Enter a valid email address.");
+        }
+        if (comments != null && comments.length() > 500) {
+            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Comments must not exceed 500 characters");
+        }
+
         // Validate appealGround length (maps to appealGround on Appeal entity)
         String appealGround = details;
         if (appealGround.length() > 5000) {
             return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appeal details must not exceed 5000 characters");
-        }
-
-        // Appellant identity, server-validated. The browser checks these too, but a client-side check is
-        // a convenience, not a control — these land on a statutory record and the API is reachable
-        // without the form.
-        if (appellantName != null && appellantName.length() > 100) {
-            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appellant name must not exceed 100 characters");
-        }
-        if (appellantPhone != null && !appellantPhone.isBlank() && !appellantPhone.trim().matches("\\d{10}")) {
-            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appellant mobile must be exactly 10 digits");
-        }
-        if (appellantEmail != null && !appellantEmail.isBlank()
-                && !appellantEmail.trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$")) {
-            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Appellant email is not a valid address");
-        }
-        if (comments != null && comments.length() > 500) {
-            return buildErrorResponse(HttpStatus.BAD_REQUEST, "Comments must not exceed 500 characters");
         }
 
         // Determine if this is a delayed filing based on eligibility check

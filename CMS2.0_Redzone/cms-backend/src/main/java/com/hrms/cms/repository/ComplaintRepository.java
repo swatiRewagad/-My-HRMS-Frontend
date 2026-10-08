@@ -1,5 +1,6 @@
 package com.hrms.cms.repository;
 
+import com.hrms.cms.dto.cepc.CepcCountSnapshot;
 import com.hrms.cms.entity.Complaint;
 import com.hrms.cms.entity.ReActivityStatus;
 import com.hrms.cms.repository.projection.AssistanceRailProjections;
@@ -30,6 +31,12 @@ import java.util.Optional;
 public interface ComplaintRepository
         extends JpaRepository<Complaint, Long>, JpaSpecificationExecutor<Complaint> {
     Optional<Complaint> findByComplaintNumber(String complaintNumber);
+
+    /** Non-Maintainable complaints (FR-G-013) have a caseId instead of a complaintNumber. */
+    Optional<Complaint> findByCaseId(String caseId);
+
+    /** Batch form, so a list of nodal records joins to its complaints in one query rather than per row. */
+    List<Complaint> findByComplaintNumberIn(Collection<String> complaintNumbers);
 
     /**
      * Counts one complaint-number series. Used by the dev seeders to decide whether their OWN rows are
@@ -153,6 +160,37 @@ public interface ComplaintRepository
     Page<Complaint> findByComplainantPhoneAndStatus(String phone, String status, Pageable pageable);
 
     /**
+     * Candidate set for the duplicate pre-check (FR-G-020): live complaints from the same
+     * complainant, matched on phone OR email. Terminal statuses are excluded so a citizen may
+     * re-file after closure.
+     *
+     * <p>The remaining four parameters of the FR-G-020 combination (name, entity, dispute date,
+     * category) are applied in {@code ComplaintService} rather than here. Expressing them as
+     * {@code :param IS NULL OR column = :param} predicates made an absent or unresolvable value
+     * silently match every row, which collapsed the whole check to "anyone who filed in the last
+     * 90 days". One phone/email yields a handful of rows, so filtering them in Java is both exact
+     * and cheap.
+     *
+     * <p>{@code status} is lowercased because the officer close path writes {@code CLOSED} while
+     * public filing defaults to {@code pending} — a case-sensitive NOT IN let closed complaints
+     * keep reading as live.
+     */
+    @Query("""
+           SELECT c FROM Complaint c
+           WHERE (
+                   (:phone IS NOT NULL AND c.complainantPhone = :phone)
+                OR (:email IS NOT NULL AND LOWER(c.complainantEmail) = LOWER(:email))
+           )
+             AND LOWER(c.status) NOT IN :terminalStatuses
+             AND c.createdAt >= :since
+           ORDER BY c.createdAt DESC
+           """)
+    List<Complaint> findLiveByComplainantContact(@Param("phone") String phone,
+                                                 @Param("email") String email,
+                                                 @Param("terminalStatuses") List<String> terminalStatuses,
+                                                 @Param("since") LocalDateTime since);
+
+    /**
      * The citizen "Open" filter: a complaint the citizen is still waiting on.
      *
      * Ruled by the business owner — a complaint counts as Open until it is resolved. The settled
@@ -206,6 +244,81 @@ public interface ComplaintRepository
            """)
     List<Complaint> findNudgeCandidates(@Param("statuses") List<ReActivityStatus> statuses,
                                         Pageable pageable);
+
+    /**
+     * Every CEPC dashboard badge number in one pass (UST-CEPC dashboard).
+     *
+     * <p><b>One query, twelve counts.</b> Issued as conditional aggregates rather than twelve
+     * {@code count()} calls because the dashboard recomputes these on every debounced keystroke; twelve
+     * round trips per keystroke is what makes a search box feel broken.
+     *
+     * <p><b>These counts are scope-only, and deliberately ignore the caller's active tab, KPI card and
+     * filters.</b> The badges must not move when the grid is filtered: a badge that changed as you typed
+     * would be reporting the size of what you are already looking at rather than how much work is waiting.
+     *
+     * <p>The predicates here restate ones held as data in {@code CEPC_DASHBOARD_FILTER}, because a single SQL
+     * aggregate cannot be assembled from that table. The two can therefore drift, and the check that catches
+     * it is that each tab's row count must equal its badge — worth running after any change to either side.
+     *
+     * <p>Every status set arrives as a parameter rather than being written inline, so each arm is the same
+     * expression its {@code CEPC_DASHBOARD_FILTER} row compiles to and the caller passes both spellings once.
+     *
+     * @param me                the caller's user id; pass an empty string rather than null for an
+     *                          unidentified caller
+     * @param office            the office scope, matched against {@code REGIONAL_OFFICE}; null means unscoped
+     * @param terminal          lower-cased statuses that end a complaint's life
+     * @param withdrawn         lower-cased spellings of "withdrawn"
+     * @param draft             lower-cased spellings of "draft"
+     * @param meetingScheduled  lower-cased spellings of "meeting scheduled"
+     * @param infoRequired      lower-cased spellings of "information required" — the with-RE state
+     * @param sentToRbi         lower-cased spellings of "sent to RBI" — the contact person has responded
+     * @param now               the instant an SLA is measured against
+     * @param slaFrom0          start of the first forward SLA window (today)
+     * @param slaTo15           exclusive end of the first window (today + 16 days)
+     * @param slaTo30           exclusive end of the second window (today + 31 days)
+     */
+    @Query("""
+           SELECT new com.hrms.cms.dto.cepc.CepcCountSnapshot(
+             COALESCE(SUM(CASE WHEN c.status IS NULL OR LOWER(c.status) NOT IN :terminal
+                               THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN c.assignedOfficer = :me
+                                AND (c.status IS NULL OR LOWER(c.status) NOT IN :terminal)
+                               THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :infoRequired THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :meetingScheduled THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN c.slaDeadline IS NOT NULL AND c.slaDeadline < :now
+                                AND (c.status IS NULL OR LOWER(c.status) NOT IN :terminal)
+                               THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN c.slaDeadline >= :slaFrom0 AND c.slaDeadline < :slaTo15
+                                AND (c.status IS NULL OR LOWER(c.status) NOT IN :terminal)
+                               THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN c.slaDeadline >= :slaTo15 AND c.slaDeadline < :slaTo30
+                                AND (c.status IS NULL OR LOWER(c.status) NOT IN :terminal)
+                               THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :meetingScheduled THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN c.assignedOfficer = :me
+                                AND (LOWER(c.status) = 'sent_back' OR c.workflowStage LIKE 'SENT_BACK%')
+                               THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :infoRequired THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :sentToRbi THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :withdrawn THEN 1L ELSE 0L END), 0L),
+             COALESCE(SUM(CASE WHEN LOWER(c.status) IN :draft THEN 1L ELSE 0L END), 0L))
+           FROM Complaint c
+           WHERE c.department = 'CEPC'
+             AND (:office IS NULL OR c.regionalOffice = :office)
+           """)
+    CepcCountSnapshot cepcDashboardCounts(@Param("me") String me,
+                                          @Param("office") String office,
+                                          @Param("terminal") Collection<String> terminal,
+                                          @Param("withdrawn") Collection<String> withdrawn,
+                                          @Param("draft") Collection<String> draft,
+                                          @Param("meetingScheduled") Collection<String> meetingScheduled,
+                                          @Param("infoRequired") Collection<String> infoRequired,
+                                          @Param("sentToRbi") Collection<String> sentToRbi,
+                                          @Param("now") LocalDateTime now,
+                                          @Param("slaFrom0") LocalDateTime slaFrom0,
+                                          @Param("slaTo15") LocalDateTime slaTo15,
+                                          @Param("slaTo30") LocalDateTime slaTo30);
 
     /**
      * Open complaints past their SLA deadline that have not yet had a breach escalation raised.

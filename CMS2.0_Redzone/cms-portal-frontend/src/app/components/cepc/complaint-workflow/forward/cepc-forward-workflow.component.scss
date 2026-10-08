@@ -1,0 +1,26 @@
+@use '../../cepc-complaint-details-view/cepc-complaint-details-view.component.scss' as *;
+
+// The @use above pulls in the parent's `:host { background: #f5f7fa; }` too, which recompiles
+// against THIS component's own host and paints it gray instead of white — override it here.
+//
+// Also bounds this component's own height to whatever `.col-complaint-form` gives it, so `.form-scroll`
+// below can be the thing that scrolls (with a visible scrollbar) instead of the outer panel silently
+// absorbing the overflow with its scrollbar hidden (see `.col-complaint-form { scrollbar-width: none }`).
+:host {
+  background: var(--p-content-background, #fff);
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.form-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: var(--p-content-border-color, #cbd5e1); border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: var(--p-text-muted-color, #94a3b8); }
+}

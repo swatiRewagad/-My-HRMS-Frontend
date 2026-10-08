@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,6 +24,20 @@ public interface EmailDraftRepository extends JpaRepository<EmailDraft, Long> {
     long countByTargetOfficeAndStatus(String targetOffice, String status);
     List<EmailDraft> findByIsVernacularTrueOrderByCreatedAtDesc();
     List<EmailDraft> findByAssignedToAndIsVernacularTrueOrderByCreatedAtDesc(String assignedTo);
+
+    /**
+     * Open draft count per assignee, for the DEO roster's {@code currentLoad}.
+     *
+     * <p>Grouped rather than one count per DEO: the roster endpoint renders every DEO, and a per-row count
+     * would issue one query per officer on a screen the officer opens on every complaint.
+     *
+     * <p>{@code statuses} is passed in so the caller names {@link com.hrms.cms.entity.DraftStatus#OPEN}
+     * explicitly. Counting every status instead would include CONVERTED work, so a DEO's load could only ever
+     * rise — and automatic assignment balances on exactly this number.
+     */
+    @Query("SELECT d.assignedTo, COUNT(d) FROM EmailDraft d "
+         + "WHERE d.assignedTo IS NOT NULL AND d.status IN :statuses GROUP BY d.assignedTo")
+    List<Object[]> countOpenGroupedByAssignee(@Param("statuses") Collection<String> statuses);
 
     Optional<EmailDraft> findByMessageId(String messageId);
     boolean existsByMessageId(String messageId);

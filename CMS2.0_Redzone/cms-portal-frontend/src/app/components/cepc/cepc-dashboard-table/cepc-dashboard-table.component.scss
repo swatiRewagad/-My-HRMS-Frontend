@@ -1,0 +1,613 @@
+@use 'sass:color';
+@use 'sass:list';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+
+  --p-datatable-header-background: var(--p-content-hover-background, #f8fafc) !important;
+  ;
+  --p-datatable-header-cell-background: var(--p-content-background, #ffffff);
+  --p-datatable-header-cell-border-color: var(--p-content-border-color, #e2e8f0);
+  --p-datatable-body-cell-border-color: var(--p-content-border-color, #f1f5f9);
+  --p-datatable-row-background: var(--p-content-background, #ffffff);
+  --p-datatable-border-color: var(--p-content-border-color, #e2e8f0);
+  --p-datatable-border-radius: var(--p-content-border-radius, 8px);
+  --p-datatable-header-padding: 0px !important;
+
+  // Widths of the three frozen columns, in render order: select box, Complaint Id, Complaint Number.
+  // The sticky `left` offsets are derived from these, so the two must never be edited apart.
+  // 4rem, not the 3rem this column used to ask for inline: that was a hint a wider checkbox or heavier
+  // cell padding could overrun, and it is now a hard max-width that would clip the checkbox instead.
+  --cepc-frozen-select-w: 4rem;
+  --cepc-frozen-id-w: 10rem;
+  --cepc-frozen-number-w: 13rem;
+
+  // Floor for every scrolling column. Sized to the longest header ("Principal Nodal Officer" plus its
+  // lock/sort icons) so no title has to wrap, and applied uniformly so the search boxes line up instead of
+  // each column shrinking to its own title.
+  --cepc-col-w: 13.5rem;
+}
+
+.table-card-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+  background: var(--p-content-background, #fff);
+  border-radius: var(--p-content-border-radius, 8px);
+  box-shadow: 0 1px 3px #0000000d;
+}
+
+.cepc-custom-table {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--p-content-border-color, #e2e8f0);
+  border-radius: 8px;
+
+  // Use ng-deep to bypass Angular's component encapsulation scoping for third-party PrimeNG DOM structures
+  ::ng-deep {
+    // [scrollHeight]="'flex'" on <p-table> (see template) makes PrimeNG size the table to its ancestor's
+    // bounded height and scroll internally; the ancestor chain up through cepc-home provides that bound.
+    // The actual scrolling element in PrimeNG 21 is .p-datatable-table-container, not the older
+    // .p-datatable-scrollable-body API. Horizontal scroll (for the frozen columns) is unaffected,
+    // since overflow-x and overflow-y are independent.
+    .p-datatable-table-container {
+      scrollbar-width: thin;
+      scrollbar-color: var(--p-content-border-color, #cbd5e1) transparent;
+      // ... (keep your webkit-scrollbar code exactly as it is)
+    }
+
+    .p-datatable-thead>tr>th {
+      font-family: 'Noto Sans', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      line-height: 21px;
+      letter-spacing: 0.07px;
+      color: var(--p-text-color, #334155) !important;
+
+      // PrimeNG's Aura dark-mode token forces sortable header text to pure white on hover
+      // (text.hover.color → surface.0). Pin it back to the row-hover-matching, stable text color.
+      :host-context(.cepc-dark) &.p-datatable-sortable-column:hover {
+        color: var(--p-text-color, #e2e8f0) !important;
+      }
+    }
+
+    // Must live in ::ng-deep: p-columnFilter renders this input from its own template, so it never carries
+    // this component's _ngcontent attribute. Written as a plain scoped rule it compiles to
+    // `input[_ngcontent-%COMP%]` and matches nothing, leaving the input at its intrinsic size — an
+    // <input> defaults to size=20, about 209px. That is wider than the frozen Complaint Number column
+    // (13rem) and far wider than Complaint Id (10rem), so the search box spilled forward out of the
+    // frozen block and over the scrolling columns.
+    .filter-cell-wrapper input {
+      width: 100% !important;
+      font-size: .8125rem !important;
+      // Same reasoning as the width fix above: this input renders from p-columnFilter's own
+      // template, outside this component's view encapsulation, so it never picked up the
+      // portal's dark-mode repaint and stayed white under `.cepc-dark`.
+      background-color: var(--p-content-background, #fff) !important;
+      color: var(--p-text-color, #334155) !important;
+      border-color: var(--p-content-border-color, #cbd5e1) !important;
+    }
+
+    // Reorderable headers advertise the drag affordance; pinned ones must not.
+    .p-datatable-thead>tr>th.p-datatable-reorderable-column:not(.pinned-col) .header-cell-content {
+      cursor: grab;
+    }
+
+    .p-datatable-thead>tr>th.pinned-col {
+      cursor: default;
+    }
+
+    // ── Frozen identity columns ──────────────────────────────────────────────────────────────────
+    // Complaint Id and Complaint Number hold still while everything from the third data column on
+    // scrolls horizontally. The select box is frozen too — see the template for why.
+    //
+    // The `left` offsets are computed from the width variables rather than measured, which is why each
+    // column's width is pinned with width/min-width/max-width together. Under table-layout:auto a bare
+    // `width` is only a suggestion: a column that rendered wider than assumed would leave the next
+    // frozen column overlapping it, or floating in a gap with rows sliding through.
+    //
+    // The nth-child numbers assume the select column is always rendered. Re-enabling the commented-out
+    // `@if (isNotDoUser())` around it in the template would shift Complaint Id to nth-child(1) and hand
+    // it the select column's width, so these three blocks have to be reworked at the same time.
+    .p-datatable-thead>tr>th.pinned-col,
+    .p-datatable-tbody>tr>td.pinned-col {
+      position: sticky;
+      box-sizing: border-box;
+    }
+
+    // 1, and nothing higher. PrimeNG makes <thead> sticky at z-index 2, so a body cell at 2 ties it and
+    // wins on document order — tbody comes last — and paints over the header on vertical scroll. The
+    // loading overlay sits at 3, which 2-or-above would punch through as well. A frozen cell only has to
+    // outrank the unpositioned cells sliding beneath it, and those are at z-index auto, so 1 is enough.
+    .p-datatable-thead>tr>th.pinned-col {
+      // thead is a stacking context, so this competes only with the sibling header cells inside it.
+      z-index: 1;
+      // Stated rather than inherited from the theme token: a frozen header cell with a transparent
+      // background would show the scrolling headers passing beneath it.
+      background: var(--p-content-background, #fff);
+    }
+
+    .p-datatable-tbody>tr>td.pinned-col {
+      z-index: 1;
+    }
+
+    .p-datatable-thead>tr>th.pinned-col:nth-child(1),
+    .p-datatable-tbody>tr>td.pinned-col:nth-child(1) {
+      left: 0;
+      width: var(--cepc-frozen-select-w);
+      min-width: var(--cepc-frozen-select-w);
+      max-width: var(--cepc-frozen-select-w);
+    }
+
+    .p-datatable-thead>tr>th.pinned-col:nth-child(2),
+    .p-datatable-tbody>tr>td.pinned-col:nth-child(2) {
+      left: var(--cepc-frozen-select-w);
+      width: var(--cepc-frozen-id-w);
+      min-width: var(--cepc-frozen-id-w);
+      max-width: var(--cepc-frozen-id-w);
+    }
+
+    .p-datatable-thead>tr>th.pinned-col:nth-child(3),
+    .p-datatable-tbody>tr>td.pinned-col:nth-child(3) {
+      left: calc(var(--cepc-frozen-select-w) + var(--cepc-frozen-id-w));
+      width: var(--cepc-frozen-number-w);
+      min-width: var(--cepc-frozen-number-w);
+      max-width: var(--cepc-frozen-number-w);
+    }
+
+    // The scrolling columns carry no declared width, so under table-layout:auto each one collapses to its
+    // own content and the header row comes out ragged — short titles get a cramped search box, long ones
+    // wrap over two or three lines. A single floor keeps them uniform; it is only a min-width, so a column
+    // with unusually long data can still grow.
+    .p-datatable-thead>tr>th:not(.pinned-col),
+    .p-datatable-tbody>tr>td:not(.pinned-col) {
+      min-width: var(--cepc-col-w);
+    }
+
+    // The frozen block is ~26.5rem wide, which would swallow a phone viewport and leave almost nothing
+    // to scroll. Below the existing 768px breakpoint the table goes back to scrolling as one piece.
+    @media screen and (max-width: 768px) {
+
+      // Qualified with :nth-child() to match the width rules above selector-for-selector. A media query
+      // contributes no specificity of its own, so a plain `.pinned-col` here loses to those and only
+      // `position` would revert — leaving the frozen block still 26.5rem wide on a phone, which is the
+      // one thing this breakpoint exists to prevent.
+      .p-datatable-thead>tr>th.pinned-col:nth-child(1),
+      .p-datatable-tbody>tr>td.pinned-col:nth-child(1),
+      .p-datatable-thead>tr>th.pinned-col:nth-child(2),
+      .p-datatable-tbody>tr>td.pinned-col:nth-child(2),
+      .p-datatable-thead>tr>th.pinned-col:nth-child(3),
+      .p-datatable-tbody>tr>td.pinned-col:nth-child(3) {
+        position: static;
+        left: auto;
+        width: auto;
+        min-width: 0;
+        max-width: none;
+      }
+    }
+
+    .p-datatable-tbody>tr {
+      position: relative;
+      box-sizing: border-box;
+
+      // Target the actual cell backgrounds directly to prevent the PrimeNG defaults from overriding the row.
+      // Plain background here; the colour blocks below repaint the first few cells.
+      >td {
+        padding: .875rem 1rem !important;
+        border-bottom: 1px solid var(--p-content-border-color, #f1f5f9) !important;
+        font-size: .875rem;
+        line-height: 1.4 !important;
+        background: var(--p-content-background, #fff) !important;
+        transition: background-color .15s ease, background .2s ease;
+      }
+
+      // The ribbon hangs off the sticky select cell, not off the row. On the <tr> it was anchored to the
+      // scrolling table, so it slid out of view the instant the user scrolled right and the row lost its
+      // only colour cue. The frozen cell stays put, so the ribbon stays on screen at any scroll offset.
+      // Being inside a sticky, z-indexed cell also makes it a local stacking context, so the bar can no
+      // longer reach over the sticky thead the way a row-level z-index could.
+      >td.pinned-col:nth-child(1)::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        z-index: 1;
+        opacity: 0;
+        transition: opacity .2s ease;
+      }
+
+      // Hover effects must target the cells to break past table library priorities.
+      &:hover>td {
+        background: var(--p-content-hover-background, #f1f5f9) !important;
+      }
+
+      // Typography states
+      &.row-unread>td {
+        font-weight: 700 !important;
+        color: var(--p-text-color, #0f172a) !important;
+      }
+
+      &.row-read>td {
+        font-weight: 400 !important;
+        color: var(--p-text-muted-color, #64748b) !important;
+      }
+
+      // ── Row colour: a stepped fade across the first four columns ──────────────────────────────
+      // The tint starts strongest on the select cell and gets lighter column by column, washing out to the
+      // plain row background by the fifth. $cc-fade lists the stop at each column boundary, so column N runs
+      // from stop N to stop N+1 and picks up exactly where column N-1 left off — the fade reads continuously
+      // across the frozen block and on into the first scrolling column.
+      //
+      // Every stop is mixed to a FULLY OPAQUE colour at build time by mix(). This is the whole ballgame: the
+      // first three columns are sticky and paint above the columns sliding underneath them, so alpha or a
+      // stop of `transparent` lets that content show through and the Complaint Id / Complaint Number text
+      // renders doubled and garbled. Never use color-mix(in srgb, var(--cc-tint) …) here either — an
+      // undefined var() inside color-mix is invalid at computed-value time, so `background` silently
+      // resolves to transparent and every frozen cell goes see-through.
+      // Keys are quoted: `red`, `green` and `blue` are CSS colour keywords, and unquoted they interpolate
+      // into the selector as colour values rather than the names cc-row-red / -green / -blue.
+      $cc-colours: ("red": #ef4444, "green": #2e7d32, "yellow": #eab308, "pink": #ec4899, "blue": #3b82f6);
+      $cc-fade: (18%, 12%, 7%, 3%, 0%);
+      $cc-fade-hover: (28%, 20%, 13%, 6%, 0%);
+
+      @each $name, $tint in $cc-colours {
+        &.cc-row-#{$name} {
+
+          // The ribbon reuses the full-strength colour.
+          >td.pinned-col:nth-child(1)::before {
+            opacity: 1;
+            background-color: $tint;
+          }
+
+          @for $col from 1 through list.length($cc-fade) - 1 {
+            >td:nth-child(#{$col}) {
+              background: linear-gradient(90deg,
+                  color.mix($tint, #fff, list.nth($cc-fade, $col)) 0%,
+                  color.mix($tint, #fff, list.nth($cc-fade, $col + 1)) 100%) !important;
+            }
+
+            // Needed explicitly: the plain `&:hover>td` rule above is two class-level selectors and loses to
+            // the coloured rule's three, so without this the tint would simply ignore hover.
+            &:hover>td:nth-child(#{$col}) {
+              background: linear-gradient(90deg,
+                  color.mix($tint, #fff, list.nth($cc-fade-hover, $col)) 0%,
+                  color.mix($tint, #fff, list.nth($cc-fade-hover, $col + 1)) 100%) !important;
+            }
+          }
+
+          // The light-mixed fade above clashes once dark mode is on, so neutralize it back to the
+          // table's normal dark row/hover background. `.cepc-dark` is toggled on an ancestor outside
+          // this component (cepc-home .cepc-scope), so :host-context is required here — nested inside
+          // this loop (rather than as a separate rule) because $cc-fade/$tint are block-scoped to it.
+          :host-context(.cepc-dark) & {
+            >td.pinned-col:nth-child(1)::before {
+              opacity: 0 !important;
+            }
+
+            >td:nth-child(-n+4) {
+              background: var(--p-content-background, #0f172a) !important;
+            }
+
+            &:hover>td:nth-child(-n+4) {
+              background: var(--p-content-hover-background, #1e293b) !important;
+            }
+          }
+        }
+      }
+    }
+
+    // p-paginator ships its own light-only baked background/text tokens — the same disease as the
+    // dh-select panel (see cepc-dashboard-header.component.scss) — so it never repaints under
+    // `.cepc-dark` on its own. Pin it to the same content tokens the rest of the dashboard already
+    // repaints with, unconditionally: in light mode these resolve to the same light defaults.
+    .p-paginator {
+      background: var(--p-content-background, #fff) !important;
+      color: var(--p-text-color, #334155) !important;
+    }
+
+    .p-paginator-current {
+      color: var(--p-text-muted-color, #64748b) !important;
+    }
+  }
+}
+
+.table-header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 0.5rem;
+  background-color: var(--p-content-hover-background, #f8fafc) !important;
+  border-top-left-radius: var(--p-content-border-radius, 8px);
+  border-top-right-radius: var(--p-content-border-radius, 8px);
+  border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.table-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--p-text-color);
+  margin: 0;
+}
+
+.table-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  white-space: nowrap;
+  color: var(--p-text-muted-color, #475569);
+  font-size: .8125rem;
+  font-weight: 600;
+  user-select: none;
+
+  label {
+    cursor: pointer;
+  }
+}
+
+.header-cell-content {
+  display: flex;
+  align-items: center;
+  gap: .375rem;
+  // Keeps a title on one line and, with table-layout:auto, stops a column from being squeezed narrower
+  // than its own heading.
+  white-space: nowrap;
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 21px;
+  color: var(--p-text-color, #1e293b);
+  letter-spacing: 0.07px;
+}
+
+.pinned-col__lock {
+  font-size: .6875rem;
+  color: var(--p-text-muted-color, #94a3b8);
+}
+
+.filter-cell-wrapper {
+  margin-top: .5rem;
+  width: 100%;
+  display: block;
+
+  // The input itself is styled from inside the ::ng-deep block above, not here. p-columnFilter renders it
+  // from its own template, so it never carries this component's _ngcontent attribute and a scoped
+  // `.filter-cell-wrapper input` rule compiles to `input[_ngcontent-%COMP%]` and silently misses it.
+}
+
+.cell-text-wrap {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  // Derived from the column floor rather than a standalone number: this cap is what stops long content
+  // (Subject, entity names) from widening its column past the floor and breaking the uniform header row.
+  max-width: calc(var(--cepc-col-w) - 2rem);
+}
+
+.settings-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.empty-table-cell {
+  padding: 4rem 1rem !important;
+  text-align: center;
+  background-color: var(--p-content-background) !important;
+}
+
+.empty-table-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .75rem;
+  color: var(--p-text-muted-color, #94a3b8);
+
+  i {
+    font-size: 2.5rem;
+  }
+
+  p {
+    margin: 0;
+    font-size: .875rem;
+    font-weight: 500;
+  }
+}
+
+// 🏗 High-Fidelity Fluid Responsive Breakpoint Transitions
+@media screen and (max-width: 992px) {
+  .table-header-container {
+    padding: .75rem;
+  }
+
+  .table-header-actions {
+    gap: 1rem;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .table-header-container {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .table-header-actions {
+    width: 100%;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .toggle-item {
+    font-size: .75rem;
+  }
+
+  .cell-text-wrap {
+    max-width: 160px;
+  }
+}
+
+// 🟢 STATUS PILL BADGE MATRIX CONFIGURATIONS
+.custom-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  padding: .25rem .625rem;
+  border-radius: 20px;
+  font-weight: 600;
+  white-space: nowrap;
+  width: max-content;
+
+  i {
+    font-size: .8125rem;
+  }
+
+  // 1. Sent to Other Office (Light Slate Blue Style)
+  &.status-sent-office {
+    background-color: #5c6bc01f;
+    color: #5c6bc0;
+  }
+
+  // 2. Sent Back to DEO (Deep Soft Amber Orange Style)
+  &.status-back-deo {
+    background-color: #f57c001f;
+    color: #f57c00;
+  }
+
+  // 3. Draft (Muted Steel Slate Style)
+  &.status-draft {
+    background-color: #78909c26;
+    color: #607d8b;
+  }
+
+  // 4. New Complaint (Vibrant Emerald Sage Green Style)
+  &.status-new-complaint {
+    background-color: #4caf5026;
+    color: #2e7d32;
+  }
+
+  // 5. Ombudsman Decision (Soft Brick Red Style)
+  &.status-ombudsman {
+    background-color: #e5737326;
+    color: #c62828;
+  }
+
+  // 6. Meeting Scheduled (Warm Ochre Coral Style)
+  &.status-meeting {
+    background-color: #ffb74d26;
+    color: #ef6c00;
+  }
+
+  // 7. Information Required (Creamy Mustard Amber Style)
+  &.status-info-required {
+    background-color: #ffd54f2e;
+    color: #e65100;
+  }
+
+  // 8. Withdrawn (Bright Hot Magenta Style)
+  &.status-withdrawn {
+    background-color: #f0629220;
+    color: #d81b60;
+  }
+
+  // 9. Delayed (Soft Pastel Coral Rose Style)
+  &.status-delayed {
+    background-color: #ff8a652e;
+    color: #d84315;
+  }
+
+  // 10. 13-1 Notice Issued (Soft Pale Lemon Orange Style)
+  &.status-notice-issued {
+    background-color: #ffe08233;
+    color: #f57f17;
+  }
+
+  // 11. Complaint Closed (Deep Charcoal Blue-Grey Style)
+  &.status-closed {
+    background-color: #90a4ae40;
+    color: #37474f;
+  }
+
+  // 12. Assigned (Cobalt Blue Style)
+  &.status-assigned {
+    background-color: #1565c01f;
+    color: #1565c0;
+  }
+
+  // 13. In Progress (Deep Teal Style)
+  &.status-in-progress {
+    background-color: #00838f1f;
+    color: #00838f;
+  }
+
+  // 14. Under Review (Violet Plum Style)
+  &.status-under-review {
+    background-color: #6a1b9a1f;
+    color: #6a1b9a;
+  }
+
+  // 15. Pending Office Head Approval (Deep Indigo Style)
+  &.status-office-head {
+    background-color: #303f9f1f;
+    color: #303f9f;
+  }
+
+  // 16. Complaint Settled (Deep Forest Green Style)
+  &.status-settled {
+    background-color: #00695c1f;
+    color: #00695c;
+  }
+
+  // 17. Escalated (Burnt Orange Red Style)
+  &.status-escalated {
+    background-color: #bf360c1f;
+    color: #bf360c;
+  }
+
+  // 18. Complaint Rejected (Deep Brick Style)
+  &.status-rejected {
+    background-color: #b71c1c1f;
+    color: #b71c1c;
+  }
+
+  // 19. Fallback for a status this stylesheet has no design for yet (Neutral Steel Style)
+  &.status-neutral {
+    background-color: #b0bec526;
+    color: #546e7a;
+  }
+
+  // 20. Complaint Re Open (Deep Rose Style)
+  &.status-reopen {
+    background-color: #ad14571f;
+    color: #ad1457;
+  }
+}
+
+// ⏳ SLA CAPSULE GRAPHICAL PARAMETERS
+.sla-capsule {
+  display: inline-block;
+  padding: .2rem .5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  text-align: center;
+  width: max-content;
+}

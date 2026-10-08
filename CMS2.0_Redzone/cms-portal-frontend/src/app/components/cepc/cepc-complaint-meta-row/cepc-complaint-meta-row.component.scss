@@ -1,0 +1,143 @@
+/* // Transparent wrapper: the host replaces .meta-row as the flex item of the parent's
+// column-flex .left-main-area, and an unstyled host would be display:inline. */
+:host {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* // ═══ META ROW (KPI) ═══ */
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 12px 4px;
+  background: var(--p-content-background, #fff);
+  flex-wrap: nowrap;
+  border: 1px solid var(--p-content-border-color, #D1D7E0);
+  border-radius: 10px;
+  /* margin: 12px 16px; */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  overflow: auto;
+  flex-shrink: 0;
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 1 auto;
+    padding: 0 14px;
+    border-left: 1px solid var(--p-content-border-color, #D1D7E0);
+    // min-width: 0;
+
+    &:first-of-type { border-left: none; padding-left: 16px; }
+
+    .meta-icon {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: #146EF5;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      i { font-size: 14px; color: #fff; }
+
+      /* // Per-KPI colors from Figma (node 2371-37736) */
+      &.complaint-number { background: #146EF5; }
+      &.complainant-name { background: #2B1906; }
+      &.entity-name { background: #DE3D81; }
+      &.status-icon { background: #146EF5; }
+      &.category-icon { background: #7326D4; }
+      &.sla-icon { background: #FF4838; }
+
+      /* // Legacy generic modifiers */
+      &.blue { background: #146EF5; }
+      &.red { background: #FF4838; }
+      &.dark { background: #2B1906; }
+      &.green { background: #16a34a; }
+      &.orange { background: #f59e0b; }
+    }
+
+    .meta-text {
+      display: flex; flex-direction: column; gap: 4px;
+      min-width: 0;
+      .meta-label { font-size: 10px; color: var(--p-text-muted-color, #5B5D61); font-weight: 500; white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+        .pi-info-circle { font-size: 9px; color: var(--p-text-muted-color, #94a3b8); cursor: pointer; }
+      }
+      .meta-value { font-size: 11px; font-weight: 600; color: var(--p-text-color, #202124); white-space: nowrap;
+        display: flex; align-items: center; gap: 4px;
+        .status-flag { color: #3b82f6; margin-right: 2px; font-size: 11px; }
+      }
+    }
+  }
+}
+
+.meta-actions-slot {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-left: 14px;
+  flex-shrink: 0;
+}
+
+.back-arrow {
+  width: 32px; height: 32px;
+  // border-radius: 50%;
+  // border: 1px solid #e2e8f0;
+  border: none;
+  background: var(--p-content-background, #fff);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--p-text-muted-color, #475569);
+  // margin-right: 14px;
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover { background: var(--p-content-hover-background, #f1f5f9); border-color: var(--p-content-border-color, #cbd5e1); }
+}
+
+// Same status color matrix as cepc-dashboard-table.component.scss, so the meta row
+// pill always matches the dashboard's color for the same status.
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+
+  &.status-sent-office { background-color: #5c6bc01f; color: #5c6bc0; }
+  &.status-back-deo { background-color: #f57c001f; color: #f57c00; }
+  &.status-draft { background-color: #78909c26; color: #607d8b; }
+  &.status-new-complaint { background-color: #4caf5026; color: #2e7d32; }
+  &.status-ombudsman { background-color: #e5737326; color: #c62828; }
+  &.status-meeting { background-color: #ffb74d26; color: #ef6c00; }
+  &.status-info-required { background-color: #ffd54f2e; color: #e65100; }
+  &.status-withdrawn { background-color: #f0629220; color: #d81b60; }
+  &.status-delayed { background-color: #ff8a652e; color: #d84315; }
+  &.status-notice-issued { background-color: #ffe08233; color: #f57f17; }
+  &.status-closed { background-color: #90a4ae40; color: #37474f; }
+  &.status-assigned { background-color: #1565c01f; color: #1565c0; }
+  &.status-in-progress { background-color: #00838f1f; color: #00838f; }
+  &.status-under-review { background-color: #6a1b9a1f; color: #6a1b9a; }
+  &.status-office-head { background-color: #303f9f1f; color: #303f9f; }
+  &.status-settled { background-color: #00695c1f; color: #00695c; }
+  &.status-escalated { background-color: #bf360c1f; color: #bf360c; }
+  &.status-rejected { background-color: #b71c1c1f; color: #b71c1c; }
+  &.status-reopen { background-color: #ad14571f; color: #ad1457; }
+  &.status-neutral { background-color: #b0bec526; color: #546e7a; }
+}
+
+.sla-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #FFA33C;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.breach {
+    background: #FFA33C;
+    color: #202124;
+  }
+}

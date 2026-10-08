@@ -18,18 +18,22 @@ import { Page, expect } from '@playwright/test';
  *   RBIO_ADMIN_USER / RBIO_ADMIN_PASS             — RBIO Admin
  *
  * Keycloak location:
- *   KEYCLOAK_URL   — default http://localhost:9090
+ *   KEYCLOAK_URL   — default http://localhost:8180
  *   KEYCLOAK_REALM — default cms
  */
 
 /**
  * Single source of truth for the Keycloak base URL and realm.
  *
- * Keycloak for this project runs on port 9090 (see src/environments/environment.ts,
- * which sets keycloakUrl: 'http://localhost:9090' and realm: 'cms').
+ * Must match src/environments/environment.ts, which sets keycloakUrl: 'http://localhost:8180' —
+ * the port cms-infra/docker-compose.yml publishes for cms-keycloak (KC_HTTP_PORT: 8180).
+ *
+ * This defaulted to 9090 until the app's own config moved to 8180. Nothing listens on 9090, so
+ * isKeycloakAvailable() below returned false and every staff suite that gates on it reported
+ * "skipped but passing" — the same silent-skip failure that comment warns about, one port later.
  * Override with KEYCLOAK_URL / KEYCLOAK_REALM in CI.
  */
-export const KEYCLOAK_URL = (process.env['KEYCLOAK_URL'] || 'http://localhost:9090').replace(/\/+$/, '');
+export const KEYCLOAK_URL = (process.env['KEYCLOAK_URL'] || 'http://localhost:8180').replace(/\/+$/, '');
 export const KEYCLOAK_REALM = process.env['KEYCLOAK_REALM'] || 'cms';
 export const KEYCLOAK_REALM_URL = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`;
 
@@ -116,9 +120,8 @@ async function waitForAuthAndNavigate(page: Page, targetUrl: string): Promise<vo
  * Checks whether Keycloak is reachable.
  * Returns false if the server does not respond within 5 seconds.
  *
- * Probes KEYCLOAK_REALM_URL (default http://localhost:9090/realms/cms).
- * Previously this hardcoded port 8180, which nothing in this project listens on,
- * so every staff suite silently reported "skipped but passing".
+ * Probes KEYCLOAK_REALM_URL. A false here silently skips every staff suite, so if a suite reports
+ * "skipped but passing", check this first — see the KEYCLOAK_URL comment above.
  */
 export async function isKeycloakAvailable(page: Page): Promise<boolean> {
   try {

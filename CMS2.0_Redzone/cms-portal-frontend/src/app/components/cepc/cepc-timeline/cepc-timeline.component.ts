@@ -3,6 +3,7 @@ import {
   ComplaintCorrespondenceService, TimelineEntry
 } from '../../../services/complaint-correspondence.service';
 import { WorkflowTimelineComponent } from '../../shared/workflow-timeline/workflow-timeline.component';
+import { TranslateOrPipe } from '../../../pipes/translate-or.pipe';
 
 /**
  * The CEPC complaint screen's audit trail.
@@ -22,7 +23,7 @@ import { WorkflowTimelineComponent } from '../../shared/workflow-timeline/workfl
 @Component({
   selector: 'app-cepc-timeline',
   standalone: true,
-  imports: [WorkflowTimelineComponent],
+  imports: [WorkflowTimelineComponent, TranslateOrPipe],
   templateUrl: './cepc-timeline.component.html',
   styleUrl: './cepc-timeline.component.scss'
 })

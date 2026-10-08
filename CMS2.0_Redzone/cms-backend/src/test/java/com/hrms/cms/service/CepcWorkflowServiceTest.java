@@ -119,7 +119,7 @@ class CepcWorkflowServiceTest {
                 "CEPC_DO, SUBMIT_FOR_REVIEW, true",
                 "CEPC_DO, FORWARD_TO_CONTACT, true",
                 "CEPC_DO, FORWARD_TO_INCHARGE, true",
-                "CEPC_DO, CLOSE_COMPLAINT, false",
+                "CEPC_DO, CLOSE_COMPLAINT, true",
                 "CEPC_DO, APPROVE_REVIEW, false",
                 "CEPC_DO, APPROVE_CLOSURE, false"
         })
@@ -133,7 +133,7 @@ class CepcWorkflowServiceTest {
                 "CEPC_REVIEWER, APPROVE_REVIEW, true",
                 "CEPC_REVIEWER, SEND_BACK_DO, true",
                 "CEPC_REVIEWER, FORWARD_TO_CLOSING_AUTHORITY, true",
-                "CEPC_REVIEWER, CLOSE_COMPLAINT, false",
+                "CEPC_REVIEWER, CLOSE_COMPLAINT, true",
                 "CEPC_REVIEWER, ACCEPT, false",
                 "CEPC_REVIEWER, APPROVE_CLOSURE, false"
         })
@@ -148,7 +148,7 @@ class CepcWorkflowServiceTest {
                 "CEPC_INCHARGE, SEND_BACK_REVIEWER, true",
                 "CEPC_INCHARGE, SEND_BACK_DO, true",
                 "CEPC_INCHARGE, REASSIGN, true",
-                "CEPC_INCHARGE, CLOSE_COMPLAINT, false",
+                "CEPC_INCHARGE, CLOSE_COMPLAINT, true",
                 "CEPC_INCHARGE, ACCEPT, false"
         })
         @DisplayName("CEPC_INCHARGE role authorization")
@@ -251,14 +251,14 @@ class CepcWorkflowServiceTest {
 
             Map<String, Object> result = cepcWorkflowService.performAction("CMP-20260706-123456", "REQUEST_INFO", params);
 
-            assertThat(result.get("newStatus")).isEqualTo("info_requested");
+            assertThat(result.get("newStatus")).isEqualTo(CepcStatus.INFORMATION_REQUIRED);
             assertThat(sampleComplaint.getWorkflowStage()).isEqualTo("AWAITING_INFO");
         }
 
         @Test
         @DisplayName("INFO_RECEIVED should set status back to in_progress")
         void infoReceivedShouldTransition() {
-            sampleComplaint.setStatus("info_requested");
+            sampleComplaint.setStatus(CepcStatus.INFORMATION_REQUIRED);
             Map<String, String> params = Map.of("action", "INFO_RECEIVED", "actor", "do-1", "remarks", "Got it");
 
             Map<String, Object> result = cepcWorkflowService.performAction("CMP-20260706-123456", "INFO_RECEIVED", params);
@@ -313,7 +313,7 @@ class CepcWorkflowServiceTest {
 
             Map<String, Object> result = cepcWorkflowService.performAction("CMP-20260706-123456", "SUBMIT_FOR_REVIEW", params);
 
-            assertThat(result.get("newStatus")).isEqualTo("reviewer_review");
+            assertThat(result.get("newStatus")).isEqualTo(CepcStatus.SENT_TO_REVIEWER);
             assertThat(result.get("assignedRole")).isEqualTo("CEPC_REVIEWER");
             assertThat(sampleComplaint.getAssignedOfficer()).isEqualTo("reviewer-1");
         }
@@ -321,7 +321,7 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("APPROVE_REVIEW should assign to CEPC_INCHARGE")
         void approveReviewShouldAssignIncharge() {
-            sampleComplaint.setStatus("reviewer_review");
+            sampleComplaint.setStatus(CepcStatus.SENT_TO_REVIEWER);
             sampleComplaint.setAssignedRole("CEPC_REVIEWER");
             when(keycloakUserService.getUsersByRole("CEPC_INCHARGE"))
                     .thenReturn(List.of(Map.of("userId", "incharge-1")));
@@ -330,14 +330,14 @@ class CepcWorkflowServiceTest {
 
             Map<String, Object> result = cepcWorkflowService.performAction("CMP-20260706-123456", "APPROVE_REVIEW", params);
 
-            assertThat(result.get("newStatus")).isEqualTo("incharge_review");
+            assertThat(result.get("newStatus")).isEqualTo(CepcStatus.SENT_TO_INCHARGE);
             assertThat(result.get("assignedRole")).isEqualTo("CEPC_INCHARGE");
         }
 
         @Test
         @DisplayName("SEND_BACK_DO should revert to CEPC_DO with specified targetUser")
         void sendBackDoShouldRevertToDo() {
-            sampleComplaint.setStatus("reviewer_review");
+            sampleComplaint.setStatus(CepcStatus.SENT_TO_REVIEWER);
             Map<String, String> params = new HashMap<>();
             params.put("action", "SEND_BACK_DO");
             params.put("actor", "reviewer-1");
@@ -354,24 +354,24 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("APPROVE_CLOSURE should set awaiting_closure")
         void approveClosureShouldTransition() {
-            sampleComplaint.setStatus("incharge_review");
+            sampleComplaint.setStatus(CepcStatus.SENT_TO_INCHARGE);
             Map<String, String> params = Map.of("action", "APPROVE_CLOSURE", "actor", "incharge-1", "remarks", "Approved");
 
             Map<String, Object> result = cepcWorkflowService.performAction("CMP-20260706-123456", "APPROVE_CLOSURE", params);
 
-            assertThat(result.get("newStatus")).isEqualTo("awaiting_closure");
+            assertThat(result.get("newStatus")).isEqualTo(CepcStatus.COMPLAINT_SETTLED);
             assertThat(result.get("assignedRole")).isEqualTo("CEPC_CLOSING_AUTHORITY");
         }
 
         @Test
         @DisplayName("CLOSE_COMPLAINT should set closed and set closedAt/resolvedAt")
         void closeComplaintShouldSetDates() {
-            sampleComplaint.setStatus("awaiting_closure");
+            sampleComplaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
             Map<String, String> params = Map.of("action", "CLOSE_COMPLAINT", "actor", "ca-1", "remarks", "Done");
 
             Map<String, Object> result = cepcWorkflowService.performAction("CMP-20260706-123456", "CLOSE_COMPLAINT", params);
 
-            assertThat(result.get("newStatus")).isEqualTo("closed");
+            assertThat(result.get("newStatus")).isEqualTo(CepcStatus.COMPLAINT_CLOSED);
             assertThat(sampleComplaint.getClosedAt()).isNotNull();
             assertThat(sampleComplaint.getResolvedAt()).isNotNull();
             assertThat(sampleComplaint.getWorkflowStage()).isEqualTo("CLOSED");
@@ -439,7 +439,7 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("REOPEN should clear resolvedAt/closedAt and set status to in_progress")
         void reopenShouldClearDates() {
-            sampleComplaint.setStatus("closed");
+            sampleComplaint.setStatus(CepcStatus.COMPLAINT_CLOSED);
             sampleComplaint.setResolvedAt(LocalDateTime.now().minusDays(1));
             sampleComplaint.setClosedAt(LocalDateTime.now().minusDays(1));
             Map<String, String> params = Map.of("action", "REOPEN", "actor", "admin-1", "remarks", "Reopening");
@@ -456,7 +456,7 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("FORWARD_TO_OTHER_OFFICE should set forwarded_external")
         void forwardToOtherOfficeShouldTransition() {
-            sampleComplaint.setStatus("awaiting_closure");
+            sampleComplaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
             Map<String, String> params = new HashMap<>();
             params.put("action", "FORWARD_TO_OTHER_OFFICE");
             params.put("actor", "ca-1");
@@ -484,7 +484,7 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("FORWARD_TO_REGULATORY_BODY should set forwarded_external")
         void forwardToRegulatoryBodyShouldTransition() {
-            sampleComplaint.setStatus("awaiting_closure");
+            sampleComplaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
             Map<String, String> params = new HashMap<>();
             params.put("action", "FORWARD_TO_REGULATORY_BODY");
             params.put("actor", "ca-1");
@@ -550,7 +550,7 @@ class CepcWorkflowServiceTest {
             // The role-carrying overload: an audit entry naming the user but not the role they acted in
             // cannot answer "who was allowed to do this". No userRole in params, so the role is blank.
             verify(complaintService).addTimeline(eq(1L), eq("REQUEST_INFO"), eq("do-1"), eq(""),
-                    eq("Need docs"), eq("in_progress"), eq("info_requested"));
+                    eq("Need docs"), eq("in_progress"), eq(CepcStatus.INFORMATION_REQUIRED));
         }
 
         @Test
@@ -567,7 +567,7 @@ class CepcWorkflowServiceTest {
 
             verify(cepcAuditService).logActionAsync(
                     eq("CMP-20260706-123456"), eq("REQUEST_INFO"), eq("do-1"),
-                    eq("CEPC_DO"), eq("Need docs"), any(), eq("in_progress"), eq("info_requested"));
+                    eq("CEPC_DO"), eq("Need docs"), any(), eq("in_progress"), eq(CepcStatus.INFORMATION_REQUIRED));
         }
     }
 
@@ -607,7 +607,7 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("CEPC_REVIEWER with reviewer_review status should include APPROVE_REVIEW and SEND_BACK_DO")
         void reviewerWithReviewStatusShouldIncludeActions() {
-            sampleComplaint.setStatus("reviewer_review");
+            sampleComplaint.setStatus(CepcStatus.SENT_TO_REVIEWER);
             when(complaintRepository.findByComplaintNumber("CMP-20260706-123456"))
                     .thenReturn(Optional.of(sampleComplaint));
 
@@ -619,7 +619,7 @@ class CepcWorkflowServiceTest {
         @Test
         @DisplayName("CEPC_CLOSING_AUTHORITY with awaiting_closure should include CLOSE_COMPLAINT")
         void closingAuthWithAwaitingClosureShouldIncludeClose() {
-            sampleComplaint.setStatus("awaiting_closure");
+            sampleComplaint.setStatus(CepcStatus.COMPLAINT_SETTLED);
             when(complaintRepository.findByComplaintNumber("CMP-20260706-123456"))
                     .thenReturn(Optional.of(sampleComplaint));
 

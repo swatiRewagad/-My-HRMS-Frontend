@@ -1,0 +1,6 @@
+-- CMS Database Initialization (Oracle)
+-- APP_USER (cms_user) is already created by the gvenzl/oracle-xe entrypoint from the
+-- ORACLE_PASSWORD/APP_USER/APP_USER_PASSWORD env vars in docker-compose.yml, with the
+-- CONNECT and RESOURCE roles (covers CREATE TABLE/SEQUENCE/VIEW/PROCEDURE/TRIGGER already).
+-- Nothing further required here; kept as a mount target so docker-compose's bind mount
+-- has a real file instead of Docker auto-creating an empty directory in its place.

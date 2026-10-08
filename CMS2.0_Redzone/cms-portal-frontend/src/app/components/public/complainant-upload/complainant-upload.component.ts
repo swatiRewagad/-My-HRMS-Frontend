@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { UploadLinkService } from '../../../services/upload-link.service';
+import { scrollToTop } from '../../../utils/accessibility';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
 
 type Phase = 'loading' | 'otp' | 'upload' | 'success' | 'expired' | 'error';
@@ -460,6 +461,7 @@ export class ComplainantUploadComponent implements OnInit {
         if (res.valid) {
           this.complaintNumber.set(res.complaintNumber);
           this.phase.set('upload');
+          scrollToTop();
         } else {
           this.otpError.set('Invalid OTP. Please try again.');
         }
@@ -468,6 +470,7 @@ export class ComplainantUploadComponent implements OnInit {
         this.verifying.set(false);
         if (err.status === 410 || err.status === 404) {
           this.phase.set('expired');
+          scrollToTop();
         } else {
           this.otpError.set(err?.error?.message || 'OTP verification failed. Please try again.');
         }
@@ -551,11 +554,13 @@ export class ComplainantUploadComponent implements OnInit {
         this.uploading.set(false);
         this.uploadedCount.set(res.uploaded);
         this.phase.set('success');
+        scrollToTop();
       },
       error: (err) => {
         this.uploading.set(false);
         if (err.status === 410) {
           this.phase.set('expired');
+          scrollToTop();
         } else {
           this.uploadError.set(err?.error?.message || 'Upload failed. Please try again.');
         }

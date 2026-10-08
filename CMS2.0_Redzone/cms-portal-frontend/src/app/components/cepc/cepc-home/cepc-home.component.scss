@@ -1,0 +1,85 @@
+// Layout Configurations & Adaptive Viewports
+:host {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  font-family: var(--font-family, system-ui, -apple-system, sans-serif);
+}
+
+.cepc-home {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  width: 100%;
+  background-color: var(--p-content-background, #dfe6f5);
+}
+
+// Header Placement
+app-cepc-header {
+  position: sticky;
+  /* ADD THIS to ensure header sticks */
+  top: 0;
+  /* ADD THIS */
+  width: 100%;
+  z-index: 1000;
+  /* Increased to stay above the sidebar layout */
+  box-shadow: 0 1px 3px #0000000d;
+  flex-shrink: 0;
+}
+
+// Core Workspace Structure (Sidebar + Main Panel)
+.main-layout {
+  display: flex;
+  flex: 1 1 auto;
+  position: relative;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+
+  // Sidebar Constraints
+  app-cepc-sidebar {
+    position: sticky;
+    /* ADD THIS */
+    top: var(--cepc-header-height, 3.5rem);
+    /* Matches the header's actual measured height, published by CepcHeaderComponent */
+    height: calc(100vh - var(--cepc-header-height, 3.5rem));
+    /* ADD THIS */
+    flex-shrink: 0;
+    z-index: 990;
+    transition: width .2s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #0d1e3d;
+    /* REMOVED width: 100%!important; to let the sidebar component control its own width */
+  }
+}
+
+// Main Grid Content Workspace
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: var(--p-content-hover-background, #f8fafc);
+
+  @media (max-width: 1024px) {
+    padding: 1rem;
+  }
+}
+
+// Dashboard Component Container
+// Emulated encapsulation makes this selector (0,1,1) beat the child's own :host (0,1,0),
+// so this value — not cepc-dashboard.component.scss — is the one that applies.
+app-cepc-dashboard {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  gap: 0.5rem;
+}

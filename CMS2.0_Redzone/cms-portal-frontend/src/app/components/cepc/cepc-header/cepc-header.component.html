@@ -1,0 +1,60 @@
+<header class="cms-header">
+  <div class="header-left">
+    <img [src]="dept.cfg().logo" alt="RBI" class="rbi-logo">
+    <div class="control-divider-v hide-on-mobile"></div>
+    <img src="assets/rb-ios-logo.png" alt="RB-IOS" class="rbi-logo rbios-logo">
+    <div class="rbi-text">
+      <div class="cms-titles">
+        <span class="cms-title-hindi">शिकायत प्रबंध प्रणाली</span>
+        <span class="cms-subtitle-english">Complaint Management System</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="header-icons">
+      <button pButton [icon]="isDarkMode() ? 'pi pi-sun' : 'pi pi-moon'" [text]="true" [rounded]="true"
+          severity="secondary" (click)="toggleDarkMode()"
+          [title]="'ui.cepc.header.toggle_theme' | translateOr: 'Toggle Theme'"></button>
+      <div class="control-divider-v hide-on-tablet"></div>
+      <div class="hide-on-tablet">
+        <app-font-size-controls></app-font-size-controls>
+      </div>
+      <div class="control-divider-v"></div>
+
+      <app-language-select></app-language-select>
+
+      <app-notification-bell></app-notification-bell>
+    </div>
+
+    @if (currentUser()) {
+      <div class="profile-menu-container">
+        <button pButton [text]="true" severity="secondary" class="profile-trigger"
+            (click)="profileMenu.toggle($event)">
+          <p-avatar [label]="userInitial()" shape="circle" styleClass="user-avatar"></p-avatar>
+          <div class="user-details hide-on-mobile">
+            <span class="user-name">{{ displayName() }}</span>
+            <span class="user-role">{{ displayRole() }}</span>
+          </div>
+          <i class="pi pi-chevron-down profile-chevron"></i>
+        </button>
+
+        <p-popover #profileMenu styleClass="profile-flyout-panel">
+          <div class="profile-card-header">
+            <p-avatar [label]="userInitial()" shape="circle" styleClass="menu-avatar"></p-avatar>
+            <div class="meta-info">
+              <span class="full-name" [title]="displayName()">{{ displayName() }}</span>
+              <span class="official-id">ID: {{ currentUser()?.username || 'N/A' }}</span>
+              <span class="email-address" [title]="currentUser()?.email || ''">{{ displayRole() }}</span>
+            </div>
+          </div>
+          <div class="menu-body-actions">
+            <button pButton [text]="true" severity="danger" icon="pi pi-sign-out"
+                [label]="'ui.cepc.header.logout' | translateOr: 'Logout'"
+                class="logout-action-btn" (click)="logout()"></button>
+          </div>
+        </p-popover>
+      </div>
+    }
+  </div>
+</header>

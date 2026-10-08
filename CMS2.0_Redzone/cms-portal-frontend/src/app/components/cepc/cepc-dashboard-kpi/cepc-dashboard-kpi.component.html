@@ -1,0 +1,40 @@
+@for (card of computedRoleCards(); track card.id) {
+  <p-card [class]="cardClasses(card)"
+    [attr.tabindex]="card.selectable ? 0 : null"
+    [attr.role]="card.selectable ? 'button' : null"
+    [attr.aria-pressed]="card.selectable ? selectedCardId() === card.id : null"
+    [attr.aria-label]="card.selectable ? (card.titleKey | translateOr: card.title) : null"
+    (click)="handleCardSelection(card)"
+    (keydown.enter)="handleCardSelection(card)"
+    (keydown.space)="handleCardSelection(card); $event.preventDefault()">
+
+    <ng-template pTemplate="content">
+      <div class="kpi-flex-container">
+        <div class="kpi-left-section">
+
+          <div class="kpi-icon-circle" [ngClass]="card.styleClass">
+            <i [class]="card.icon"></i>
+          </div>
+
+          <div class="kpi-text-block">
+            @if (card.layout === '1:1') {
+              <span class="kpi-label-title">{{ card.titleKey | translateOr: card.title }}</span>
+              <h3 class="metric-col-value">{{ card.metrics[0].value }}</h3>
+            } @else {
+              <div class="metric-grid" [ngClass]="'layout-' + card.layout">
+                @for (metric of card.metrics; track metric.labelKey) {
+                  <div class="metric-column">
+                    <span class="metric-col-header">{{ metric.labelKey | translateOr: metric.label }}</span>
+                    <h3 class="metric-col-value" [ngClass]="metric.colorClass || ''">
+                      {{ metric.value }}
+                    </h3>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </p-card>
+}

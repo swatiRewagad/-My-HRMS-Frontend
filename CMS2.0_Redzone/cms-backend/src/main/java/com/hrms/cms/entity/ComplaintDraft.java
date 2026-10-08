@@ -35,11 +35,35 @@ public class ComplaintDraft {
     @Column(columnDefinition = "TEXT")
     private String eligibilityAnswersJson;
 
+    @Column(columnDefinition = "TEXT")
+    private String eligibilityFormDataJson;
+
     @Column
     private Integer currentStep;
 
     @Column(length = 30)
     private String phase;
+
+    @Column
+    private Integer highestStepReached;
+
+    @Column
+    private Integer eligibilityStep;
+
+    @Column(length = 500)
+    private String checkedAccountTypes;
+
+    @Column(length = 1000)
+    private String dateDisplayJson;
+
+    @Column
+    private Boolean declarationChecked;
+
+    @Column
+    private Boolean declaration2Checked;
+
+    @Column(columnDefinition = "TEXT")
+    private String attachmentMetaJson;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

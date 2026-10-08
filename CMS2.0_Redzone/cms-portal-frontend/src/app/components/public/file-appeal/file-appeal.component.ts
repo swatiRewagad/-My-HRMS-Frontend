@@ -1,50 +1,129 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import {
+  FormsModule,
+  ReactiveFormsModule,
+  FormGroup,
+  FormControl,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
+import {
+  Subject,
+  interval,
+  switchMap,
+  takeUntil,
+  filter,
+  catchError,
+  EMPTY,
+  finalize,
+  forkJoin,
+} from 'rxjs';
+import {
+  AppealService,
+  FileMeta,
+  AppealDraftPayload,
+  AppealDraftRecord,
+} from '../../../services/appeal.service';
 import { SpeechButtonComponent } from '../../../shared/speech-button/speech-button.component';
+import { FormErrorComponent } from '../../../shared/form-error/form-error.component';
 import { TranslatePipe } from '../../../pipes/translate.pipe';
-import { StatusBadgeComponent } from '../../shared/status-badge/status-badge.component';
+import { validateFile } from '../../../utils/file-validator';
+import { scrollToTop } from '../../../utils/accessibility';
 import { UploadLimitsService } from '../../../services/upload-limits.service';
+
+function repAuthValidator(group: AbstractControl): ValidationErrors | null {
+  const name = group.get('representativeName')?.value;
+  const doc = group.get('authorizationDoc')?.value;
+  if (name?.trim() && !doc) {
+    return { authDocRequired: true };
+  }
+  return null;
+}
 
 @Component({
   selector: 'app-file-appeal',
   standalone: true,
-  imports: [CommonModule, FormsModule, SpeechButtonComponent, TranslatePipe, StatusBadgeComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    SpeechButtonComponent,
+    FormErrorComponent,
+    TranslatePipe,
+  ],
   templateUrl: './file-appeal.component.html',
-  styleUrl: './file-appeal.component.scss'
+  styleUrl: './file-appeal.component.scss',
 })
-export class FileAppealComponent implements OnInit {
-
+export class FileAppealComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private http = inject(HttpClient);
-  // Public: the templates render the configured limit in their upload hints.
+  private appealService = inject(AppealService);
+  // Public: the template renders the configured per-file limit in the upload hint.
   uploadLimits = inject(UploadLimitsService);
+  private destroy$ = new Subject<void>();
 
-  // FR-G-032: Appeal phases
   phase = signal<'search' | 'eligibility' | 'form' | 'success'>('search');
   submitting = signal(false);
   checking = signal(false);
   error = '';
 
-  // Search
   complaintId = '';
   complaintFound = false;
 
-  // Eligibility check result
+  /** Upper bound for the award-communication date picker: an award cannot be received in the future. */
+  readonly todayISO = new Date().toISOString().slice(0, 10);
+
   eligibilityResult = signal<any>(null);
   classification = signal<'APPEAL' | 'REPRESENTATION' | null>(null);
-
-  // FR-G-042: Reason for delay (31-60 days window)
-  reasonForDelay = '';
   isDelayedFiling = signal(false);
 
-  // FR-G-033: Appeal details
-  appealGround = '';
-  appealGrounds = [
+  currentStep = signal(0);
+  highestStepReached = signal(0);
+  readonly stepLabels = [
+    'Complaint Details',
+    'Representative Authorization',
+    'Review & Submit',
+  ];
+
+  wizardForm = new FormGroup({
+    complaintDetails: new FormGroup({
+      appealGround: new FormControl('', Validators.required),
+      // UST113 caps appellant comments at 500 characters. Enforced as a validator and NOT as a
+      // template maxlength: the attribute truncates silently at the limit, which both loses the end of
+      // what the appellant wrote and makes the "too long" error unreachable.
+      appealDetails: new FormControl('', [Validators.required, Validators.maxLength(500)]),
+      // UST113's appellant identity fields. These did not exist, so an appeal could not record who was
+      // appealing or how to reach them — the backend could only copy the parent complaint's details.
+      appellantName: new FormControl('', [
+        Validators.required,
+        Validators.maxLength(100),
+        Validators.pattern(/^[\p{L}\s.'-]+$/u),
+      ]),
+      appellantPhone: new FormControl('', [Validators.required, Validators.pattern(/^\d{10}$/)]),
+      appellantEmail: new FormControl('', [Validators.email, Validators.maxLength(64)]),
+      // Optional per UST113's In-Scope list. (AC1 of the same story calls it mandatory; the field
+      // specification is the narrower, more specific statement, so it governs. Flagged to the BA.)
+      awardCommunicationDate: new FormControl(''),
+      reliefSought: new FormControl(''),
+      reasonForDelay: new FormControl(''),
+      attachments: new FormControl<FileMeta[]>([]),
+    }),
+    repAuth: new FormGroup(
+      {
+        representativeName: new FormControl(''),
+        authorizationDoc: new FormControl<FileMeta | null>(null),
+      },
+      { validators: repAuthValidator },
+    ),
+    declaration: new FormGroup({
+      declarationChecked: new FormControl(false, Validators.requiredTrue),
+    }),
+  });
+
+  readonly appealGrounds = [
     'The complaint was not resolved within 30 days',
     'Dissatisfied with the resolution/award',
     'The complaint was rejected without valid reason',
@@ -52,61 +131,43 @@ export class FileAppealComponent implements OnInit {
     'Non-implementation of the award by Regulated Entity',
     'Other',
   ];
-  appealDetails = '';
-  reliefSought = '';
-  appealAttachments: File[] = [];
+
+  uploading = signal<Record<string, boolean>>({});
   isDragOver = false;
-  declarationChecked = false;
 
-  // Appellant identity. None of these fields existed: the appeal was filed with appellantName
-  // hardcoded to the literal "Citizen" in AppealController, so the record carried no way to contact the
-  // person who filed it.
-  appellantName = '';
-  appellantMobile = '';
-  appellantEmail = '';
-  appellantComments = '';
-  dateOfReceipt = '';
-  dateOfReceiptDisplay = '';
+  draftId: string | null = null;
+  autoSaveStatus = signal<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
-  // Per-field errors, keyed by control name. The single `error` string above can only ever show one
-  // message, so a form with three empty required fields reported one of them.
-  fieldErrors: Record<string, string> = {};
-
-  static readonly NAME_MAX = 100;
-  static readonly COMMENTS_MAX = 500;
-  static readonly REASON_MAX = 500;
-
-  // The exact strings the acceptance criteria name. Held as constants so the same wording is used by
-  // every field rather than retyped per call site.
-  private static readonly MSG_REQUIRED = 'This field is required.';
-  private static readonly MSG_LENGTH = 'Input must be within allowed character length.';
-  private static readonly MSG_FILE = 'Invalid file type or size, please upload a valid document.';
-
-  // Deliberately NOT a size check. The accepted TYPES are a product rule (JPG/PDF/DOCX); the accepted
-  // SIZE is server configuration, read from UploadLimitsService. Hardcoding 2MB here is what made the
-  // browser refuse appeals the API would have accepted.
-  private static readonly ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'pdf', 'docx'];
-
-  // File limits come from the server (cms.upload.*), not from constants in the bundle. These were
-  // 2 MB per file and 10 MB total, both BELOW what the server accepts (5 MB / 25 MB), so the browser
-  // refused appeals the API would have taken. A compiled-in constant cannot track a configured limit.
-  private maxFileSize(): number { return this.uploadLimits.maxFileSizeBytes(); }
-  private maxTotalSize(): number { return this.uploadLimits.maxTotalSizeBytes(); }
-  private maxFileCount(): number { return this.uploadLimits.maxFileCount(); }
-
-  // Success
   appealRefNumber = '';
 
-  ngOnInit() {
-    // Read query param 'complaint' to pre-fill and auto-trigger search
-    const complaintParam = this.route.snapshot.queryParamMap.get('complaint');
-    if (complaintParam) {
-      this.complaintId = complaintParam;
-      this.searchComplaint();
-    }
+  get stepGroups(): FormGroup[] {
+    return [
+      this.wizardForm.get('complaintDetails') as FormGroup,
+      this.wizardForm.get('repAuth') as FormGroup,
+      this.wizardForm.get('declaration') as FormGroup,
+    ];
   }
 
-  searchComplaint() {
+  get currentStepGroup(): FormGroup {
+    return this.stepGroups[this.currentStep()];
+  }
+
+  ngOnInit(): void {
+    const idFromRoute = this.route.snapshot.paramMap.get('id');
+    if (idFromRoute) {
+      this.complaintId = idFromRoute;
+    }
+    this.startAutoSave();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // ── Search ──────────────────────────────────────────────
+
+  searchComplaint(): void {
     if (!this.complaintId.trim()) {
       this.error = 'Please enter your complaint reference number.';
       return;
@@ -114,272 +175,310 @@ export class FileAppealComponent implements OnInit {
     this.error = '';
     this.checking.set(true);
 
-    this.http.get<any>(
-      `${environment.apiBaseUrl}/api/v1/appeals/check-eligibility?complaintNumber=${encodeURIComponent(this.complaintId.trim())}`
-    ).subscribe({
-      next: (res) => {
+    this.appealService.checkEligibility(this.complaintId.trim()).subscribe({
+      next: (data) => {
         this.checking.set(false);
-        const data = res?.data;
         if (data) {
           this.eligibilityResult.set(data);
-          this.classification.set(data.suggestedType || data.classification || null);
+          this.classification.set(data.classification || null);
           this.complaintFound = true;
           this.phase.set('eligibility');
+          scrollToTop();
         } else {
           this.error = 'Complaint not found. Please check the reference number.';
         }
       },
       error: (err) => {
         this.checking.set(false);
-        this.error = err.error?.message || 'Unable to verify complaint. Please try again.';
-      }
+        this.error =
+          err.error?.message || 'Unable to verify complaint. Please try again.';
+      },
     });
   }
 
-  proceedToForm() {
+  // ── Eligibility → Form ─────────────────────────────────
+
+  proceedToForm(): void {
     const result = this.eligibilityResult();
     if (!result?.eligible) {
       this.error = 'This complaint is not eligible for appeal.';
       return;
     }
-    // Clause gate. `appealable` is server-derived from CLOSURE_CLAUSE_MASTER: only 15(1)(a) and
-    // 15(1)(b) are appealable by a complainant. Checked separately from `eligible` because a
-    // non-appealable closure may still be escalated as a REPRESENTATION — it is the appeal route
-    // specifically that closes here.
-    if (result.appealable === false) {
-      this.error = result.appealableReason || 'This complaint is not eligible for appeal.';
-      return;
-    }
     this.error = '';
-    // Use the delayedFiling flag from the API response directly
-    const delayed = result.delayedFiling === true;
-    this.isDelayedFiling.set(delayed);
+
+    const days = result.complaintSummary?.daysSinceDecision || 0;
+    this.isDelayedFiling.set(days > 30 && days <= 60);
+
+    const delayCtrl = this.wizardForm.get('complaintDetails.reasonForDelay')!;
+    if (this.isDelayedFiling()) {
+      delayCtrl.setValidators([Validators.required, Validators.maxLength(500)]);
+    } else {
+      delayCtrl.clearValidators();
+    }
+    delayCtrl.updateValueAndValidity();
+
+    const existingDraftId = result.draftId as string | undefined;
+    if (existingDraftId) {
+      this.appealService.getDraft(existingDraftId).subscribe({
+        next: (draft) => this.hydrateDraft(draft),
+        error: () => {},
+      });
+    }
+
+    this.currentStep.set(0);
     this.phase.set('form');
+    scrollToTop();
   }
 
-  /**
-   * True when the file's extension is one the appeal form accepts.
-   *
-   * Extension, not MIME type: a .docx uploaded from some browsers arrives with an empty or generic
-   * type, so rejecting on MIME would refuse a valid document.
-   */
-  private hasAllowedType(file: File): boolean {
-    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-    return FileAppealComponent.ALLOWED_EXTENSIONS.includes(ext);
-  }
+  // ── Stepper Navigation ─────────────────────────────────
 
-  onFilesSelected(event: Event) {
-    const input = event.target as HTMLInputElement;
-    if (!input.files) return;
-    for (let i = 0; i < input.files.length; i++) {
-      const file = input.files[i];
-      if (!this.hasAllowedType(file)) {
-        this.error = FileAppealComponent.MSG_FILE;
-        input.value = '';
-        return;
-      }
-      if (file.size > this.maxFileSize()) {
-        // Both halves of the criteria's single message: the wording is fixed, and the configured limit
-        // is appended so a citizen learns what the limit actually is instead of guessing.
-        this.error = `${FileAppealComponent.MSG_FILE} `
-          + `File "${file.name}" exceeds the ${this.uploadLimits.maxFileSizeMb()}MB limit.`;
-        input.value = '';
-        return;
-      }
-      if (this.appealAttachments.length >= this.maxFileCount()) {
-        this.error = `Maximum ${this.maxFileCount()} files allowed.`;
-        input.value = '';
-        return;
-      }
-      const currentTotal = this.appealAttachments.reduce((sum, f) => sum + f.size, 0);
-      if (currentTotal + file.size > this.maxTotalSize()) {
-        this.error = `Total file size exceeds ${this.uploadLimits.maxTotalSizeMb()}MB limit.`;
-        input.value = '';
-        return;
-      }
-      this.appealAttachments.push(file);
+  nextStep(): void {
+    this.currentStepGroup.markAllAsTouched();
+    if (this.currentStepGroup.invalid) return;
+    if (this.currentStep() < this.stepLabels.length - 1) {
+      this.currentStep.update((s) => s + 1);
+      this.highestStepReached.update((h) => Math.max(h, this.currentStep()));
+      this.saveDraftNow();
+      scrollToTop();
     }
-    this.error = '';
+  }
+
+  prevStep(): void {
+    if (this.currentStep() > 0) {
+      this.currentStep.update((s) => s - 1);
+      scrollToTop();
+    }
+  }
+
+  // ── File Upload ────────────────────────────────────────
+
+  onFileSelected(event: Event, controlPath: string): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files?.length) return;
+    this.uploadFiles(Array.from(input.files), controlPath);
     input.value = '';
   }
 
-  onFileDrop(event: DragEvent) {
+  onFileDrop(event: DragEvent, controlPath: string): void {
     event.preventDefault();
+    this.isDragOver = false;
     if (!event.dataTransfer?.files?.length) return;
-    for (let i = 0; i < event.dataTransfer.files.length; i++) {
-      const file = event.dataTransfer.files[i];
-      if (!this.hasAllowedType(file)) {
-        this.error = FileAppealComponent.MSG_FILE;
+    this.uploadFiles(Array.from(event.dataTransfer.files), controlPath);
+  }
+
+  private uploadFiles(files: File[], controlPath: string): void {
+    if (!files.length) return;
+    const control = this.wizardForm.get(controlPath);
+    if (!control) return;
+
+    for (const file of files) {
+      // Server-configured limits, not a size compiled into the bundle: a figure baked in at build
+      // time can go stale against GET /api/v1/config/upload-limits and refuse files the API accepts.
+      const result = validateFile(file, {
+        maxFileSizeMb: this.uploadLimits.maxFileSizeMb(),
+        maxTotalSizeMb: this.uploadLimits.maxTotalSizeMb(),
+        maxFileCount: this.uploadLimits.maxFileCount(),
+      });
+      if (!result.valid) {
+        this.error = result.error!;
         return;
       }
-      if (file.size > this.maxFileSize()) {
-        this.error = `${FileAppealComponent.MSG_FILE} `
-          + `File "${file.name}" exceeds the ${this.uploadLimits.maxFileSizeMb()}MB limit.`;
-        return;
-      }
-      if (this.appealAttachments.length >= this.maxFileCount()) {
-        this.error = `Maximum ${this.maxFileCount()} files allowed.`;
-        return;
-      }
-      const currentTotal = this.appealAttachments.reduce((sum, f) => sum + f.size, 0);
-      if (currentTotal + file.size > this.maxTotalSize()) {
-        this.error = `Total file size exceeds ${this.uploadLimits.maxTotalSizeMb()}MB limit.`;
-        return;
-      }
-      this.appealAttachments.push(file);
     }
     this.error = '';
+
+    const isArray = Array.isArray(control.value);
+    this.uploading.update((s) => ({ ...s, [controlPath]: true }));
+
+    forkJoin(files.map((f) => this.appealService.uploadFile(f)))
+      .pipe(
+        finalize(() =>
+          this.uploading.update((s) => ({ ...s, [controlPath]: false })),
+        ),
+      )
+      .subscribe({
+        next: (metas) => {
+          if (isArray) {
+            control.setValue([...(control.value || []), ...metas]);
+          } else {
+            control.setValue(metas[metas.length - 1]);
+          }
+          control.markAsDirty();
+        },
+        error: () => {
+          this.error = 'File upload failed. Please try again.';
+        },
+      });
   }
 
-  removeFile(index: number) {
-    this.appealAttachments.splice(index, 1);
+  removeUploadedFile(controlPath: string, index?: number): void {
+    const control = this.wizardForm.get(controlPath);
+    if (!control) return;
+
+    let fileId: string | undefined;
+    if (Array.isArray(control.value) && index !== undefined) {
+      fileId = control.value[index]?.fileId;
+      const updated = [...control.value];
+      updated.splice(index, 1);
+      control.setValue(updated);
+    } else {
+      fileId = (control.value as FileMeta | null)?.fileId;
+      control.setValue(null);
+    }
+    control.markAsDirty();
+
+    if (fileId) {
+      this.appealService.deleteFile(fileId).subscribe();
+    }
   }
 
-  /**
-   * Opens the native picker for the Date of Receipt.
-   *
-   * The visible input is readonly, so the picker is the ONLY way to set the value — the acceptance
-   * criterion is that the date cannot be typed freehand.
-   */
-  openDatePicker(event: Event) {
-    const btn = event.currentTarget as HTMLElement;
-    const hidden = btn.parentElement?.querySelector('.date-hidden-picker') as HTMLInputElement | null;
-    hidden?.showPicker();
+  // ── Speech-to-Text ────────────────────────────────────
+
+  appendTranscription(controlPath: string, text: string): void {
+    const control = this.wizardForm.get(controlPath);
+    if (!control) return;
+    const current = ((control.value as string) || '').trim();
+    control.setValue(current ? current + ' ' + text : text);
+    control.markAsDirty();
   }
 
-  onDateOfReceiptChange(event: Event) {
-    const iso = (event.target as HTMLInputElement).value;
-    if (!iso) return;
-    this.dateOfReceipt = iso;
-    const [y, m, d] = iso.split('-');
-    this.dateOfReceiptDisplay = `${d}/${m}/${y}`;
-    delete this.fieldErrors['dateOfReceipt'];
+  // ── Auto-Save / Draft ─────────────────────────────────
+
+  private startAutoSave(): void {
+    interval(120_000)
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(() => this.phase() === 'form' && this.wizardForm.dirty),
+        switchMap(() => {
+          this.autoSaveStatus.set('saving');
+          return this.appealService.saveDraft(this.buildDraftPayload()).pipe(
+            catchError(() => {
+              this.autoSaveStatus.set('error');
+              return EMPTY;
+            }),
+          );
+        }),
+      )
+      .subscribe((res) => {
+        this.draftId = res.draftId;
+        this.autoSaveStatus.set('saved');
+        this.wizardForm.markAsPristine();
+      });
   }
 
-  get todayISO(): string {
-    return new Date().toISOString().split('T')[0];
+  saveDraftNow(): void {
+    this.autoSaveStatus.set('saving');
+    this.appealService
+      .saveDraft(this.buildDraftPayload())
+      .pipe(
+        catchError(() => {
+          this.autoSaveStatus.set('error');
+          return EMPTY;
+        }),
+      )
+      .subscribe((res) => {
+        this.draftId = res.draftId;
+        this.autoSaveStatus.set('saved');
+        this.wizardForm.markAsPristine();
+      });
   }
 
-  /**
-   * Validates the appellant block and returns true when it is clean.
-   *
-   * Every field is checked before returning, rather than short-circuiting, so a citizen sees all of
-   * their mistakes at once instead of one per submit.
-   */
-  private validateAppellant(): boolean {
-    const C = FileAppealComponent;
-    this.fieldErrors = {};
-
-    if (!this.appellantName.trim()) {
-      this.fieldErrors['appellantName'] = C.MSG_REQUIRED;
-    } else if (this.appellantName.length > C.NAME_MAX) {
-      this.fieldErrors['appellantName'] = C.MSG_LENGTH;
-    }
-
-    if (!this.appellantMobile.trim()) {
-      this.fieldErrors['appellantMobile'] = C.MSG_REQUIRED;
-    } else if (!/^\d{10}$/.test(this.appellantMobile.trim())) {
-      // A 9- or 11-digit mobile is a length problem, which is what the criteria call it.
-      this.fieldErrors['appellantMobile'] = C.MSG_LENGTH;
-    }
-
-    // Email is optional, but must be well formed when supplied.
-    const email = this.appellantEmail.trim();
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
-      this.fieldErrors['appellantEmail'] = C.MSG_LENGTH;
-    }
-
-    if (this.appellantComments.length > C.COMMENTS_MAX) {
-      this.fieldErrors['appellantComments'] = C.MSG_LENGTH;
-    }
-
-    if (!this.dateOfReceipt) {
-      this.fieldErrors['dateOfReceipt'] = C.MSG_REQUIRED;
-    }
-
-    return Object.keys(this.fieldErrors).length === 0;
+  private buildDraftPayload(): AppealDraftPayload {
+    return {
+      phone: '',
+      complaintNumber: this.complaintId,
+      classification: this.classification() || '',
+      formData: this.wizardForm.getRawValue(),
+      currentStep: this.currentStep(),
+      highestStepReached: this.highestStepReached(),
+      phase: this.phase(),
+    };
   }
 
-  // FR-G-034: Submit appeal
-  submitAppeal() {
-    this.error = '';
-    // Delay validation runs FIRST and keeps its own two exact strings. They are separately specified
-    // and must not be folded into the generic "This field is required."
-    if (this.isDelayedFiling() && !this.reasonForDelay.trim()) {
-      this.error = 'Reason for delay is required.';
-      return;
-    }
-    if (this.isDelayedFiling() && this.reasonForDelay.length > FileAppealComponent.REASON_MAX) {
-      this.error = 'Reason must be within 500 characters.';
-      return;
-    }
-    if (!this.validateAppellant()) {
-      // The banner echoes the FIRST field error rather than a fixed sentence, so it cannot say
-      // "required" about a field that is actually too long.
-      this.error = Object.values(this.fieldErrors)[0];
-      return;
-    }
-    if (!this.appealGround) {
-      this.error = 'Please select a ground for appeal.';
-      return;
-    }
-    if (!this.appealDetails.trim()) {
-      this.error = 'Please provide details supporting your appeal.';
-      return;
-    }
-    if (!this.declarationChecked) {
-      this.error = 'Please accept the declaration before submitting.';
+  private hydrateDraft(draft: AppealDraftRecord): void {
+    this.wizardForm.patchValue(draft.formData);
+    this.currentStep.set(draft.currentStep);
+    this.highestStepReached.set(draft.highestStepReached);
+    this.draftId = draft.draftId;
+  }
+
+  // ── Submit ─────────────────────────────────────────────
+
+  submitAppeal(): void {
+    this.wizardForm.markAllAsTouched();
+    // Mark dirty too: app-form-error only shows once a control is touched or dirty, and a control the
+    // appellant never focused is neither — so the banner appeared with no indication of which field.
+    this.markAllDirty(this.wizardForm);
+    if (this.wizardForm.invalid) {
+      this.error = 'Please complete all required fields.';
+      this.focusFirstInvalidStep();
       return;
     }
 
     this.submitting.set(true);
+    this.error = '';
 
-    const formData = new FormData();
-    formData.append('complaintNumber', this.complaintId);
-    formData.append('ground', this.appealGround);
-    formData.append('details', this.appealDetails);
-    formData.append('reliefSought', this.reliefSought);
-    formData.append('classification', this.classification() || '');
-    formData.append('appellantName', this.appellantName.trim());
-    formData.append('appellantPhone', this.appellantMobile.trim());
-    formData.append('appellantEmail', this.appellantEmail.trim());
-    formData.append('comments', this.appellantComments.trim());
-    formData.append('dateOfReceipt', this.dateOfReceipt);
-    if (this.isDelayedFiling() && this.reasonForDelay) {
-      formData.append('reasonForDelay', this.reasonForDelay);
-    }
+    const details = this.wizardForm.getRawValue().complaintDetails;
+    const payload = {
+      complaintNumber: this.complaintId,
+      classification: this.classification() || '',
+      ground: details.appealGround || '',
+      details: details.appealDetails || '',
+      reliefSought: details.reliefSought || '',
+      reasonForDelay: details.reasonForDelay || '',
+      appellantName: details.appellantName || '',
+      appellantPhone: details.appellantPhone || '',
+      appellantEmail: details.appellantEmail || '',
+      // The backend's POST /api/v1/appeals/file only binds a `dateOfReceipt` @RequestParam — it has
+      // no `awardCommunicationDate` parameter, so sending it under that name was silently dropped by
+      // Spring and the date the citizen entered was never persisted.
+      dateOfReceipt: details.awardCommunicationDate || '',
+    };
 
-    for (const file of this.appealAttachments) {
-      formData.append('attachments', file);
-    }
-
-    this.http.post<any>(
-      `${environment.apiBaseUrl}/api/v1/appeals/file`,
-      formData
-    ).subscribe({
+    this.appealService.submitAppeal(payload).subscribe({
       next: (res) => {
-        const appealNumber = res?.data?.appealNumber;
-        if (!appealNumber) {
-          this.submitting.set(false);
-          this.error = 'Appeal was submitted but no appeal number was returned. Please contact support.';
-          return;
-        }
-        this.appealRefNumber = appealNumber;
+        this.appealRefNumber = res.appealNumber;
         this.submitting.set(false);
         this.phase.set('success');
+        scrollToTop();
+        if (this.draftId) {
+          this.appealService.deleteDraft(this.draftId).subscribe();
+        }
       },
       error: (err) => {
         this.submitting.set(false);
-        this.error = err.error?.message || 'Failed to submit appeal. Please try again.';
-      }
+        // 409 is the duplicate-appeal case (UST106 AC3). The server's message names the complaint
+        // number, which is noise to someone who just tried to appeal it — state the rule instead.
+        this.error = err.status === 409
+          ? 'Appeal already filed for this complaint.'
+          : err.error?.message || 'Failed to submit appeal. Please try again.';
+      },
     });
   }
 
-  goHome() {
+  /** Marks every control in a group dirty, recursing into nested groups. */
+  private markAllDirty(group: FormGroup): void {
+    Object.values(group.controls).forEach((control) => {
+      control.markAsDirty();
+      if (control instanceof FormGroup) this.markAllDirty(control);
+    });
+  }
+
+  /** Navigates to the earliest wizard step holding an invalid control. */
+  private focusFirstInvalidStep(): void {
+    const groups: Array<[number, AbstractControl | null]> = [
+      [0, this.wizardForm.get('complaintDetails')],
+      [1, this.wizardForm.get('repAuth')],
+      [2, this.wizardForm.get('declaration')],
+    ];
+    const firstInvalid = groups.find(([, group]) => group?.invalid);
+    if (firstInvalid) this.currentStep.set(firstInvalid[0]);
+  }
+
+  goHome(): void {
     this.router.navigate(['/public']);
   }
 
-  trackAppeal() {
+  trackAppeal(): void {
     this.router.navigate(['/public/track', this.appealRefNumber]);
   }
 }

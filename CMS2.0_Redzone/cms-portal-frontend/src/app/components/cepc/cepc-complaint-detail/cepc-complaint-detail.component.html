@@ -2,7 +2,7 @@
   <header class="topbar">
     <div class="topbar-left">
       <button class="back-btn" (click)="goBack()">&larr;</button>
-      <h2>CEPC Complaint Examination</h2>
+      <h2>{{ 'ui.cepc.cd.title' | translateOr: 'CEPC Complaint Examination' }}</h2>
     </div>
     <div class="topbar-right">
       @if (auth.currentUser(); as user) {
@@ -14,9 +14,9 @@
 
   <main class="content">
     @if (loading()) {
-      <div class="loading">Loading complaint details...</div>
+      <div class="loading">{{ 'ui.cepc.cd.loading' | translateOr: 'Loading complaint details...' }}</div>
     } @else if (!complaint()) {
-      <div class="error-state">Complaint not found.</div>
+      <div class="error-state">{{ 'ui.cepc.cd.not_found' | translateOr: 'Complaint not found.' }}</div>
     } @else {
       <!-- Complaint Summary Strip — shared app-complaint-summary, as on RBIO and the three CRPC screens.
            This screen had no strip: the identifying facts were scattered through .complaint-header and
@@ -53,43 +53,43 @@
               <span>Filed: {{ complaint().registeredAt | date:'dd MMM yyyy' }}</span>
               <app-cepc-sla-indicator [slaDueDate]="complaint().slaDueDate" [status]="complaint().status"></app-cepc-sla-indicator>
               @if (canEdit()) {
-                <button class="btn-edit" type="button" title="Edit" (click)="startEdit()">Edit</button>
+                <button class="btn-edit" type="button" [title]="'ui.cepc.dv.action.edit' | translateOr: 'Edit'" (click)="startEdit()">{{ 'ui.cepc.dv.action.edit' | translateOr: 'Edit' }}</button>
               }
             </div>
           </div>
 
           @if (editing()) {
             <section class="detail-section edit-section">
-              <h4>Edit Complaint</h4>
+              <h4>{{ 'ui.cepc.cd.edit_complaint' | translateOr: 'Edit Complaint' }}</h4>
               <div class="field-grid">
                 <div class="field">
-                  <label for="edit-status">Status</label>
+                  <label for="edit-status">{{ 'ui.cepc.dv.field.status' | translateOr: 'Status' }}</label>
                   <select id="edit-status" [(ngModel)]="editForm.status">
-                    <option value="pending">Pending</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="under_review">Under Review</option>
-                    <option value="escalated">Escalated</option>
+                    <option value="pending">{{ 'ui.cepc.cd.state_pending' | translateOr: 'Pending' }}</option>
+                    <option value="assigned">{{ 'ui.cepc.cd.assigned' | translateOr: 'Assigned' }}</option>
+                    <option value="in_progress">{{ 'ui.cepc.cd.state_in_progress' | translateOr: 'In Progress' }}</option>
+                    <option value="under_review">{{ 'ui.cepc.cd.state_under_review' | translateOr: 'Under Review' }}</option>
+                    <option value="escalated">{{ 'ui.cepc.cd.state_escalated' | translateOr: 'Escalated' }}</option>
                   </select>
                 </div>
                 <div class="field">
-                  <label for="edit-priority">Priority</label>
+                  <label for="edit-priority">{{ 'ui.cepc.cd.priority' | translateOr: 'Priority' }}</label>
                   <select id="edit-priority" [(ngModel)]="editForm.priority">
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
+                    <option value="low">{{ 'ui.cepc.cd.priority_low' | translateOr: 'Low' }}</option>
+                    <option value="medium">{{ 'ui.cepc.cd.priority_medium' | translateOr: 'Medium' }}</option>
+                    <option value="high">{{ 'ui.cepc.cd.priority_high' | translateOr: 'High' }}</option>
+                    <option value="critical">{{ 'ui.cepc.cd.priority_critical' | translateOr: 'Critical' }}</option>
                   </select>
                 </div>
                 <div class="field">
-                  <label for="edit-officer">Assigned Officer</label>
+                  <label for="edit-officer">{{ 'ui.cepc.cd.assigned_officer' | translateOr: 'Assigned Officer' }}</label>
                   <input id="edit-officer" type="text" [(ngModel)]="editForm.assignedOfficer" />
                 </div>
               </div>
               <div class="field full-width">
-                <label for="edit-remarks">Remarks</label>
+                <label for="edit-remarks">{{ 'ui.cepc.dv.field.remarks' | translateOr: 'Remarks' }}</label>
                 <textarea id="edit-remarks" rows="3" [(ngModel)]="editForm.remarks"
-                          placeholder="Why is this record being changed?"></textarea>
+                          [placeholder]="'ui.cepc.cd.why_changed' | translateOr: 'Why is this record being changed?'"></textarea>
               </div>
               @if (editError()) {
                 <p class="edit-error">{{ editError() }}</p>
@@ -98,29 +98,29 @@
                 <button class="submit-btn" type="button" [disabled]="savingEdit()" (click)="saveEdit()">
                   @if (savingEdit()) { Saving... } @else { Save Changes }
                 </button>
-                <button class="cancel-btn" type="button" (click)="cancelEdit()">Cancel</button>
+                <button class="cancel-btn" type="button" (click)="cancelEdit()">{{ 'ui.cepc.dv.action.cancel' | translateOr: 'Cancel' }}</button>
               </div>
             </section>
           }
 
           <!-- Complainant Details -->
           <section class="detail-section">
-            <h4>Complainant Details</h4>
+            <h4>{{ 'ui.cepc.dv.section.complainant_details' | translateOr: 'Complainant Details' }}</h4>
             <div class="field-grid">
               <div class="field">
-                <label>Name</label>
+                <label>{{ 'ui.cepc.dv.field.name' | translateOr: 'Name' }}</label>
                 <span>{{ complaint().complainantName }}</span>
               </div>
               <div class="field">
-                <label>Email</label>
+                <label>{{ 'ui.cepc.dv.field.email' | translateOr: 'Email' }}</label>
                 <span>{{ complaint().complainantEmail || '—' }}</span>
               </div>
               <div class="field">
-                <label>Phone</label>
+                <label>{{ 'ui.cepc.cc.phone' | translateOr: 'Phone' }}</label>
                 <span>{{ complaint().complainantPhone || '—' }}</span>
               </div>
               <div class="field">
-                <label>Address</label>
+                <label>{{ 'ui.cepc.dv.field.address' | translateOr: 'Address' }}</label>
                 <span>{{ complaint().complainantAddress || '—' }}</span>
               </div>
             </div>
@@ -128,22 +128,22 @@
 
           <!-- Entity Details -->
           <section class="detail-section">
-            <h4>Entity Details</h4>
+            <h4>{{ 'ui.cepc.dv.section.entity_details' | translateOr: 'Entity Details' }}</h4>
             <div class="field-grid">
               <div class="field">
-                <label>Entity Name</label>
+                <label>{{ 'ui.cepc.dv.field.entity_name' | translateOr: 'Entity Name' }}</label>
                 <span>{{ complaint().entityName || '—' }}</span>
               </div>
               <div class="field">
-                <label>Entity Type</label>
+                <label>{{ 'ui.cepc.dv.field.entity_type' | translateOr: 'Entity Type' }}</label>
                 <span>{{ complaint().entityType || '—' }}</span>
               </div>
               <div class="field">
-                <label>Department</label>
+                <label>{{ 'ui.cepc.cd.department' | translateOr: 'Department' }}</label>
                 <span class="dept-badge">CEPC</span>
               </div>
               <div class="field">
-                <label>Assigned To</label>
+                <label>{{ 'ui.cepc.dv.field.assigned_to' | translateOr: 'Assigned To' }}</label>
                 <span>{{ complaint().assignedTo || complaint().assignedTeam || '—' }}</span>
               </div>
             </div>
@@ -151,30 +151,30 @@
 
           <!-- Complaint Details -->
           <section class="detail-section">
-            <h4>Complaint Information</h4>
+            <h4>{{ 'ui.cepc.cd.complaint_information' | translateOr: 'Complaint Information' }}</h4>
             <div class="field full-width">
-              <label>Subject</label>
+              <label>{{ 'ui.cepc.dv.field.subject' | translateOr: 'Subject' }}</label>
               <span>{{ complaint().subject }}</span>
             </div>
             <div class="field full-width">
-              <label>Description</label>
+              <label>{{ 'ui.cepc.cd.description' | translateOr: 'Description' }}</label>
               <p class="description-text">{{ complaint().description || '—' }}</p>
             </div>
             <div class="field-grid">
               <div class="field">
-                <label>Category</label>
+                <label>{{ 'ui.cepc.cd.category' | translateOr: 'Category' }}</label>
                 <span>{{ complaint().category || '—' }}</span>
               </div>
               <div class="field">
-                <label>Amount Involved</label>
+                <label>{{ 'ui.cepc.cd.amount_involved' | translateOr: 'Amount Involved' }}</label>
                 <span>{{ complaint().amountInvolved ? '₹' + complaint().amountInvolved : '—' }}</span>
               </div>
               <div class="field">
-                <label>Transaction Date</label>
+                <label>{{ 'ui.cepc.cd.transaction_date' | translateOr: 'Transaction Date' }}</label>
                 <span>{{ complaint().transactionDate | date:'dd MMM yyyy' }}</span>
               </div>
               <div class="field">
-                <label>Filing Type</label>
+                <label>{{ 'ui.cepc.cd.filing_type' | translateOr: 'Filing Type' }}</label>
                 <span>{{ complaint().filingType || '—' }}</span>
               </div>
             </div>
@@ -228,11 +228,11 @@
             <div class="closed-banner">
               <span class="closed-icon">&#10003;</span>
               <h4>Complaint {{ complaint().status | uppercase }}</h4>
-              <p>This complaint has been closed. No further actions available.</p>
+              <p>{{ 'ui.cepc.cd.closed_no_actions' | translateOr: 'This complaint has been closed. No further actions available.' }}</p>
             </div>
           } @else {
-            <h4>Available Actions</h4>
-            <p class="action-hint">Select an action to perform on this complaint.</p>
+            <h4>{{ 'ui.cepc.cd.available_actions' | translateOr: 'Available Actions' }}</h4>
+            <p class="action-hint">{{ 'ui.cepc.cd.select_an_action' | translateOr: 'Select an action to perform on this complaint.' }}</p>
 
             <app-workflow-action-bar
               [actions]="availableActions()"
@@ -250,9 +250,9 @@
             <ng-template #targetPicker let-action>
               @if (action.requiresTarget && action.targetType === 'department') {
                 <div class="form-field">
-                  <label>Target Department</label>
+                  <label>{{ 'ui.cepc.cd.target_department' | translateOr: 'Target Department' }}</label>
                   <select [(ngModel)]="targetDepartment">
-                    <option value="">Select Department</option>
+                    <option value="">{{ 'ui.cepc.cd.select_department' | translateOr: 'Select Department' }}</option>
                     @for (dept of rbiDepartments; track dept) {
                       <option [value]="dept">{{ dept }}</option>
                     }
@@ -262,7 +262,7 @@
 
               @if (action.requiresTarget && action.targetType === 'user') {
                 <div class="form-field">
-                  <label>Assign To</label>
+                  <label>{{ 'ui.cepc.cd.assign_to' | translateOr: 'Assign To' }}</label>
                   <select [(ngModel)]="targetUser">
                     <option value="">Select {{ action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN' ? 'Contact Person' : 'Officer' }}</option>
                     @if (action.id === 'FORWARD_TO_CONTACT' || action.id === 'CONTACT_REASSIGN') {
@@ -321,7 +321,7 @@
                     }
                   </div>
                 } @else {
-                  <p class="no-docs">No documents uploaded yet.</p>
+                  <p class="no-docs">{{ 'ui.cepc.cd.no_documents_uploaded' | translateOr: 'No documents uploaded yet.' }}</p>
                 }
                 @if (!isTerminalState()) {
                   <div class="upload-area">
@@ -330,7 +330,7 @@
                       &#128206; Upload Document
                     </label>
                     @if (uploadingDoc()) {
-                      <span class="uploading">Uploading...</span>
+                      <span class="uploading">{{ 'ui.cepc.cd.upload_in_progress' | translateOr: 'Uploading...' }}</span>
                     }
                   </div>
                 }
